@@ -11,13 +11,11 @@
   var root=document.getElementById('pfLive'); if(!root) return;
   var btcSrc='CoinGecko',live={BTC:null}, src={}, prev={}, open={}, btcTime=null, btcChg=null, stkTime=null, lastTs=0;
   function anyLive(){return !!live.BTC||['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!live[k];});}
-  /* Month-end mode: most recent calendar month-end close = last weekday of the prior month (ET). Static closes below; prices.json monthEnd (written by the workflow) is used when it matches. */
+  /* Month-end mode: date + closes come from prices.json monthEnd (workflow: last actual trading session <= prior ET month's last calendar day). Static Sep 30 closes are the fallback. */
   var MONTHEND={'2026-09-30':{BTC:83553.85,MSTR:153.09,STRC:99.35,TSLA:354.81,PLTR:187.05,SPY:762.63,QQQ:739.77,'BRK.B':497.95,GOLD:4154.23}};
   var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  function meDate(){var p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).split('-');
-    var d=new Date(Date.UTC(+p[0],+p[1]-1,0));while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10);}
-  var mode='live', ME_D=meDate(), ME=MONTHEND[ME_D]||null;
-  if(!ME){var ks=Object.keys(MONTHEND).sort();ME_D=ks[ks.length-1];ME=MONTHEND[ME_D];}
+  /* until prices.json loads, fall back to the latest static month-end */
+  var mode='live', ks=Object.keys(MONTHEND).sort(), ME_D=ks[ks.length-1], ME=MONTHEND[ME_D];
   function meLabel(){var p=ME_D.split('-');return MN[+p[1]-1]+' '+(+p[2])+', '+p[0];}
   function asOfLabel(){if(mode==='me')return 'Month-end close · '+meLabel();
     if(!anyLive()||!lastTs)return 'Last close · Oct 19, 2026';if(!anyLive()||!lastTs)return 'Last close · Oct 19, 2026';
@@ -42,7 +40,7 @@
         live[T]=q.c;prev[T]=(typeof q.pc==='number'&&q.pc>0)?q.pc:null;src[T]='cached '+(q.t?hhmm(q.t):'');});
       stkTime=cacheUpd?new Date(cacheUpd).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET':null;
       var b=d&&d.btc;if(!live.BTC&&b&&b.usd>0){live.BTC=b.usd;btcChg=(typeof b.chg24h==='number')?b.chg24h:null;btcSrc='cached '+(b.src||'');btcTime=b.time?new Date(b.time).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET':null;}
-      var me=d&&d.monthEnd;if(me&&me.date&&me.px&&me.px.BTC){MONTHEND[me.date]=me.px;if(me.date===meDate()){ME_D=me.date;ME=me.px;}}
+      var me=d&&d.monthEnd;if(me&&me.date&&me.px&&me.px.BTC&&me.v>=3){MONTHEND[me.date]=me.px;ME_D=me.date;ME=me.px;} /* use the saved month-end session date, not a client-computed weekday */
       var gd=d&&d.gold;if(gd&&gd.usd>0)live.GOLD=gd.usd;
       render();})
     .catch(function(){clearTimeout(t);/* keep last good prices; Oct 19 close if never loaded */render();});
