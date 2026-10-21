@@ -1,0 +1,74 @@
+name: prices
+on:
+  schedule:
+    - cron: '*/5 * * * 1-5'   # Mon-Fri UTC
+    - cron: '*/5 0-1 * * 6'   # Sat 00:00-01:59 UTC = Fri evening ET
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: prices
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Market-hours gate (America/New_York, weekdays 03:55-20:15)
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "run=1" >> $GITHUB_OUTPUT; exit 0; fi
+          d=$(TZ=America/New_York date +%u); h=$(TZ=America/New_York date +%-H); m=$(TZ=America/New_York date +%-M)
+          mins=$((h*60+m))
+          if [ "$d" -le 5 ] && [ $mins -ge 235 ] && [ $mins -le 1215 ]; then echo "run=1" >> $GITHUB_OUTPUT; else echo "run=0" >> $GITHUB_OUTPUT; echo "Outside window"; fi
+      - name: Checkout data branch
+        if: steps.gate.outputs.run == '1'
+        run: |
+          git init -q work && cd work
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          if git fetch -q --depth 1 origin data; then git checkout -q -b data FETCH_HEAD; else git checkout -q --orphan data; fi
+      - name: Fetch prices
+        if: steps.gate.outputs.run == '1'
+        env:
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: |
+          cd work
+          python3 - <<'PY'
+          import json, os, urllib.request, datetime
+          def get(u):
+              r = urllib.request.Request(u, headers={'User-Agent': 'paperstreetbtc-cache'})
+              with urllib.request.urlopen(r, timeout=15) as f: return json.load(f)
+          now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          try: old = json.load(open('prices.json'))
+          except Exception: old = {}
+          out = {'updated': now, 'btc': old.get('btc'), 'stocks': dict(old.get('stocks') or {})}
+          key = os.environ.get('FINNHUB_API_KEY', '')
+          ok = 0
+          for s in ['MSTR','STRC','TSLA','PLTR','SPY','QQQ']:
+              try:
+                  q = get(f'https://finnhub.io/api/v1/quote?symbol={s}&token={key}')
+                  if isinstance(q.get('c'), (int, float)) and q['c'] > 0:
+                      out['stocks'][s] = {'c': q['c'], 'pc': q.get('pc'), 't': q.get('t')}; ok += 1
+                  else: print(s, 'bad data, keeping previous')
+              except Exception as e: print(s, 'failed, keeping previous:', type(e).__name__)
+          try:
+              b = get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true')['bitcoin']
+              out['btc'] = {'usd': b['usd'], 'chg24h': b.get('usd_24h_change'), 'src': 'CoinGecko', 'time': now}
+          except Exception as e:
+              print('CoinGecko failed:', type(e).__name__)
+              try:
+                  a = float(get('https://api.coinbase.com/v2/prices/BTC-USD/spot')['data']['amount'])
+                  out['btc'] = {'usd': a, 'chg24h': None, 'src': 'Coinbase', 'time': now}
+              except Exception as e2: print('Coinbase failed, keeping previous:', type(e2).__name__)
+          if ok == 0 and old: out['updated'] = old.get('updated', now)
+          json.dump(out, open('prices.json', 'w'), indent=1)
+          print('stocks ok:', ok, 'btc src:', (out['btc'] or {}).get('src'))
+          PY
+      - name: Commit
+        if: steps.gate.outputs.run == '1'
+        run: |
+          cd work
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prices.json
+          git commit -q -m "prices $(date -u +%FT%TZ)" || { echo nothing; exit 0; }
+          git push -q origin HEAD:data
