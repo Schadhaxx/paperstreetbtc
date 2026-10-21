@@ -1,0 +1,1 @@
+{"run": "2026-10-21T17:31:39Z", "event": "workflow_dispatch", "trigger": "cron-job.org", "stocks_ok": 6, "btc": {"usd": 84499, "chg24h": 2.2040388049392794, "src": "CoinGecko", "time": "2026-10-21T17:31:39Z"}, "stocks": {"MSTR": 154.49, "STRC": 99.21, "TSLA": 387.06, "PLTR": 199.87, "SPY": 773.86, "QQQ": 727.16}}
