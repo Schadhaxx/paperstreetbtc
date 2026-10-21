@@ -4,6 +4,10 @@ on:
     - cron: '*/5 * * * 1-5'   # Mon-Fri UTC
     - cron: '*/5 0-1 * * 6'   # Sat 00:00-01:59 UTC = Fri evening ET
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Run even outside market hours'
+        default: 'false'
 permissions:
   contents: write
 concurrency:
@@ -16,7 +20,7 @@ jobs:
       - name: Market-hours gate (America/New_York, weekdays 03:55-20:15)
         id: gate
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "run=1" >> $GITHUB_OUTPUT; exit 0; fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then echo "run=1" >> $GITHUB_OUTPUT; exit 0; fi
           d=$(TZ=America/New_York date +%u); h=$(TZ=America/New_York date +%-H); m=$(TZ=America/New_York date +%-M)
           mins=$((h*60+m))
           if [ "$d" -le 5 ] && [ $mins -ge 235 ] && [ $mins -le 1215 ]; then echo "run=1" >> $GITHUB_OUTPUT; else echo "run=0" >> $GITHUB_OUTPUT; echo "Outside window"; fi
