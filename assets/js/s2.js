@@ -18,15 +18,16 @@ const benchmarks = {
   spy: [100.0, 101.47, 100.6, 95.63, 105.68, 111.24, 110.09, 110.13, 113.08, 112.71, 113.28],
   qqq: [100.0, 101.23, 98.86, 94.07, 108.83, 120.34, 120.16, 112.26, 116.95, 120.83, 117.33],
   brk: [100.0, 95.6, 100.46, 95.33, 94.22, 94.4, 99.55, 101.77, 100.27, 99.06, 105.88],
+  mstr: [100.0, 98.53, 85.23, 82.13, 108.88, 104.7, 57.21, 61.39, 87.49, 100.75, 89.52],
   // Gold = spot XAU/USD (not futures): month-end spot derived from GLD 4pm close / GLD ounces-per-share (0.40%/yr fee accrual), calibrated to live spot
   gold: [100.0, 112.31, 122.14, 108.68, 107.04, 105.42, 93.14, 93.97, 103.33, 96.38, 96.11]
 };
-const benchColors = { btc: '#64748b', spy: '#94a3b8', qqq: '#cbd5e1', brk: '#a8a29e', gold: '#d4b06a' };
-const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'Gold (spot)' };
+const benchColors = { btc: '#64748b', spy: '#94a3b8', qqq: '#cbd5e1', brk: '#a8a29e', gold: '#d4b06a', mstr: '#f97316' };
+const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'Gold (spot)', mstr: 'MSTR' };
 
 // Live 'Now' point: 19 Oct close prices; benchmark live index = 19 Oct index x live/close (keeps SPY/QQQ total-return dividends already in the series)
-const CLOSE1019 = { btc: 81901.5625, spy: 766.48, qqq: 718.36, brk: 532.23, gold: 4142.55 };
-const START1231 = { btc: 87508.8281, spy: 681.92, qqq: 614.31, brk: 502.65, gold: 4310.06 };
+const CLOSE1019 = { btc: 81901.5625, spy: 766.48, qqq: 718.36, brk: 532.23, gold: 4142.55, mstr: 136.02 };
+const START1231 = { btc: 87508.8281, spy: 681.92, qqq: 614.31, brk: 502.65, gold: 4310.06, mstr: 151.95 };
 let liveNow = null; // { sleeves:{key:$}, bench:{key:index} } or null -> static 19 Oct
 function hhmm(d){return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
 let meView = null; // month-end mode: { n: points kept from history, extra: optional computed point }
@@ -37,7 +38,7 @@ function applyLive(st){
   if (st.mode === 'me' && st.me) {
     const i = ISO.indexOf(st.meDate);
     if (i >= 0) meView = { n: i + 1 };
-    else { const bench = {}; const m = { btc: 'BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'GOLD' };
+    else { const bench = {}; const m = { btc: 'BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'GOLD', mstr: 'MSTR' };
       Object.keys(CLOSE1019).forEach(k => { bench[k] = Math.round(benchmarks[k].at(-1) * st.me[m[k]] / CLOSE1019[k] * 100) / 100; });
       const p = st.meDate.split('-'); meView = { n: labels.length, extra: { label: (+p[2]) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1], sleeves: st.sleeves, bench } }; }
     liveNow = null;
@@ -45,7 +46,7 @@ function applyLive(st){
     if (chart) render();
     return;
   }
-  const anyLive = st.btc || st.stocksLive || st.spy || st.qqq || st.brk || st.gold;
+  const anyLive = st.btc || st.stocksLive || st.spy || st.qqq || st.brk || st.gold || st.mstr;
   if(!anyLive){ liveNow = null; }
   else {
     const bench = {};

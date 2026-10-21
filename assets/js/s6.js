@@ -73,7 +73,7 @@
   }
   /* Shared live state for the YTD chart: same compute() as tracker + pulse */
   var KEYS=['berkshire','hodlr','hf','saylor'];
-  function liveState(){var o={sleeves:{},btc:live.BTC||null,spy:live.SPY||null,qqq:live.QQQ||null,brk:live['BRK.B']||null,gold:live.GOLD||null,btcTime:live.BTC?btcTime:null,
+  function liveState(){var o={sleeves:{},btc:live.BTC||null,spy:live.SPY||null,qqq:live.QQQ||null,brk:live['BRK.B']||null,mstr:live.MSTR||null,gold:live.GOLD||null,btcTime:live.BTC?btcTime:null,
       stocksLive:['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!src[k];}),stkTime:stkTime,label:asOfLabel(),ts:lastTs,mode:mode,meDate:ME_D,me:ME};
     PF.forEach(function(p,i){o.sleeves[KEYS[i]]=compute(p).v;});return o;}
   window.PSLive={state:liveState};
