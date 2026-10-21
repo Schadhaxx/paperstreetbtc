@@ -1338,4 +1338,3 @@ h2 {
 picture{display:contents}picture>source{display:none}
 
 @media (max-width:480px){.pf-tbl{font-size:.72rem}.pf-tbl th,.pf-tbl td{padding:3px 2px}}
-.owl-corner{position:fixed;right:22px;bottom:22px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,#0f1a33,#070b18);border:1px solid rgba(34,211,238,.45);box-shadow:0 0 28px rgba(34,211,238,.25);display:flex;align-items:center;justify-content:center;z-index:50}.owl-corner img{width:92px}
