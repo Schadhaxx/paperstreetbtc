@@ -1,18 +1,21 @@
-(function(){
+(function(){ if(!window.PSBook) return; PSBook.ready.then(function(BK){
   /* Stock quotes come from a cached prices.json written every 5 min by a GitHub Action; visitors never call the quote API. */
-  var ASOF='2026-10-19', START=100000;
-  var CLOSE={BTC:81901.5625,MSTR:136.02,STRC:98.62,TSLA:368.06,PLTR:194.15};
+  /* No stored values: holdings + receivable cash come from the ledger (ledger.js) via PSBook; ASOF = latest close in the site's own history.json */
+  var ASOF=BK.last, START=PSLEDGER.start;
+  var CLOSE=BK.close(ASOF);
+  function todayET(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York'}).format(new Date());}
   var PF=[
-    {name:'Berkshire Killer',start:'$40k BTC / $20k STRC / $30k TSLA / $10k PLTR',base:95130.95,cash:101.22,h:{BTC:0.48338398041189323,STRC:202.43939845819736,TSLA:66.70817379384756,PLTR:56.258790436005626}},
-    {name:'Hodler Jam Sandwich',start:'$70k BTC / $10k STRC / $20k MSTR',base:94527.28,cash:50.57,h:{BTC:0.8130629143894886,STRC:101.21969922909868,MSTR:131.62224680275892}},
-    {name:'Hedge Fund Killer',start:'$55k BTC / $35k MSTR / $10k STRC',base:93886.04,cash:50.60,h:{BTC:0.6350798268681614,MSTR:234.07669748978063,STRC:101.21969922909868}},
-    {name:'Saylor Moon',start:'$50k MSTR / $50k STRC',base:100006.74,cash:253.02,h:{MSTR:366.43327285642204,STRC:506.0984961454934}}
+    {name:'Berkshire Killer',start:'$40k BTC / $20k STRC / $30k TSLA / $10k PLTR',key:'berkshire'},
+    {name:'Hodler Jam Sandwich',start:'$70k BTC / $10k STRC / $20k MSTR',key:'hodlr'},
+    {name:'Hedge Fund Killer',start:'$55k BTC / $35k MSTR / $10k STRC',key:'hf'},
+    {name:'Saylor Moon',start:'$50k MSTR / $50k STRC',key:'saylor'}
   ];
   var root=document.getElementById('pfLive'); if(!root) return;
   var btcSrc='CoinGecko',live={BTC:null}, src={}, prev={}, open={}, btcTime=null, btcChg=null, stkTime=null, lastTs=0;
   function anyLive(){return !!live.BTC||['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!live[k];});}
-  /* Month-end mode: date + closes come from prices.json monthEnd (workflow: last actual trading session <= prior ET month's last calendar day). Static Sep 30 closes are the fallback. */
-  var MONTHEND={'2026-09-30':{BTC:83553.85,MSTR:153.09,STRC:99.35,TSLA:354.81,PLTR:187.05,SPY:762.63,QQQ:739.77,'BRK.B':497.95,GOLD:4154.23}};
+  /* Month-end mode: date from prices.json monthEnd (workflow: last actual trading session <= prior ET month's last calendar day); prices = that session's close in history.json
+     (prices.json monthEnd closes only if the session is not in history yet). Until prices.json loads: the latest completed month-end in history. */
+  var MONTHEND={}, PTS=BK.points(); (function(){var d=PTS.filter(function(x){return x!==PSLEDGER.base&&x!==BK.last;}).pop()||BK.last;MONTHEND[d]=BK.close(d);})();
   var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   /* until prices.json loads, fall back to the latest static month-end */
   var mode='live', ks=Object.keys(MONTHEND).sort(), ME_D=ks[ks.length-1], ME=MONTHEND[ME_D];
@@ -21,12 +24,12 @@
   function asOfLabel(){if(mode==='me')return 'Month-end close · '+meLabel();
     if(!anyLive()||!(cacheUpd||lastTs))return 'Last close · '+fmtD(ASOF);
     return 'Live market value · updated '+new Date(cacheUpd||lastTs).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET';}
-  function px(a){if(mode==='me'&&ME&&ME[a])return ME[a];return live[a]||CLOSE[a];}
+  function px(a){if(mode==='me'){var hc=BK.close(ME_D);if(hc&&hc[a])return hc[a];if(ME&&ME[a])return ME[a];}return live[a]||CLOSE[a];}
   function lbl(a){if(mode==='me')return 'close '+meLabel().replace(/, \d+$/,'');if(a==='BTC')return live.BTC?'live '+btcSrc:'last close '+fmtD(ASOF).replace(/, \d+$/,'');return src[a]||'last close '+fmtD(ASOF).replace(/, \d+$/,'');}
   function hhmm(t){return new Date(t*1000).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET';}
   function mktOpen(){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date()),o={};p.forEach(function(x){o[x.type]=x.value;});
     var mins=(+o.hour%24)*60+(+o.minute);return ['Sat','Sun'].indexOf(o.weekday)<0&&mins>=235&&mins<=1215;}
-  var stkLoaded=false, cacheUpd=0, JSONURL='https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/prices.json';
+  var stkLoaded=false, cacheUpd=0, JSONURL=BK.DATA+'prices.json';
   function cacheLabel(){if(!cacheUpd)return '';var st=mktOpen()&&(Date.now()-cacheUpd>30*60*1000);
     return 'Stocks: cached · updated '+new Date(cacheUpd).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET'+(st?' (stale)':'');}
   function tick(){if(document.hidden)return;if(!stkLoaded||mktOpen())loadStocks();}
@@ -50,9 +53,11 @@
   function m(v){return v.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});}
   function pct(x){return '<span class="'+(x>=0?'up':'down')+'">'+(x>=0?'+':'')+(x*100).toFixed(2)+'%</span>';}
   /* Shared valuation: used by tracker cards AND the pulse strip */
+  /* holdings + receivable actually held: at the month-end session in month-end mode, as of today (ET) in live mode */
+  function held(p){return BK.at(p.key,mode==='me'?ME_D:todayET());}
   function compute(p){
-    var v=p.cash, y=p.cash;
-    Object.keys(p.h).forEach(function(a){var u=p.h[a],c=px(a);v+=u*c;
+    var q=held(p), v=q.cash, y=q.cash;
+    Object.keys(q.h).forEach(function(a){var u=q.h[a],c=px(a);v+=u*c;
       /* yesterday: BTC from CoinGecko 24h change; stocks from Finnhub prior close (pc); fallback -> move 0 */
       var yc=c;
       if(mode==='me'){y+=u*c;return;}
@@ -65,7 +70,7 @@
   function renderPulse(){
     var g=document.getElementById('pulseGrid'); if(!g) return;
     var h='';
-    ORDER.forEach(function(n){var p=PF.filter(function(x){return x.name===n;})[0],r=compute(p),ok=mode!=='me'&&(live.BTC&&btcChg!==null||!p.h.BTC);
+    ORDER.forEach(function(n){var p=PF.filter(function(x){return x.name===n;})[0],r=compute(p),ok=mode!=='me'&&(live.BTC&&btcChg!==null||!held(p).h.BTC);
       h+='<a class="pulse-card" href="#tracker"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.move)+' today':'—')+'</span></a>';});
     g.innerHTML=h;
     var stk=Object.keys(src).some(function(k){return src[k];});
@@ -83,13 +88,13 @@
     try{window.dispatchEvent(new CustomEvent('pslive',{detail:liveState()}));}catch(e){}
     var html='';
     PF.forEach(function(p,i){
-      var v=compute(p).v, rows='';
+      var v=compute(p).v, q=held(p), rows='';
       var ow={};p.start.split(' / ').forEach(function(x){var q=x.match(/\$(\d+)k (\w+)/);if(q)ow[q[2]]=+q[1];});
-      Object.keys(p.h).forEach(function(a){var u=p.h[a],val=u*px(a);
+      Object.keys(q.h).forEach(function(a){var u=q.h[a],val=u*px(a);
         rows+='<tr><td>'+a+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td><td>'+(ow[a]!=null?ow[a]+'%':'')+'</td><td>'+(val/v*100).toFixed(1)+'%</td></tr>';});
-      rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(p.cash)+'</td><td></td><td>'+(p.cash/v*100).toFixed(1)+'%</td></tr>';
+      rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(q.cash)+'</td><td></td><td>'+(q.cash/v*100).toFixed(1)+'%</td></tr>';
       html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
-        '<span class="pf-sub">since '+fmtD(ASOF)+' '+pct(v/p.base-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
+        '<span class="pf-sub">since '+fmtD(ASOF)+' '+pct(v/BK.nav(p.key,ASOF)-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
         '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p></div>';
     });
     root.querySelector('.pf-grid').innerHTML=html;
@@ -104,4 +109,4 @@
     if(mode==='live')loadStocks();render();});});
   render(); tick(); setInterval(tick,5*60*1000);
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&mktOpen())loadStocks();});
-})();
+}).catch(function(e){var n=document.getElementById('pulseNote');if(n)n.textContent='Price history unavailable';}); })();

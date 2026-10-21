@@ -109,6 +109,58 @@ jobs:
                   sess = max(v for k, v in dates.items() if k != 'BTC')
                   out['monthEnd'] = {'date': sess, 'month': L.isoformat()[:7], 'calendar_end': L.isoformat(), 'bar_dates': dates, 'px': px, 'v': 3}
           except Exception as e: print('monthEnd failed, keeping previous:', type(e).__name__)
+          # --- history begin ---
+          # Daily-closes history for the site's own ledger engine (history.json on the data branch).
+          # Sessions = NYSE sessions (SPY daily bars, ET dates) from the 2025-12-31 base. Stocks/ETFs: Yahoo unadjusted daily close.
+          # BTC: Yahoo BTC-USD UTC-day bar for the same calendar date (closes 00:00 UTC = 8 pm EDT / 7 pm EST); flagged provisional until then.
+          # SPY/QQQ cash distributions (ex-date) kept for total-return benchmarks. Rebuilt from Yahoo when a new session closes or BTC is provisional.
+          import datetime as _dt, zoneinfo as _zi
+          def build_history(fetch, now_utc):
+              ET_ = _zi.ZoneInfo('America/New_York'); base = _dt.date(2025, 12, 31)
+              p0 = int(_dt.datetime(2025, 12, 15, tzinfo=_dt.timezone.utc).timestamp()); p1 = int(now_utc.timestamp()) + 2 * 86400
+              SY = {'BTC': 'BTC-USD', 'MSTR': 'MSTR', 'STRC': 'STRC', 'TSLA': 'TSLA', 'PLTR': 'PLTR', 'SPY': 'SPY', 'QQQ': 'QQQ', 'BRK.B': 'BRK-B', 'GLD': 'GLD'}
+              bars, divs = {}, {}
+              for k, y in SY.items():
+                  r = fetch(f'https://query1.finance.yahoo.com/v8/finance/chart/{y}?period1={p0}&period2={p1}&interval=1d&events=div')['chart']['result'][0]
+                  tz = _dt.timezone.utc if k == 'BTC' else ET_
+                  b = {}
+                  for t, c in zip(r.get('timestamp') or [], r['indicators']['quote'][0]['close']):
+                      if c is not None: b[_dt.datetime.fromtimestamp(t, tz).date().isoformat()] = round(float(c), 6)
+                  bars[k] = b
+                  if k in ('SPY', 'QQQ'):
+                      divs[k] = {_dt.datetime.fromtimestamp(int(v['date']), ET_).date().isoformat(): round(float(v['amount']), 6)
+                                 for v in ((r.get('events') or {}).get('dividends') or {}).values() if _dt.datetime.fromtimestamp(int(v['date']), ET_).date() > base}
+              now_et = now_utc.astimezone(ET_)
+              sess = sorted(d for d in bars['SPY'] if d >= base.isoformat())
+              if sess and sess[-1] == now_et.date().isoformat() and now_et.hour < 16: sess = sess[:-1]  # today's session not closed yet
+              closes, prov, last = {}, [], {}
+              for d in sess:
+                  row = {}
+                  for k in SY:
+                      v = bars[k].get(d, last.get(k))  # ffill only if a bar is missing
+                      if v is None: raise ValueError(f'missing {k} {d}')
+                      row[k] = v; last[k] = v
+                  closes[d] = row
+                  if now_utc < _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1): prov.append(d)
+              return {'v': 1, 'updated': now_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), 'base': base.isoformat(), 'source': 'Yahoo Finance chart API (unadjusted close)',
+                      'btc_provisional': prov, 'closes': closes, 'divs': divs}
+          def history_stale(h, now_utc):
+              if not h or h.get('v') != 1 or not h.get('closes'): return True
+              ET_ = _zi.ZoneInfo('America/New_York'); n = now_utc.astimezone(ET_)
+              today = n.date()
+              if n.weekday() < 5 and n.hour >= 16 and max(h['closes']) < today.isoformat(): return True   # a new session has closed
+              if h.get('btc_provisional') and now_utc.minute % 30 < 5: return True                       # refresh provisional BTC every ~30 min
+              return False
+          # --- history end ---
+          # history.json: daily closes for the ledger engine (only rebuilt when stale)
+          try: hold = json.load(open('history.json'))
+          except Exception: hold = None
+          try:
+              nowu = datetime.datetime.now(datetime.timezone.utc)
+              if history_stale(hold, nowu):
+                  json.dump(build_history(get, nowu), open('history.json', 'w'), separators=(',', ':'))
+                  print('history.json rebuilt')
+          except Exception as e: print('history failed, keeping previous:', type(e).__name__, e)
           if ok == 0 and old: out['updated'] = old.get('updated', now)
           json.dump(out, open('prices.json', 'w'), indent=1)
           print('stocks ok:', ok, 'btc src:', (out['btc'] or {}).get('src'))
@@ -123,13 +175,13 @@ jobs:
           cd work
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prices.json runlog.jsonl
+          git add prices.json runlog.jsonl history.json
           git commit -q -m "prices $(date -u +%FT%TZ)" || { echo nothing; exit 0; }
           echo 'runlog.jsonl merge=union' >> .git/info/attributes
           if git push -q origin HEAD:data; then exit 0; fi
           echo "push rejected, retrying once in 10s"; sleep 10
           if ! git pull -q --rebase origin data; then
             # newest prices.json (this run) wins; runlog.jsonl keeps both lines via union merge
-            git checkout --theirs prices.json && git add prices.json runlog.jsonl && GIT_EDITOR=true git rebase --continue || { git rebase --abort; echo "rebase failed"; exit 1; }
+            git checkout --theirs prices.json && { git checkout --theirs history.json 2>/dev/null || true; } && git add prices.json runlog.jsonl history.json && GIT_EDITOR=true git rebase --continue || { git rebase --abort; echo "rebase failed"; exit 1; }
           fi
           git push -q origin HEAD:data
