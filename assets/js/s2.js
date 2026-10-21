@@ -16,19 +16,22 @@ const paths = {
 const benchmarks = {
   btc: [100.0, 96.14, 75.29, 77.97, 87.2, 83.85, 66.92, 71.78, 89.76, 95.48, 93.59],
   spy: [100.0, 101.47, 100.6, 95.63, 105.68, 111.24, 110.09, 110.13, 113.08, 112.71, 113.28],
-  qqq: [100.0, 101.23, 98.86, 94.07, 108.83, 120.34, 120.16, 112.26, 116.95, 120.83, 117.33]
+  qqq: [100.0, 101.23, 98.86, 94.07, 108.83, 120.34, 120.16, 112.26, 116.95, 120.83, 117.33],
+  brk: [100.0, 95.6, 100.46, 95.33, 94.22, 94.4, 99.55, 101.77, 100.27, 99.06, 105.88],
+  // Gold = spot XAU/USD (not futures): month-end spot derived from GLD 4pm close / GLD ounces-per-share (0.40%/yr fee accrual), calibrated to live spot
+  gold: [100.0, 112.31, 122.14, 108.68, 107.04, 105.42, 93.14, 93.97, 103.33, 96.38, 96.11]
 };
-const benchColors = { btc: '#64748b', spy: '#94a3b8', qqq: '#cbd5e1' };
-const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ' };
+const benchColors = { btc: '#64748b', spy: '#94a3b8', qqq: '#cbd5e1', brk: '#a8a29e', gold: '#d4b06a' };
+const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'Gold (spot)' };
 
 // Live 'Now' point: 19 Oct close prices; benchmark live index = 19 Oct index x live/close (keeps SPY/QQQ total-return dividends already in the series)
-const CLOSE1019 = { btc: 81901.5625, spy: 766.48, qqq: 718.36 };
-const START1231 = { btc: 87508.8281, spy: 681.92, qqq: 614.31 };
+const CLOSE1019 = { btc: 81901.5625, spy: 766.48, qqq: 718.36, brk: 532.23, gold: 4142.55 };
+const START1231 = { btc: 87508.8281, spy: 681.92, qqq: 614.31, brk: 502.65, gold: 4310.06 };
 let liveNow = null; // { sleeves:{key:$}, bench:{key:index} } or null -> static 19 Oct
 function hhmm(d){return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
 function applyLive(st){
   if(!st) return;
-  const anyLive = st.btc || st.stocksLive || st.spy || st.qqq;
+  const anyLive = st.btc || st.stocksLive || st.spy || st.qqq || st.brk || st.gold;
   if(!anyLive){ liveNow = null; }
   else {
     const bench = {};
