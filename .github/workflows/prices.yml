@@ -73,22 +73,41 @@ jobs:
               try:
                   out['gold'] = {'usd': float(get('https://api.gold-api.com/price/XAU')['price']), 'src': 'gold-api.com spot XAU', 'time': now}
               except Exception as e2: print('gold-api failed, keeping previous:', type(e2).__name__)
-          # Month-end closes (last weekday of prior month, ET) for the site's Live/Month-end toggle; fetched once per month
+          # --- monthend begin ---
+          # Month-end closes for the site's Live/Month-end toggle (backfill-style: recomputed on any run whose cached date is not the correct one).
+          # Target month = the month before the current America/New_York month (Oct 31 during the day -> Sep; from 00:00 ET Nov 1 -> Oct).
+          # Stocks/ETFs (incl. GLD for gold, BRK.B, SPY, QQQ): close of the last actual Yahoo daily bar dated (ET) <= the month's last calendar day.
+          # BTC: Yahoo BTC-USD daily close of the last calendar day (UTC day bar, i.e. price at 00:00 UTC next day = 8 PM ET that day).
+          import zoneinfo
+          ET = zoneinfo.ZoneInfo('America/New_York')
+          def me_target(now_utc):
+              d = now_utc.astimezone(ET).date().replace(day=1) - datetime.timedelta(days=1)
+              return d  # last calendar day of previous ET month
+          def last_bar(r, last_day, tz):
+              best = None
+              for t, c in zip(r['timestamp'], r['indicators']['quote'][0]['close']):
+                  if c is None: continue
+                  dd = datetime.datetime.fromtimestamp(t, tz).date()
+                  if dd <= last_day and (best is None or dd >= best[0]): best = (dd, c)
+              return best
+          def me_close(sym, last_day, fetch):
+              p0 = int(datetime.datetime(last_day.year, last_day.month, last_day.day, tzinfo=datetime.timezone.utc).timestamp()) - 12 * 86400
+              r = fetch(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?period1={p0}&period2={p0 + 15 * 86400}&interval=1d')['chart']['result'][0]
+              tz = datetime.timezone.utc if sym == 'BTC-USD' else ET
+              return last_bar(r, last_day, tz)
+          # --- monthend end ---
           out['monthEnd'] = old.get('monthEnd')
           try:
-              import zoneinfo
-              t = datetime.datetime.now(zoneinfo.ZoneInfo('America/New_York')).date().replace(day=1) - datetime.timedelta(days=1)
-              while t.weekday() > 4: t -= datetime.timedelta(days=1)
-              md = t.isoformat()
-              if not ((out['monthEnd'] or {}).get('date') == md and (out['monthEnd'] or {}).get('v') == 2):
-                  def yclose(sym):
-                      p0 = int(datetime.datetime(t.year, t.month, t.day, tzinfo=datetime.timezone.utc).timestamp())
-                      r = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?period1={p0}&period2={p0+86400}&interval=1d')['chart']['result'][0]
-                      return round(r['indicators']['quote'][0]['close'][0], 4)
-                  px = {k: yclose(y) for k, y in [('BTC','BTC-USD'),('MSTR','MSTR'),('STRC','STRC'),('TSLA','TSLA'),('PLTR','PLTR'),('SPY','SPY'),('QQQ','QQQ'),('BRK.B','BRK-B')]}
+              L = me_target(datetime.datetime.now(datetime.timezone.utc))
+              cur = out['monthEnd'] or {}
+              if not (cur.get('month') == L.isoformat()[:7] and cur.get('v') == 3):
+                  px, dates = {}, {}
+                  for k, y in [('BTC','BTC-USD'),('MSTR','MSTR'),('STRC','STRC'),('TSLA','TSLA'),('PLTR','PLTR'),('SPY','SPY'),('QQQ','QQQ'),('BRK.B','BRK-B'),('GLD','GLD')]:
+                      dd, c = me_close(y, L, get); px[k] = round(c, 4); dates[k] = dd.isoformat()
                   gld_now = get('https://query1.finance.yahoo.com/v8/finance/chart/GLD?range=1d&interval=1d')['chart']['result'][0]['meta']['regularMarketPrice']
-                  if out.get('gold'): px['GOLD'] = round(yclose('GLD') * out['gold']['usd'] / gld_now, 2)  # spot via GLD oz/share
-                  out['monthEnd'] = {'date': md, 'px': px, 'v': 2}
+                  if out.get('gold'): px['GOLD'] = round(px['GLD'] * out['gold']['usd'] / gld_now, 2)  # spot via GLD oz/share
+                  sess = max(v for k, v in dates.items() if k != 'BTC')
+                  out['monthEnd'] = {'date': sess, 'month': L.isoformat()[:7], 'calendar_end': L.isoformat(), 'bar_dates': dates, 'px': px, 'v': 3}
           except Exception as e: print('monthEnd failed, keeping previous:', type(e).__name__)
           if ok == 0 and old: out['updated'] = old.get('updated', now)
           json.dump(out, open('prices.json', 'w'), indent=1)
