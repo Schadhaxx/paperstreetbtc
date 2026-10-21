@@ -16,12 +16,13 @@
   var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   /* until prices.json loads, fall back to the latest static month-end */
   var mode='live', ks=Object.keys(MONTHEND).sort(), ME_D=ks[ks.length-1], ME=MONTHEND[ME_D];
-  function meLabel(){var p=ME_D.split('-');return MN[+p[1]-1]+' '+(+p[2])+', '+p[0];}
+  function fmtD(iso){var p=iso.split('-');return MN[+p[1]-1]+' '+(+p[2])+', '+p[0];}
+  function meLabel(){return fmtD(ME_D);}
   function asOfLabel(){if(mode==='me')return 'Month-end close · '+meLabel();
-    if(!anyLive()||!lastTs)return 'Last close · Oct 19, 2026';if(!anyLive()||!lastTs)return 'Last close · Oct 19, 2026';
-    return 'Live market value · updated '+new Date(lastTs).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET';}
+    if(!anyLive()||!(cacheUpd||lastTs))return 'Last close · '+fmtD(ASOF);
+    return 'Live market value · updated '+new Date(cacheUpd||lastTs).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET';}
   function px(a){if(mode==='me'&&ME&&ME[a])return ME[a];return live[a]||CLOSE[a];}
-  function lbl(a){if(mode==='me')return 'close '+meLabel().replace(/, \d+$/,'');if(a==='BTC')return live.BTC?'live '+btcSrc:'last close Oct 19';return src[a]||'last close Oct 19';}
+  function lbl(a){if(mode==='me')return 'close '+meLabel().replace(/, \d+$/,'');if(a==='BTC')return live.BTC?'live '+btcSrc:'last close '+fmtD(ASOF).replace(/, \d+$/,'');return src[a]||'last close '+fmtD(ASOF).replace(/, \d+$/,'');}
   function hhmm(t){return new Date(t*1000).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET';}
   function mktOpen(){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date()),o={};p.forEach(function(x){o[x.type]=x.value;});
     var mins=(+o.hour%24)*60+(+o.minute);return ['Sat','Sun'].indexOf(o.weekday)<0&&mins>=235&&mins<=1215;}
@@ -43,7 +44,7 @@
       var me=d&&d.monthEnd;if(me&&me.date&&me.px&&me.px.BTC&&me.v>=3){MONTHEND[me.date]=me.px;ME_D=me.date;ME=me.px;} /* use the saved month-end session date, not a client-computed weekday */
       var gd=d&&d.gold;if(gd&&gd.usd>0)live.GOLD=gd.usd;
       render();})
-    .catch(function(){clearTimeout(t);/* keep last good prices; Oct 19 close if never loaded */render();});
+    .catch(function(){clearTimeout(t);/* keep last good prices; ASOF close if never loaded */render();});
   }
   function mp(v){return v.toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});}
   function m(v){return v.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});}
@@ -74,7 +75,7 @@
   /* Shared live state for the YTD chart: same compute() as tracker + pulse */
   var KEYS=['berkshire','hodlr','hf','saylor'];
   function liveState(){var o={sleeves:{},btc:live.BTC||null,spy:live.SPY||null,qqq:live.QQQ||null,brk:live['BRK.B']||null,mstr:live.MSTR||null,gold:live.GOLD||null,btcTime:live.BTC?btcTime:null,
-      stocksLive:['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!src[k];}),stkTime:stkTime,label:asOfLabel(),ts:lastTs,mode:mode,meDate:ME_D,me:ME};
+      stocksLive:['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!src[k];}),stkTime:stkTime,label:asOfLabel(),meLabel:meLabel(),ts:lastTs,mode:mode,meDate:ME_D,me:ME};
     PF.forEach(function(p,i){o.sleeves[KEYS[i]]=compute(p).v;});return o;}
   window.PSLive={state:liveState};
   function render(){
@@ -88,11 +89,11 @@
         rows+='<tr><td>'+a+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td><td>'+(ow[a]!=null?ow[a]+'%':'')+'</td><td>'+(val/v*100).toFixed(1)+'%</td></tr>';});
       rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(p.cash)+'</td><td></td><td>'+(p.cash/v*100).toFixed(1)+'%</td></tr>';
       html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
-        '<span class="pf-sub">since Oct 19, 2026 '+pct(v/p.base-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
+        '<span class="pf-sub">since '+fmtD(ASOF)+' '+pct(v/p.base-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
         '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p></div>';
     });
     root.querySelector('.pf-grid').innerHTML=html;
-    root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings set at the Oct 19, 2026 close. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close Oct 19')+'. '+(Object.keys(src).some(function(k){return src[k];})?cacheLabel():'Stocks: last close Oct 19')+'. Holdings set at the Oct 19, 2026 close. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
+    root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings set at the '+fmtD(ASOF)+' close. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close '+fmtD(ASOF))+'. '+(Object.keys(src).some(function(k){return src[k];})?cacheLabel():'Stocks: last close '+fmtD(ASOF))+'. Holdings set at the '+fmtD(ASOF)+' close. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
   }
   root.addEventListener('click',function(e){
     var c=e.target.closest('.pf-card'); if(c){var i=c.dataset.i;open[i]=!open[i];render();}

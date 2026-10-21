@@ -55,7 +55,7 @@ function applyLive(st){
     liveNow = { sleeves: st.sleeves, bench, btcTime: st.btcTime, stkTime: st.stocksLive ? st.stkTime : null };
   }
   const asof = document.getElementById('ytdAsOf');
-  if (asof) asof.textContent = (st.label || 'Last close · Oct 19, 2026') + (liveNow ? ' (history: month-end closes through Oct 19)' : '');
+  if (asof) asof.textContent = (st.label || asof.textContent) + (liveNow ? ' (history: month-end closes through ' + st.meLabel + ', plus the ' + labels.at(-1) + ' close)' : '');
   if (chart) render();
 }
 window.addEventListener('pslive', e => applyLive(e.detail));
