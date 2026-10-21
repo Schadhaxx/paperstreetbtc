@@ -1338,3 +1338,7 @@ h2 {
 picture{display:contents}picture>source{display:none}
 
 @media (max-width:480px){.pf-tbl{font-size:.72rem}.pf-tbl th,.pf-tbl td{padding:3px 2px}}
+
+/* DRAFT: large owl watermark (sits over the page backgrounds, under nothing clickable) */
+body::after{content:"";position:fixed;inset:0;z-index:5;pointer-events:none;
+  background:url("assets/owl-hires.png") center 55%/min(70vw,720px) auto no-repeat;opacity:.10;mix-blend-mode:screen}
