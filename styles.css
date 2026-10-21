@@ -1338,4 +1338,4 @@ h2 {
 picture{display:contents}picture>source{display:none}
 
 @media (max-width:480px){.pf-tbl{font-size:.72rem}.pf-tbl th,.pf-tbl td{padding:3px 2px}}
-.hero{position:relative;overflow:hidden}.hero-owl{position:absolute;right:2%;top:50%;width:250px;transform:translateY(-50%) scale(.92);opacity:.22;transition:transform .6s,opacity .6s,filter .6s;pointer-events:none;z-index:0}.hero:hover .hero-owl{transform:translateY(-50%) scale(1);opacity:.95;filter:drop-shadow(0 0 40px rgba(34,211,238,.35))}.hero .container{position:relative;z-index:1}@media(max-width:1199px){.hero-owl{display:none}}
+.hero{position:relative;overflow:hidden}.hero-owl{position:absolute;right:2%;top:50%;width:250px;transform:translateY(-50%) scale(.92);opacity:.22;pointer-events:none;z-index:0}.hero .container{position:relative;z-index:1}@media(max-width:1199px){.hero-owl{display:none}}
