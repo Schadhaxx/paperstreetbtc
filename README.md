@@ -1,9 +1,7 @@
 # PaperStreet BTC – live tracker notes
 
-## Finnhub key (stock prices)
-The free Finnhub.io key is set in `index.html` (search for `const FINNHUB_API_KEY`).
-
-**Warning:** this is a static site. Anyone can see the key with "View source". It is a free-tier key with no billing attached.
+## Stock prices (cached)
+A GitHub Action (`.github/workflows/prices.yml`) fetches Finnhub quotes every 5 min on weekdays 3:55 AM–8:15 PM ET using the repo secret `FINNHUB_API_KEY`, and writes `prices.json` to the `data` branch. The page reads that file; no API key is in the site.
 
 ## Data and refresh
 - BTC comes from the CoinGecko public API (no key). It refreshes every 60 s. If a fetch fails it shows the last price (or "Price unavailable") and tries again after 90 s.
