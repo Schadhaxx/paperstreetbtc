@@ -87,7 +87,7 @@ function render() {
   document.querySelectorAll('.sleeve-btn').forEach(b => {
     b.classList.toggle('active', selected.has(b.dataset.sleeve));
   });
-  document.querySelectorAll('.bench-btn').forEach(b => {
+  document.querySelectorAll('.bench-selector .bench-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.bench === currentBench);
   });
 
@@ -145,7 +145,7 @@ document.querySelectorAll('.sleeve-btn').forEach(btn => {
   });
 });
 
-document.querySelectorAll('.bench-btn').forEach(btn => {
+document.querySelectorAll('.bench-selector .bench-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     currentBench = btn.dataset.bench;
     render();
