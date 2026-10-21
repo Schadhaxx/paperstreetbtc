@@ -73,6 +73,23 @@ jobs:
               try:
                   out['gold'] = {'usd': float(get('https://api.gold-api.com/price/XAU')['price']), 'src': 'gold-api.com spot XAU', 'time': now}
               except Exception as e2: print('gold-api failed, keeping previous:', type(e2).__name__)
+          # Month-end closes (last weekday of prior month, ET) for the site's Live/Month-end toggle; fetched once per month
+          out['monthEnd'] = old.get('monthEnd')
+          try:
+              import zoneinfo
+              t = datetime.datetime.now(zoneinfo.ZoneInfo('America/New_York')).date().replace(day=1) - datetime.timedelta(days=1)
+              while t.weekday() > 4: t -= datetime.timedelta(days=1)
+              md = t.isoformat()
+              if not (out['monthEnd'] or {}).get('date') == md:
+                  def yclose(sym):
+                      p0 = int(datetime.datetime(t.year, t.month, t.day, tzinfo=datetime.timezone.utc).timestamp())
+                      r = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?period1={p0}&period2={p0+86400}&interval=1d')['chart']['result'][0]
+                      return round(r['indicators']['quote'][0]['close'][-1], 4)
+                  px = {k: yclose(y) for k, y in [('BTC','BTC-USD'),('MSTR','MSTR'),('STRC','STRC'),('TSLA','TSLA'),('PLTR','PLTR'),('SPY','SPY'),('QQQ','QQQ'),('BRK.B','BRK-B')]}
+                  gld_now = get('https://query1.finance.yahoo.com/v8/finance/chart/GLD?range=1d&interval=1d')['chart']['result'][0]['meta']['regularMarketPrice']
+                  if out.get('gold'): px['GOLD'] = round(yclose('GLD') * out['gold']['usd'] / gld_now, 2)  # spot via GLD oz/share
+                  out['monthEnd'] = {'date': md, 'px': px}
+          except Exception as e: print('monthEnd failed, keeping previous:', type(e).__name__)
           if ok == 0 and old: out['updated'] = old.get('updated', now)
           json.dump(out, open('prices.json', 'w'), indent=1)
           print('stocks ok:', ok, 'btc src:', (out['btc'] or {}).get('src'))

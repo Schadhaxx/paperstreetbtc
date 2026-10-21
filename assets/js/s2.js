@@ -29,8 +29,22 @@ const CLOSE1019 = { btc: 81901.5625, spy: 766.48, qqq: 718.36, brk: 532.23, gold
 const START1231 = { btc: 87508.8281, spy: 681.92, qqq: 614.31, brk: 502.65, gold: 4310.06 };
 let liveNow = null; // { sleeves:{key:$}, bench:{key:index} } or null -> static 19 Oct
 function hhmm(d){return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+let meView = null; // month-end mode: { n: points kept from history, extra: optional computed point }
+const ISO = ["2025-12-31","2026-01-30","2026-02-27","2026-03-31","2026-04-30","2026-05-29","2026-06-30","2026-07-31","2026-08-31","2026-09-30","2026-10-19"];
 function applyLive(st){
   if(!st) return;
+  meView = null;
+  if (st.mode === 'me' && st.me) {
+    const i = ISO.indexOf(st.meDate);
+    if (i >= 0) meView = { n: i + 1 };
+    else { const bench = {}; const m = { btc: 'BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'GOLD' };
+      Object.keys(CLOSE1019).forEach(k => { bench[k] = Math.round(benchmarks[k].at(-1) * st.me[m[k]] / CLOSE1019[k] * 100) / 100; });
+      const p = st.meDate.split('-'); meView = { n: labels.length, extra: { label: (+p[2]) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1], sleeves: st.sleeves, bench } }; }
+    liveNow = null;
+    const asof = document.getElementById('ytdAsOf'); if (asof) asof.textContent = st.label;
+    if (chart) render();
+    return;
+  }
   const anyLive = st.btc || st.stocksLive || st.spy || st.qqq || st.brk || st.gold;
   if(!anyLive){ liveNow = null; }
   else {
@@ -53,16 +67,18 @@ function render() {
   // Stats from first selected sleeve
   const first = [...selected][0];
   const s0 = sleeves[first];
-  const nowV = liveNow ? liveNow.sleeves[first] : s0.now;
+  let nowV = liveNow ? liveNow.sleeves[first] : s0.now;
+  if (meView) nowV = meView.extra ? meView.extra.sleeves[first] : paths[first][meView.n - 1] * 1000;
   const s = { now: nowV, ytd: (nowV / 100000 - 100 / 100) * 100 };
-  if (!liveNow) s.ytd = s0.ytd;
+  if (!liveNow && !meView) s.ytd = s0.ytd;
   document.getElementById('stat-start').textContent = '$100,000';
   document.getElementById('stat-now').textContent = '$' + Math.round(s.now).toLocaleString('en-US');
   const ytdEl = document.getElementById('stat-ytd');
   ytdEl.textContent = (s.ytd >= 0 ? '+' : '') + s.ytd.toFixed(2) + '%';
   ytdEl.className = 'stat-value ' + (s.ytd >= 0 ? 'pos' : 'neg');
 
-  const benchEnd = liveNow ? liveNow.bench[currentBench] : benchmarks[currentBench].at(-1);
+  const ser = (arr, liveV) => meView ? (meView.extra ? arr.concat([liveV]) : arr.slice(0, meView.n)) : (liveNow ? arr.concat([liveV]) : arr);
+  const benchEnd = ser(benchmarks[currentBench], meView ? (meView.extra && meView.extra.bench[currentBench]) : (liveNow && liveNow.bench[currentBench])).at(-1);
   const vs = s.ytd - (benchEnd - 100); // YTD difference vs benchmark, percentage points
   const vsEl = document.getElementById('stat-vs');
   vsEl.textContent = (vs >= 0 ? '+' : '') + vs.toFixed(2) + ' pp';
@@ -79,7 +95,7 @@ function render() {
   selected.forEach(key => {
     datasets.push({
       label: sleeves[key].name,
-      data: liveNow ? paths[key].concat([Math.round(liveNow.sleeves[key] / 10) / 100]) : paths[key],
+      data: ser(paths[key], meView ? (meView.extra && Math.round(meView.extra.sleeves[key] / 10) / 100) : (liveNow && Math.round(liveNow.sleeves[key] / 10) / 100)),
       borderColor: sleeves[key].color,
       backgroundColor: sleeves[key].color + '18',
       borderWidth: 2.5,
@@ -91,7 +107,7 @@ function render() {
   });
   datasets.push({
     label: benchNames[currentBench],
-    data: liveNow ? benchmarks[currentBench].concat([liveNow.bench[currentBench]]) : benchmarks[currentBench],
+    data: ser(benchmarks[currentBench], meView ? (meView.extra && meView.extra.bench[currentBench]) : (liveNow && liveNow.bench[currentBench])),
     borderColor: benchColors[currentBench],
     borderWidth: 1.5,
     borderDash: [5, 4],
@@ -100,7 +116,7 @@ function render() {
     pointRadius: 0
   });
 
-  const lbls = liveNow ? labels.concat(['Now']) : labels.slice();
+  const lbls = meView ? (meView.extra ? labels.concat([meView.extra.label]) : labels.slice(0, meView.n)) : (liveNow ? labels.concat(['Now']) : labels.slice());
   if (chart) { chart.data.labels = lbls; chart.data.datasets = datasets; chart.update('none'); return; }
   if (typeof Chart === 'undefined') return;
   const ctx = document.getElementById('ytdChart').getContext('2d');

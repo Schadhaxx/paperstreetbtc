@@ -1,7 +1,3 @@
-// Most recent monthly close - scrolls to tracker and flashes the as-of
-document.getElementById('monthCloseBtn')?.addEventListener('click', () => {
-  document.getElementById('tracker').scrollIntoView({ behavior: 'smooth' });
-});
 
 // Back to top
 const topBtn = document.getElementById('backToTop');
