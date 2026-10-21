@@ -73,12 +73,13 @@
     var html='';
     PF.forEach(function(p,i){
       var v=compute(p).v, rows='';
+      var ow={};p.start.split(' / ').forEach(function(x){var q=x.match(/\$(\d+)k (\w+)/);if(q)ow[q[2]]=+q[1];});
       Object.keys(p.h).forEach(function(a){var u=p.h[a],val=u*px(a);
-        rows+='<tr><td>'+a+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td></tr>';});
-      rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(p.cash)+'</td></tr>';
+        rows+='<tr><td>'+a+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td><td>'+(ow[a]!=null?ow[a]+'%':'')+'</td><td>'+(val/v*100).toFixed(1)+'%</td></tr>';});
+      rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(p.cash)+'</td><td></td><td>'+(p.cash/v*100).toFixed(1)+'%</td></tr>';
       html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
         '<span class="pf-sub">since Oct 19, 2026 '+pct(v/p.base-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
-        '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p></div>';
+        '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p></div>';
     });
     root.querySelector('.pf-grid').innerHTML=html;
     root.querySelector('.pf-note').textContent=asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close Oct 19')+'. '+(Object.keys(src).some(function(k){return src[k];})?cacheLabel():'Stocks: last close Oct 19')+'. Holdings set at the Oct 19, 2026 close. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';

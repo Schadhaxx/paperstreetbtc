@@ -1334,3 +1334,5 @@ h2 {
 }
 
 picture{display:contents}picture>source{display:none}
+
+@media (max-width:480px){.pf-tbl{font-size:.72rem}.pf-tbl th,.pf-tbl td{padding:3px 2px}}
