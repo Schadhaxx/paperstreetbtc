@@ -34,6 +34,7 @@ jobs:
         if: steps.gate.outputs.run == '1'
         env:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          EVT: ${{ github.event_name }}
         run: |
           cd work
           python3 - <<'PY'
@@ -66,6 +67,10 @@ jobs:
           if ok == 0 and old: out['updated'] = old.get('updated', now)
           json.dump(out, open('prices.json', 'w'), indent=1)
           print('stocks ok:', ok, 'btc src:', (out['btc'] or {}).get('src'))
+          ev = os.environ.get('EVT', '')
+          rec = {'run': now, 'event': ev, 'trigger': 'cron-job.org' if ev == 'workflow_dispatch' else ('github-schedule' if ev == 'schedule' else ev),
+                 'stocks_ok': ok, 'btc': out['btc'], 'stocks': {k: v.get('c') for k, v in out['stocks'].items()}}
+          open('runlog.jsonl', 'a').write(json.dumps(rec) + '\n')
           PY
       - name: Commit
         if: steps.gate.outputs.run == '1'
@@ -73,6 +78,6 @@ jobs:
           cd work
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prices.json
+          git add prices.json runlog.jsonl
           git commit -q -m "prices $(date -u +%FT%TZ)" || { echo nothing; exit 0; }
           git push -q origin HEAD:data
