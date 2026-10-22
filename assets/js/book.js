@@ -29,14 +29,12 @@
   B.close=function(d){return B.H.closes[d];};
   B.value=function(k,d,px){var s=B.at(k,d),v=s.cash;Object.keys(s.h).forEach(function(a){v+=s.h[a]*px(a);});return v;};
   B.nav=function(k,d){var c=B.H.closes[d];return B.value(k,d,function(a){return c[a];});};
-  /* benchmarks: index (100 = base close). SPY/QQQ total return (distributions reinvested at the ex-date close). Gold = spot via GLD oz/share. */
+  /* benchmarks: index (100 = base close). SPY/QQQ total return (distributions reinvested at the ex-date close). Gold = GLD ETF close (price return). */
   var BM={btc:'BTC',spy:'SPY',qqq:'QQQ',brk:'BRK.B',mstr:'MSTR',gold:'GLD'};
   B.BM=BM;
   B.bench=function(k,d){var C=B.H.closes,b=C[L.base][BM[k]];
-    if(k==='gold'){var n=Math.round((Date.parse(d)-Date.parse(L.base))/864e5);return 100*C[d].GLD/b/Math.pow(1-L.gold.fee/365,n);}
     if(k==='spy'||k==='qqq'){var sh=1/b,dv=(B.H.divs||{})[BM[k]]||{};B.dates.forEach(function(x){if(x>L.base&&x<=d&&dv[x])sh+=sh*dv[x]/C[x][BM[k]];});return 100*sh*C[d][BM[k]];}
     return 100*C[d][BM[k]]/b;};
-  B.goldSpot=function(d){return L.gold.spotBase*B.bench('gold',d)/100;};
   /* chart points: base, last session of each completed month, latest close */
   B.points=function(){var out=[L.base],lm=B.last.slice(0,7);
     for(var i=1;i<B.dates.length;i++){var d=B.dates[i],nx=B.dates[i+1];if(d.slice(0,7)<lm&&(!nx||nx.slice(0,7)!==d.slice(0,7)))out.push(d);}

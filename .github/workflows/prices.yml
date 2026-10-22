@@ -48,7 +48,7 @@ jobs:
           out = {'updated': now, 'btc': old.get('btc'), 'stocks': dict(old.get('stocks') or {})}
           key = os.environ.get('FINNHUB_API_KEY', '')
           ok = 0
-          for s in ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B']:
+          for s in ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD']:
               try:
                   q = get(f'https://finnhub.io/api/v1/quote?symbol={s}&token={key}')
                   if isinstance(q.get('c'), (int, float)) and q['c'] > 0:
@@ -64,19 +64,10 @@ jobs:
                   a = float(get('https://api.coinbase.com/v2/prices/BTC-USD/spot')['data']['amount'])
                   out['btc'] = {'usd': a, 'chg24h': None, 'src': 'Coinbase', 'time': now}
               except Exception as e2: print('Coinbase failed, keeping previous:', type(e2).__name__)
-          out['gold'] = old.get('gold')
-          try:
-              q = get('https://forex-data-feed.swissquote.com/public-quotes/bboquotes/instrument/XAU/USD')[0]['spreadProfilePrices'][0]
-              out['gold'] = {'usd': round((q['bid'] + q['ask']) / 2, 2), 'src': 'Swissquote spot XAU/USD', 'time': now}
-          except Exception as e:
-              print('Swissquote gold failed:', type(e).__name__)
-              try:
-                  out['gold'] = {'usd': float(get('https://api.gold-api.com/price/XAU')['price']), 'src': 'gold-api.com spot XAU', 'time': now}
-              except Exception as e2: print('gold-api failed, keeping previous:', type(e2).__name__)
           # --- monthend begin ---
           # Month-end closes for the site's Live/Month-end toggle (backfill-style: recomputed on any run whose cached date is not the correct one).
           # Target month = the month before the current America/New_York month (Oct 31 during the day -> Sep; from 00:00 ET Nov 1 -> Oct).
-          # Stocks/ETFs (incl. GLD for gold, BRK.B, SPY, QQQ): close of the last actual Yahoo daily bar dated (ET) <= the month's last calendar day.
+          # Stocks/ETFs (incl. GLD, BRK.B, SPY, QQQ): close of the last actual Yahoo daily bar dated (ET) <= the month's last calendar day.
           # BTC: Yahoo BTC-USD daily close of the last calendar day (UTC day bar, i.e. price at 00:00 UTC next day = 8 PM ET that day).
           import zoneinfo
           ET = zoneinfo.ZoneInfo('America/New_York')
@@ -104,8 +95,6 @@ jobs:
                   px, dates = {}, {}
                   for k, y in [('BTC','BTC-USD'),('MSTR','MSTR'),('STRC','STRC'),('TSLA','TSLA'),('PLTR','PLTR'),('SPY','SPY'),('QQQ','QQQ'),('BRK.B','BRK-B'),('GLD','GLD')]:
                       dd, c = me_close(y, L, get); px[k] = round(c, 4); dates[k] = dd.isoformat()
-                  gld_now = get('https://query1.finance.yahoo.com/v8/finance/chart/GLD?range=1d&interval=1d')['chart']['result'][0]['meta']['regularMarketPrice']
-                  if out.get('gold'): px['GOLD'] = round(px['GLD'] * out['gold']['usd'] / gld_now, 2)  # spot via GLD oz/share
                   sess = max(v for k, v in dates.items() if k != 'BTC')
                   out['monthEnd'] = {'date': sess, 'month': L.isoformat()[:7], 'calendar_end': L.isoformat(), 'bar_dates': dates, 'px': px, 'v': 3}
           except Exception as e: print('monthEnd failed, keeping previous:', type(e).__name__)
@@ -166,7 +155,7 @@ jobs:
           print('stocks ok:', ok, 'btc src:', (out['btc'] or {}).get('src'))
           ev = os.environ.get('EVT', '')
           rec = {'run': now, 'event': ev, 'trigger': 'cron-job.org' if ev == 'workflow_dispatch' else ('github-schedule' if ev == 'schedule' else ev),
-                 'stocks_ok': ok, 'btc': out['btc'], 'gold': out.get('gold'), 'stocks': {k: v.get('c') for k, v in out['stocks'].items()}}
+                 'stocks_ok': ok, 'btc': out['btc'], 'stocks': {k: v.get('c') for k, v in out['stocks'].items()}}
           open('runlog.jsonl', 'a').write(json.dumps(rec) + '\n')
           PY
       - name: Commit

@@ -39,14 +39,13 @@
     fetch(JSONURL+'?t='+Date.now(),{cache:'no-store',signal:c?c.signal:undefined})
     .then(function(r){clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json();})
     .then(function(d){var u=Date.parse(d&&d.updated);if(u>0)cacheUpd=u;var S=(d&&d.stocks)||{};
-      ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B'].forEach(function(T){var q=S[T];if(!q||typeof q.c!=='number'||!(q.c>0))return;
+      ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD'].forEach(function(T){var q=S[T];if(!q||typeof q.c!=='number'||!(q.c>0))return;
         var qt=q.t?q.t*1000:Date.now();if(qt>Date.now())qt=Date.now();if(['MSTR','STRC','TSLA','PLTR'].indexOf(T)>=0&&qt>lastTs)lastTs=qt;
         live[T]=q.c;prev[T]=(typeof q.pc==='number'&&q.pc>0)?q.pc:null;src[T]='cached '+(q.t?hhmm(q.t):'');});
       stkTime=cacheUpd?new Date(cacheUpd).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET':null;
       var b=d&&d.btc;if(!live.BTC&&b&&b.usd>0){live.BTC=b.usd;btcChg=(typeof b.chg24h==='number')?b.chg24h:null;btcSrc='cached '+(b.src||'');btcTime=b.time?new Date(b.time).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET':null;}
       else if(b&&btcChg===null&&typeof b.chg24h==='number')btcChg=b.chg24h; /* fallback (e.g. Coinbase) price arrived first: use the saved 24h move for % today */
       var me=d&&d.monthEnd;if(me&&me.date&&me.px&&me.px.BTC&&me.v>=3){MONTHEND[me.date]=me.px;ME_D=me.date;ME=me.px;} /* use the saved month-end session date, not a client-computed weekday */
-      var gd=d&&d.gold;if(gd&&gd.usd>0)live.GOLD=gd.usd;
       render();})
     .catch(function(){clearTimeout(t);/* keep last good prices; ASOF close if never loaded */render();});
   }
@@ -80,7 +79,7 @@
   }
   /* Shared live state for the YTD chart: same compute() as tracker + pulse */
   var KEYS=['berkshire','hodlr','hf','saylor'];
-  function liveState(){var o={sleeves:{},btc:live.BTC||null,spy:live.SPY||null,qqq:live.QQQ||null,brk:live['BRK.B']||null,mstr:live.MSTR||null,gold:live.GOLD||null,btcTime:live.BTC?btcTime:null,
+  function liveState(){var o={sleeves:{},btc:live.BTC||null,spy:live.SPY||null,qqq:live.QQQ||null,brk:live['BRK.B']||null,mstr:live.MSTR||null,gold:live.GLD||null,btcTime:live.BTC?btcTime:null,
       stocksLive:['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!src[k];}),stkTime:stkTime,label:asOfLabel(),meLabel:meLabel(),ts:lastTs,mode:mode,meDate:ME_D,me:ME};
     PF.forEach(function(p,i){o.sleeves[KEYS[i]]=compute(p).v;});return o;}
   window.PSLive={state:liveState};

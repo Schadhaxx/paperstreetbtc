@@ -7,7 +7,7 @@ const sleeves = {
 
 // Everything below is computed on page load by PSBook (book.js) from the site's ledger (ledger.js) and its own daily closes (history.json):
 // points = January 1st, 2026 start (2025-12-31 close), each completed month-end session close, and the latest close. No stored NAVs.
-let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null, LASTSPOT = null;
+let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null;
 const MN3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildFromBook(B){
   ISO = B.points();
@@ -15,14 +15,14 @@ function buildFromBook(B){
   Object.keys(sleeves).forEach(k => { vals[k] = ISO.map(d => B.nav(k, d)); paths[k] = vals[k].map(v => Math.round(v / 10) / 100);
     sleeves[k].now = vals[k].at(-1); sleeves[k].ytd = (sleeves[k].now / 100000 - 1) * 100; });
   Object.keys(B.BM).forEach(k => { benchmarks[k] = ISO.map(d => Math.round(B.bench(k, d) * 100) / 100); });
-  LASTC = B.close(B.last); LASTSPOT = B.goldSpot(B.last);
+  LASTC = B.close(B.last);
 }
 const benchColors = { btc: '#64748b', spy: '#94a3b8', qqq: '#cbd5e1', brk: '#a8a29e', gold: '#d4b06a', mstr: '#f97316' };
-const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'Gold (spot)', mstr: 'MSTR' };
+const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'Gold (GLD)', mstr: 'MSTR' };
 
 // Live 'Now' point: benchmark live index = latest-close index x live/close (keeps SPY/QQQ total-return reinvestment already in the series)
-// Gold (spot) = latest-close gold index x live spot / spot at that close (GLD oz/share method)
-function closeOf(k){ return k === 'gold' ? LASTSPOT : LASTC[{ btc: 'BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', mstr: 'MSTR' }[k]]; }
+// Gold (GLD) = latest-close GLD index x live GLD / GLD close
+function closeOf(k){ return LASTC[{ btc: 'BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', mstr: 'MSTR', gold: 'GLD' }[k]]; }
 let liveNow = null; // { sleeves:{key:$}, bench:{key:index} } or null -> latest close
 function hhmm(d){return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
 let meView = null; // month-end mode: { n: points kept from history, extra: optional computed point }
@@ -32,7 +32,7 @@ function applyLive(st){
   if (st.mode === 'me' && st.me) {
     const i = ISO.indexOf(st.meDate);
     if (i >= 0) meView = { n: i + 1 };
-    else { const bench = {}; const m = { btc: 'BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'GOLD', mstr: 'MSTR' };
+    else { const bench = {}; const m = { btc: 'BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'GLD', mstr: 'MSTR' };
       Object.keys(benchmarks).forEach(k => { bench[k] = Math.round(benchmarks[k].at(-1) * st.me[m[k]] / closeOf(k) * 100) / 100; });
       const p = st.meDate.split('-'); meView = { n: labels.length, extra: { label: (+p[2]) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1], sleeves: st.sleeves, bench } }; }
     liveNow = null;

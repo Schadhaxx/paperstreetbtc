@@ -30,7 +30,5 @@ window.PSLEDGER = {
     ['2026-09-30', '2026-09-30', '2026-10-15', 0.500000],
     ['2026-10-15', '2026-10-15', '2026-10-31', 0.500000]
     /* NOT INCLUDED (conditional, pending the Oct 28 2026 vote): ['2026-10-31', '2026-10-30', '2026-11-15', 0.500000] */
-  ],
-  /* Gold benchmark = spot XAU/USD derived from GLD close / GLD ounces-per-share (0.40%/yr fee accrued daily); spot at the base close for calibration */
-  gold: { fee: 0.004, spotBase: 4310.06 }
+  ]
 };
