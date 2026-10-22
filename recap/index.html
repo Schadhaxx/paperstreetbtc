@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="assets/owl-220.png"><title>Monthly recaps · Paperstreet BTC</title>
+<style>
+@font-face{font-family:Inter;font-weight:400 700;src:url(assets/fonts/inter-normal-latin.woff2) format('woff2')}
+@font-face{font-family:Outfit;font-weight:400 700;src:url(assets/fonts/outfit-normal-latin.woff2) format('woff2')}
+:root{--bg:#070b18;--surface:#121a2e;--border:rgba(255,255,255,.08);--text:#e8eef7;--muted:#9aa6bc;--accent:#22d3ee;--orange:#f97316;--max:1120px}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.c{max-width:1120px;margin:0 auto;padding:0 20px}h1,h2{font-family:Outfit,Inter,sans-serif;font-weight:600}
+.mock{background:var(--orange);color:#111;text-align:center;font-size:13px;font-weight:600;padding:4px}
+.eyebrow{color:var(--accent);text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:600}h1{font-size:clamp(28px,5vw,44px);margin-bottom:20px}
+#list{display:grid;gap:14px;padding-bottom:100px}#list a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px;color:var(--text);text-decoration:none}
+#list a:hover{border-color:var(--accent)}#list p{color:var(--muted);font-size:14px}
+</style>
+<link rel="stylesheet" href="../assets/css/header.css"></head><body>
+<header class="header">
+  <div class="container header-inner">
+    <div class="brand" role="link" tabindex="0" title="Home" style="cursor:pointer" onclick="location.href='../index.html'" onkeydown="if(event.key==='Enter')location.href='../index.html'">
+      <picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture>
+      <span class="brand-text">Paperstreet <span class="btc-badge">BTC</span></span>
+    </div>
+    <nav>
+      <a href="../index.html">Home</a>
+      <a href="../compare/index.html">Compare</a>
+      <a href="../custom/index.html">Custom</a>
+      <a href="../recap/index.html">Monthly recap</a>
+    </nav>
+  </div>
+  <div class="mininav" aria-label="Sections" role="navigation">
+    <a href="../index.html">Home</a>
+    <a href="../compare/index.html">Compare</a>
+    <a href="../custom/index.html">Custom</a>
+    <a href="../recap/index.html">Monthly recap</a>
+  </div>
+</header>
+<main class="c"><div class="eyebrow">Archive</div><h1>Monthly recaps</h1><div id="list"></div></main>
+<script src="months.js"></script>
+<script>document.getElementById('list').innerHTML=RECAP_MONTHS.slice().sort((a,b)=>b.slug.localeCompare(a.slug)).map(m=>`<a href="${m.slug}/index.html"><h2>${m.title}</h2><p>${m.blurb}</p></a>`).join('');</script>
+<a href="../index.html" style="position:fixed;left:18px;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;background:#f7931a;color:#111;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)">&larr; Home</a>
+</body></html>

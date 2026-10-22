@@ -1367,3 +1367,16 @@ picture{display:contents}picture>source{display:none}
 .pf-chev{transition:transform .25s ease}
 .pf-card.open .pf-chev{transform:rotate(45deg)}
 @media (prefers-reduced-motion:reduce){.pf-card,.pf-chev{transition:none}.pf-card:hover{transform:none}}
+
+/* Header fit: keep brand and all nav links on one line; logo at natural square ratio */
+.header .header-inner{max-width:1240px;gap:16px}
+.brand,.brand-text,.header nav a{white-space:nowrap}
+.brand{flex:0 0 auto}
+.header .logo{flex:0 0 40px;width:40px;height:40px;aspect-ratio:1/1;object-fit:contain}
+.header nav{gap:clamp(14px,1.7vw,28px)}
+@media (max-width:1180px){.header nav{gap:12px}.header nav a{font-size:.82rem}.header .hdr-tick{font-size:.8rem}}
+@media (min-width:641px) and (max-width:1000px){
+  .header nav{display:none}
+  .mininav{display:flex;gap:6px;align-items:center;height:38px;padding:0 12px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;border-top:1px solid var(--border)}
+  .mininav a{flex:0 0 auto;padding:4px 11px;border-radius:999px;font-size:.8rem;font-weight:500;color:var(--muted);border:1px solid var(--border);line-height:1.2}
+}

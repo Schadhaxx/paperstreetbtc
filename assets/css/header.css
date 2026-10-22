@@ -1,0 +1,52 @@
+/* Copied verbatim from styles.css so the recap pages' header matches the homepage */
+h1, h2, h3, h4, .brand-text { font-family: Outfit, Inter, sans-serif; font-weight: 600; }
+img { max-width: 100%; display: block; }
+.container { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+.header {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(7,11,24,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.header-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 72px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+.brand-text { font-size: 1.15rem; letter-spacing: -0.02em; }
+.brand-text span { color: var(--accent); }
+nav { display: flex; gap: 28px; }
+nav a { color: var(--muted); font-weight: 500; font-size: 0.95rem; }
+nav a:hover { color: var(--text); }
+
+@media (max-width: 640px) { nav { display: none; } }
+@media (max-width:420px){.brand-text{font-size:1rem}.brand{gap:8px}}
+.mininav{display:none}
+.header nav a.is-active{color:var(--accent)}
+.mnav-menu a.is-active{color:var(--accent)}
+@media (max-width:640px){
+  .mininav{display:flex;gap:6px;align-items:center;height:38px;padding:0 12px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch;border-top:1px solid var(--border)}
+  .mininav::-webkit-scrollbar{display:none}
+  .mininav a{flex:0 0 auto;padding:4px 11px;border-radius:999px;font-size:.8rem;font-weight:500;color:var(--muted);border:1px solid var(--border);line-height:1.2}
+  .mininav a:hover{color:var(--text)}
+  .mininav a.is-active{color:#041018;background:var(--accent);border-color:var(--accent)}
+  .mininav a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  }
+picture{display:contents}picture>source{display:none}
+.header a { color: var(--accent); text-decoration: none; }
+.header nav a { color: var(--muted); }
+.header nav a:hover { color: var(--text); }
+
+/* Header fit: keep brand and all nav links on one line; logo at natural square ratio */
+.header .header-inner{max-width:1240px;gap:16px}
+.brand,.brand-text,.header nav a{white-space:nowrap}
+.brand{flex:0 0 auto}
+.header .logo{flex:0 0 40px;width:40px;height:40px;aspect-ratio:1/1;object-fit:contain}
+.header nav{gap:clamp(14px,1.7vw,28px)}
+@media (max-width:1180px){.header nav{gap:12px}.header nav a{font-size:.82rem}.header .hdr-tick{font-size:.8rem}}
+@media (min-width:641px) and (max-width:1000px){
+  .header nav{display:none}
+  .mininav{display:flex;gap:6px;align-items:center;height:38px;padding:0 12px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;border-top:1px solid var(--border)}
+  .mininav a{flex:0 0 auto;padding:4px 11px;border-radius:999px;font-size:.8rem;font-weight:500;color:var(--muted);border:1px solid var(--border);line-height:1.2}
+}
