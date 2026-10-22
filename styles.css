@@ -1380,3 +1380,4 @@ picture{display:contents}picture>source{display:none}
   .mininav{display:flex;gap:6px;align-items:center;height:38px;padding:0 12px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;border-top:1px solid var(--border)}
   .mininav a{flex:0 0 auto;padding:4px 11px;border-radius:999px;font-size:.8rem;font-weight:500;color:var(--muted);border:1px solid var(--border);line-height:1.2}
 }
+a.download-pdf{display:inline-block;text-decoration:none;line-height:normal;font-family:inherit}

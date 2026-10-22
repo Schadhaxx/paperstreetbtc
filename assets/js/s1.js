@@ -24,7 +24,7 @@ document.querySelectorAll('.read-toggle').forEach(btn => {
           </div>
         </div>
         <div class="modal-actions">
-          <button class="download-pdf">Download PDF</button>
+          <a class="download-pdf" href="assets/pdf/${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf" download target="_blank" rel="noreferrer noopener">Download PDF</a>
           <button class="close-modal">Close</button>
         </div>
       </div>
@@ -40,68 +40,5 @@ document.querySelectorAll('.read-toggle').forEach(btn => {
       document.body.style.overflow = '';
     });
 
-    modal.querySelector('.download-pdf').addEventListener('click', async () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: 'pt', format: 'letter' });
-      const pageW = 612;
-      const margin = 50;
-      let y = 50;
-
-      // Logo
-      try {
-        doc.addImage(PAPERSTREET_LOGO, 'PNG', margin, y, 40, 34);
-      } catch(e) {}
-      doc.setFontSize(9);
-      doc.setTextColor(34, 211, 238);
-      doc.text('Paperstreet BTC', margin + 48, y + 22);
-      y += 50;
-
-      // Title
-      doc.setFontSize(18);
-      doc.setTextColor(20, 20, 30);
-      const titleLines = doc.splitTextToSize(title, pageW - margin * 2);
-      doc.text(titleLines, margin, y);
-      y += titleLines.length * 22 + 8;
-
-      // Date
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text(date, margin, y);
-      y += 24;
-
-      // Body
-      doc.setFontSize(11);
-      doc.setTextColor(40);
-      const temp = document.createElement('div');
-      temp.innerHTML = fullHtml;
-      const paragraphs = temp.querySelectorAll('p, h4');
-
-      paragraphs.forEach(p => {
-        const text = p.textContent.trim();
-        if (!text) return;
-        const lines = doc.splitTextToSize(text, pageW - margin * 2);
-        const blockH = lines.length * 14 + 8;
-        if (y + blockH > 740) {
-          doc.addPage();
-          y = 50;
-        }
-        doc.text(lines, margin, y);
-        y += blockH;
-      });
-
-      // Footer with QR on last page
-      const pageCount = doc.internal.getNumberOfPages();
-      doc.setPage(pageCount);
-      try {
-        doc.addImage(PAPERSTREET_QR, 'PNG', pageW - margin - 70, 720, 60, 60);
-      } catch(e) {}
-      doc.setFontSize(8);
-      doc.setTextColor(120);
-      doc.text('@PaperstreetBTC  ·  Not financial advice', margin, 760);
-      doc.text('Scan for X', pageW - margin - 65, 788);
-
-      const filename = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
-      doc.save(filename);
-    });
   });
 });
