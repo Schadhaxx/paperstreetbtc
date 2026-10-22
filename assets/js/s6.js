@@ -62,7 +62,7 @@
       /* yesterday: BTC from CoinGecko 24h change; stocks from Finnhub prior close (pc); fallback -> move 0 */
       var yc=c;
       if(mode==='me'){y+=u*c;return;}
-      if(a==='BTC'){var pb=BK.close(PRIOR);if(pb&&pb.BTC)yc=pb.BTC;}
+      if(a==='BTC'){if(live.BTC&&btcChg!==null)yc=c/(1+btcChg/100);}
       else if(live[a]&&prev[a])yc=prev[a];
       y+=u*yc;});
     return {v:v,y:y,move:v/y-1};
