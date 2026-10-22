@@ -70,7 +70,7 @@ def main():
     B = {k: v for k, v in json.load(open('assets/data/btc-daily.json'))['d']}
     for d in D:
         if d not in B: B[d] = C[d]['BTC']
-    bdays = sorted(k for k in B if k.startswith(m) and k <= ME)
+    bdays = sorted(k for k in B if k.startswith(m) and k <= (f'{m}-{calendar.monthrange(y, mo)[1]:02d}' if final else ME))
     bopen = max(k for k in B if k <= pm_cal); bo, bc = B[bopen], B[bdays[-1]]; hi = max(bdays, key=B.get); lo = min(bdays, key=B.get); chg = pc(bo, bc)
     ndays = (dt.date.fromisoformat(bdays[-1]) - dt.date(y, mo, 1)).days + 1
     title = f'{full} {y}' + ('' if final else f' (month to date, through {nicey(ME)})')
