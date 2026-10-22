@@ -1041,6 +1041,25 @@ h2 {
 }
 .back-to-top:hover { background: #67e8f9; }
 
+/* Owl companion beside back-to-top (decorative; clicking it also scrolls to top) */
+.top-owl {
+  position: fixed;
+  bottom: 1.5rem;
+  right: calc(1.5rem + var(--top-btn-w, 7.5rem) + 0.6rem);
+  width: var(--top-btn-h, 2.25rem);
+  height: var(--top-btn-h, 2.25rem);
+  border-radius: 999px;
+  overflow: hidden;
+  background: #0d1220;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 1px rgba(34,211,238,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 50;
+  cursor: pointer;
+}
+.top-owl img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
 /* Principles — one line on desktop */
 .principles-grid {
   display: grid;
@@ -1338,3 +1357,13 @@ h2 {
 picture{display:contents}picture>source{display:none}
 
 @media (max-width:480px){.pf-tbl{font-size:.72rem}.pf-tbl th,.pf-tbl td{padding:3px 2px}}
+
+/* Portfolio cards: obvious expand affordance */
+.pf-card{transition:border-color .2s,box-shadow .2s,transform .2s}
+.pf-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.35),0 0 0 1px rgba(34,211,238,.25)}
+.pf-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-color:var(--accent)}
+.pf-toggle{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 10px;border:1px solid rgba(34,211,238,.4);border-radius:999px;font-size:.75rem;font-weight:600;color:var(--accent);background:rgba(34,211,238,.06);transition:background .2s,border-color .2s}
+.pf-card:hover .pf-toggle,.pf-card:focus-visible .pf-toggle{background:rgba(34,211,238,.16);border-color:var(--accent)}
+.pf-chev{transition:transform .25s ease}
+.pf-card.open .pf-chev{transform:rotate(180deg)}
+@media (prefers-reduced-motion:reduce){.pf-card,.pf-chev{transition:none}.pf-card:hover{transform:none}}

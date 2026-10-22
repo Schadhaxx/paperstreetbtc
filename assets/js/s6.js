@@ -93,15 +93,20 @@
       Object.keys(q.h).forEach(function(a){var u=q.h[a],val=u*px(a);
         rows+='<tr><td>'+a+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td><td>'+(ow[a]!=null?ow[a]+'%':'')+'</td><td>'+(val/v*100).toFixed(1)+'%</td></tr>';});
       rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(q.cash)+'</td><td></td><td>'+(q.cash/v*100).toFixed(1)+'%</td></tr>';
-      html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
+      html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'" role="button" tabindex="0" aria-expanded="'+(open[i]?'true':'false')+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
         '<span class="pf-sub">since '+fmtD(ASOF)+' '+pct(v/BK.nav(p.key,ASOF)-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
-        '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p></div>';
+        '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p><span class="pf-toggle" aria-hidden="true"><span class="pf-toggle-txt">'+(open[i]?'Hide holdings':'Show holdings')+'</span><svg class="pf-chev" viewBox="0 0 16 16" width="14" height="14"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>';
     });
     root.querySelector('.pf-grid').innerHTML=html;
     root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close '+fmtD(ASOF))+'. '+(Object.keys(src).some(function(k){return src[k];})?cacheLabel():'Stocks: last close '+fmtD(ASOF))+'. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
   }
   root.addEventListener('click',function(e){
     var c=e.target.closest('.pf-card'); if(c){var i=c.dataset.i;open[i]=!open[i];render();}
+  });
+  root.addEventListener('keydown',function(e){
+    var c=e.target.closest&&e.target.closest('.pf-card'); if(!c||(e.key!=='Enter'&&e.key!==' '))return;
+    e.preventDefault(); var i=c.dataset.i; open[i]=!open[i]; render();
+    var n=root.querySelector('.pf-card[data-i="'+i+'"]'); if(n)n.focus();
   });
   window.addEventListener('btcprice',function(e){live.BTC=e.detail.usd;btcChg=(typeof e.detail.chg==='number')?e.detail.chg:btcChg;btcTime=e.detail.time;btcSrc=e.detail.src||'CoinGecko';lastTs=Date.now();render();});
   document.querySelectorAll('#modeToggle .bench-btn').forEach(function(b){b.addEventListener('click',function(){mode=b.dataset.mode;
