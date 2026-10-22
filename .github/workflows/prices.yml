@@ -8,14 +8,18 @@ on:
       force:
         description: 'Run even outside market hours'
         default: 'false'
-permissions:
-  contents: write
+permissions: {}
 concurrency:
   group: prices-data
   cancel-in-progress: false
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: write
+    outputs:
+      final_close: ${{ steps.finalc.outputs.final_close }}
     steps:
       - name: Market-hours gate (America/New_York, weekdays 03:55-20:15)
         id: gate
@@ -158,6 +162,30 @@ jobs:
                  'stocks_ok': ok, 'btc': out['btc'], 'stocks': {k: v.get('c') for k, v in out['stocks'].items()}}
           open('runlog.jsonl', 'a').write(json.dumps(rec) + '\n')
           PY
+      - name: Final-close check (decides whether the recap job runs)
+        id: finalc
+        if: steps.gate.outputs.run == '1'
+        run: |
+          cd work
+          git show HEAD:history.json > /tmp/hist_old.json 2>/dev/null || echo '{}' > /tmp/hist_old.json
+          curl -fsS "https://raw.githubusercontent.com/${{ github.repository }}/main/recap/months.js?t=$(date +%s)" -o /tmp/months.js || echo "" > /tmp/months.js
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, re, datetime as dt
+          def lastf(p):
+              try:
+                  h = json.load(open(p)); pv = set(h.get('btc_provisional') or [])
+                  return max(d for d in h['closes'] if d not in pv)
+              except Exception: return ''
+          old, new = lastf('/tmp/hist_old.json'), lastf('history.json')
+          mj = open('/tmp/months.js').read()
+          e = re.search(r"\{slug:'%s',title:'([^']*)'" % new[:7], mj) if new else None
+          t = re.search(r'through ([A-Z][a-z]{2} \d+, \d{4})', e.group(1)) if e else None
+          thru = dt.datetime.strptime(t.group(1), '%b %d, %Y').date().isoformat() if t else ''
+          lag = bool(new) and (e is None or ('month to date' in e.group(1) and thru < new))
+          flag = '1' if new and (new > old or lag) else '0'
+          print('final_close=' + flag)
+          import sys; print(f'newest final close: before {old or "-"}, now {new or "-"}; recap lagging: {lag}; final_close={flag}', file=sys.stderr)
+          PY
       - name: Commit
         if: steps.gate.outputs.run == '1'
         run: |
@@ -167,10 +195,68 @@ jobs:
           git add prices.json runlog.jsonl history.json
           git commit -q -m "prices $(date -u +%FT%TZ)" || { echo nothing; exit 0; }
           echo 'runlog.jsonl merge=union' >> .git/info/attributes
-          if git push -q origin HEAD:data; then exit 0; fi
-          echo "push rejected, retrying once in 10s"; sleep 10
-          if ! git pull -q --rebase origin data; then
-            # newest prices.json (this run) wins; runlog.jsonl keeps both lines via union merge
-            git checkout --theirs prices.json && { git checkout --theirs history.json 2>/dev/null || true; } && git add prices.json runlog.jsonl history.json && GIT_EDITOR=true git rebase --continue || { git rebase --abort; echo "rebase failed"; exit 1; }
+          for wait in 0 5 15 30; do
+            sleep $wait
+            if git push -q origin HEAD:data; then exit 0; fi
+            echo "push rejected, rebasing and retrying (next wait after ${wait}s)"
+            if ! git pull -q --rebase origin data; then
+              # newest prices.json (this run) wins; runlog.jsonl keeps both lines via union merge
+              git checkout --theirs prices.json && { git checkout --theirs history.json 2>/dev/null || true; } && git add prices.json runlog.jsonl history.json && GIT_EDITOR=true git rebase --continue || { git rebase --abort; echo "rebase failed"; }
+            fi
+          done
+          echo "data push failed after 4 tries"; exit 1
+
+  recap:
+    # Refreshes the current month's recap page + index card on main once a new FINAL close is in history.json.
+    # Separate job: it can never block or fail the price update above.
+    needs: fetch
+    if: always() && needs.fetch.result == 'success' && needs.fetch.outputs.final_close == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pages: write
+    concurrency:
+      group: recap-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Regenerate current month (validated, idempotent)
+        id: gen
+        run: |
+          git fetch -q origin data && git show FETCH_HEAD:history.json > /tmp/history.json
+          python3 tools/recap_gen.py --history /tmp/history.json --repo .
+          if git diff --quiet -- recap; then echo "No recap change."; echo "changed=0" >> $GITHUB_OUTPUT; exit 0; fi
+          if ! python3 tests/test_recap.py --history /tmp/history.json --repo .; then
+            git checkout -- recap; git clean -fdq recap
+            echo "Recap checks failed; nothing committed, live page left as is."; exit 1
           fi
-          git push -q origin HEAD:data
+          git status --short
+          echo "changed=1" >> $GITHUB_OUTPUT
+      - name: Commit and push (fast-forward only, retries)
+        if: steps.gen.outputs.changed == '1'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- recap/
+          git commit -q -m "recap: refresh $(ls -d recap/20*/ | tail -1 | cut -d/ -f2) from history.json $(date -u +%FT%TZ)"
+          for wait in 0 5 15 30; do
+            sleep $wait
+            if git push -q origin HEAD:main; then echo pushed; exit 0; fi
+            echo "push rejected; rebasing onto origin/main"
+            git pull -q --rebase origin main || { git rebase --abort; echo "rebase conflict"; exit 1; }
+          done
+          echo "push failed after 4 tries"; exit 1
+      - name: Trigger Pages build
+        if: steps.gen.outputs.changed == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST repos/${{ github.repository }}/pages/builds --jq .status
+      - name: Failure summary
+        if: failure()
+        run: |
+          echo "### Recap refresh failed" >> $GITHUB_STEP_SUMMARY
+          echo "The price update itself succeeded; the recap page on main was left unchanged (last good version stays live). See the step logs above." >> $GITHUB_STEP_SUMMARY
