@@ -36,8 +36,9 @@ with sync_playwright() as p:
         ev = [e for e in EV if e[2] >= m + '-01' and e[2] <= ME]
         R += [(m, 'divs', 'rows', len(ev), len(rows), 0), (m, 'divs', 'cash', sum(e[3] for e in ev), sum(num(r[4]) for r in rows), 0.05)]
         cells = pg.evaluate("[...document.querySelectorAll('table.btcm tr:nth-child(2) td')].map(t=>t.textContent)")
-        ds_ = sorted(d for d in BD if d.startswith(m) and (d <= ME if mtd else d <= mend))
-        R += [(m, 'BTC table', 'open', BD[pend], num(cells[0]), 0.006), (m, 'BTC table', 'close', BD[ds_[-1]], num(cells[1]), 0.006),
+        ds_ = sorted(d for d in BD if d.startswith(m) and d <= ME)
+        bo = BD[max(d for d in BD if d <= pend)]
+        R += [(m, 'BTC table', 'open', bo, num(cells[0]), 0.006), (m, 'BTC table', 'close', BD[ds_[-1]], num(cells[1]), 0.006),
               (m, 'BTC table', 'high', max(BD[d] for d in ds_), num(cells[3].split('·')[0]), 0.006), (m, 'BTC table', 'low', min(BD[d] for d in ds_), num(cells[4].split('·')[0]), 0.006)]
     pg.goto(BASE + '/recap/'); pg.wait_for_timeout(1200)
     R.append(('index', 'cards', 'count (= months Jan..newest final close)', len(months), pg.evaluate("document.querySelectorAll('#list a.rc').length"), 0))

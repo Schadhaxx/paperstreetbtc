@@ -71,7 +71,7 @@ def main():
     for d in D:
         if d not in B: B[d] = C[d]['BTC']
     bdays = sorted(k for k in B if k.startswith(m) and k <= ME)
-    bo, bc = B[pm_cal], B[bdays[-1]]; hi = max(bdays, key=B.get); lo = min(bdays, key=B.get); chg = pc(bo, bc)
+    bopen = max(k for k in B if k <= pm_cal); bo, bc = B[bopen], B[bdays[-1]]; hi = max(bdays, key=B.get); lo = min(bdays, key=B.get); chg = pc(bo, bc)
     ndays = (dt.date.fromisoformat(bdays[-1]) - dt.date(y, mo, 1)).days + 1
     title = f'{full} {y}' + ('' if final else f' (month to date, through {nicey(ME)})')
     s = src
@@ -85,7 +85,7 @@ def main():
             '<tr><th>Open (%s close)</th><th>Close (%s)</th><th>Change</th><th>High close</th><th>Low close</th></tr>'
             '<tr><td>$%s</td><td>$%s</td><td class="%s">%+.2f%%</td><td>$%s · %s</td><td>$%s · %s</td></tr></table></div>'
             '<p class="note">BTC-USD daily closes (UTC day, %s) from the site\'s BTC history (Yahoo Finance). High/low are the highest and lowest daily closes, not intraday extremes.%s</p></div></section>\n') % (
-        full + ('' if final else ' (to date)'), nicey(pm_cal) if mo == 1 else nice(pm_cal), nice(bdays[-1]), f'{bo:,.2f}', f'{bc:,.2f}', 'pos' if chg >= 0 else 'neg', chg,
+        full + ('' if final else ' (to date)'), nicey(bopen) if mo == 1 else nice(bopen), nice(bdays[-1]), f'{bo:,.2f}', f'{bc:,.2f}', 'pos' if chg >= 0 else 'neg', chg,
         f'{B[hi]:,.2f}', nice(hi), f'{B[lo]:,.2f}', nice(lo), days_txt, '' if final else f' Static snapshot through {nicey(bdays[-1])}; the month is not complete.')
     s = sub1(s, r'<section><h2>Bitcoin in .*?</section>\n(?=<section><h2>Sleeves vs spot BTC</h2>)', card, re.S)
     s = sub1(s, r'<p class="note" style="margin-bottom:12px">Month = [^<]*',

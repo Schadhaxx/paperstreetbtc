@@ -35,8 +35,9 @@ for m in months:
     chk(f'{m} embedded closes match history through {ME}', not bad, bad[:3])
     cells = re.search(r'<table class="btcm">.*?</tr><tr>(.*?)</tr>', s).group(1)
     td = re.findall(r'<td[^>]*>(.*?)</td>', cells)
-    days = sorted(d for d in BD if d.startswith(m) and (d <= ME if mtd else d <= mend))
-    exp = [BD[pend], BD[days[-1]], pc(BD[pend], BD[days[-1]]), max(BD[d] for d in days), min(BD[d] for d in days)]
+    days = sorted(d for d in BD if d.startswith(m) and d <= ME)
+    bo = BD[max(d for d in BD if d <= pend)]
+    exp = [bo, BD[days[-1]], pc(bo, BD[days[-1]]), max(BD[d] for d in days), min(BD[d] for d in days)]
     got = [num(td[0]), num(td[1]), num(td[2]), num(td[3].split('·')[0]), num(td[4].split('·')[0])]
     for lab, e, g in zip(['open', 'close', 'change %', 'high', 'low'], exp, got): chk(f'{m} BTC table {lab}', abs(e - g) <= 0.006, (e, g))
     e = ents.get(m, '')
