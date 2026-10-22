@@ -3,6 +3,7 @@
   /* No stored values: holdings + receivable cash come from the ledger (ledger.js) via PSBook; ASOF = latest close in the site's own history.json */
   var ASOF=BK.last, START=PSLEDGER.start;
   var CLOSE=BK.close(ASOF);
+  var PRIOR=(ASOF===todayET()&&BK.dates.length>1)?BK.dates[BK.dates.length-2]:ASOF; /* yesterday's close once today's row exists */
   function todayET(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York'}).format(new Date());}
   var PF=[
     {name:'Berkshire Killer',start:'$40k BTC / $20k STRC / $30k TSLA / $10k PLTR',key:'berkshire'},
@@ -61,7 +62,7 @@
       /* yesterday: BTC from CoinGecko 24h change; stocks from Finnhub prior close (pc); fallback -> move 0 */
       var yc=c;
       if(mode==='me'){y+=u*c;return;}
-      if(a==='BTC'){if(live.BTC&&btcChg!==null)yc=c/(1+btcChg/100);}
+      if(a==='BTC'){var pb=BK.close(PRIOR);if(pb&&pb.BTC)yc=pb.BTC;}
       else if(live[a]&&prev[a])yc=prev[a];
       y+=u*yc;});
     return {v:v,y:y,move:v/y-1};
@@ -94,7 +95,7 @@
         rows+='<tr><td>'+a+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td><td>'+(ow[a]!=null?ow[a]+'%':'')+'</td><td>'+(val/v*100).toFixed(1)+'%</td></tr>';});
       rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(q.cash)+'</td><td></td><td>'+(q.cash/v*100).toFixed(1)+'%</td></tr>';
       html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'" role="button" tabindex="0" aria-expanded="'+(open[i]?'true':'false')+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
-        '<span class="pf-sub">since '+fmtD(ASOF)+' '+pct(v/BK.nav(p.key,ASOF)-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
+        '<span class="pf-sub">since '+fmtD(PRIOR)+' '+pct(v/BK.nav(p.key,PRIOR)-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
         '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p><span class="pf-toggle" aria-hidden="true"><svg class="pf-chev" viewBox="0 0 16 16" width="16" height="16"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>';
     });
     root.querySelector('.pf-grid').innerHTML=html;
