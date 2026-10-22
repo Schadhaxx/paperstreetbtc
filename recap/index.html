@@ -11,22 +11,32 @@
 #list{display:grid;gap:14px;padding-bottom:100px}#list a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px;color:var(--text);text-decoration:none}
 #list a:hover{border-color:var(--accent)}#list p{color:var(--muted);font-size:14px}
 </style>
-<link rel="stylesheet" href="../assets/css/header.css"></head><body>
+<link rel="stylesheet" href="../assets/css/header.css"><link rel="stylesheet" href="../assets/css/nav.css"></head><body>
 <header class="header">
   <div class="container header-inner">
     <div class="brand" role="link" tabindex="0" title="Home" style="cursor:pointer" onclick="location.href='../index.html'" onkeydown="if(event.key==='Enter')location.href='../index.html'">
       <picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture>
       <span class="brand-text">Paperstreet <span class="btc-badge">BTC</span></span>
     </div>
+    <button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button>
     <nav>
-      <a href="../index.html">Home</a>
+      <a href="../index.html#principles">Principles</a>
+      <a href="../index.html#sleeves">Sleeves</a>
+      <a href="../index.html#tracker">Tracker</a>
+      <a href="../index.html#rules">Rules</a>
+      <a href="../index.html#articles">Articles</a>
       <a href="../compare/index.html">Compare</a>
       <a href="../custom/index.html">Custom</a>
       <a href="../recap/index.html">Monthly recap</a>
     </nav>
+    <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
   </div>
-  <div class="mininav" aria-label="Sections" role="navigation">
-    <a href="../index.html">Home</a>
+  <div class="mnav-menu" id="mnavMenu" hidden>
+    <a href="../index.html#principles">Principles</a>
+    <a href="../index.html#sleeves">Sleeves</a>
+    <a href="../index.html#tracker">Tracker</a>
+    <a href="../index.html#rules">Rules</a>
+    <a href="../index.html#articles">Articles</a>
     <a href="../compare/index.html">Compare</a>
     <a href="../custom/index.html">Custom</a>
     <a href="../recap/index.html">Monthly recap</a>
@@ -36,4 +46,4 @@
 <script src="months.js"></script>
 <script>document.getElementById('list').innerHTML=RECAP_MONTHS.slice().sort((a,b)=>b.slug.localeCompare(a.slug)).map(m=>`<a href="${m.slug}/index.html"><h2>${m.title}</h2><p>${m.blurb}</p></a>`).join('');</script>
 <a href="../index.html" style="position:fixed;left:18px;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;background:#f7931a;color:#111;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)">&larr; Home</a>
-</body></html>
+<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js"></script></body></html>

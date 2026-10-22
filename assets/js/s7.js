@@ -4,4 +4,4 @@ b.addEventListener('click',function(e){e.stopPropagation();set(m.hidden);});
 m.addEventListener('click',function(e){if(e.target.closest('a'))set(false);});
 document.addEventListener('click',function(e){if(!m.hidden&&!m.contains(e.target)&&!b.contains(e.target))set(false);});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!m.hidden){set(false);b.focus();}});
-window.addEventListener('resize',function(){if(window.innerWidth>640&&!m.hidden)set(false);});})();
+window.addEventListener('resize',function(){if(window.innerWidth>1000&&!m.hidden)set(false);});})();

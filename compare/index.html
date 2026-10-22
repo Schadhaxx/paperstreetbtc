@@ -2,7 +2,7 @@
 <link rel="icon" href="../favicon.ico" sizes="any">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
-<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../assets/css/nav.css">
 <style>
 .pv .pill{display:inline-flex;flex-wrap:wrap;gap:6px}.pv .controls{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin:18px 0 12px}
 .pv .chartbox{position:relative;height:380px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
@@ -23,15 +23,25 @@
       <picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture>
       <span class="brand-text">Paperstreet <span class="btc-badge">BTC</span></span>
     </div>
+    <button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button>
     <nav>
-      <a href="../index.html">Home</a>
+      <a href="../index.html#principles">Principles</a>
+      <a href="../index.html#sleeves">Sleeves</a>
+      <a href="../index.html#tracker">Tracker</a>
+      <a href="../index.html#rules">Rules</a>
+      <a href="../index.html#articles">Articles</a>
       <a href="../compare/index.html">Compare</a>
       <a href="../custom/index.html">Custom</a>
       <a href="../recap/index.html">Monthly recap</a>
     </nav>
+    <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
   </div>
-  <div class="mininav" aria-label="Sections" role="navigation">
-    <a href="../index.html">Home</a>
+  <div class="mnav-menu" id="mnavMenu" hidden>
+    <a href="../index.html#principles">Principles</a>
+    <a href="../index.html#sleeves">Sleeves</a>
+    <a href="../index.html#tracker">Tracker</a>
+    <a href="../index.html#rules">Rules</a>
+    <a href="../index.html#articles">Articles</a>
     <a href="../compare/index.html">Compare</a>
     <a href="../custom/index.html">Custom</a>
     <a href="../recap/index.html">Monthly recap</a>
@@ -50,4 +60,4 @@
 </main>
 <script src="../assets/vendor/chart.umd.min.js"></script>
 <script src="../assets/js/compare.js"></script>
-</body></html>
+<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js"></script></body></html>

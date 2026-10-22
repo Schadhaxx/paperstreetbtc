@@ -31,22 +31,32 @@ footer{border-top:1px solid var(--border);padding:24px 0 40px;color:var(--muted)
 table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:6px 4px;border-bottom:1px solid var(--border);text-align:right}td:first-child,th:first-child{text-align:left}th{color:var(--muted);font-weight:500}
 @media(max-width:700px){.two{grid-template-columns:1fr}.chartbox{height:300px}.res{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="../../assets/css/header.css"></head><body>
+<link rel="stylesheet" href="../../assets/css/header.css"><link rel="stylesheet" href="../../assets/css/nav.css"></head><body>
 <header class="header">
   <div class="container header-inner">
     <div class="brand" role="link" tabindex="0" title="Home" style="cursor:pointer" onclick="location.href='../../index.html'" onkeydown="if(event.key==='Enter')location.href='../../index.html'">
       <picture><source type="image/webp" srcset="../../assets/img/owl-220.webp"><img src="../../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture>
       <span class="brand-text">Paperstreet <span class="btc-badge">BTC</span></span>
     </div>
+    <button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button>
     <nav>
-      <a href="../../index.html">Home</a>
+      <a href="../../index.html#principles">Principles</a>
+      <a href="../../index.html#sleeves">Sleeves</a>
+      <a href="../../index.html#tracker">Tracker</a>
+      <a href="../../index.html#rules">Rules</a>
+      <a href="../../index.html#articles">Articles</a>
       <a href="../../compare/index.html">Compare</a>
       <a href="../../custom/index.html">Custom</a>
       <a href="../../recap/index.html">Monthly recap</a>
     </nav>
+    <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
   </div>
-  <div class="mininav" aria-label="Sections" role="navigation">
-    <a href="../../index.html">Home</a>
+  <div class="mnav-menu" id="mnavMenu" hidden>
+    <a href="../../index.html#principles">Principles</a>
+    <a href="../../index.html#sleeves">Sleeves</a>
+    <a href="../../index.html#tracker">Tracker</a>
+    <a href="../../index.html#rules">Rules</a>
+    <a href="../../index.html#articles">Articles</a>
     <a href="../../compare/index.html">Compare</a>
     <a href="../../custom/index.html">Custom</a>
     <a href="../../recap/index.html">Monthly recap</a>
@@ -92,4 +102,4 @@ let live=null;rT(null);
 async function poll(){try{const r=await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');const j=await r.json();live=+j.data.amount;rT(live,new Date().toLocaleTimeString('en-US',{timeZone:'America/Toronto',hour:'numeric',minute:'2-digit',second:'2-digit'})+' ET')}catch(e){rT(null)}}
 poll();setInterval(poll,15000);
 </script><a href="../../index.html" style="position:fixed;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25);left:18px;background:#f7931a;color:#111">&larr; Home</a><a href="../index.html" style="position:fixed;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25);left:120px;background:#22d3ee;color:#04121a">All recaps</a>
-</body></html>
+<script src="../../assets/js/s7.js"></script><script src="../../assets/js/btcchart.js"></script></body></html>

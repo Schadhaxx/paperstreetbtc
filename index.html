@@ -23,6 +23,7 @@
 <link rel="preload" href="assets/fonts/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/outfit-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="assets/css/nav.css">
 </head>
 <body>
 <header class="header">
@@ -31,30 +32,18 @@
       <picture><source type="image/webp" srcset="assets/img/owl-220.webp"><img src="assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture>
       <span class="brand-text">Paperstreet <span class="btc-badge">BTC</span></span>
     </div>
-    <a href="#tracker" class="hdr-tick" id="hdrTick" aria-live="polite" title="Live BTC/USD (CoinGecko)"><span class="hdr-sym">₿</span> <span id="hdrPx">—</span> <span id="hdrChg" class="hdr-chg"></span></a>
+    <button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button>
     <nav>
       <a href="#principles">Principles</a>
       <a href="#sleeves">Sleeves</a>
       <a href="#tracker">Tracker</a>
       <a href="#rules">Rules</a>
       <a href="#articles">Articles</a>
-      <a href="#benchmarks">Benchmarks</a>
       <a href="compare/index.html">Compare</a>
       <a href="custom/index.html">Custom</a>
       <a href="recap/index.html">Monthly recap</a>
     </nav>
     <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
-  </div>
-  <div class="mininav" id="miniNav" aria-label="Sections" role="navigation">
-    <a href="#principles">Principles</a>
-    <a href="#sleeves">Sleeves</a>
-    <a href="#tracker">Tracker</a>
-    <a href="#rules">Rules</a>
-    <a href="#articles">Articles</a>
-    <a href="#benchmarks">Benchmarks</a>
-    <a href="compare/index.html">Compare</a>
-    <a href="custom/index.html">Custom</a>
-    <a href="recap/index.html">Monthly recap</a>
   </div>
   <div class="mnav-menu" id="mnavMenu" hidden>
     <a href="#principles">Principles</a>
@@ -62,7 +51,6 @@
     <a href="#tracker">Tracker</a>
     <a href="#rules">Rules</a>
     <a href="#articles">Articles</a>
-    <a href="#benchmarks">Benchmarks</a>
     <a href="compare/index.html">Compare</a>
     <a href="custom/index.html">Custom</a>
     <a href="recap/index.html">Monthly recap</a>
@@ -288,12 +276,8 @@ Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the
       <li id="rule-dca"><strong>DCA is monthly.</strong> That is the strategy. The point of the book is to stop helping people time the market.</li>
       <li id="rule-maintenance"><strong>Maintenance is monthly on the two leverage sleeves.</strong> Hygiene, not a trade.</li>
     </ul>
-  </div>
-</section>
-
-<section id="benchmarks" class="section section-alt">
-  <div class="container">
-    <h2>Benchmarks</h2>
+    <div id="benchmarks" class="rules-benchmarks">
+    <h3>Benchmarks</h3>
     <p>Retail investors like to buy simple buy and hold benchmarks:</p>
     <div class="benchmarks">
       <span>BRK.B</span>
@@ -304,8 +288,10 @@ Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the
       <span>Pure MSTR</span>
     </div>
     <p class="note">No rebalancing. Buy and hold. The simplest strategy available in markets. Spot BTC is the hurdle. If a sleeve cannot live next to those, it does not belong in the book.</p>
+    </div>
   </div>
 </section>
+
 
 <section id="articles" class="section">
   <div class="container">
@@ -508,5 +494,6 @@ Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the
 <script src="assets/js/s6.js" defer></script>
 <script src="assets/js/s7.js" defer></script>
 <script src="assets/js/s8.js" defer></script>
+<script src="assets/js/btcchart.js" defer></script>
 </body>
 </html>

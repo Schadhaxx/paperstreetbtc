@@ -1,4 +1,4 @@
-(function(){var ids=['principles','sleeves','tracker','rules','articles','benchmarks'];if(!('IntersectionObserver' in window))return;
+(function(){var ids=['principles','sleeves','tracker','rules','articles'];if(!('IntersectionObserver' in window))return;
 var links=document.querySelectorAll('.mininav a, .header nav a, .mnav-menu a');var vis={};
 function mark(id){links.forEach(function(a){var on=a.getAttribute('href')==='#'+id;a.classList.toggle('is-active',on);if(on)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});
 var a=document.querySelector('.mininav a[href="#'+id+'"]'),n=document.getElementById('miniNav');if(a&&n&&n.offsetParent){var l=a.offsetLeft-12;if(l<n.scrollLeft||a.offsetLeft+a.offsetWidth>n.scrollLeft+n.clientWidth)n.scrollTo({left:l,behavior:'smooth'});}}
