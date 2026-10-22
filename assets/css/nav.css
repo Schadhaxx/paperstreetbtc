@@ -102,3 +102,8 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .bc-k-spx.off{color:#94a3b8;border-style:dashed}.bc-k-spx.off i{opacity:.35}
 @media (max-width:1000px){.bc-k-spx{min-height:44px}}
 .prd-card.has-img[hidden]{display:none!important}
+/* footer: Canadian maple leaf in its own box, outside the source text */
+.src-row{position:relative;max-width:640px;margin:0 auto}
+.ca-leaf-box{position:absolute;right:100%;top:calc(.8em - 29.5px);margin-right:10px;width:52px;height:52px;line-height:0;pointer-events:none}
+.ca-leaf-box svg{display:block;width:52px;height:52px}
+@media (max-width:760px){.ca-leaf-box{position:static;display:block;margin:0 auto 8px}}
