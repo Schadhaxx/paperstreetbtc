@@ -26,3 +26,12 @@
 /* back-to-top moves to the bottom-left corner so it never collides with the X pill */
 .back-to-top{right:auto;left:calc(1.5rem + env(safe-area-inset-left));bottom:calc(1.5rem + env(safe-area-inset-bottom))}
 @media (max-width:760px){.back-to-top{left:calc(8px + env(safe-area-inset-left));bottom:calc(8px + env(safe-area-inset-bottom))}}
+/* small X link at the end of subpages */
+.xsub{text-align:center;margin:28px auto 20px;font:500 .9rem Inter,system-ui,sans-serif}
+.xsub a{display:inline-flex;align-items:center;gap:8px;min-height:44px;color:#22d3ee;text-decoration:none}
+.xsub a:hover{text-decoration:underline}.xsub a:focus-visible{outline:2px solid #22d3ee;outline-offset:3px;border-radius:6px}
+.xsub-i{width:26px;height:26px;border-radius:50%;background:#22d3ee;color:#070b18;display:inline-flex;align-items:center;justify-content:center;flex:none}
+/* quiet follow line at the end of each article body */
+.xnote{margin:18px 0 0;font-size:.85rem;color:#9aa6bc;opacity:.85}
+.xnote a{color:#9aa6bc;text-decoration:underline;text-underline-offset:2px}
+.xnote a:hover{color:#22d3ee}
