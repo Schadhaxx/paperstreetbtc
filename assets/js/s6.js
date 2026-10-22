@@ -98,7 +98,7 @@
         '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p></div>';
     });
     root.querySelector('.pf-grid').innerHTML=html;
-    root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings set at the '+fmtD(ASOF)+' close. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close '+fmtD(ASOF))+'. '+(Object.keys(src).some(function(k){return src[k];})?cacheLabel():'Stocks: last close '+fmtD(ASOF))+'. Holdings set at the '+fmtD(ASOF)+' close. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
+    root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close '+fmtD(ASOF))+'. '+(Object.keys(src).some(function(k){return src[k];})?cacheLabel():'Stocks: last close '+fmtD(ASOF))+'. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
   }
   root.addEventListener('click',function(e){
     var c=e.target.closest('.pf-card'); if(c){var i=c.dataset.i;open[i]=!open[i];render();}
