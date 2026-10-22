@@ -35,3 +35,8 @@
 .xnote{margin:18px 0 0;font-size:.85rem;color:#9aa6bc;opacity:.85}
 .xnote a{color:#9aa6bc;text-decoration:underline;text-underline-offset:2px}
 .xnote a:hover{color:#22d3ee}
+/* static (in-flow) X pill at the end of each article */
+.xpill-wrap{margin:14px 0 4px}
+.xpill{display:inline-flex;align-items:center;gap:8px;padding:4px 4px 4px 6px;border-radius:999px;background:rgba(7,11,24,.88);box-shadow:0 0 0 1px rgba(34,211,238,.35);text-decoration:none}
+.xpill:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
+.xpill .xf-x{width:44px;height:44px;box-shadow:none}
