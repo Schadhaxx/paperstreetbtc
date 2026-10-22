@@ -37,3 +37,4 @@
 /* back-to-top moves to the bottom-left corner so it never collides with the X pill */
 .back-to-top{right:auto;left:calc(1.5rem + env(safe-area-inset-left));bottom:calc(1.5rem + env(safe-area-inset-bottom))}
 @media (max-width:760px){.back-to-top{left:calc(8px + env(safe-area-inset-left));bottom:calc(8px + env(safe-area-inset-bottom))}}
+@media (min-width:641px){.xhd{display:none}}
