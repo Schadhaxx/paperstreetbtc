@@ -53,3 +53,34 @@
 .rules-benchmarks h3{font-size:1.35rem;margin:0 0 10px}
 @media (max-width:640px){.header-inner>.hdr-tick .lp-lab{display:none}}
 @media (max-width:640px){.header .header-inner{gap:8px;padding:0 14px}.mnav-btn{margin-left:2px!important}}
+/* v5: Details + pop-up */
+.prd-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;min-width:44px;padding:0 18px;margin:4px 0 8px;border:1px solid var(--accent,#22d3ee);border-radius:10px;background:rgba(34,211,238,.08);color:var(--accent,#22d3ee);font:600 1rem Outfit,Inter,sans-serif;cursor:pointer}
+.prd-btn:hover{background:rgba(34,211,238,.16)}.prd-btn:focus-visible,.prd-x:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+.prd-btn span{font-size:1.2rem;line-height:1}
+.prd-dim{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:70}
+.prd-card{position:fixed;z-index:71;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 32px));max-height:min(82vh,820px);overflow:auto;overscroll-behavior:contain;background:#0b1224;border:1px solid rgba(34,211,238,.3);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.6);padding:22px 24px 26px}
+.prd-card[hidden],.prd-dim[hidden]{display:none}
+.prd-card h2{margin:0 52px 14px 0}
+.prd-x{position:sticky;top:0;float:right;margin:-6px -8px 0 0;width:44px;height:44px;border-radius:10px;border:1px solid var(--border,#1e293b);background:#0b1224;color:#cbd5e1;font-size:1.1rem;cursor:pointer;z-index:1}
+.prd-card li{scroll-margin-top:70px;transition:background .4s}.prd-card li.prd-hl{background:rgba(34,211,238,.1);border-radius:8px}
+html.prd-lock,html.prd-lock body{overflow:hidden}
+@media (max-width:640px){.prd-card{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));bottom:calc(8px + env(safe-area-inset-bottom));transform:none;width:auto;max-height:none;padding:18px 16px 22px}}
+/* v5: sticky header on phone/tablet (already sticky; make sure nothing disables it) */
+@media (max-width:1000px){.header{position:sticky!important;top:0;z-index:50;padding-top:env(safe-area-inset-top)}}
+/* v5: tap targets */
+.header-inner>.hdr-tick,.mnav-live .hdr-tick{min-height:44px}
+.mnav-btn{min-width:44px;min-height:44px}
+/* v5: scroll reveal (only applied by JS) */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .4s ease,transform .4s ease}
+.rv.rv-in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+/* chart range chips */
+.bc-rgs{display:contents}
+@media (max-width:1000px){
+  .bc-rg{flex-wrap:wrap}
+  .bc-rgs{display:flex;flex:1 1 100%;gap:6px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:0 14px 0 2px;margin:0 -2px;
+    -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent)}
+  .bc-rgs::-webkit-scrollbar{display:none}
+  .bc-rgs button{flex:0 0 auto;scroll-snap-align:center;min-height:44px;min-width:48px;white-space:nowrap}
+  .bc-sc button{min-height:36px}
+}
