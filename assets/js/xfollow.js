@@ -6,7 +6,7 @@
     var hide=inView.xrp;
     if(!hide){
       fab.classList.remove('xhide');var r=fab.getBoundingClientRect();
-      var els=document.querySelectorAll('.card,.cards,table,.pulse,.chart-wrap,canvas,.tracker,[class*="price"]');
+      var els=document.querySelectorAll('.card,.cards,table,.pulse,.chart-wrap,canvas,.tracker,[class*="price"],footer p,footer .ca-leaf-box,footer .footer-logo');
       for(var i=0;i<els.length;i++){var e=els[i];if(e===fab||fab.contains(e)||e.closest('.header,.xfab,.bc-pop,.bc-sheet'))continue;var q=e.getBoundingClientRect();
         if(q.width&&q.height&&q.left<r.right&&q.right>r.left&&q.top<r.bottom&&q.bottom>r.top){hide=true;break;}}
     }

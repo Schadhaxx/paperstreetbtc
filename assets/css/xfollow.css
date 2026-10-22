@@ -3,13 +3,18 @@
 .xbtn:hover{background:#67e8f9}
 .xrp{margin:28px auto 0;max-width:1120px;background:#121a2e;border:1px solid rgba(34,211,238,.45);border-radius:16px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .xrp strong{color:#e8eef7}.xrp p{margin:4px 0 0;color:#9aa6bc;font-size:.9rem}
-.xfab{position:fixed;right:20px;bottom:84px;z-index:60;width:56px;height:56px;border-radius:50%;background:#22d3ee;color:#070b18;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(34,211,238,.35),0 0 0 3px #070b18;transition:opacity .25s,transform .25s}
-.xfab b{position:absolute;right:64px;background:#121a2e;color:#e8eef7;border:1px solid rgba(34,211,238,.4);padding:6px 12px;border-radius:999px;font-size:.8rem;white-space:nowrap}
-.xfab.xhide{opacity:0;transform:scale(.6);pointer-events:none;visibility:hidden;transition:opacity .25s,transform .25s,visibility 0s .25s}
+.xfab{position:fixed;right:calc(12px + env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));z-index:60;display:flex;align-items:center;gap:8px;padding:4px 4px 4px 6px;border-radius:999px;background:rgba(7,11,24,.88);box-shadow:0 0 0 1px rgba(34,211,238,.35);text-decoration:none;transition:opacity .25s,transform .25s}
+.xfab:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
+.xf-owl{width:30px;height:30px;border-radius:999px;overflow:hidden;background:#0d1220;box-shadow:0 0 0 1px rgba(34,211,238,.35);flex:none}.xf-owl img{display:block;width:100%;height:100%}
+.xf-ps{background:#22d3ee;color:#070b18;font-weight:700;font-size:.78rem;line-height:30px;padding:0 10px;border-radius:999px;white-space:nowrap}
+.xf-x{width:56px;height:56px;border-radius:50%;background:#22d3ee;color:#070b18;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(34,211,238,.35),0 0 0 3px #070b18;flex:none}
+.xfab.xhide{opacity:0;transform:scale(.9);pointer-events:none;visibility:hidden;transition:opacity .25s,transform .25s,visibility 0s .25s}
 @media (max-width:760px){
-   .xfab{width:40px;height:40px;right:14px;bottom:76px}
- .xfab::before{content:"";position:absolute;inset:-2px;border-radius:50%}
- .xfab b{display:none}
+ .xrp{flex-direction:column;align-items:stretch;text-align:center}
+ .xrp .xbtn{justify-content:center}
+ .xfab{right:calc(8px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));gap:6px;padding:2px 2px 2px 4px}
+ .xf-owl{width:24px;height:24px}.xf-ps{line-height:24px;font-size:.7rem;padding:0 8px}
+ .xf-x{width:40px;height:40px}
 }
 @media (prefers-reduced-motion:reduce){.xfab,.xfab.xhide{transition:none}}
 /* small black X beside the header title; absolutely placed so nothing else in the header moves */
@@ -18,12 +23,6 @@
 .xhd:hover,.xhd:focus-visible{opacity:1;outline:2px solid #22d3ee;outline-offset:2px}
 .xhd::before{content:"";position:absolute;inset:-11px}
 @media (max-width:640px){.xhd{display:none}}
-/* footer: owl + Paperstreet pill + Follow text as one X link */
-.footer .xrow{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;vertical-align:middle;border-radius:8px}
-.footer .xrow:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
-.xr-logos{display:inline-flex;align-items:center;gap:6px;flex:none}
-.xr-owl{display:inline-block;width:22px;height:22px;border-radius:999px;overflow:hidden;background:#0d1220;box-shadow:0 0 0 1px rgba(34,211,238,.35)}
-.xr-owl img{display:block;width:22px;height:22px}
-.xr-ps{display:inline-block;background:#22d3ee;color:#070b18;font-weight:700;font-size:.72rem;line-height:22px;padding:0 9px;border-radius:999px}
-.xr-t{white-space:nowrap}
-.footer .xrow:hover .xr-t{text-decoration:underline}
+/* back-to-top moves to the bottom-left corner so it never collides with the X pill */
+.back-to-top{right:auto;left:calc(1.5rem + env(safe-area-inset-left));bottom:calc(1.5rem + env(safe-area-inset-bottom))}
+@media (max-width:760px){.back-to-top{left:calc(8px + env(safe-area-inset-left));bottom:calc(8px + env(safe-area-inset-bottom))}}
