@@ -7,7 +7,8 @@ const sleeves = {
 
 // Everything below is computed on page load by PSBook (book.js) from the site's ledger (ledger.js) and its own daily closes (history.json):
 // points = January 1st, 2026 start (2025-12-31 close), each completed month-end session close, and the latest close. No stored NAVs.
-let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null;
+let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null, BTCPROV = false;
+const PROVNOTE = ' · BTC close provisional until 8 PM ET';
 const MN3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildFromBook(B){
   ISO = B.points();
@@ -16,6 +17,9 @@ function buildFromBook(B){
     sleeves[k].now = vals[k].at(-1); sleeves[k].ytd = (sleeves[k].now / 100000 - 1) * 100; });
   Object.keys(B.BM).forEach(k => { benchmarks[k] = ISO.map(d => Math.round(B.bench(k, d) * 100) / 100); });
   LASTC = B.close(B.last);
+  // BTC close provisional: history.json btc_provisional lists the latest date and its UTC-day bar (8 PM ET) has not closed yet
+  BTCPROV = (B.H.btc_provisional || []).indexOf(B.last) >= 0 && Date.now() < Date.parse(B.last + 'T00:00:00Z') + 864e5;
+  if (BTCPROV) benchNames.btc = 'Spot BTC (close provisional until 8 PM ET)';
 }
 const benchColors = { btc: '#64748b', spy: '#94a3b8', qqq: '#cbd5e1', brk: '#a8a29e', gold: '#d4b06a', mstr: '#f97316' };
 const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'Gold (GLD)', mstr: 'MSTR' };
@@ -49,7 +53,7 @@ function applyLive(st){
     liveNow = { sleeves: st.sleeves, bench, btcTime: st.btcTime, stkTime: st.stocksLive ? st.stkTime : null };
   }
   const asof = document.getElementById('ytdAsOf');
-  if (asof) asof.textContent = (st.label || asof.textContent) + (liveNow ? ' (history: month-end closes through ' + st.meLabel + ', plus the ' + labels.at(-1) + ' close)' : '');
+  if (asof) asof.textContent = (st.label || asof.textContent) + (liveNow ? ' (history: month-end closes through ' + st.meLabel + ', plus the ' + labels.at(-1) + ' close)' : '') + (BTCPROV ? PROVNOTE : '');
   if (chart) render();
 }
 window.addEventListener('pslive', e => applyLive(e.detail));
