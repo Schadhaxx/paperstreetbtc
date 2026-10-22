@@ -3,7 +3,7 @@
   var fab=document.querySelector('.xfab');if(!fab)return;
   var inView={},guard=false;
   function upd(){
-    var hide=inView.xban||inView.xrp;
+    var hide=inView.xrp;
     if(!hide){
       fab.classList.remove('xhide');var r=fab.getBoundingClientRect();
       var els=document.querySelectorAll('.card,.cards,table,.pulse,.chart-wrap,canvas,.tracker,[class*="price"]');
@@ -13,8 +13,8 @@
     fab.classList.toggle('xhide',!!hide);
   }
   if('IntersectionObserver'in window){
-    var io=new IntersectionObserver(function(es){es.forEach(function(e){inView[e.target.classList.contains('xban')?'xban':'xrp']=e.isIntersecting;});upd();});
-    ['.xban','#xrp'].forEach(function(s){var el=document.querySelector(s);if(el)io.observe(el);});
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){inView.xrp=e.isIntersecting;});upd();});
+    ['#xrp'].forEach(function(s){var el=document.querySelector(s);if(el)io.observe(el);});
   }
   function onS(){if(guard)return;guard=true;requestAnimationFrame(function(){guard=false;upd();});}
   addEventListener('scroll',onS,{passive:true});addEventListener('resize',onS);upd();

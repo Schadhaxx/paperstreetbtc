@@ -1,19 +1,29 @@
 /* Follow on X: hero banner (opt 3), recap prompt (opt 6), floating button (opt 2/7) */
 .xbtn{display:inline-flex;align-items:center;gap:8px;background:#22d3ee;color:#070b18;font-weight:700;border-radius:999px;padding:8px 16px;text-decoration:none;font-size:.9rem;white-space:nowrap}
 .xbtn:hover{background:#67e8f9}
-.xban{background:linear-gradient(90deg,rgba(34,211,238,.14),rgba(34,211,238,.04));border-top:1px solid rgba(34,211,238,.35);border-bottom:1px solid rgba(34,211,238,.35);padding:22px 0}
-.xban .container{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.xban h3{margin:0;font-size:1.15rem;color:#e8eef7}.xban p{margin:4px 0 0;color:#9aa6bc;font-size:.92rem}
 .xrp{margin:28px auto 0;max-width:1120px;background:#121a2e;border:1px solid rgba(34,211,238,.45);border-radius:16px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .xrp strong{color:#e8eef7}.xrp p{margin:4px 0 0;color:#9aa6bc;font-size:.9rem}
 .xfab{position:fixed;right:20px;bottom:84px;z-index:60;width:56px;height:56px;border-radius:50%;background:#22d3ee;color:#070b18;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(34,211,238,.35),0 0 0 3px #070b18;transition:opacity .25s,transform .25s}
 .xfab b{position:absolute;right:64px;background:#121a2e;color:#e8eef7;border:1px solid rgba(34,211,238,.4);padding:6px 12px;border-radius:999px;font-size:.8rem;white-space:nowrap}
 .xfab.xhide{opacity:0;transform:scale(.6);pointer-events:none;visibility:hidden;transition:opacity .25s,transform .25s,visibility 0s .25s}
 @media (max-width:760px){
- .xban .container,.xrp{flex-direction:column;align-items:stretch;text-align:center}
- .xban .xbtn,.xrp .xbtn{justify-content:center}
- .xfab{width:40px;height:40px;right:14px;bottom:76px}
+   .xfab{width:40px;height:40px;right:14px;bottom:76px}
  .xfab::before{content:"";position:absolute;inset:-2px;border-radius:50%}
  .xfab b{display:none}
 }
 @media (prefers-reduced-motion:reduce){.xfab,.xfab.xhide{transition:none}}
+/* small black X beside the header title; absolutely placed so nothing else in the header moves */
+.header .brand{position:relative}
+.xhd{position:absolute;left:100%;top:50%;margin-left:7px;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;opacity:.92}
+.xhd:hover,.xhd:focus-visible{opacity:1;outline:2px solid #22d3ee;outline-offset:2px}
+.xhd::before{content:"";position:absolute;inset:-11px}
+@media (max-width:640px){.xhd{display:none}}
+/* footer: owl + Paperstreet pill + Follow text as one X link */
+.footer .xrow{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;vertical-align:middle;border-radius:8px}
+.footer .xrow:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
+.xr-logos{display:inline-flex;align-items:center;gap:6px;flex:none}
+.xr-owl{display:inline-block;width:22px;height:22px;border-radius:999px;overflow:hidden;background:#0d1220;box-shadow:0 0 0 1px rgba(34,211,238,.35)}
+.xr-owl img{display:block;width:22px;height:22px}
+.xr-ps{display:inline-block;background:#22d3ee;color:#070b18;font-weight:700;font-size:.72rem;line-height:22px;padding:0 9px;border-radius:999px}
+.xr-t{white-space:nowrap}
+.footer .xrow:hover .xr-t{text-decoration:underline}

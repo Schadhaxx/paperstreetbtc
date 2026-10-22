@@ -11,6 +11,7 @@ sizeTopOwl();
 window.addEventListener('resize', sizeTopOwl);
 window.addEventListener('load', sizeTopOwl);
 window.addEventListener('scroll', () => {
+  if (!topBtn) return;
   const on = window.scrollY > 400;
   topBtn.style.opacity = on ? '1' : '0';
   topBtn.style.pointerEvents = on ? 'auto' : 'none';
