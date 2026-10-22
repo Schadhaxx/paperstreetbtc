@@ -84,3 +84,21 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
   .bc-rgs button{flex:0 0 auto;scroll-snap-align:center;min-height:44px;min-width:48px;white-space:nowrap}
   .bc-sc button{min-height:36px}
 }
+/* v6: Details card shows the rules image */
+.prd-card.has-img{width:min(1060px,calc(100vw - 32px));padding:14px 14px 16px}
+.prd-card.has-img .prd-x{position:absolute;top:10px;right:10px;margin:0;float:none}
+.prd-img{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;touch-action:pan-x pan-y pinch-zoom}
+.prd-img img{display:block;width:100%;max-width:1500px;height:auto;margin:0 auto}
+@media (max-width:1000px){.prd-card.has-img{display:flex;flex-direction:column;justify-content:center;padding:56px 0 12px}
+  .prd-img img{width:900px;max-width:none}}
+.prd-btn-wrap{margin-top:14px}
+#portfolio-rules .rules-benchmarks{margin-top:0}
+/* v6: BTC vs S&P legend */
+.bc-lg{display:flex;align-items:center;gap:8px;margin:0 0 8px;flex-wrap:wrap}
+.bc-k{display:inline-flex;align-items:center;gap:7px;font:600 .78rem Inter,sans-serif;color:#cbd5e1;padding:0 10px;min-height:32px;border-radius:999px;border:1px solid var(--border,#1e293b);background:transparent}
+.bc-k i{display:inline-block;width:14px;height:3px;border-radius:2px}
+.bc-k-btc i{background:#22d3ee}.bc-k-spx i{background:#c4b5fd}
+.bc-k-spx{cursor:pointer}.bc-k-spx:hover{border-color:#c4b5fd}.bc-k-spx:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+.bc-k-spx.off{color:#94a3b8;border-style:dashed}.bc-k-spx.off i{opacity:.35}
+@media (max-width:1000px){.bc-k-spx{min-height:44px}}
+.prd-card.has-img[hidden]{display:none!important}

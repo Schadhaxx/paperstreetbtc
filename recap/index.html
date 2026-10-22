@@ -44,6 +44,11 @@
 </header>
 <main class="c"><div class="eyebrow">Archive</div><h1>Monthly recaps</h1><div id="list"></div></main>
 <script src="months.js"></script>
-<script>document.getElementById('list').innerHTML=RECAP_MONTHS.slice().sort((a,b)=>b.slug.localeCompare(a.slug)).map(m=>`<a href="${m.slug}/index.html"><h2>${m.title}</h2><p>${m.blurb}</p></a>`).join('');</script>
+<script>(function(){var u=function(x){return '$'+x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});},f=function(x){return (x>=0?'+':'')+x.toFixed(2)+'%';},
+c=function(x){return x>=0?'#34d399':'#f87171';},dd=function(d){return new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});};
+document.getElementById('list').innerHTML=RECAP_MONTHS.slice().sort(function(a,b){return b.slug.localeCompare(a.slug);}).map(function(m){var b=m.btc;
+ return '<a class="rc" href="'+m.slug+'/index.html"><h2>'+m.title+'</h2><p>'+m.blurb+'</p>'+(b?'<div class="rc-b"><span>BTC <b>'+u(b.open)+' → '+u(b.close)+'</b> <b style="color:'+c(b.chg)+'">'+f(b.chg)+'</b></span><span>High close '+u(b.hi)+' ('+dd(b.hid)+') · Low close '+u(b.lo)+' ('+dd(b.lod)+')</span></div>':'')
+  +(m.sl?'<div class="rc-s">'+m.sl.map(function(s){return '<span>'+s.n.replace(' Faithful Degen','')+' <b style="color:'+c(s.m)+'">'+f(s.m)+'</b></span>';}).join('')+'</div>':'')+'<span class="rc-go">Full recap →</span></a>';}).join('');})();</script>
+<style>.rc{display:block}.rc-b{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.9rem;color:#cbd5e1;margin:8px 0}.rc-s{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:#94a3b8}.rc-go{display:inline-block;margin-top:10px;color:#22d3ee;font-weight:600;font-size:.9rem}</style>
 <a href="../index.html" style="position:fixed;left:18px;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;background:#f7931a;color:#111;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)">&larr; Home</a>
 <script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js"></script></body></html>
