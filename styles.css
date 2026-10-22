@@ -1362,8 +1362,8 @@ picture{display:contents}picture>source{display:none}
 .pf-card{transition:border-color .2s,box-shadow .2s,transform .2s}
 .pf-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.35),0 0 0 1px rgba(34,211,238,.25)}
 .pf-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-color:var(--accent)}
-.pf-toggle{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:4px 10px;border:1px solid rgba(34,211,238,.4);border-radius:999px;font-size:.75rem;font-weight:600;color:var(--accent);background:rgba(34,211,238,.06);transition:background .2s,border-color .2s}
+.pf-toggle{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin-top:10px;padding:0;border:1px solid rgba(34,211,238,.4);border-radius:999px;font-size:.75rem;font-weight:600;color:var(--accent);background:rgba(34,211,238,.06);transition:background .2s,border-color .2s}
 .pf-card:hover .pf-toggle,.pf-card:focus-visible .pf-toggle{background:rgba(34,211,238,.16);border-color:var(--accent)}
 .pf-chev{transition:transform .25s ease}
-.pf-card.open .pf-chev{transform:rotate(180deg)}
+.pf-card.open .pf-chev{transform:rotate(45deg)}
 @media (prefers-reduced-motion:reduce){.pf-card,.pf-chev{transition:none}.pf-card:hover{transform:none}}
