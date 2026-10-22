@@ -107,3 +107,4 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .ca-leaf-box{position:absolute;right:100%;top:calc(.8em - 29.5px);margin-right:10px;width:52px;height:52px;line-height:0;pointer-events:none}
 .ca-leaf-box svg{display:block;width:52px;height:52px}
 @media (max-width:760px){.ca-leaf-box{position:static;display:block;margin:0 auto 8px}}
+@media (max-width:374px){.header .header-inner{gap:4px;padding:0 10px}.header .mnav-btn{margin-left:0!important}} /* 360px: keeps the menu button inside the screen */

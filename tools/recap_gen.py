@@ -56,7 +56,7 @@ def main():
             print(f'{m} already finalized; nothing to do'); return 0
         mme = re.search(r"const ME='([\d-]+)'", cur).group(1)
         if mme > LASTF:
-            print(f'{m} page is through {mme}, newer than newest final close {LASTF}; leaving it'); return 0
+            print(f'{m} page is through {mme}, which is not a final close yet; rebuilding it on the newest final close {LASTF}')
         src = cur; new_month = False
     else:
         src = open(f'recap/{prev_m}/index.html').read(); new_month = True

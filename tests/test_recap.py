@@ -26,6 +26,11 @@ for m in months:
     pend = (dt.date(y, mo, 1) - dt.timedelta(days=1)).isoformat()
     chk(f'{m} through date {ME} is a history close', ME in C)
     chk(f'{m} through date inside month', ME.startswith(m))
+    chk(f'{m} through date {ME} is a FINAL close (not provisional)', ME not in prov)
+    nav = re.search(r'<nav class="pn"[^>]*>(.*?)</nav>', s, re.S).group(1)
+    i = months.index(m); nxt = months[i + 1] if i + 1 < len(months) else None
+    chk(f'{m} next link -> ' + (nxt or 'All recaps'), (f'href="../{nxt}/index.html"' in nav) if nxt else ('href="../index.html">All recaps' in nav), nav[-120:])
+    if i > 0: chk(f'{m} previous link -> {months[i-1]}', f'href="../{months[i-1]}/index.html"' in nav)
     if mtd: chk(f'{m} only the newest month may be month-to-date', m == months[-1])
     else: chk(f'{m} completed month ends on last session {max(d for d in D if d <= mend)}', ME == max(d for d in D if d <= mend))
     if mtd: chk(f'{m} title states through {ME}', dt.date.fromisoformat(ME).strftime('%b %-d, %Y') in s.split('</title>')[0])

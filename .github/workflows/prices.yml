@@ -9,31 +9,33 @@ on:
         description: 'Run even outside market hours'
         default: 'false'
 permissions: {}
-concurrency:
-  group: prices-data
-  cancel-in-progress: false
 jobs:
   fetch:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    concurrency:
+      group: prices-data
+      cancel-in-progress: false
     permissions:
       contents: write
     outputs:
       final_close: ${{ steps.finalc.outputs.final_close }}
     steps:
-      - name: Market-hours gate (America/New_York, weekdays 03:55-20:15)
+      - name: Market-hours gate (America/New_York, weekdays 03:55-21:30; the evening tail catches the 8 PM ET BTC close)
         id: gate
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force }}" = "true" ]; then echo "run=1" >> $GITHUB_OUTPUT; exit 0; fi
           d=$(TZ=America/New_York date +%u); h=$(TZ=America/New_York date +%-H); m=$(TZ=America/New_York date +%-M)
           mins=$((h*60+m))
-          if [ "$d" -le 5 ] && [ $mins -ge 235 ] && [ $mins -le 1215 ]; then echo "run=1" >> $GITHUB_OUTPUT; else echo "run=0" >> $GITHUB_OUTPUT; echo "Outside window"; fi
+          if [ "$d" -le 5 ] && [ $mins -ge 235 ] && [ $mins -le 1290 ]; then echo "run=1" >> $GITHUB_OUTPUT; else echo "run=0" >> $GITHUB_OUTPUT; echo "Outside window"; fi
       - name: Checkout data branch
         if: steps.gate.outputs.run == '1'
         run: |
           git init -q work && cd work
           git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
-          if git fetch -q --depth 1 origin data; then git checkout -q -b data FETCH_HEAD; else git checkout -q --orphan data; fi
+          for wait in 0 5 15 30; do sleep $wait; if git fetch -q --depth 1 origin data; then git checkout -q -b data FETCH_HEAD; exit 0; fi; echo "fetch failed, retrying"; done
+          # only start a fresh branch if the remote really has no data branch (never on a transient 5xx)
+          if [ -z "$(git ls-remote --heads origin data)" ] && git ls-remote -q origin >/dev/null; then git checkout -q --orphan data; else echo "could not fetch data branch"; exit 1; fi
       - name: Fetch prices
         if: steps.gate.outputs.run == '1'
         env:
@@ -43,9 +45,17 @@ jobs:
           cd work
           python3 - <<'PY'
           import json, os, urllib.request, datetime
-          def get(u):
-              r = urllib.request.Request(u, headers={'User-Agent': 'paperstreetbtc-cache'})
-              with urllib.request.urlopen(r, timeout=15) as f: return json.load(f)
+          def get(u, tries=3):
+              import time as _t, urllib.error as _ue
+              for i in range(tries):
+                  try:
+                      r = urllib.request.Request(u, headers={'User-Agent': 'paperstreetbtc-cache'})
+                      with urllib.request.urlopen(r, timeout=15) as f: return json.load(f)
+                  except _ue.HTTPError as e:
+                      if e.code < 500 or i == tries - 1: raise
+                  except (_ue.URLError, TimeoutError):
+                      if i == tries - 1: raise
+                  _t.sleep(3 * (i + 1))
           now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
           try: old = json.load(open('prices.json'))
           except Exception: old = {}
@@ -134,7 +144,7 @@ jobs:
                       if v is None: raise ValueError(f'missing {k} {d}')
                       row[k] = v; last[k] = v
                   closes[d] = row
-                  if now_utc < _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1): prov.append(d)
+                  if now_utc < _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): prov.append(d)  # final 20 min after the UTC day ends
               return {'v': 1, 'updated': now_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), 'base': base.isoformat(), 'source': 'Yahoo Finance chart API (unadjusted close)',
                       'btc_provisional': prov, 'closes': closes, 'divs': divs}
           def history_stale(h, now_utc):
@@ -143,6 +153,8 @@ jobs:
               today = n.date()
               if n.weekday() < 5 and n.hour >= 16 and max(h['closes']) < today.isoformat(): return True   # a new session has closed
               if h.get('btc_provisional') and now_utc.minute % 30 < 5: return True                       # refresh provisional BTC every ~30 min
+              for d in h.get('btc_provisional') or []:                                                   # its UTC day has ended: re-fetch until final
+                  if now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): return True
               return False
           # --- history end ---
           # history.json: daily closes for the ledger engine (only rebuilt when stale)
@@ -168,7 +180,8 @@ jobs:
         run: |
           cd work
           git show HEAD:history.json > /tmp/hist_old.json 2>/dev/null || echo '{}' > /tmp/hist_old.json
-          curl -fsS "https://raw.githubusercontent.com/${{ github.repository }}/main/recap/months.js?t=$(date +%s)" -o /tmp/months.js || echo "" > /tmp/months.js
+          curl -fsS --retry 3 --retry-delay 5 "https://raw.githubusercontent.com/${{ github.repository }}/main/recap/months.js?t=$(date +%s)" -o /tmp/months.js || echo "" > /tmp/months.js
+          curl -fsS --retry 3 --retry-delay 5 "https://raw.githubusercontent.com/${{ github.repository }}/main/assets/data/btc-daily.json?t=$(date +%s)" | python3 -c "import json,sys;print(json.load(sys.stdin)['end'])" > /tmp/bd_end || echo "" > /tmp/bd_end
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json, re, datetime as dt
           def lastf(p):
@@ -182,9 +195,12 @@ jobs:
           t = re.search(r'through ([A-Z][a-z]{2} \d+, \d{4})', e.group(1)) if e else None
           thru = dt.datetime.strptime(t.group(1), '%b %d, %Y').date().isoformat() if t else ''
           lag = bool(new) and (e is None or ('month to date' in e.group(1) and thru < new))
-          flag = '1' if new and (new > old or lag) else '0'
+          now = dt.datetime.now(dt.timezone.utc); bd_end = open('/tmp/bd_end').read().strip()
+          last_final_day = (now - dt.timedelta(minutes=20)).date() - dt.timedelta(days=1)   # newest UTC day that is final
+          bd_lag = bool(bd_end) and bd_end < last_final_day.isoformat()
+          flag = '1' if (new and (new > old or lag)) or bd_lag else '0'
           print('final_close=' + flag)
-          import sys; print(f'newest final close: before {old or "-"}, now {new or "-"}; recap lagging: {lag}; final_close={flag}', file=sys.stderr)
+          import sys; print(f'newest final close: before {old or "-"}, now {new or "-"}; recap lagging: {lag}; btc-daily end {bd_end} lagging: {bd_lag}; final_close={flag}', file=sys.stderr)
           PY
       - name: Commit
         if: steps.gate.outputs.run == '1'
@@ -201,13 +217,26 @@ jobs:
             echo "push rejected, rebasing and retrying (next wait after ${wait}s)"
             if ! git pull -q --rebase origin data; then
               # newest prices.json (this run) wins; runlog.jsonl keeps both lines via union merge
-              git checkout --theirs prices.json && { git checkout --theirs history.json 2>/dev/null || true; } && git add prices.json runlog.jsonl history.json && GIT_EDITOR=true git rebase --continue || { git rebase --abort; echo "rebase failed"; }
+              # prices.json: this run's snapshot wins. history.json: merge by date (newer 'updated' wins per date, union of dates).
+              git checkout --theirs prices.json
+              if git ls-files -u history.json | grep -q .; then
+                git show :2:history.json > /tmp/h_up.json && git show :3:history.json > /tmp/h_me.json && python3 - <<'PY'
+          import json
+          a, b = json.load(open('/tmp/h_up.json')), json.load(open('/tmp/h_me.json'))
+          new, old = (b, a) if b.get('updated', '') >= a.get('updated', '') else (a, b)
+          m = dict(new); m['closes'] = {**old.get('closes', {}), **new.get('closes', {})}
+          m['divs'] = {k: {**old.get('divs', {}).get(k, {}), **v} for k, v in new.get('divs', {}).items()}
+          m['btc_provisional'] = [d for d in new.get('btc_provisional', []) if d in m['closes']]
+          json.dump(m, open('history.json', 'w'), separators=(',', ':'))
+          PY
+              fi
+              git add prices.json runlog.jsonl history.json && GIT_EDITOR=true git rebase --continue || { git rebase --abort; echo "rebase failed"; }
             fi
           done
           echo "data push failed after 4 tries"; exit 1
 
   recap:
-    # Refreshes the current month's recap page + index card on main once a new FINAL close is in history.json.
+    # Keeps main's recap (current month page + index card) and assets/data/btc-daily.json current from FINAL closes.
     # Separate job: it can never block or fail the price update above.
     needs: fetch
     if: always() && needs.fetch.result == 'success' && needs.fetch.outputs.final_close == '1'
@@ -224,39 +253,52 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Regenerate current month (validated, idempotent)
+      - name: Build in a staging copy, validate and test, then move into place
         id: gen
         run: |
-          git fetch -q origin data && git show FETCH_HEAD:history.json > /tmp/history.json
-          python3 tools/recap_gen.py --history /tmp/history.json --repo .
-          if git diff --quiet -- recap; then echo "No recap change."; echo "changed=0" >> $GITHUB_OUTPUT; exit 0; fi
-          if ! python3 tests/test_recap.py --history /tmp/history.json --repo .; then
-            git checkout -- recap; git clean -fdq recap
-            echo "Recap checks failed; nothing committed, live page left as is."; exit 1
-          fi
-          git status --short
-          echo "changed=1" >> $GITHUB_OUTPUT
+          for wait in 0 5 15 30; do sleep $wait; git fetch -q origin data && break; echo "fetch failed, retrying"; done
+          git show FETCH_HEAD:history.json > /tmp/history.json
+          rm -rf /tmp/stage && cp -a . /tmp/stage
+          ( cd /tmp/stage && python3 tools/btc_daily.py ) || echo "::warning::btc-daily update skipped (see log); recap continues"
+          ( cd /tmp/stage && python3 tools/recap_gen.py --history /tmp/history.json --repo . )
+          ( cd /tmp/stage && python3 tests/test_recap.py --history /tmp/history.json --repo . > /tmp/test.log ) || { tail -40 /tmp/test.log; echo "Checks failed in staging; nothing moved into place, live site unchanged."; exit 1; }
+          tail -1 /tmp/test.log
+          changed=0
+          for f in assets/data/btc-daily.json recap/months.js $(cd /tmp/stage && ls recap/20*/index.html); do
+            if ! cmp -s "/tmp/stage/$f" "$f"; then mkdir -p "$(dirname "$f")"; cp "/tmp/stage/$f" "$f.tmp" && mv "$f.tmp" "$f"; echo "updated $f"; changed=1; fi
+          done
+          echo "changed=$changed" >> $GITHUB_OUTPUT
       - name: Commit and push (fast-forward only, retries)
+        id: push
         if: steps.gen.outputs.changed == '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- recap/
-          git commit -q -m "recap: refresh $(ls -d recap/20*/ | tail -1 | cut -d/ -f2) from history.json $(date -u +%FT%TZ)"
+          git add -- recap/ assets/data/btc-daily.json
+          git commit -q -m "recap/btc-daily: refresh from final closes $(date -u +%FT%TZ)"
           for wait in 0 5 15 30; do
             sleep $wait
-            if git push -q origin HEAD:main; then echo pushed; exit 0; fi
-            echo "push rejected; rebasing onto origin/main"
-            git pull -q --rebase origin main || { git rebase --abort; echo "rebase conflict"; exit 1; }
+            if git push -q origin HEAD:main; then echo "pushed=1" >> $GITHUB_OUTPUT; exit 0; fi
+            echo "push rejected or failed; rebasing onto origin/main"
+            git fetch -q origin main && { git rebase -q origin/main || { git rebase --abort; echo "rebase conflict"; exit 1; }; }
           done
           echo "push failed after 4 tries"; exit 1
-      - name: Trigger Pages build
-        if: steps.gen.outputs.changed == '1'
+      - name: Trigger Pages build (retries)
+        id: pages
+        if: steps.push.outputs.pushed == '1'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh api -X POST repos/${{ github.repository }}/pages/builds --jq .status
-      - name: Failure summary
-        if: failure()
         run: |
-          echo "### Recap refresh failed" >> $GITHUB_STEP_SUMMARY
-          echo "The price update itself succeeded; the recap page on main was left unchanged (last good version stays live). See the step logs above." >> $GITHUB_STEP_SUMMARY
+          for wait in 0 10 30; do sleep $wait; if gh api -X POST repos/${{ github.repository }}/pages/builds --jq .status; then echo "ok=1" >> $GITHUB_OUTPUT; exit 0; fi; done
+          echo "::warning::Pages build request failed 3 times; the change IS on main and will deploy with the next Pages build"; exit 0
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Recap refresh: ${{ job.status }}"
+            if [ "${{ steps.push.outputs.pushed }}" = "1" ]; then
+              echo "- Changed and pushed to main: $(git log -1 --format='%h %s')"
+              [ "${{ steps.pages.outputs.ok }}" = "1" ] && echo "- Pages build requested." || echo "- **Pages build request failed**: the page changed on main but may not be live until the next Pages build."
+            elif [ "${{ steps.gen.outputs.changed }}" = "0" ]; then echo "- No change needed."
+            else echo "- Nothing was pushed; the live recap stays on its last good version. See step logs (failure, timeout or cancel)."; fi
+          } >> $GITHUB_STEP_SUMMARY
