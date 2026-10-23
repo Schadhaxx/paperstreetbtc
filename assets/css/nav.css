@@ -162,3 +162,6 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .prx-alloc .prx-grid{margin:0;grid-template-columns:1fr 1fr}
 .prx-alloc .prx-pf{gap:0}
 @media (max-width:640px){.prx-alloc .prx-grid{grid-template-columns:1fr;margin-left:0}}
+/* CR-012: Gold toggle */
+.bc-k-gld i{background:#facc15}.bc-k-gld:hover{border-color:#facc15}
+.bc-k-gld:not(.off){border-color:#facc15!important}
