@@ -127,7 +127,7 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .prx-kick{display:block;font:600 .72rem Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#22d3ee;margin-bottom:6px}
 .prx-hd h2{margin:0;font:700 clamp(1.5rem,3.2vw,2rem)/1.15 Outfit,sans-serif;letter-spacing:-.01em}
 .prx-rule{display:grid;grid-template-columns:52px 1fr;gap:4px 14px;padding:22px 0;border-bottom:1px solid rgba(255,255,255,.06);scroll-margin-top:20px;transition:background .4s;border-radius:12px}
-.prx-rule:last-child{border-bottom:0;padding-bottom:4px}
+.prx-dca{border-bottom:0}
 .prx-rule.prd-hl{background:rgba(34,211,238,.07)}
 .prx-n{font:700 1.05rem Outfit,sans-serif;color:#22d3ee;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25)}
 .prx-rule h3{margin:7px 0 4px;font:700 1.22rem/1.3 Outfit,sans-serif;color:#fff}
@@ -155,3 +155,10 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
   .prx-grid,.prx-wide{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){.prd-card.prx-card,.prd-dim{transition:none!important}}
+/* CR-010b: dividend lines as list; allocations below rules */
+.prx-routes{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.prx-routes li{position:relative;padding:8px 12px 8px 14px;border-left:3px solid rgba(34,211,238,.5);background:rgba(255,255,255,.03);border-radius:0 8px 8px 0;color:#e8eef7;font-size:.95rem;line-height:1.45}
+.prx-alloc{margin-top:22px;padding-top:22px;border-top:1px solid rgba(255,255,255,.08);scroll-margin-top:20px}
+.prx-alloc .prx-grid{margin:0;grid-template-columns:1fr 1fr}
+.prx-alloc .prx-pf{gap:0}
+@media (max-width:640px){.prx-alloc .prx-grid{grid-template-columns:1fr;margin-left:0}}

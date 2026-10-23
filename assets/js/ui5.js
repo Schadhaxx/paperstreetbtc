@@ -13,14 +13,14 @@ if(d){
   function bar(ws){return '<div class="prx-bar" aria-hidden="true">'+ws.map(function(w){return '<i style="flex:'+w[0]+';background:'+W[w[1]]+'"></i>';}).join('')+'</div><div class="prx-chips">'+ws.map(function(w){return '<span><b style="background:'+W[w[1]]+'"></b>'+w[0]+'% '+w[1]+'</span>';}).join('')+'</div>';}
   function pf(ps,route,wide){return '<div class="prx-pf'+(wide?' prx-wide':'')+'">'+ps.map(function(q){return '<div class="prx-one"><div class="prx-pfn">'+q[0]+'</div>'+bar(q[1])+'</div>';}).join('')+'<div class="prx-route">'+route+'</div></div>';}
   var body=document.createElement('div');body.className='prx';
+  function al(n,ws){return '<div class="prx-pf"><div class="prx-pfn">'+n+'</div>'+bar(ws)+'</div>';}
   body.innerHTML='<header class="prx-hd"><span class="prx-kick">PaperStreet BTC</span><h2 id="prxTitle">Portfolio rules in detail</h2></header>'+
    '<section class="prx-rule" id="prx-weights"><span class="prx-n">01</span><div><h3>Weights are the book.</h3><p>They do not get rewritten mid-year because a tape looks ugly.</p></div></section>'+
-   '<section class="prx-rule" id="prx-dividends"><span class="prx-n">02</span><div><h3>Dividends move on issue day</h3><p>— not when it feels clever.</p><div class="prx-grid">'+
-     pf([['Berkshire Killer',[[40,'BTC'],[20,'STRC'],[30,'TSLA'],[10,'PLTR']]],['Hodler Jam Sandwich',[[70,'BTC'],[10,'STRC'],[20,'MSTR']]]],'Berkshire Killer and Hodler Jam Sandwich: STRC → BTC.',1)+
-     pf([['Hedge Fund Killer',[[55,'BTC'],[35,'MSTR'],[10,'STRC']]]],'Hedge Fund Killer: STRC → BTC and MSTR at 50/50.')+
-     pf([['Saylor Moon',[[50,'MSTR'],[50,'STRC']]]],'Saylor Moon: STRC → MSTR.')+
-   '</div></div></section>'+
-   '<section class="prx-rule prx-dca" id="prx-dca"><span class="prx-n">03</span><div><h3>DCA is monthly.</h3><p>That is the strategy. The point of the book is to stop helping people time the market.</p></div></section>';
+   '<section class="prx-rule" id="prx-dividends"><span class="prx-n">02</span><div><h3>Dividends move on issue day</h3><p>— not when it feels clever.</p><ul class="prx-routes"><li>Berkshire Killer and Hodler Jam Sandwich: STRC → BTC.</li><li>Hedge Fund Killer: STRC → BTC and MSTR at 50/50.</li><li>Saylor Moon: STRC → MSTR.</li></ul></div></section>'+
+   '<section class="prx-rule prx-dca" id="prx-dca"><span class="prx-n">03</span><div><h3>DCA is monthly.</h3><p>That is the strategy. The point of the book is to stop helping people time the market.</p></div></section>'+
+   '<section class="prx-alloc" id="prx-alloc" aria-label="Allocations"><div class="prx-grid">'+
+     al('Berkshire Killer',[[40,'BTC'],[20,'STRC'],[30,'TSLA'],[10,'PLTR']])+al('Hodler Jam Sandwich',[[70,'BTC'],[10,'STRC'],[20,'MSTR']])+
+     al('Hedge Fund Killer',[[55,'BTC'],[35,'MSTR'],[10,'STRC']])+al('Saylor Moon',[[50,'MSTR'],[50,'STRC']])+'</div></section>';
   card.removeAttribute('aria-label');card.setAttribute('aria-labelledby','prxTitle');
   var grab=document.createElement('div');grab.className='prx-grab';grab.setAttribute('aria-hidden','true');
   card.appendChild(grab);card.appendChild(x);card.appendChild(body);card.appendChild(d);d.hidden=true;document.body.appendChild(card);d.classList.add('in-card');card.classList.add('prx-card');
