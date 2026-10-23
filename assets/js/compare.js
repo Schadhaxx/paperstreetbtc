@@ -42,11 +42,30 @@ sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;on.has(k)?(on.size>1&&on.
 if(document.getElementById('pvCalc')){
 // calculator
 const cS=document.getElementById('pvS');cS.innerHTML=Object.keys(L.sleeves).map(k=>`<option value="${k}">${L.sleeves[k].n}</option>`).join('');document.getElementById('pvD').max=LAST;
-function calc(e){e&&e.preventDefault();const k=cS.value,a=+document.getElementById('pvA').value||0;let d=document.getElementById('pvD').value||'2026-01-01';if(d<'2026-01-01')d='2026-01-01';
- const s0=d==='2026-01-01'?L.base:(lastOn(d)||L.base);const v=VAL[k],sv=a*v[LAST]/v[s0],bv=a*CL[LAST].BTC/CL[s0].BTC;
+/* CR-005: extra lump-sum contributions, each bought at its date's daily close at the sleeve's target weights; STRC dividends on those shares are reinvested like the book */
+const cW=document.getElementById('pvX'),cAdd=document.getElementById('pvXAdd');
+function lumpVal(k,d,c){const s=L.sleeves[k],h={},b=CL[d];for(const a in s.w)h[a]=c*s.w[a]/b[a];let rec=[];
+ const evs=L.strc.map(([ex,pay,amt])=>({ex:firstOn(ex),pay:firstOn(pay),amt})).filter(e=>e.ex&&e.ex>d&&e.ex<=LAST);
+ for(const x of D){if(x<=d)continue;for(const e of evs)if(e.ex===x){e.cash=h.STRC*e.amt;rec.push(e)}
+  rec=rec.filter(e=>{if(e.pay&&e.pay===x){for(const a in s.div)h[a]=(h[a]||0)+e.cash*s.div[a]/CL[x][a];return false}return true})}
+ let t=rec.reduce((y,e)=>y+e.cash,0);for(const a in h)t+=h[a]*CL[LAST][a];return t}
+function addRow(amt,dt){const r=document.createElement('div');r.className='pvx-row';
+ r.innerHTML='<label>Amount (USD)<input type="number" class="pvx-a" min="1" step="1" inputmode="numeric" value="'+(amt||1000)+'"></label><label>Date<input type="date" class="pvx-d" min="2026-01-01" max="'+LAST+'" value="'+(dt||LAST)+'"></label><button type="button" class="pvx-rm" aria-label="Remove contribution">✕</button><p class="note pvx-n"></p>';
+ r.querySelector('.pvx-rm').onclick=()=>{r.remove();calc()};r.querySelectorAll('input').forEach(i=>i.oninput=calc);cW.appendChild(r);calc()}
+cAdd.onclick=()=>addRow();
+function calc(e){e&&e.preventDefault();const k=cS.value;let a=+document.getElementById('pvA').value||0;let d=document.getElementById('pvD').value||'2026-01-01';if(d<'2026-01-01')d='2026-01-01';
+ const s0=d==='2026-01-01'?L.base:(lastOn(d)||L.base);const v=VAL[k];let sv=a*v[LAST]/v[s0],bv=a*CL[LAST].BTC/CL[s0].BTC,inv=a,nx=0;
+ cW.querySelectorAll('.pvx-row').forEach(r=>{const c=+r.querySelector('.pvx-a').value||0,dd=r.querySelector('.pvx-d').value,n=r.querySelector('.pvx-n');
+  if(!(c>0)){n.textContent='Enter an amount above $0 to include this contribution.';return}
+  if(!dd){n.textContent='Pick a date to include this contribution.';return}
+  if(dd<'2026-01-01'){n.textContent='Data starts Jan 1, 2026; pick a later date. Not included.';return}
+  const bd=firstOn(dd);if(!bd){n.textContent='No daily close yet for '+dd+' (latest close is '+LAST+'). Not included.';return}
+  const lv=lumpVal(k,bd,c);sv+=lv;bv+=c*CL[LAST].BTC/CL[bd].BTC;inv+=c;nx++;
+  n.textContent=(bd!==dd?dd+' has no close (market closed); bought at the next close, '+bd+'. ':'Bought at the '+bd+' daily close. ')+'Worth '+usd(lv)+' today.'});
+ a=inv;
  document.getElementById('pvRS').textContent=usd(sv);document.getElementById('pvRSp').innerHTML=`<span class="${cls(sv-a)}">${fp(pct(a,sv))}</span>`;
  document.getElementById('pvRB').textContent=usd(bv);document.getElementById('pvRBp').innerHTML=`<span class="${cls(bv-a)}">${fp(pct(a,bv))}</span>`;
- document.getElementById('pvRN').textContent=`Bought at the ${s0} close, valued at the ${LAST} close. ${sv>=bv?'Beat':'Trailed'} spot BTC by ${usd(Math.abs(sv-bv))}.`}
+ document.getElementById('pvRN').textContent=`Bought at the ${s0} close${nx?` plus ${nx} extra contribution${nx>1?'s':''} (each at its date's daily close, target weights), total invested ${usd(inv)}`:''}, valued at the ${LAST} close. ${sv>=bv?'Beat':'Trailed'} spot BTC by ${usd(Math.abs(sv-bv))}.`}
 document.getElementById('pvCalc').onsubmit=calc;['pvS','pvD','pvA'].forEach(i=>document.getElementById(i).oninput=calc);calc();
 
 }

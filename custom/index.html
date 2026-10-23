@@ -17,6 +17,7 @@
 .pv .big{font-size:1.6rem;font-weight:600}
 @media(max-width:700px){.pv .chartbox{height:300px}.pv-calc,.pv .res{grid-template-columns:1fr}}
 </style><link rel="stylesheet" href="../assets/css/xfollow.css">
+<style>.pvx{border:1px solid var(--border,#1e293b);border-radius:10px;padding:10px 12px;margin:4px 0 0;min-width:0}.pvx legend{padding:0 6px;font-weight:600}.pvx-row{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;align-items:end;margin:8px 0}.pvx-row label{min-width:0}.pvx-row input{width:100%;box-sizing:border-box}.pvx-rm{width:44px;height:44px;border-radius:10px;border:1px solid var(--border,#1e293b);background:transparent;color:#cbd5e1;cursor:pointer}.pvx-n{grid-column:1/-1;margin:0}#pvXAdd{min-height:44px}</style>
 </head><body>
 <header class="header">
   <div class="container header-inner">
@@ -53,7 +54,7 @@
     <h1 style="margin-bottom:8px">Custom</h1>
     <p class="section-lead">Pick a sleeve, a start date and an amount. See what it is worth today against spot BTC. Computed from the site's daily closes and dividend ledger.</p>
     <div class="pv-calc">
-      <form id="pvCalc"><label>Sleeve<select id="pvS"></select></label><label>Start date (Jan 1, 2026 or later)<input type="date" id="pvD" min="2026-01-01" value="2026-01-01"></label><label>Amount (USD)<input type="number" id="pvA" min="1" step="1" value="10000"></label></form>
+      <form id="pvCalc"><label>Sleeve<select id="pvS"></select></label><label>Start date (Jan 1, 2026 or later)<input type="date" id="pvD" min="2026-01-01" value="2026-01-01"></label><label>Amount (USD)<input type="number" id="pvA" min="1" step="1" value="10000"></label><fieldset class="pvx"><legend>Extra contributions (optional)</legend><p class="note">Each one buys the sleeve at its target weights at that date's daily close.</p><div id="pvX"></div><button type="button" class="bench-btn" id="pvXAdd">+ Add contribution</button></fieldset></form>
       <div><div class="res"><div><div class="note">Sleeve today</div><div class="big" id="pvRS">–</div><div id="pvRSp" class="note"></div></div><div><div class="note">Spot BTC today</div><div class="big" id="pvRB">–</div><div id="pvRBp" class="note"></div></div></div><p class="note" id="pvRN" style="margin-top:8px"></p></div>
     </div>
   </div>
