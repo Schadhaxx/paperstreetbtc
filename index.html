@@ -41,7 +41,7 @@
       <a href="#rules">Rules</a>
       <a href="#articles">Articles</a>
       <a href="compare/index.html">Compare</a>
-      <a href="custom/index.html">Custom</a>
+      <a href="custom/index.html">Tools</a>
       <a href="recap/index.html">Monthly recap</a>
     </nav>
     <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
@@ -53,7 +53,7 @@
     <a href="#rules">Rules</a>
     <a href="#articles">Articles</a>
     <a href="compare/index.html">Compare</a>
-    <a href="custom/index.html">Custom</a>
+    <a href="custom/index.html">Tools</a>
     <a href="recap/index.html">Monthly recap</a>
   </div>
 </header>
@@ -226,30 +226,6 @@
 
     <p><a href="assets/PaperStreet_sleeves.pdf" download class="pdf-link">Download one-page sleeves PDF</a></p>
     <p class="note-small">Source: Paperstreet model NAV, $100k start January 1st, 2026; values are computed from the site's own ledger and daily closes through the latest close, plus a live last point priced from CoinGecko (BTC) and Finnhub (stocks); buy-and-hold with STRC dividends reinvested on issue day. Benchmarks are buy-and-hold total return from the same model data; BRK.B and Gold (GLD) from Finnhub live, daily closes from the site's own history (Yahoo).</p>
-  </div>
-</section>
-<section id="copy-weights" class="section">
-  <div class="container">
-    <h2>Copy the weights</h2>
-    <p class="section-lead">Plain text. Paste into a note or spreadsheet.</p>
-    <pre class="weights-pre" id="weightsText">Berkshire Killer
-40% BTC · 20% STRC · 30% TSLA · 10% PLTR
-Continuous BTC stacking. STRC → BTC on issue day.
-
-Hodler Jam Sandwich
-70% BTC · 10% STRC · 20% MSTR
-Continuous BTC stacking. STRC → BTC on issue day.
-
-Hedge Fund Killer
-55% BTC · 35% MSTR · 10% STRC
-Continuous BTC and MSTR stacking. STRC → 50/50 BTC and MSTR on issue day.
-
-Saylor Moon
-50% MSTR · 50% STRC
-Continuous MSTR stacking. STRC → MSTR on issue day.
-
-Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the hurdle. Not financial advice.</pre>
-    <button class="copy-btn" id="copyWeights">Copy weights</button>
   </div>
 </section>
 
@@ -498,7 +474,7 @@ Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the
 <script src="assets/js/s3.js" defer></script>
 
 
-<script src="assets/js/s4.js" defer></script>
+<script>if(location.hash==="#copy-weights")location.replace("custom/index.html#weights");</script>
 
 <script src="assets/js/s5.js" defer></script>
 <script src="assets/js/s6.js" defer></script>

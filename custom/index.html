@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Custom · Paperstreet BTC</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tools · Paperstreet BTC</title>
 <link rel="icon" href="../favicon.ico" sizes="any">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
@@ -16,6 +16,7 @@
 .pv .res{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pv .res>div{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
 .pv .big{font-size:1.6rem;font-weight:600}
 @media(max-width:700px){.pv .chartbox{height:300px}.pv-calc,.pv .res{grid-template-columns:1fr}}
+.wt-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.wt-foot{margin:16px 0 14px}@media(max-width:700px){.wt-cards{grid-template-columns:1fr}}
 </style><link rel="stylesheet" href="../assets/css/xfollow.css">
 <style>.pvx{border:1px solid var(--border,#1e293b);border-radius:10px;padding:10px 12px;margin:4px 0 0;min-width:0}.pvx legend{padding:0 6px;font-weight:600}.pvx-row{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;align-items:end;margin:8px 0}.pvx-row label{min-width:0}.pvx-row input{width:100%;box-sizing:border-box}.pvx-rm{width:44px;height:44px;border-radius:10px;border:1px solid var(--border,#1e293b);background:transparent;color:#cbd5e1;cursor:pointer}.pvx-n{grid-column:1/-1;margin:0}#pvXAdd{min-height:44px}</style>
 </head><body>
@@ -33,7 +34,7 @@
       <a href="../index.html#rules">Rules</a>
       <a href="../index.html#articles">Articles</a>
       <a href="../compare/index.html">Compare</a>
-      <a href="../custom/index.html">Custom</a>
+      <a href="../custom/index.html">Tools</a>
       <a href="../recap/index.html">Monthly recap</a>
     </nav>
     <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
@@ -45,21 +46,69 @@
     <a href="../index.html#rules">Rules</a>
     <a href="../index.html#articles">Articles</a>
     <a href="../compare/index.html">Compare</a>
-    <a href="../custom/index.html">Custom</a>
+    <a href="../custom/index.html">Tools</a>
     <a href="../recap/index.html">Monthly recap</a>
   </div>
 </header>
 <main><section id="custom" class="section pv" style="padding-top:40px">
   <div class="container">
-    <h1 style="margin-bottom:8px">Custom</h1>
+    <h1 style="margin-bottom:8px">Tools</h1>
     <p class="section-lead">Pick a sleeve, a start date and an amount. See what it is worth today against spot BTC. Computed from the site's daily closes and dividend ledger.</p>
     <div class="pv-calc">
       <form id="pvCalc"><label>Sleeve<select id="pvS"></select></label><label>Start date (Jan 1, 2026 or later)<input type="date" id="pvD" min="2026-01-01" value="2026-01-01"></label><label>Amount (USD)<input type="number" id="pvA" min="1" step="1" value="10000"></label><fieldset class="pvx"><legend>Extra contributions (optional)</legend><p class="note">Each one buys the sleeve at its target weights at that date's daily close.</p><div id="pvX"></div><button type="button" class="bench-btn" id="pvXAdd">+ Add contribution</button></fieldset></form>
       <div><div class="res"><div><div class="note">Sleeve today</div><div class="big" id="pvRS">–</div><div id="pvRSp" class="note"></div></div><div><div class="note">Spot BTC today</div><div class="big" id="pvRB">–</div><div id="pvRBp" class="note"></div></div></div><p class="note" id="pvRN" style="margin-top:8px"></p></div>
     </div>
   </div>
-</section><p class="xsub"><a href="https://x.com/PaperstreetBTC" target="_blank" rel="noreferrer noopener" aria-label="Follow @PaperstreetBTC on X"><span class="xsub-i"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>Follow @PaperstreetBTC on X</a></p>
+</section>
+<section id="weights" class="section">
+  <div class="container">
+    <h2>Copy the weights</h2>
+    <p class="section-lead">Plain text. Paste into a note or spreadsheet.</p>
+    <div class="cards wt-cards">
+        <article class="card">
+          <div class="card-header"><h4>Berkshire Killer</h4></div>
+          <p class="weights">40% BTC · 20% STRC · 30% TSLA · 10% PLTR</p>
+          <p>Continuous BTC stacking. STRC → BTC on issue day.</p>
+        </article>
+        <article class="card">
+          <div class="card-header"><h4>Hodler Jam Sandwich</h4></div>
+          <p class="weights">70% BTC · 10% STRC · 20% MSTR</p>
+          <p>Continuous BTC stacking. STRC → BTC on issue day.</p>
+        </article>
+        <article class="card">
+          <div class="card-header"><h4>Hedge Fund Killer</h4></div>
+          <p class="weights">55% BTC · 35% MSTR · 10% STRC</p>
+          <p>Continuous BTC and MSTR stacking. STRC → 50/50 BTC and MSTR on issue day.</p>
+        </article>
+        <article class="card">
+          <div class="card-header"><h4>Saylor Moon</h4></div>
+          <p class="weights">50% MSTR · 50% STRC</p>
+          <p>Continuous MSTR stacking. STRC → MSTR on issue day.</p>
+        </article>
+    </div>
+    <p class="note wt-foot">Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the hurdle. Not financial advice.</p>
+    <pre class="weights-pre" id="weightsText" hidden>Berkshire Killer
+40% BTC · 20% STRC · 30% TSLA · 10% PLTR
+Continuous BTC stacking. STRC → BTC on issue day.
+
+Hodler Jam Sandwich
+70% BTC · 10% STRC · 20% MSTR
+Continuous BTC stacking. STRC → BTC on issue day.
+
+Hedge Fund Killer
+55% BTC · 35% MSTR · 10% STRC
+Continuous BTC and MSTR stacking. STRC → 50/50 BTC and MSTR on issue day.
+
+Saylor Moon
+50% MSTR · 50% STRC
+Continuous MSTR stacking. STRC → MSTR on issue day.
+
+Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the hurdle. Not financial advice.</pre>
+    <button class="copy-btn" id="copyWeights">Copy weights</button>
+  </div>
+</section>
+<p class="xsub"><a href="https://x.com/PaperstreetBTC" target="_blank" rel="noreferrer noopener" aria-label="Follow @PaperstreetBTC on X"><span class="xsub-i"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>Follow @PaperstreetBTC on X</a></p>
 </main>
 <script src="../assets/vendor/chart.umd.min.js"></script>
-<script src="../assets/js/compare.js"></script>
+<script src="../assets/js/compare.js"></script><script src="../assets/js/s4.js"></script>
 <script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=cr012"></script></body></html>
