@@ -72,8 +72,8 @@
     var g=document.getElementById('pulseGrid'); if(!g) return;
     var h='';
     ORDER.forEach(function(n){var p=PF.filter(function(x){return x.name===n;})[0],r=compute(p),ok=mode!=='me'&&BK.nav(p.key,PRIOR)>0;
-      h+='<a class="pulse-card" href="#tracker"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.v/BK.nav(p.key,PRIOR)-1)+' today':'—')+'</span></a>';});
-    g.innerHTML=h;
+      h+='<a class="pulse-card" href="#tracker" data-k="'+p.key+'"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.v/BK.nav(p.key,PRIOR)-1)+' today':'—')+'</span></a>';});
+    patch(g,h,'.pulse-card','k',['.pulse-val','.pulse-chg']);
     var stk=Object.keys(src).some(function(k){return src[k];});
     if(mode==='me'){document.getElementById('pulseNote').textContent=asOfLabel()+' · all prices at month-end close';return;}
     document.getElementById('pulseNote').textContent=asOfLabel()+' · BTC: '+(live.BTC?btcSrc+' (every 60s)'+(btcChg!==null?', move = since daily close':', move since daily close n/a'):'last close')+' · stocks: '+(stk?'cached (every 5 min), move vs prior close':'last close, move 0')+(cacheLabel()?' · '+cacheLabel():'');
@@ -84,6 +84,16 @@
       stocksLive:['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!src[k];}),stkTime:stkTime,label:asOfLabel(),meLabel:meLabel(),ts:lastTs,mode:mode,meDate:ME_D,me:ME};
     PF.forEach(function(p,i){o.sleeves[KEYS[i]]=compute(p).v;});return o;}
   window.PSLive={state:liveState};
+  /* Update text/numbers in place, matching cards by their data key (not position). Rebuild only if the set of keys changes.
+     Existing nodes keep focus, hover, open state and in-flight taps. */
+  function patch(host,html,sel,key,parts){var t=document.createElement('div');t.innerHTML=html;var nw=t.querySelectorAll(sel),cur={},ks=[],nk=[];
+    [].forEach.call(host.querySelectorAll(sel),function(c){cur[c.dataset[key]]=c;ks.push(c.dataset[key]);});
+    [].forEach.call(nw,function(c){nk.push(c.dataset[key]);});
+    if(ks.join('|')!==nk.join('|')){host.innerHTML=html;return;}
+    [].forEach.call(nw,function(b){var a=cur[b.dataset[key]];parts.forEach(function(q){var x=a.querySelector(q),y=b.querySelector(q);if(x&&y&&x.innerHTML!==y.innerHTML)x.innerHTML=y.innerHTML;});});}
+  var RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function toggle(c){var i=c.dataset.i;open[i]=!open[i];c.classList.toggle('open',!!open[i]);c.setAttribute('aria-expanded',open[i]?'true':'false');
+    if(open[i])setTimeout(function(){var r=c.getBoundingClientRect();if(r.bottom>window.innerHeight||r.top<0)c.scrollIntoView({behavior:RM?'auto':'smooth',block:'nearest'});},RM?0:180);}
   function render(){
     renderPulse();
     try{window.dispatchEvent(new CustomEvent('pslive',{detail:liveState()}));}catch(e){}
@@ -98,16 +108,15 @@
         '<span class="pf-sub">since '+fmtD(PRIOR)+' '+pct(v/BK.nav(p.key,PRIOR)-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
         '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p><span class="pf-toggle" aria-hidden="true"><svg class="pf-chev" viewBox="0 0 16 16" width="16" height="16"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>';
     });
-    root.querySelector('.pf-grid').innerHTML=html;
+    patch(root.querySelector('.pf-grid'),html,'.pf-card','i',['.pf-val','.pf-sub','.pf-tbl','.pf-start']);
     root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close '+fmtD(ASOF))+'. '+(Object.keys(src).some(function(k){return src[k];})?cacheLabel():'Stocks: last close '+fmtD(ASOF))+'. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
   }
   root.addEventListener('click',function(e){
-    var c=e.target.closest('.pf-card'); if(c){var i=c.dataset.i;open[i]=!open[i];render();}
+    var c=e.target.closest('.pf-card'); if(c)toggle(c);
   });
   root.addEventListener('keydown',function(e){
     var c=e.target.closest&&e.target.closest('.pf-card'); if(!c||(e.key!=='Enter'&&e.key!==' '))return;
-    e.preventDefault(); var i=c.dataset.i; open[i]=!open[i]; render();
-    var n=root.querySelector('.pf-card[data-i="'+i+'"]'); if(n)n.focus();
+    e.preventDefault(); toggle(c);
   });
   window.addEventListener('btcprice',function(e){live.BTC=e.detail.usd;btcChg=(typeof e.detail.chg==='number')?e.detail.chg:btcChg;btcTime=e.detail.time;btcSrc=e.detail.src||'CoinGecko';lastTs=Date.now();render();});
   document.querySelectorAll('#modeToggle .bench-btn').forEach(function(b){b.addEventListener('click',function(){mode=b.dataset.mode;
