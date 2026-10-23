@@ -108,3 +108,7 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .ca-leaf-box svg{display:block;width:52px;height:52px}
 @media (max-width:760px){.ca-leaf-box{position:static;display:block;margin:0 auto 8px}}
 @media (max-width:374px){.header .header-inner{gap:4px;padding:0 10px}.header .mnav-btn{margin-left:0!important}} /* 360px: keeps the menu button inside the screen */
+
+/* CR-002: bigger, more readable rules pop-up */
+.prd-card.has-img{width:min(1500px,calc(100vw - 24px));max-height:94vh}
+@media (max-width:1000px){.prd-img img{width:1250px}}
