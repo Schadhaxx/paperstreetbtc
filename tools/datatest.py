@@ -2,12 +2,18 @@
 """PaperStreet live data test (browser). Checks every recap page's sleeve cards, dividends and BTC table, and the
 recap index, against history.json, using the 'through' date each page states (month-to-date pages included).
 usage: python3 tools/datatest.py [BASE_URL]   (needs: pip install playwright; a Chromium/Chrome)"""
-import json, re, sys, os, calendar, datetime as dt, urllib.request
+import json, re, sys, os, calendar, datetime as dt, urllib.request, urllib.error
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from recap_lib import SL, ledger, strc_from_ledger, expected_months, page_dates, pc, fetch_json
 from playwright.sync_api import sync_playwright
 BASE = (sys.argv[1] if len(sys.argv) > 1 else 'https://paperstreetbtc.com').rstrip('/')
-H = json.load(urllib.request.urlopen(urllib.request.Request('https://api.github.com/repos/Schadhaxx/paperstreetbtc/contents/history.json?ref=data', headers={'User-Agent': 'paperstreet-test', 'Accept': 'application/vnd.github.raw', 'Cache-Control': 'no-cache'}), timeout=30)); C = H['closes']; D = sorted(C)  # CR-007: API read bypasses raw.githubusercontent CDN cache
+def fresh_history():  # CR-007: bypass the raw.githubusercontent CDN cache (API read first; if rate-limited, cache-busted no-cache raw read)
+    for u, h in [('https://api.github.com/repos/Schadhaxx/paperstreetbtc/contents/history.json?ref=data', {'Accept': 'application/vnd.github.raw'}),
+                 ('https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/history.json?t=%d' % dt.datetime.now().timestamp(), {})]:
+        try: return json.load(urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'paperstreet-test', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache', **h}), timeout=30))
+        except urllib.error.HTTPError: continue
+    raise SystemExit('history.json unavailable')
+H = fresh_history(); C = H['closes']; D = sorted(C)  # CR-007: API read bypasses raw.githubusercontent CDN cache
 BD = dict(fetch_json(BASE + '/assets/data/btc-daily.json')['d'])
 for d in D: BD.setdefault(d, C[d]['BTC'])
 get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'paperstreet-test'}), timeout=30).read().decode()
@@ -40,12 +46,12 @@ with sync_playwright() as p:
         bo = BD[max(d for d in BD if d <= pend)]
         R += [(m, 'BTC table', 'open', bo, num(cells[0]), 0.006), (m, 'BTC table', 'close', BD[ds_[-1]], num(cells[1]), 0.006),
               (m, 'BTC table', 'high', max(BD[d] for d in ds_), num(cells[3].split('·')[0]), 0.006), (m, 'BTC table', 'low', min(BD[d] for d in ds_), num(cells[4].split('·')[0]), 0.006)]
-    pg.goto(BASE + '/recap/'); pg.wait_for_timeout(1200)
     pg.goto(BASE + '/'); pg.wait_for_timeout(6000)  # CR-009: Pulse move must equal the tracker card 'since <prior close>' move
     pv = pg.evaluate("[...document.querySelectorAll('#pulseGrid .pulse-card')].map(c=>[c.querySelector('.pulse-name').textContent,c.querySelector('.pulse-chg').textContent])")
     cv = dict(pg.evaluate("[...document.querySelectorAll('.pf-card')].map(c=>[c.querySelector('.pf-name').textContent,c.querySelector('.pf-sub span').textContent])"))
     for n, t in pv: R.append(('home', n, 'Pulse % = card since-close %', num(cv.get(n)), num(t), 0))
     R.append(('home', 'pulse', 'note says move = since daily close', 1, 1 if 'since daily close' in pg.inner_text('#pulseNote') and '24h' not in pg.inner_text('#pulseNote') else 0, 0))
+    pg.goto(BASE + '/recap/'); pg.wait_for_timeout(1200)
     R.append(('index', 'cards', 'count (= months Jan..newest final close)', len(months), pg.evaluate("document.querySelectorAll('#list a.rc').length"), 0))
     b.close()
 F = [r for r in R if r[4] is None or abs(r[3] - r[4]) > r[5]]
