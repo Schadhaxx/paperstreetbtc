@@ -104,13 +104,14 @@ function draw(){if(!DATA||!window.Chart)return;head();var d=series(),big=/^(5Y|1
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});}
 function needChart(){return window.Chart?Promise.resolve():new Promise(function(ok,no){var s=document.createElement('script');s.src=U('../vendor/chart.umd.min.js');s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
 function open(from){if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
-  rng='1M';LOG=false;dim.hidden=false;dlg.hidden=false;place();head();[pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
+  rng='1M';LOG=false;dim.hidden=false;dlg.hidden=false;place();head();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
   $('bcRr').textContent='Loading…';$('bcX').focus();
   Promise.all([getData(),needChart()]).then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
 function close(){if(!dlg||dlg.hidden)return;dlg.hidden=true;dim.hidden=true;[pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
   var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();}
 pill.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();dlg&&!dlg.hidden?close():open(pill);});
 if(mp)mp.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();open(pill);});
+var bc=document.getElementById('btcLive');if(bc){var bo=function(e){e.preventDefault();e.stopPropagation();dlg&&!dlg.hidden?close():(open(bc),bc.setAttribute('aria-expanded','true'));};bc.addEventListener('click',bo);bc.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar')bo(e);});}
 })();
 /* re-land on #section after async content shifts layout (e.g. /#benchmarks, /#rules from other pages) */
 window.addEventListener('load',function(){var h=location.hash.slice(1);if(!h)return;var el=document.getElementById(h);if(!el)return;

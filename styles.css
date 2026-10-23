@@ -1176,6 +1176,10 @@ h2 {
 
 /* Live BTC widget */
 .btc-live{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:12px 0 18px;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:.95rem;color:var(--muted)}
+#btcLive[role=button]{cursor:pointer;transition:border-color .15s,background-color .15s,transform .1s;-webkit-tap-highlight-color:transparent}
+#btcLive[role=button]:hover{border-color:var(--orange)}
+#btcLive[role=button]:active{transform:scale(.99)}
+#btcLive[role=button]:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
 .btc-live-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
 .btc-live.err .btc-live-dot{background:var(--orange);box-shadow:none}
 .btc-live-label{font-weight:600;color:var(--orange);text-transform:uppercase;letter-spacing:.06em;font-size:.8rem}
