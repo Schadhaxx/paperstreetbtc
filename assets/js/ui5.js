@@ -1,5 +1,7 @@
 /* v5 UI: Rules "Details +" pop-up card, scroll-reveal for homepage sections. Without JS the detail rules stay inline and nothing is hidden. */
 (function(){
+var W={BTC:'#f7931a',MSTR:'#22d3ee',STRC:'#a78bfa',TSLA:'#f43f5e',PLTR:'#94a3b8'};
+function bar(ws){return '<div class="prx-bar" aria-hidden="true">'+ws.map(function(w){return '<i style="flex:'+w[0]+';background:'+W[w[1]]+'"></i>';}).join('')+'</div><div class="prx-chips">'+ws.map(function(w){return '<span><b style="background:'+W[w[1]]+'"></b>'+w[0]+'% '+w[1]+'</span>';}).join('')+'</div>';}
 var d=document.getElementById('prDetails');
 if(d){
   var host=d.parentNode,btn=document.createElement('button');btn.type='button';btn.className='prd-btn';btn.id='prBtn';
@@ -9,8 +11,6 @@ if(d){
   var dim=document.createElement('div');dim.className='prd-dim';dim.hidden=true;document.body.appendChild(dim);
   var card=document.createElement('div');card.className='prd-card';card.hidden=true;card.setAttribute('role','dialog');card.setAttribute('aria-modal','true');card.setAttribute('aria-label','Portfolio rules in detail');card.tabIndex=-1;
   var x=document.createElement('button');x.type='button';x.className='prd-x';x.setAttribute('aria-label','Close');x.textContent='✕';
-  var W={BTC:'#f7931a',MSTR:'#22d3ee',STRC:'#a78bfa',TSLA:'#f43f5e',PLTR:'#94a3b8'};
-  function bar(ws){return '<div class="prx-bar" aria-hidden="true">'+ws.map(function(w){return '<i style="flex:'+w[0]+';background:'+W[w[1]]+'"></i>';}).join('')+'</div><div class="prx-chips">'+ws.map(function(w){return '<span><b style="background:'+W[w[1]]+'"></b>'+w[0]+'% '+w[1]+'</span>';}).join('')+'</div>';}
   function pf(ps,route,wide){return '<div class="prx-pf'+(wide?' prx-wide':'')+'">'+ps.map(function(q){return '<div class="prx-one"><div class="prx-pfn">'+q[0]+'</div>'+bar(q[1])+'</div>';}).join('')+'<div class="prx-route">'+route+'</div></div>';}
   var body=document.createElement('div');body.className='prx';
   function al(n,ws){return '<div class="prx-pf"><div class="prx-pfn">'+n+'</div>'+bar(ws)+'</div>';}
@@ -47,4 +47,25 @@ if('IntersectionObserver' in window&&!(window.matchMedia&&matchMedia('(prefers-r
   els.forEach(function(s){s.classList.add('rv');io.observe(s);});
   setTimeout(function(){els.forEach(function(s){var r=s.getBoundingClientRect();if(r.bottom<0)s.classList.add('rv-in');});},50);
 }
+
+/* CR-013: tap a sleeve's weights line to pop up its allocation bar (reuses the rules pop-up bar + chips) */
+(function(){var ws=[].slice.call(document.querySelectorAll('#sleeves p.weights'));if(!ws.length)return;
+  var dim=document.createElement('div');dim.className='prd-dim slv-dim';dim.hidden=true;document.body.appendChild(dim);
+  var pop=document.createElement('div');pop.className='slv-pop';pop.hidden=true;pop.setAttribute('role','dialog');pop.setAttribute('aria-modal','true');pop.setAttribute('aria-labelledby','slvT');pop.tabIndex=-1;document.body.appendChild(pop);
+  var op=null,RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function parse(t){return t.split('·').map(function(x){var m=x.trim().match(/^(\d+)%\s+(\S+)$/);return m?[+m[1],m[2]]:null;}).filter(Boolean);}
+  function place(){if(window.innerWidth<=640){pop.style.left=pop.style.top='';return;}var r=op.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight;
+    var l=Math.max(16,Math.min(r.left,window.innerWidth-w-16)),t=r.bottom+10;if(t+h>window.innerHeight-16)t=Math.max(16,r.top-h-10);pop.style.left=l+'px';pop.style.top=t+'px';}
+  function open(p){op=p;var n=p.closest('.card').querySelector('h4').textContent;
+    pop.innerHTML='<button type="button" class="prd-x slv-x" aria-label="Close">✕</button><div class="prx-pf"><div class="prx-pfn" id="slvT">'+n+'</div>'+bar(parse(p.textContent))+'</div>';
+    pop.querySelector('.slv-x').addEventListener('click',close);
+    dim.hidden=false;pop.hidden=false;place();void pop.offsetWidth;pop.classList.add('prx-on');dim.classList.add('prx-on');p.setAttribute('aria-expanded','true');pop.querySelector('.slv-x').focus({preventScroll:true});}
+  function close(){if(pop.hidden||!pop.classList.contains('prx-on'))return;pop.classList.remove('prx-on');dim.classList.remove('prx-on');op.setAttribute('aria-expanded','false');
+    setTimeout(function(){pop.hidden=true;dim.hidden=true;},RM?0:200);op.focus({preventScroll:true});}
+  ws.forEach(function(p){p.setAttribute('role','button');p.tabIndex=0;p.setAttribute('aria-haspopup','dialog');p.setAttribute('aria-expanded','false');p.classList.add('slv-trg');
+    p.setAttribute('aria-label','Show allocation: '+p.closest('.card').querySelector('h4').textContent);
+    p.addEventListener('click',function(){open(p);});p.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();open(p);}});});
+  dim.addEventListener('click',close);window.addEventListener('resize',function(){if(!pop.hidden)place();});
+  document.addEventListener('keydown',function(e){if(pop.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='Tab'){e.preventDefault();pop.querySelector('.slv-x').focus();}});
+})();
 })();

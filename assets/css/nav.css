@@ -165,3 +165,15 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 /* CR-012: Gold toggle */
 .bc-k-gld i{background:#facc15}.bc-k-gld:hover{border-color:#facc15}
 .bc-k-gld:not(.off){border-color:#facc15!important}
+/* CR-013: sleeve allocation popover (reuses .prx-pf/.prx-bar/.prx-chips) */
+.slv-trg{cursor:pointer;border-radius:8px;text-decoration:underline dotted rgba(34,211,238,.5);text-underline-offset:4px;transition:color .15s}
+.slv-trg:hover{color:#22d3ee}.slv-trg:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
+.slv-dim{background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.slv-pop{position:fixed;z-index:71;width:min(380px,calc(100vw - 32px));padding:14px;background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.22);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.6);
+  opacity:0;transform:translateY(6px) scale(.98);transition:opacity .2s ease,transform .2s cubic-bezier(.2,.8,.2,1)}
+.slv-pop.prx-on{opacity:1;transform:none}.slv-pop[hidden]{display:none}
+.slv-pop .prx-pf{gap:0;padding-right:52px}
+.slv-pop .slv-x{position:absolute;top:16px;right:16px;margin:0;float:none;width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+@media (max-width:640px){.slv-pop{left:0;right:0;bottom:0;width:auto;border-radius:20px 20px 0 0;border-bottom:0;padding:18px 14px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);opacity:1;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+  .slv-pop.prx-on{transform:none}}
+@media (prefers-reduced-motion:reduce){.slv-pop{transition:none!important}}
