@@ -52,7 +52,7 @@ function getData(){if(dataP)return dataP;
     return DATA;});
   dataP.catch(function(){dataP=null;});return dataP;}
 /* dialog */
-var RANGES=['1W','1M','3M','YTD','1Y','5Y','10Y','Max'],DAYS={'1W':7,'1M':31,'3M':92,'1Y':366,'5Y':1827,'10Y':3653};
+var RANGES=['1D','1W','1M','3M','YTD','1Y','5Y','10Y','Max'],DAYS={'1D':1,'1W':7,'1M':31,'3M':92,'1Y':366,'5Y':1827,'10Y':3653};
 var rng='1M',LOG=false,dlg=null,dim=null,ch=null,opener=null;
 function isPhone(){return window.innerWidth<=640;}
 function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hidden=true;
