@@ -45,7 +45,7 @@
 </header>
 <main class="c"><div class="eyebrow">Archive</div><h1>Monthly recaps</h1><div id="list"></div><p class="xsub"><a href="https://x.com/PaperstreetBTC" target="_blank" rel="noreferrer noopener" aria-label="Follow @PaperstreetBTC on X"><span class="xsub-i"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>Follow @PaperstreetBTC on X</a></p>
 </main>
-<script src="months.js"></script>
+<script src="../assets/js/et.js?v=et2"></script><script src="months.js"></script>
 <script>(function(){var u=function(x){return '$'+x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});},f=function(x){return (x>=0?'+':'')+x.toFixed(2)+'%';},
 c=function(x){return x>=0?'#34d399':'#f87171';},dd=function(d){return new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});};
 document.getElementById('list').innerHTML=RECAP_MONTHS.slice().sort(function(a,b){return b.slug.localeCompare(a.slug);}).map(function(m){var b=m.btc;
@@ -53,4 +53,4 @@ document.getElementById('list').innerHTML=RECAP_MONTHS.slice().sort(function(a,b
   +(m.sl?'<div class="rc-s">'+m.sl.map(function(s){return '<span>'+s.n+' <b style="color:'+c(s.m)+'">'+f(s.m)+'</b></span>';}).join('')+'</div>':'')+'<span class="rc-go">Full recap →</span></a>';}).join('');})();</script>
 <style>.rc{display:block}.rc-b{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.9rem;color:#cbd5e1;margin:8px 0}.rc-s{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:#94a3b8}.rc-go{display:inline-block;margin-top:10px;color:#22d3ee;font-weight:600;font-size:.9rem}</style>
 <a href="../index.html" style="position:fixed;left:18px;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;background:#f7931a;color:#111;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)">&larr; Home</a>
-<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=cr012"></script></body></html>
+<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=et1"></script></body></html>

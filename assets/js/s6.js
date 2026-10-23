@@ -4,7 +4,7 @@
   var ASOF=BK.last, START=PSLEDGER.start;
   var CLOSE=BK.close(ASOF);
   var PRIOR=(ASOF===todayET()&&BK.dates.length>1)?BK.dates[BK.dates.length-2]:ASOF; /* yesterday's close once today's row exists */
-  function todayET(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York'}).format(new Date());}
+  function todayET(){return ET.today();}
   var PF=[
     {name:'Berkshire Killer',start:'$40k BTC / $20k STRC / $30k TSLA / $10k PLTR',key:'berkshire'},
     {name:'Hodler Jam Sandwich',start:'$70k BTC / $10k STRC / $20k MSTR',key:'hodlr'},
@@ -24,15 +24,15 @@
   function meLabel(){return fmtD(ME_D);}
   function asOfLabel(){if(mode==='me')return 'Month-end close · '+meLabel();
     if(!anyLive()||!(cacheUpd||lastTs))return 'Last close · '+fmtD(ASOF);
-    return 'Live market value · updated '+new Date(cacheUpd||lastTs).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET';}
+    return 'Live market value · updated '+ET.time(new Date(cacheUpd||lastTs));}
   function px(a){if(mode==='me'){var hc=BK.close(ME_D);if(hc&&hc[a])return hc[a];if(ME&&ME[a])return ME[a];}return live[a]||CLOSE[a];}
   function lbl(a){if(mode==='me')return 'close '+meLabel().replace(/, \d+$/,'');if(a==='BTC')return live.BTC?'live '+btcSrc:'last close '+fmtD(ASOF).replace(/, \d+$/,'');return src[a]||'last close '+fmtD(ASOF).replace(/, \d+$/,'');}
-  function hhmm(t){return new Date(t*1000).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET';}
+  function hhmm(t){return ET.time(new Date(t*1000));}
   function mktOpen(){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date()),o={};p.forEach(function(x){o[x.type]=x.value;});
-    var mins=(+o.hour%24)*60+(+o.minute);return ['Sat','Sun'].indexOf(o.weekday)<0&&mins>=235&&mins<=1215;}
+    var mins=(+o.hour%24)*60+(+o.minute);var cm=ET.closeMin(ET.today());return cm>0&&mins>=235&&mins<=(cm<960?1020:1215);}   /* pre-market 3:55 AM to after-hours end (8:15 PM; 5:00 PM on early-close days) */
   var stkLoaded=false, cacheUpd=0, JSONURL=BK.DATA+'prices.json';
   function cacheLabel(){if(!cacheUpd)return '';var st=mktOpen()&&(Date.now()-cacheUpd>30*60*1000);
-    return 'Stocks: cached · updated '+new Date(cacheUpd).toLocaleTimeString('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false})+' ET'+(st?' (stale)':'');}
+    return 'Stocks: cached · updated '+ET.time(new Date(cacheUpd))+(st?' (stale)':'');}
   function tick(){if(document.hidden)return;if(!stkLoaded||mktOpen())loadStocks();}
   function loadStocks(){
     stkLoaded=true;
@@ -43,8 +43,8 @@
       ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD'].forEach(function(T){var q=S[T];if(!q||typeof q.c!=='number'||!(q.c>0))return;
         var qt=q.t?q.t*1000:Date.now();if(qt>Date.now())qt=Date.now();if(['MSTR','STRC','TSLA','PLTR'].indexOf(T)>=0&&qt>lastTs)lastTs=qt;
         live[T]=q.c;prev[T]=(typeof q.pc==='number'&&q.pc>0)?q.pc:null;src[T]='cached '+(q.t?hhmm(q.t):'');});
-      stkTime=cacheUpd?new Date(cacheUpd).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET':null;
-      var b=d&&d.btc;if(!live.BTC&&b&&b.usd>0){live.BTC=b.usd;btcChg=(typeof b.chg24h==='number')?b.chg24h:null;btcSrc='cached '+(b.src||'');btcTime=b.time?new Date(b.time).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET':null;}
+      stkTime=cacheUpd?ET.time(new Date(cacheUpd)):null;
+      var b=d&&d.btc;if(!live.BTC&&b&&b.usd>0){live.BTC=b.usd;btcChg=(typeof b.chg24h==='number')?b.chg24h:null;btcSrc='cached '+(b.src||'');btcTime=b.time?ET.time(new Date(b.time)):null;}
       else if(b&&btcChg===null&&typeof b.chg24h==='number')btcChg=b.chg24h; /* fallback (e.g. Coinbase) price arrived first: use the saved 24h move for % today */
       var me=d&&d.monthEnd;if(me&&me.date&&me.px&&me.px.BTC&&me.v>=3){MONTHEND[me.date]=me.px;ME_D=me.date;ME=me.px;} /* use the saved month-end session date, not a client-computed weekday */
       render();})

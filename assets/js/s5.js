@@ -21,7 +21,7 @@
       var c=b.usd_24h_change, el=$('btcChg');
       if(typeof c!=='number'){el.textContent='24h change n/a';el.className='btc-live-chg';}
       if(typeof c==='number'){el.textContent=(c>=0?'▲ +':'▼ ')+c.toFixed(2)+'% 24h';el.className='btc-live-chg '+(c>=0?'up':'down');}
-      $('btcTime').textContent='Updated '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+      $('btcTime').textContent='Updated '+ET.time();$('btcTime').title='Eastern Time ('+ET.abbr()+')';
       box.classList.remove('err'); window.dispatchEvent(new CustomEvent('btcprice',{detail:{usd:b.usd,chg:b.usd_24h_change,src:b.src||'CoinGecko',time:$('btcTime').textContent.replace('Updated ','')}})); schedule(60000);
     }).catch(function(){
       box.classList.add('err');

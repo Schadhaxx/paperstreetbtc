@@ -8,7 +8,8 @@ const sleeves = {
 // Everything below is computed on page load by PSBook (book.js) from the site's ledger (ledger.js) and its own daily closes (history.json):
 // points = January 1st, 2026 start (2025-12-31 close), each completed month-end session close, and the latest close. No stored NAVs.
 let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null, BTCPROV = false;
-const PROVNOTE = ' · BTC close provisional until 8 PM ET';
+const PROVNOTE = () => ' · BTC close provisional until ' + ET.btcCloseLabel(B_LAST);
+let B_LAST = null;
 const MN3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildFromBook(B){
   ISO = B.points();
@@ -19,7 +20,8 @@ function buildFromBook(B){
   LASTC = B.close(B.last);
   // BTC close provisional: history.json btc_provisional lists the latest date and its UTC-day bar (8 PM ET) has not closed yet
   BTCPROV = (B.H.btc_provisional || []).indexOf(B.last) >= 0 && Date.now() < Date.parse(B.last + 'T00:00:00Z') + 864e5;
-  if (BTCPROV) benchNames.btc = 'Spot BTC (close provisional until 8 PM ET)';
+  B_LAST = B.last;
+  if (BTCPROV) benchNames.btc = 'Spot BTC (close provisional until ' + ET.btcCloseLabel(B.last) + ')';
 }
 const benchColors = { btc: '#64748b', spy: '#94a3b8', qqq: '#cbd5e1', brk: '#a8a29e', gold: '#d4b06a', mstr: '#f97316' };
 const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'Gold (GLD)', mstr: 'MSTR' };
@@ -28,7 +30,6 @@ const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold
 // Gold (GLD) = latest-close GLD index x live GLD / GLD close
 function closeOf(k){ return LASTC[{ btc: 'BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', mstr: 'MSTR', gold: 'GLD' }[k]]; }
 let liveNow = null; // { sleeves:{key:$}, bench:{key:index} } or null -> latest close
-function hhmm(d){return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
 let meView = null; // month-end mode: { n: points kept from history, extra: optional computed point }
 function applyLive(st){
   if(!st || !ISO.length) return;
@@ -53,7 +54,7 @@ function applyLive(st){
     liveNow = { sleeves: st.sleeves, bench, btcTime: st.btcTime, stkTime: st.stocksLive ? st.stkTime : null };
   }
   const asof = document.getElementById('ytdAsOf');
-  if (asof) asof.textContent = (st.label || asof.textContent) + (liveNow ? ' · Live value now. Chart reference points: month-end closes through ' + st.meLabel + '.' : '') + (BTCPROV ? PROVNOTE : '');
+  if (asof) asof.textContent = (st.label || asof.textContent) + (liveNow ? ' · Live value now. Chart reference points: month-end closes through ' + st.meLabel + '.' : '') + (BTCPROV ? PROVNOTE() : '');
   if (chart) render();
 }
 window.addEventListener('pslive', e => applyLive(e.detail));
