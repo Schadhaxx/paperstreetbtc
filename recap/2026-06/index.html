@@ -94,10 +94,11 @@ const SER={...Object.fromEntries(Object.keys(L.sleeves).map(k=>[k,{n:L.sleeves[k
 const pct=(a,b)=>(b/a-1)*100,fp=x=>(x>=0?'+':'')+x.toFixed(2)+'%',cls=x=>x>=0?'pos':'neg',usd=(x,m=0)=>'$'+x.toLocaleString('en-US',{minimumFractionDigits:m,maximumFractionDigits:m});
 const ME='2026-06-30',PM='2026-05-29';
 // cards
+const MEN=ET.day(ME,false);
 const btcM=pct(CL[PM].BTC,CL[ME].BTC),btcY=pct(CL[L.base].BTC,CL[ME].BTC);
 document.getElementById('cards').innerHTML=Object.keys(L.sleeves).map(k=>{const v=VAL[k],m=pct(v[PM],v[ME]),y=pct(L.start,v[ME]);
- return `<div class="card sl"><h3>${L.sleeves[k].n}</h3><div class="big">${usd(v[ME])}</div><div class="row"><span>June</span><span class="${cls(m)}">${fp(m)}</span></div><div class="row"><span>YTD</span><span class="${cls(y)}">${fp(y)}</span></div><div class="row"><span>vs spot BTC (YTD)</span><span class="${cls(y-btcY)}">${(y-btcY>=0?'+':'')+(y-btcY).toFixed(2)} pts</span></div></div>`}).join('')+
- `<div class="card sl" style="border-color:var(--orange)"><h3>Spot BTC (hurdle)</h3><div class="big">${usd(CL[ME].BTC)}</div><div class="row"><span>June</span><span class="${cls(btcM)}">${fp(btcM)}</span></div><div class="row"><span>YTD</span><span class="${cls(btcY)}">${fp(btcY)}</span></div></div>`;
+ return `<div class="card sl"><h3>${L.sleeves[k].n}</h3><div class="big">${usd(v[ME])}</div><div class="row"><span>June</span><span class="${cls(m)}">${fp(m)}</span></div><div class="row"><span>YTD (as of ${MEN} close)</span><span class="${cls(y)}">${fp(y)}</span></div><div class="row"><span>vs spot BTC (YTD)</span><span class="${cls(y-btcY)}">${(y-btcY>=0?'+':'')+(y-btcY).toFixed(2)} pts</span></div></div>`}).join('')+
+ `<div class="card sl" style="border-color:var(--orange)"><h3>Spot BTC (hurdle)</h3><div class="big">${usd(CL[ME].BTC)}</div><div class="row"><span>June</span><span class="${cls(btcM)}">${fp(btcM)}</span></div><div class="row"><span>YTD (as of ${MEN} close)</span><span class="${cls(btcY)}">${fp(btcY)}</span></div></div>`;
 const sepEv=EV.filter(e=>e.payD>='2026-06-01'&&e.payD<=ME);
 document.getElementById('divs').innerHTML='<tr><th>Sleeve</th><th>Ex-date</th><th>Paid</th><th>$/sh</th><th>Cash</th><th>Bought</th></tr>'+sepEv.map(e=>`<tr><td>${L.sleeves[e.k].n}</td><td>${e.ex}</td><td>${e.payD}</td><td>$${e.amt.toFixed(2)}</td><td>${usd(e.cash,2)}</td><td>${Object.entries(e.buys).map(([a,q])=>a==='BTC'?q.toFixed(6)+' BTC':q.toFixed(3)+' '+a).join(' + ')}</td></tr>`).join('');
 // ticker

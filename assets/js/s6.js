@@ -22,8 +22,17 @@
   var mode='live', ks=Object.keys(MONTHEND).sort(), ME_D=ks[ks.length-1], ME=MONTHEND[ME_D];
   function fmtD(iso){var p=iso.split('-');return MN[+p[1]-1]+' '+(+p[2])+', '+p[0];}
   function meLabel(){return fmtD(ME_D);}
+  /* 'today' only on an NYSE session day once today's row exists; otherwise the honest 'since <prior close>' */
+  function chgLabel(){return (mode!=='me'&&ASOF===todayET()&&ET.session(ASOF))?'today':'since '+fmtD(PRIOR);}
+  /* '(live)' only while stocks are trading or the BTC price is fresh (< 3 min) */
+  /* one rule for every label: stock quotes count as live only while the market is open AND prices.json is < 30 min old */
+  function stocksFresh(){return mktOpen()&&cacheUpd>0&&Date.now()-cacheUpd<30*60*1000&&Object.keys(src).some(function(k){return src[k];});}
+  function isLive(){return mode!=='me'&&(stocksFresh()||(live.BTC&&lastTs&&Date.now()-lastTs<180000));}
+  function ytdLabel(){return !isLive()?'YTD':stocksFresh()?'YTD (live)':'YTD (BTC live)';}
+  window.PSLiveLabel=function(){return isLive();};window.PSMktOpen=function(){return stocksFresh();};
   function asOfLabel(){if(mode==='me')return 'Month-end close · '+meLabel();
     if(!anyLive()||!(cacheUpd||lastTs))return 'Last close · '+fmtD(ASOF);
+    if(!stocksFresh())return 'BTC live · stocks at '+fmtD(ASOF)+' close · updated '+ET.time(new Date(lastTs||cacheUpd));
     return 'Live market value · updated '+ET.time(new Date(cacheUpd||lastTs));}
   function px(a){if(mode==='me'){var hc=BK.close(ME_D);if(hc&&hc[a])return hc[a];if(ME&&ME[a])return ME[a];}return live[a]||CLOSE[a];}
   function lbl(a){if(mode==='me')return 'close '+meLabel().replace(/, \d+$/,'');if(a==='BTC')return live.BTC?'live '+btcSrc:'last close '+fmtD(ASOF).replace(/, \d+$/,'');return src[a]||'last close '+fmtD(ASOF).replace(/, \d+$/,'');}
@@ -72,7 +81,7 @@
     var g=document.getElementById('pulseGrid'); if(!g) return;
     var h='';
     ORDER.forEach(function(n){var p=PF.filter(function(x){return x.name===n;})[0],r=compute(p),ok=mode!=='me'&&BK.nav(p.key,PRIOR)>0;
-      h+='<a class="pulse-card" href="#tracker" data-k="'+p.key+'"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.v/BK.nav(p.key,PRIOR)-1)+' today':'—')+'</span></a>';});
+      h+='<a class="pulse-card" href="#tracker" data-k="'+p.key+'"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.v/BK.nav(p.key,PRIOR)-1)+' '+chgLabel():'—')+'</span></a>';});
     patch(g,h,'.pulse-card','k',['.pulse-val','.pulse-chg']);
     var stk=Object.keys(src).some(function(k){return src[k];});
     if(mode==='me'){document.getElementById('pulseNote').textContent=asOfLabel()+' · all prices at month-end close';return;}
@@ -105,11 +114,11 @@
         rows+='<tr><td>'+a+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td><td>'+(ow[a]!=null?ow[a]+'%':'')+'</td><td>'+(val/v*100).toFixed(1)+'%</td></tr>';});
       rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(q.cash)+'</td><td></td><td>'+(q.cash/v*100).toFixed(1)+'%</td></tr>';
       html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'" role="button" tabindex="0" aria-expanded="'+(open[i]?'true':'false')+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
-        '<span class="pf-sub">since '+fmtD(PRIOR)+' '+pct(v/BK.nav(p.key,PRIOR)-1)+' &middot; YTD '+pct(v/START-1)+'</span></div>'+
+        '<span class="pf-sub">'+chgLabel()+' '+pct(v/BK.nav(p.key,PRIOR)-1)+' &middot; '+ytdLabel()+' '+pct(v/START-1)+'</span></div>'+
         '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p><span class="pf-toggle" aria-hidden="true"><svg class="pf-chev" viewBox="0 0 16 16" width="16" height="16"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>';
     });
     patch(root.querySelector('.pf-grid'),html,'.pf-card','i',['.pf-val','.pf-sub','.pf-tbl','.pf-start']);
-    root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close '+fmtD(ASOF))+'. '+(Object.keys(src).some(function(k){return src[k];})?cacheLabel():'Stocks: last close '+fmtD(ASOF))+'. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
+    root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close '+fmtD(ASOF))+'. '+(Object.keys(src).some(function(k){return src[k];})?(cacheLabel()||'Stocks: cached'):'Stocks: last close '+fmtD(ASOF))+'. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
   }
   root.addEventListener('click',function(e){
     var c=e.target.closest('.pf-card'); if(c)toggle(c);

@@ -58,6 +58,7 @@ function applyLive(st){
   if (chart) render();
 }
 window.addEventListener('pslive', e => applyLive(e.detail));
+function ytdLbl(){ const l = document.getElementById('ytdLbl'); if (l) l.textContent = (liveNow && !meView && window.PSLiveLabel && PSLiveLabel()) ? (window.PSMktOpen && PSMktOpen() ? 'YTD (live)' : 'YTD (BTC live)') : 'YTD'; }
 
 let selected = new Set(['berkshire']);
 let currentBench = 'btc';
@@ -118,6 +119,7 @@ function render() {
   });
 
   const lbls = meView ? (meView.extra ? labels.concat([meView.extra.label]) : labels.slice(0, meView.n)) : (liveNow ? labels.concat(['Now']) : labels.slice());
+  ytdLbl();
   if (chart) { chart.data.labels = lbls; chart.data.datasets = datasets; chart.update('none'); return; }
   if (typeof Chart === 'undefined') return;
   const ctx = document.getElementById('ytdChart').getContext('2d');
