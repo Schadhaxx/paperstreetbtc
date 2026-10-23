@@ -82,10 +82,10 @@ def main():
     days_txt = (f'all {ndays} calendar days{"" if final else " so far"} incl. weekends' if len(bdays) == ndays
                 else f'{len(bdays)} daily closes; weekend closes after {nice(max(k for k in B if k <= ME and k in dict(json.load(open("assets/data/btc-daily.json"))["d"])))} not yet in the site history')
     card = ('<section><h2>Bitcoin in %s</h2><div class="card"><div style="overflow-x:auto"><table class="btcm">'
-            '<tr><th>Open (%s close)</th><th>Close (%s)</th><th>Change</th><th>High close</th><th>Low close</th></tr>'
+            '<tr><th>Open (%s close)</th><th>Close (%s)</th><th>Change</th><th>High close (in %s)</th><th>Low close (in %s)</th></tr>'
             '<tr><td>$%s</td><td>$%s</td><td class="%s">%+.2f%%</td><td>$%s · %s</td><td>$%s · %s</td></tr></table></div>'
             '<p class="note">BTC-USD daily closes (UTC day, %s) from the site\'s BTC history (Yahoo Finance). High/low are the highest and lowest daily closes, not intraday extremes.%s</p></div></section>\n') % (
-        full + ('' if final else ' (to date)'), nicey(bopen) if mo == 1 else nice(bopen), nice(bdays[-1]), f'{bo:,.2f}', f'{bc:,.2f}', 'pos' if chg >= 0 else 'neg', chg,
+        full + ('' if final else ' (to date)'), nicey(bopen) if mo == 1 else nice(bopen), nice(bdays[-1]), full, full, f'{bo:,.2f}', f'{bc:,.2f}', 'pos' if chg >= 0 else 'neg', chg,
         f'{B[hi]:,.2f}', nice(hi), f'{B[lo]:,.2f}', nice(lo), days_txt, '' if final else f' Static snapshot through {nicey(bdays[-1])}; the month is not complete.')
     s = sub1(s, r'<section><h2>Bitcoin in .*?</section>\n(?=<section><h2>Sleeves vs spot BTC</h2>)', card, re.S)
     s = sub1(s, r'<p class="note" style="margin-bottom:12px">Month = [^<]*',
@@ -111,6 +111,7 @@ def main():
     else: mj2 = mj.replace('window.RECAP_MONTHS=[\n', 'window.RECAP_MONTHS=[\n' + ent + ',\n', 1)
     # validate
     err = []
+    if 'pollPX(' not in s or 'assets/js/et.js' not in s: err.append('live ticker / et.js missing')
     if 'NaN' in s or 'undefined' in s.split('<script>')[0] or 'NaN' in ent: err.append('NaN/undefined in output')
     if not (0.5 * len(src) < len(s) < 2 * len(src)): err.append('page size out of range')
     if f"const ME='{ME}'" not in s or ME != LASTF: err.append('through date mismatch')
