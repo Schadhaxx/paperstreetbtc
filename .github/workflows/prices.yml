@@ -118,7 +118,7 @@ jobs:
           # BTC: Yahoo BTC-USD UTC-day bar for the same calendar date (closes 00:00 UTC = 8 pm EDT / 7 pm EST); flagged provisional until then.
           # SPY/QQQ cash distributions (ex-date) kept for total-return benchmarks. Rebuilt from Yahoo when a new session closes or BTC is provisional.
           import datetime as _dt, zoneinfo as _zi
-          def build_history(fetch, now_utc):
+          def build_history(fetch, now_utc, hold_prev=None):
               ET_ = _zi.ZoneInfo('America/New_York'); base = _dt.date(2025, 12, 31)
               p0 = int(_dt.datetime(2025, 12, 15, tzinfo=_dt.timezone.utc).timestamp()); p1 = int(now_utc.timestamp()) + 2 * 86400
               SY = {'BTC': 'BTC-USD', 'MSTR': 'MSTR', 'STRC': 'STRC', 'TSLA': 'TSLA', 'PLTR': 'PLTR', 'SPY': 'SPY', 'QQQ': 'QQQ', 'BRK.B': 'BRK-B', 'GLD': 'GLD'}
@@ -136,11 +136,17 @@ jobs:
               now_et = now_utc.astimezone(ET_)
               sess = sorted(d for d in bars['SPY'] if d >= base.isoformat())
               if sess and sess[-1] == now_et.date().isoformat() and now_et.hour < 16: sess = sess[:-1]  # today's session not closed yet
+              prev = (hold_prev or {}).get('closes') or {}
+              if prev and (not sess or max(prev) > sess[-1]):  # Yahoo briefly nulls just-finished bars around 00:00 UTC
+                  raise ValueError(f'rebuild would drop {max(prev)} (Yahoo null bar); keeping previous history')
               closes, prov, last = {}, [], {}
               for d in sess:
                   row = {}
                   for k in SY:
-                      v = bars[k].get(d, last.get(k))  # ffill only if a bar is missing
+                      v = bars[k].get(d)
+                      if v is None and k == 'BTC' and d < now_utc.date().isoformat():  # BTC trades daily: a null finished bar is a Yahoo gap, never ffill it
+                          raise ValueError(f'BTC bar for {d} is null; keeping previous history')
+                      if v is None: v = last.get(k)  # stocks: ffill only for a genuinely missing bar
                       if v is None: raise ValueError(f'missing {k} {d}')
                       row[k] = v; last[k] = v
                   closes[d] = row
@@ -151,7 +157,9 @@ jobs:
               if not h or h.get('v') != 1 or not h.get('closes'): return True
               ET_ = _zi.ZoneInfo('America/New_York'); n = now_utc.astimezone(ET_)
               today = n.date()
-              if n.weekday() < 5 and n.hour >= 16 and max(h['closes']) < today.isoformat(): return True   # a new session has closed
+              lc = today if n.hour >= 16 else today - _dt.timedelta(days=1)
+              while lc.weekday() >= 5: lc -= _dt.timedelta(days=1)
+              if max(h['closes']) < lc.isoformat(): return True   # a session closed that history lacks (also self-heals next morning)
               if h.get('btc_provisional') and now_utc.minute % 30 < 5: return True                       # refresh provisional BTC every ~30 min
               for d in h.get('btc_provisional') or []:                                                   # its UTC day has ended: re-fetch until final
                   if now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): return True
@@ -163,7 +171,7 @@ jobs:
           try:
               nowu = datetime.datetime.now(datetime.timezone.utc)
               if history_stale(hold, nowu):
-                  json.dump(build_history(get, nowu), open('history.json', 'w'), separators=(',', ':'))
+                  json.dump(build_history(get, nowu, hold), open('history.json', 'w'), separators=(',', ':'))
                   print('history.json rebuilt')
           except Exception as e: print('history failed, keeping previous:', type(e).__name__, e)
           if ok == 0 and old: out['updated'] = old.get('updated', now)
