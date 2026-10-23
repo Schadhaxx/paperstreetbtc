@@ -112,3 +112,46 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 /* CR-002: bigger, more readable rules pop-up */
 .prd-card.has-img{width:min(1500px,calc(100vw - 24px));max-height:94vh}
 @media (max-width:1000px){.prd-img img{width:1250px}}
+
+/* CR-010: rules pop-up redesigned as real HTML (replaces image card) */
+.prd-card.prx-card{width:min(860px,calc(100vw - 48px));max-height:min(88vh,900px);padding:0;background:linear-gradient(180deg,#0e1730 0%,#0a1122 100%);border:1px solid rgba(34,211,238,.22);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.03) inset;
+  opacity:0;transform:translate(-50%,-48%) scale(.97);transition:opacity .22s ease,transform .22s cubic-bezier(.2,.8,.2,1)}
+.prd-card.prx-card.prx-on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.prd-card.prx-card[hidden]{display:none!important}
+.prd-dim{opacity:0;transition:opacity .22s ease;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}.prd-dim.prx-on{opacity:1}
+.prx-card .prd-x{position:absolute;top:14px;right:14px;margin:0;float:none;width:44px;height:44px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#cbd5e1;transition:background .15s}
+.prx-card .prd-x:hover{background:rgba(255,255,255,.12);color:#fff}
+.prx-grab{display:none}
+.prx{padding:30px 34px 34px;color:var(--text,#e8eef7);font-family:Inter,sans-serif}
+.prx-hd{padding:0 56px 18px 0;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:6px}
+.prx-kick{display:block;font:600 .72rem Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#22d3ee;margin-bottom:6px}
+.prx-hd h2{margin:0;font:700 clamp(1.5rem,3.2vw,2rem)/1.15 Outfit,sans-serif;letter-spacing:-.01em}
+.prx-rule{display:grid;grid-template-columns:52px 1fr;gap:4px 14px;padding:22px 0;border-bottom:1px solid rgba(255,255,255,.06);scroll-margin-top:20px;transition:background .4s;border-radius:12px}
+.prx-rule:last-child{border-bottom:0;padding-bottom:4px}
+.prx-rule.prd-hl{background:rgba(34,211,238,.07)}
+.prx-n{font:700 1.05rem Outfit,sans-serif;color:#22d3ee;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25)}
+.prx-rule h3{margin:7px 0 4px;font:700 1.22rem/1.3 Outfit,sans-serif;color:#fff}
+.prx-rule p{margin:0;color:#b6c2d6;font-size:1rem;line-height:1.6}
+.prx-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.prx-pf{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.prx-wide{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
+.prx-wide .prx-route{grid-column:1/-1}
+.prx-pfn{font:600 1rem Outfit,sans-serif;color:#fff;margin-bottom:8px}
+.prx-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;gap:2px;background:rgba(255,255,255,.05)}
+.prx-bar i{display:block;height:100%}
+.prx-chips{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;font:500 .8rem Inter,sans-serif;color:#9aa6bc}
+.prx-chips span{display:inline-flex;align-items:center;gap:6px}.prx-chips b{width:8px;height:8px;border-radius:2px;display:inline-block}
+.prx-route{margin-top:auto;font:500 .9rem/1.45 Inter,sans-serif;color:#e8eef7;padding:9px 12px;border-radius:10px;background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.18)}
+.prx-dca h3{color:#22d3ee}
+@media (max-width:640px){
+  .prd-card.prx-card{left:0;right:0;top:auto;bottom:0;width:auto;max-height:calc(92vh - env(safe-area-inset-top));border-radius:22px 22px 0 0;border-bottom:0;transform:translateY(100%);opacity:1;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+  .prd-card.prx-card.prx-on{transform:translateY(0)}
+  .prx-grab{display:block;position:sticky;top:0;height:22px;margin-bottom:-22px;z-index:2;background:linear-gradient(#0e1730,rgba(14,23,48,0))}
+  .prx-grab:before{content:"";position:absolute;left:50%;top:8px;width:40px;height:5px;margin-left:-20px;border-radius:9px;background:rgba(255,255,255,.22)}
+  .prx-card .prd-x{position:sticky;top:12px;float:right;margin:12px 12px -56px 0;z-index:3;background:#16203a}
+  .prx{padding:26px 18px calc(28px + env(safe-area-inset-bottom))}
+  .prx-hd{padding-right:52px}
+  .prx-rule{grid-template-columns:40px 1fr;gap:4px 12px}.prx-rule>div{min-width:0}.prx-grid{margin-left:-52px}
+  .prx-grid,.prx-wide{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.prd-card.prx-card,.prd-dim{transition:none!important}}
