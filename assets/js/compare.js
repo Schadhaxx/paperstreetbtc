@@ -27,16 +27,16 @@ const COL={berkshire:'#22d3ee',hodlr:'#3b82f6',hf:'#a78bfa',saylor:'#f472b6',BTC
 let on=new Set(['hodlr','BTC','GLD','MSTR']),rng='YTD';
 const etH=+new Date().toLocaleString('en-US',{timeZone:'America/Toronto',hour:'numeric',hour12:false}),todayET=new Date().toLocaleDateString('en-CA',{timeZone:'America/Toronto'});
 const prov=()=>CL[LAST]&&LAST===todayET&&etH<20;
-function dates(){const n=D.length;if(rng==='1D')return D.slice(n-2);if(rng==='1W')return D.slice(n-6);if(rng==='1M')return D.slice(n-22);return D}
+function dates(){const n=D.length;if(rng==='1D')return D.slice(n-2);if(rng==='1W')return D.slice(n-6);if(rng==='1M')return D.slice(n-22);if(rng==='6M'){const t=new Date(D[n-1]+'T00:00:00Z');t.setUTCMonth(t.getUTCMonth()-6);const st=t.toISOString().slice(0,10);let i=0;while(i<n-1&&D[i+1]<=st)i++;return D.slice(i)}return D}
 const sp=document.getElementById('pvSeries');sp.innerHTML=Object.keys(SER).map(k=>`<button class="bench-btn" data-k="${k}">${SER[k].n}</button>`).join('');
-const rp=document.getElementById('pvRange');rp.innerHTML=['1D','1W','1M','YTD'].map(r=>`<button class="bench-btn" data-r="${r}">${r}</button>`).join('');
+const rp=document.getElementById('pvRange');rp.innerHTML=['1D','1W','1M','6M','YTD'].map(r=>`<button class="bench-btn" data-r="${r}">${r}</button>`).join('');
 const ch=new Chart(document.getElementById('pvChart'),{type:'line',data:{labels:[],datasets:[]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
  plugins:{legend:{labels:{color:'#9aa6bc'}},tooltip:{bodyFont:{size:innerWidth<520?10:12},titleFont:{size:innerWidth<520?11:12},padding:innerWidth<520?6:8,boxWidth:innerWidth<520?8:12,boxHeight:innerWidth<520?8:12,callbacks:{label:c=>{const ds=c.dataset,raw=ds.raw[c.dataIndex];if(innerWidth<520)return `${ds.label.replace(' (close provisional until 8 PM ET)','')}: ${fp(c.parsed.y)}`;return `${ds.label}: ${usd(raw,2)} (${fp(c.parsed.y)} vs range start)`}}}},
  scales:{x:{ticks:{color:'#9aa6bc',maxTicksLimit:8},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#9aa6bc',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.05)'}}}}});
 function draw(){const ds=dates();ch.data.labels=ds;ch.data.datasets=[...on].map(k=>{const v=ds.map(d=>SER[k].v[d]);const isB=k==='BTC';
  return{label:isB&&prov()?'Spot BTC (close provisional until 8 PM ET)':SER[k].n,raw:v,data:v.map(x=>pct(v[0],x)),borderColor:COL[k],backgroundColor:COL[k],borderWidth:isB?2.5:2,pointRadius:ds.length<10?3:0,tension:.2}});ch.update();
  sp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',on.has(b.dataset.k)));rp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r===rng));
- document.getElementById('pvChartNote').innerHTML=`% change from the first close in range. Daily closes; 1D = last two closes (${ds[0]} → ${ds[ds.length-1]}). `+(prov()?'<span class="prov">BTC close provisional until 8 PM ET.</span>':`Latest BTC close ${LAST} is final.`)}
+ document.getElementById('pvChartNote').innerHTML=`% change from the first close in range. Daily closes; ${rng==='1D'?'1D = last two closes (':rng+' = '}${ds[0]} → ${ds[ds.length-1]}${rng==='1D'?')':''}. `+(prov()?'<span class="prov">BTC close provisional until 8 PM ET.</span>':`Latest BTC close ${LAST} is final.`)}
 sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;on.has(k)?(on.size>1&&on.delete(k)):on.add(k);draw()};rp.onclick=e=>{if(e.target.dataset.r){rng=e.target.dataset.r;draw()}};draw();
 }
 if(document.getElementById('pvCalc')){
