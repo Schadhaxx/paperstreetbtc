@@ -114,54 +114,132 @@ jobs:
           except Exception as e: print('monthEnd failed, keeping previous:', type(e).__name__)
           # --- history begin ---
           # Daily-closes history for the site's own ledger engine (history.json on the data branch).
-          # Sessions = NYSE sessions (SPY daily bars, ET dates) from the 2025-12-31 base. Stocks/ETFs: Yahoo unadjusted daily close.
-          # BTC: Yahoo BTC-USD UTC-day bar for the same calendar date (closes 00:00 UTC = 8 pm EDT / 7 pm EST); flagged provisional until then.
-          # SPY/QQQ cash distributions (ex-date) kept for total-return benchmarks. Rebuilt from Yahoo when a new session closes or BTC is provisional.
-          import datetime as _dt, zoneinfo as _zi
-          def build_history(fetch, now_utc, hold_prev=None):
+          # Sessions = NYSE sessions (dates where Yahoo has a SPY daily bar, ET dates) from the 2025-12-31 base. Stocks/ETFs: Yahoo unadjusted daily close.
+          # BTC: Yahoo BTC-USD UTC-day bar for the same calendar date (closes 00:00 UTC = 8 pm EDT / 7 pm EST); flagged provisional until 20 min after.
+          # Yahoo briefly returns close=None for just-finished bars around 00:00 UTC. A null close for a finished day is a FEED GAP:
+          #   fallbacks are tried (BTC: Coinbase daily candle, then CoinGecko; stocks: Yahoo chart meta regularMarketPrice for the latest session,
+          #   then Finnhub quote, then Stooq CSV). If no source has it, the rebuild raises and the previous history.json is kept. Values are never invented.
+          # New final closes are cross-checked against an independent source when one exists (BTC 0.5%, stocks 0.2%); disagreement keeps the previous file.
+          import datetime as _dt, zoneinfo as _zi, csv as _csv, io as _io, urllib.request as _ur
+          HIST_WARN = []
+          NYSE_HOLIDAYS = {'2026-01-01','2026-01-19','2026-02-16','2026-04-03','2026-05-25','2026-06-19','2026-07-03','2026-09-07','2026-11-26','2026-12-25',
+                           '2027-01-01','2027-01-18','2027-02-15','2027-03-26','2027-05-31','2027-06-18','2027-07-05','2027-09-06','2027-11-25','2027-12-24'}
+          TOL = {'BTC': 0.005}; TOL_STOCK = 0.002
+          class HistoryHold(ValueError): pass
+          def _stooq(y, d):
+              try:
+                  r = _ur.Request(f'https://stooq.com/q/d/l/?s={y.lower().replace("-", ".")}.us&i=d', headers={'User-Agent': 'paperstreetbtc-cache'})
+                  txt = _ur.urlopen(r, timeout=10).read().decode('utf-8', 'replace')
+                  for row in _csv.DictReader(_io.StringIO(txt)):
+                      if row.get('Date') == d and row.get('Close') not in (None, '', 'N/D'): return float(row['Close'])
+              except Exception: pass
+              return None
+          def _coinbase_days(fetch, days):
+              out = {}
+              if not days: return out
+              try:
+                  a = min(days); b = (_dt.date.fromisoformat(max(days)) + _dt.timedelta(days=1)).isoformat()
+                  for c in fetch(f'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start={a}T00:00:00Z&end={b}T00:00:00Z'):
+                      d = _dt.datetime.fromtimestamp(int(c[0]), _dt.timezone.utc).date().isoformat()   # candle start = UTC day; c[4] = close at 00:00 UTC next day
+                      if d in days and float(c[4]) > 0: out[d] = round(float(c[4]), 6)
+              except Exception as e: print('Coinbase candles failed:', type(e).__name__)
+              return out
+          def _coingecko_close(fetch, d):
+              try:
+                  n = _dt.date.fromisoformat(d) + _dt.timedelta(days=1)   # snapshot at 00:00 UTC of the next day = close of d
+                  v = fetch(f'https://api.coingecko.com/api/v3/coins/bitcoin/history?date={n.strftime("%d-%m-%Y")}&localization=false')['market_data']['current_price']['usd']
+                  return round(float(v), 6) if v and v > 0 else None
+              except Exception as e: print('CoinGecko history failed:', type(e).__name__); return None
+          def _agree(k, vals, d):
+              """vals: list of (source, value) in priority order. Returns (value, source) or raises HistoryHold on disagreement."""
+              vals = [(s, v) for s, v in vals if v is not None]
+              if not vals: return None, None
+              tol = TOL.get(k, TOL_STOCK); s0, v0 = vals[0]
+              for s, v in vals[1:]:
+                  if abs(v - v0) / v0 > tol:
+                      msg = f'{k} {d}: {s0} {v0} vs {s} {v} differ {abs(v - v0) / v0:.2%} (> {tol:.1%}); kept previous history.json, nothing published'
+                      HIST_WARN.append(msg); raise HistoryHold(msg)
+              return v0, s0
+          def build_history(fetch, now_utc, hold_prev=None, quotes=None, stooq=_stooq):
               ET_ = _zi.ZoneInfo('America/New_York'); base = _dt.date(2025, 12, 31)
               p0 = int(_dt.datetime(2025, 12, 15, tzinfo=_dt.timezone.utc).timestamp()); p1 = int(now_utc.timestamp()) + 2 * 86400
               SY = {'BTC': 'BTC-USD', 'MSTR': 'MSTR', 'STRC': 'STRC', 'TSLA': 'TSLA', 'PLTR': 'PLTR', 'SPY': 'SPY', 'QQQ': 'QQQ', 'BRK.B': 'BRK-B', 'GLD': 'GLD'}
-              bars, divs = {}, {}
+              quotes = quotes or {}
+              bars, nulls, meta, divs = {}, {}, {}, {}
               for k, y in SY.items():
                   r = fetch(f'https://query1.finance.yahoo.com/v8/finance/chart/{y}?period1={p0}&period2={p1}&interval=1d&events=div')['chart']['result'][0]
                   tz = _dt.timezone.utc if k == 'BTC' else ET_
-                  b = {}
+                  b, nl = {}, set()
                   for t, c in zip(r.get('timestamp') or [], r['indicators']['quote'][0]['close']):
-                      if c is not None: b[_dt.datetime.fromtimestamp(t, tz).date().isoformat()] = round(float(c), 6)
-                  bars[k] = b
+                      dd = _dt.datetime.fromtimestamp(t, tz).date().isoformat()
+                      if c is None: nl.add(dd)
+                      else: b[dd] = round(float(c), 6)
+                  bars[k], nulls[k] = b, nl - set(b)
+                  m = r.get('meta') or {}
+                  if k != 'BTC' and m.get('regularMarketPrice') and m.get('regularMarketTime'):
+                      mt = _dt.datetime.fromtimestamp(int(m['regularMarketTime']), ET_)
+                      if (mt.hour, mt.minute) >= (16, 0): meta[k] = (mt.date().isoformat(), round(float(m['regularMarketPrice']), 6))   # only a closed session's price
                   if k in ('SPY', 'QQQ'):
                       divs[k] = {_dt.datetime.fromtimestamp(int(v['date']), ET_).date().isoformat(): round(float(v['amount']), 6)
                                  for v in ((r.get('events') or {}).get('dividends') or {}).values() if _dt.datetime.fromtimestamp(int(v['date']), ET_).date() > base}
-              now_et = now_utc.astimezone(ET_)
-              sess = sorted(d for d in bars['SPY'] if d >= base.isoformat())
+              now_et = now_utc.astimezone(ET_); today_utc = now_utc.date().isoformat()
+              sess = sorted(d for d in set(bars['SPY']) | nulls['SPY'] if d >= base.isoformat() and d not in NYSE_HOLIDAYS)   # a null SPY bar still marks a session
               if sess and sess[-1] == now_et.date().isoformat() and now_et.hour < 16: sess = sess[:-1]  # today's session not closed yet
-              prev = (hold_prev or {}).get('closes') or {}
-              if prev and (not sess or max(prev) > sess[-1]):  # Yahoo briefly nulls just-finished bars around 00:00 UTC
-                  raise ValueError(f'rebuild would drop {max(prev)} (Yahoo null bar); keeping previous history')
-              closes, prov, last = {}, [], {}
+              prevc = (hold_prev or {}).get('closes') or {}; prevprov = set((hold_prev or {}).get('btc_provisional') or [])
+              if prevc and (not sess or max(prevc) > sess[-1]):
+                  raise HistoryHold(f'rebuild would drop {max(prevc)} (Yahoo gap); keeping previous history')
+              def final_btc(d): return now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20)
+              # dates whose values are NEW to the published file (cross-checked); older dates are already published and keep Yahoo's value
+              new_stock = {d for d in sess if d not in prevc}
+              new_btc = {d for d in sess if final_btc(d) and (d not in prevc or d in prevprov)}
+              btc_gap = {d for d in sess if d < today_utc and d not in bars['BTC']}
+              cb = _coinbase_days(fetch, sorted(new_btc | btc_gap))
+              first = {k: min(bars[k]) if bars[k] else None for k in SY}
+              closes, prov, last, srcs = {}, [], {}, {}
               for d in sess:
                   row = {}
                   for k in SY:
-                      v = bars[k].get(d)
-                      if v is None and k == 'BTC' and d < now_utc.date().isoformat():  # BTC trades daily: a null finished bar is a Yahoo gap, never ffill it
-                          raise ValueError(f'BTC bar for {d} is null; keeping previous history')
-                      if v is None: v = last.get(k)  # stocks: ffill only for a genuinely missing bar
-                      if v is None: raise ValueError(f'missing {k} {d}')
+                      v, src = bars[k].get(d), 'yahoo'
+                      if k == 'BTC':
+                          if d < today_utc and (v is None or d in new_btc):
+                              alt = [('yahoo', v), ('coinbase', cb.get(d))]
+                              if v is None or cb.get(d) is None: alt.append(('coingecko', _coingecko_close(fetch, d)))
+                              v, src = _agree('BTC', alt, d)
+                              if v is None: raise HistoryHold(f'BTC {d}: Yahoo bar null and no fallback had it; keeping previous history')
+                          elif v is None: v, src = last.get(k), 'ffill-provisional'   # current UTC day still running (provisional)
+                      else:
+                          listed = first[k] is not None and first[k] <= d
+                          if v is None and not listed:
+                              v, src = last.get(k), 'ffill-not-listed'
+                          elif v is None or d in new_stock:
+                              q = quotes.get(k) or {}
+                              fh = q.get('c') if q.get('t') and _dt.datetime.fromtimestamp(int(q['t']), ET_).date().isoformat() == d else None
+                              mv = meta[k][1] if k in meta and meta[k][0] == d else None
+                              if v is None:
+                                  alt = [('yahoo-meta', mv), ('finnhub', fh)]
+                                  if mv is None and fh is None: alt.append(('stooq', stooq(SY[k], d)))
+                              else: alt = [('yahoo', v), ('finnhub', fh)]
+                              v, src = _agree(k, alt, d)
+                              if v is None: raise HistoryHold(f'{k} {d}: Yahoo close null (trades that day) and no fallback had it; keeping previous history')
+                      if v is None: raise HistoryHold(f'missing {k} {d}')
                       row[k] = v; last[k] = v
+                      if src != 'yahoo': srcs.setdefault(d, {})[k] = src
                   closes[d] = row
-                  if now_utc < _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): prov.append(d)  # final 20 min after the UTC day ends
+                  if not final_btc(d): prov.append(d)
+              for d, s in srcs.items(): print('history source', d, s)
               return {'v': 1, 'updated': now_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), 'base': base.isoformat(), 'source': 'Yahoo Finance chart API (unadjusted close)',
-                      'btc_provisional': prov, 'closes': closes, 'divs': divs}
+                      'btc_provisional': prov, 'closes': closes, 'divs': divs, 'fallback_sources': srcs}
+          def last_session(day):
+              while day.weekday() >= 5 or day.isoformat() in NYSE_HOLIDAYS: day -= _dt.timedelta(days=1)
+              return day
           def history_stale(h, now_utc):
               if not h or h.get('v') != 1 or not h.get('closes'): return True
+              if now_utc.hour == 23 and now_utc.minute >= 55 or now_utc.hour == 0 and now_utc.minute < 20: return False   # UTC rollover window (7:55-8:20 PM EDT): Yahoo nulls bars
               ET_ = _zi.ZoneInfo('America/New_York'); n = now_utc.astimezone(ET_)
-              today = n.date()
-              lc = today if n.hour >= 16 else today - _dt.timedelta(days=1)
-              while lc.weekday() >= 5: lc -= _dt.timedelta(days=1)
-              if max(h['closes']) < lc.isoformat(): return True   # a session closed that history lacks (also self-heals next morning)
-              if h.get('btc_provisional') and now_utc.minute % 30 < 5: return True                       # refresh provisional BTC every ~30 min
-              for d in h.get('btc_provisional') or []:                                                   # its UTC day has ended: re-fetch until final
+              lc = last_session(n.date() if n.hour >= 16 else n.date() - _dt.timedelta(days=1))
+              if max(h['closes']) < lc.isoformat(): return True                                            # a closed session is missing (new close, or morning self-repair)
+              if h.get('btc_provisional') and now_utc.minute % 30 < 5: return True                         # refresh provisional BTC every ~30 min
+              for d in h.get('btc_provisional') or []:                                                     # its UTC day has ended: re-fetch until final
                   if now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): return True
               return False
           # --- history end ---
@@ -171,9 +249,12 @@ jobs:
           try:
               nowu = datetime.datetime.now(datetime.timezone.utc)
               if history_stale(hold, nowu):
-                  json.dump(build_history(get, nowu, hold), open('history.json', 'w'), separators=(',', ':'))
+                  json.dump(build_history(get, nowu, hold, out['stocks']), open('history.json', 'w'), separators=(',', ':'))
                   print('history.json rebuilt')
-          except Exception as e: print('history failed, keeping previous:', type(e).__name__, e)
+          except Exception as e:
+              print('history failed, keeping previous:', type(e).__name__, e)
+              if isinstance(e, HistoryHold) and os.environ.get('GITHUB_STEP_SUMMARY'):
+                  open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write(('### :warning: history.json held\n' if HIST_WARN else '### history.json held (feed gap)\n') + f'- {e}\n')
           if ok == 0 and old: out['updated'] = old.get('updated', now)
           json.dump(out, open('prices.json', 'w'), indent=1)
           print('stocks ok:', ok, 'btc src:', (out['btc'] or {}).get('src'))
