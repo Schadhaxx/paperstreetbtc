@@ -68,4 +68,30 @@ if('IntersectionObserver' in window&&!(window.matchMedia&&matchMedia('(prefers-r
   dim.addEventListener('click',close);window.addEventListener('resize',function(){if(!pop.hidden)place();});
   document.addEventListener('keydown',function(e){if(pop.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='Tab'){e.preventDefault();pop.querySelector('.slv-x').focus();}});
 })();
+
+/* CR-015: Benchmarks + button opens the benchmarks block in the same modal pattern as the rules pop-up */
+(function(){var bm=document.getElementById('benchmarks'),bw=document.querySelector('.prd-btn-wrap');if(!bm||!bw)return;
+  var btn=document.createElement('button');btn.type='button';btn.className='prd-btn';btn.id='bmBtn';btn.setAttribute('aria-haspopup','dialog');btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','bmCard');btn.innerHTML='Benchmarks <span aria-hidden="true">+</span>';
+  bw.appendChild(btn);bw.classList.add('prd-btn-row');
+  var dim=document.createElement('div');dim.className='prd-dim bm-dim';dim.hidden=true;document.body.appendChild(dim);
+  var card=document.createElement('div');card.className='prd-card prx-card bm-card';card.id='bmCard';card.hidden=true;card.setAttribute('role','dialog');card.setAttribute('aria-modal','true');card.tabIndex=-1;
+  var grab=document.createElement('div');grab.className='prx-grab';grab.setAttribute('aria-hidden','true');
+  var x=document.createElement('button');x.type='button';x.className='prd-x';x.setAttribute('aria-label','Close');x.textContent='✕';
+  var body=document.createElement('div');body.className='prx bm-body';
+  var h=bm.querySelector('h3');if(h){h.id='bmTitle';card.setAttribute('aria-labelledby','bmTitle');}
+  card.appendChild(grab);card.appendChild(x);card.appendChild(body);body.appendChild(bm);document.body.appendChild(card);
+  var sec=document.getElementById('portfolio-rules');if(sec&&!sec.querySelector('.container').children.length)sec.classList.add('bm-empty');
+  var opener=null;
+  function open(from){opener=from||btn;card.classList.remove('bm-closing');dim.classList.remove('bm-closing');dim.hidden=false;card.hidden=false;void card.offsetWidth;card.classList.add('prx-on');dim.classList.add('prx-on');btn.setAttribute('aria-expanded','true');
+    document.documentElement.classList.add('prd-lock');card.scrollTop=0;window.dispatchEvent(new Event('resize'));x.focus({preventScroll:true});}
+  function close(){if(card.hidden||!card.classList.contains('prx-on'))return;card.classList.remove('prx-on');dim.classList.remove('prx-on');btn.setAttribute('aria-expanded','false');
+    document.documentElement.classList.remove('prd-lock');card.classList.add('bm-closing');dim.classList.add('bm-closing');
+    var done=false,fin=function(e){if(done||(e&&(e.target!==card||e.propertyName!=='transform'&&e.propertyName!=='opacity')))return;done=true;card.removeEventListener('transitionend',fin);clearTimeout(tm);card.hidden=true;dim.hidden=true;card.classList.remove('bm-closing');dim.classList.remove('bm-closing');};
+    card.addEventListener('transitionend',fin);var tm=setTimeout(fin,400);(opener||btn).focus({preventScroll:true});}
+  btn.addEventListener('click',function(){open(btn);});x.addEventListener('click',close);dim.addEventListener('click',close);
+  document.addEventListener('keydown',function(e){if(card.hidden)return;if(e.key==='Escape'){e.preventDefault();close();return;}
+    if(e.key==='Tab'){var f=[].slice.call(card.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}else if(!card.contains(document.activeElement)){e.preventDefault();a.focus();}}});
+  document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href$="#benchmarks"]');if(!a||card.contains(a))return;e.preventDefault();open(a);});
+  if(location.hash==='#benchmarks')setTimeout(function(){bw.scrollIntoView({block:'center'});open(btn);},300);
+})();
 })();

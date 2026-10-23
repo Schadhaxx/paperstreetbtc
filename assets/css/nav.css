@@ -177,3 +177,24 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 @media (max-width:640px){.slv-pop{left:0;right:0;bottom:0;width:auto;border-radius:20px 20px 0 0;border-bottom:0;padding:18px 14px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);opacity:1;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
   .slv-pop.prx-on{transform:none}}
 @media (prefers-reduced-motion:reduce){.slv-pop{transition:none!important}}
+/* CR-015: Benchmarks + button and modal */
+.prd-btn-row{display:flex;flex-wrap:wrap;gap:10px}
+.prd-btn-row .prd-btn{margin:4px 0 8px}
+.bm-card .rules-benchmarks{margin:0;scroll-margin-top:0}
+.bm-card .rules-benchmarks h3{margin:0 56px 14px 0;font:700 clamp(1.5rem,3.2vw,2rem)/1.15 Outfit,sans-serif;color:#fff}
+.bm-card .rules-benchmarks p{color:#b6c2d6;line-height:1.6}
+.bm-card .benchmarks{margin:16px 0 18px}
+.bm-card .note{padding-top:16px;border-top:1px solid rgba(255,255,255,.07)}
+.prd-card.bm-card{width:min(640px,calc(100vw - 48px))}
+#portfolio-rules.bm-empty{display:none}
+/* CR-015: Benchmarks modal open/close animation (transform/opacity only) */
+.prd-card.bm-card{opacity:0;transform:translate(-50%,-50%) scale(.96);transition:opacity .28s cubic-bezier(.2,.8,.2,1),transform .28s cubic-bezier(.2,.8,.2,1);will-change:opacity,transform}
+.prd-card.bm-card.prx-on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.prd-card.bm-card.bm-closing{transition-duration:.2s;transition-timing-function:cubic-bezier(.4,0,1,1)}
+.prd-dim.bm-dim{transition:opacity .28s cubic-bezier(.2,.8,.2,1)}.prd-dim.bm-dim.bm-closing{transition-duration:.2s}
+@media (max-width:640px){.prd-card.bm-card{opacity:1;transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1)}
+  .prd-card.bm-card.prx-on{transform:translateY(0)}.prd-card.bm-card.bm-closing{transition-duration:.22s}}
+@media (prefers-reduced-motion:reduce){.prd-card.bm-card,.prd-card.bm-card.prx-on{transform:translate(-50%,-50%)!important;transition:opacity .15s linear!important;opacity:0}.prd-card.bm-card.prx-on{opacity:1}
+  .prd-dim.bm-dim{transition:opacity .15s linear!important}}
+@media (prefers-reduced-motion:reduce) and (max-width:640px){.prd-card.bm-card,.prd-card.bm-card.prx-on{transform:none!important}}
+@media (max-width:640px){.prd-card.bm-card{width:auto;left:0;right:0}}
