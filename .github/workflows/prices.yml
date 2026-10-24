@@ -42,6 +42,7 @@ jobs:
         if: steps.gate.outputs.run == '1'
         env:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}   # TG: this step ONLY (not the weekend stall job, not recap)
           EVT: ${{ github.event_name }}
         run: |
           cd work
@@ -333,14 +334,83 @@ jobs:
               for d in h.get('btc_provisional') or []:                                                     # its UTC day has ended: re-fetch until final
                   if now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): return True
               return False
+          # --- tiingo begin ---
+          # TG (Tiingo): REFERENCE ONLY on the site. It never writes, replaces or freezes a close: it only cross-checks closes that just became FINAL
+          # (stocks after 8 PM ET of the session, BTC 20 min after its UTC day) and flags a difference > 0.05% (stocks) / 0.3% (BTC) as a ::warning::.
+          # Raw 'close' only (never adjClose/divCash). One call per (symbol, date), cached in history.json 'tiingo_ref'; a miss retries at most hourly;
+          # at most TG_MAX_CALLS calls per run, last TG_DAYS days only. Key: env TIINGO_API_KEY (Authorization header, never in a URL or a log).
+          TG_TOL = {'BTC': 0.003}; TG_TOL_STOCK = 0.0005; TG_MAX_CALLS = 9; TG_RETRY_MIN = 60; TG_DAYS = 7
+          TG_SY = {'BTC': 'btcusd', 'MSTR': 'mstr', 'STRC': 'strc', 'TSLA': 'tsla', 'PLTR': 'pltr', 'SPY': 'spy', 'QQQ': 'qqq', 'BRK.B': 'brk-b', 'GLD': 'gld'}
+          def tiingo_getter(key):
+              def get_t(u):
+                  r = _ur.Request(u, headers={'Authorization': 'Token ' + key, 'Content-Type': 'application/json', 'User-Agent': 'paperstreetbtc-cache'})
+                  with _ur.urlopen(r, timeout=15) as f: return json.load(f)
+              return get_t
+          def tiingo_close(get_t, k, d):
+              """Tiingo's RAW close for symbol k on date d (stocks: session date; BTC: UTC day bar), or None."""
+              import math
+              if k == 'BTC':
+                  n = (_dt.date.fromisoformat(d) + _dt.timedelta(days=1)).isoformat()
+                  j = get_t(f'https://api.tiingo.com/tiingo/crypto/prices?tickers=btcusd&startDate={d}&endDate={n}&resampleFreq=1day')
+                  rows = (j[0].get('priceData') or []) if isinstance(j, list) and j else []
+              else:
+                  j = get_t(f'https://api.tiingo.com/tiingo/daily/{TG_SY[k]}/prices?startDate={d}&endDate={d}')
+                  rows = j if isinstance(j, list) else []
+              for row in rows:
+                  c = row.get('close')   # raw close; adjClose / divCash are never read
+                  if str(row.get('date', ''))[:10] == d and isinstance(c, (int, float)) and not isinstance(c, bool) and math.isfinite(c) and c > 0: return round(float(c), 6)
+              return None
+          def tiingo_check(h, now_utc, get_t, prev=None):
+              """Adds/updates ONLY h['tiingo_ref'] and h['tiingo_flags']. Never touches closes/provenance. Returns the NEW flags."""
+              prev = prev or {}
+              ref = {d: dict(v) for d, v in ((h.get('tiingo_ref') or prev.get('tiingo_ref') or {}).items())}
+              flags = list(h.get('tiingo_flags') or prev.get('tiingo_flags') or [])
+              ET_ = _zi.ZoneInfo('America/New_York'); pv = set(h.get('btc_provisional') or []); fs = h.get('fallback_sources') or {}
+              lo = (now_utc.astimezone(ET_).date() - _dt.timedelta(days=TG_DAYS)).isoformat(); calls = 0; new = []
+              for d in sorted(h.get('closes') or {}):
+                  if d < lo: continue
+                  for k, v in h['closes'][d].items():
+                      if k not in TG_SY or not isinstance(v, (int, float)) or v <= 0: continue
+                      src = (fs.get(d) or {}).get(k, 'yahoo')
+                      if src.startswith('ffill'): continue
+                      if k == 'BTC': fin = d not in pv and now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20)
+                      else: fin = now_utc >= _dt.datetime.fromisoformat(d).replace(hour=20, tzinfo=ET_)
+                      if not fin: continue
+                      c = ref.get(d, {}).get(k)
+                      if c is None or (c.get('v') is None and now_utc - _dt.datetime.fromisoformat(c['t'].replace('Z', '+00:00')) >= _dt.timedelta(minutes=TG_RETRY_MIN)):
+                          if calls >= TG_MAX_CALLS: continue
+                          calls += 1
+                          try: tv = tiingo_close(get_t, k, d)
+                          except Exception as e: print('Tiingo failed (no reference):', k, d, type(e).__name__); tv = None
+                          c = ref.setdefault(d, {})[k] = {'v': tv, 't': now_utc.strftime('%Y-%m-%dT%H:%M:%SZ')}
+                      if c.get('v') is None: continue
+                      diff = abs(v - c['v']) / c['v']; tol = TG_TOL.get(k, TG_TOL_STOCK)
+                      if diff > tol:
+                          f = {'date': d, 'sym': k, 'site': v, 'tiingo': c['v'], 'diff_pct': round(diff * 100, 4), 'src': src}
+                          if not any(x.get('date') == d and x.get('sym') == k and x.get('site') == v and x.get('tiingo') == c['v'] for x in flags):
+                              flags.append(f); new.append(f)
+                              print('::warning title=Tiingo cross-check::' + _gh(f'{k} {d}: site {v} ({src}) vs Tiingo {c["v"]} differ {diff:.4%} (> {tol:.2%}); site value unchanged, review'))
+              h['tiingo_ref'] = {d: v for d, v in ref.items() if d >= lo}; h['tiingo_flags'] = flags[-200:]
+              return new
+          # --- tiingo end ---
           # --- history end ---
           # history.json: daily closes for the ledger engine (only rebuilt when stale)
+          TG_NEW = []
           try: hold = json.load(open('history.json'))
           except Exception: hold = None
           try:
               nowu = datetime.datetime.now(datetime.timezone.utc)
               if history_stale(hold, nowu):
-                  h_new = build_history(get, nowu, hold, out['stocks']); s_new = json.dumps(h_new, separators=(',', ':'), allow_nan=False); open('history.json', 'w').write(s_new)
+                  h_new = build_history(get, nowu, hold, out['stocks'])
+                  for f_ in ('tiingo_ref', 'tiingo_flags'):                        # TG: carry the reference cache/flags (never closes)
+                      if (hold or {}).get(f_) is not None: h_new[f_] = hold[f_]
+                  tk_ = os.environ.get('TIINGO_API_KEY', '')
+                  if tk_:
+                      try:
+                          tg_new = tiingo_check(h_new, nowu, tiingo_getter(tk_), hold)
+                          if tg_new: TG_NEW[:] = tg_new
+                      except Exception as e: print('Tiingo cross-check skipped:', type(e).__name__)   # never blocks a price update
+                  s_new = json.dumps(h_new, separators=(',', ':'), allow_nan=False); open('history.json', 'w').write(s_new)
                   print('history.json rebuilt')
           except Exception as e:
               print('history failed, keeping previous:', type(e).__name__, e)
@@ -354,6 +424,7 @@ jobs:
           ev = os.environ.get('EVT', '')
           rec = {'run': now, 'event': ev, 'trigger': 'cron-job.org' if ev == 'workflow_dispatch' else ('github-schedule' if ev == 'schedule' else ev),
                  'stocks_ok': ok, 'btc': out['btc'], 'stocks': {k: v.get('c') for k, v in out['stocks'].items()}}
+          if TG_NEW: rec['tiingo_flags'] = TG_NEW                                            # TG: durable copy of new cross-check flags
           if NEW_REVS: rec['revisions_ignored'] = NEW_REVS                                        # durable, append-only copy of every ignored revision
           open('runlog.jsonl', 'a').write(json.dumps(rec) + '\n')
           PY
