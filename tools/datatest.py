@@ -47,7 +47,7 @@ with sync_playwright() as p:
         R += [(m, 'BTC table', 'open', bo, num(cells[0]), 0.006), (m, 'BTC table', 'close', BD[ds_[-1]], num(cells[1]), 0.006),
               (m, 'BTC table', 'high', max(BD[d] for d in ds_), num(cells[3].split('·')[0]), 0.006), (m, 'BTC table', 'low', min(BD[d] for d in ds_), num(cells[4].split('·')[0]), 0.006)]
     pg.goto(BASE + '/'); pg.wait_for_timeout(6000)  # CR-009: Pulse move must equal the tracker card 'since <prior close>' move
-    pv = pg.evaluate("[...document.querySelectorAll('#pulseGrid .pulse-card')].map(c=>[c.querySelector('.pulse-name').textContent,c.querySelector('.pulse-chg').textContent])")
+    pv = pg.evaluate("[...document.querySelectorAll('#pulseGrid .pulse-card')].map(c=>[c.querySelector('.pulse-name').textContent,(c.querySelector('.pulse-chg span')||c.querySelector('.pulse-chg')).textContent]  /* % span only: label 'since Oct 23, 2026' has digits */)")
     cv = dict(pg.evaluate("[...document.querySelectorAll('.pf-card')].map(c=>[c.querySelector('.pf-name').textContent,c.querySelector('.pf-sub span').textContent])"))
     for n, t in pv: R.append(('home', n, 'Pulse % = card since-close %', num(cv.get(n)), num(t), 0))
     R.append(('home', 'pulse', 'note says move = since daily close', 1, 1 if 'since daily close' in pg.inner_text('#pulseNote') and '24h' not in pg.inner_text('#pulseNote') else 0, 0))
