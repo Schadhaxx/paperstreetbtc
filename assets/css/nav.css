@@ -198,3 +198,6 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
   .prd-dim.bm-dim{transition:opacity .15s linear!important}}
 @media (prefers-reduced-motion:reduce) and (max-width:640px){.prd-card.bm-card,.prd-card.bm-card.prx-on{transform:none!important}}
 @media (max-width:640px){.prd-card.bm-card{width:auto;left:0;right:0}}
+
+/* CR-013 follow-up: whole sleeve card opens its allocation pop-up */
+#sleeves .card.slv-card{cursor:pointer}
