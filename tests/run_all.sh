@@ -7,7 +7,9 @@ set -eu
 cd "$(dirname "$0")/.."; REPO=$(git rev-parse --show-toplevel); cd "$REPO"; PORT=${PORT:-8799}
 case "$REPO" in /|/proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/tmp|"$HOME") echo "REFUSING: repo root is $REPO"; exit 2;; esac
 [ -f "$REPO/tests/run_all.sh" ] && [ -d "$REPO/assets" ] || { echo "REFUSING: $REPO is not the paperstreet repo"; exit 2; }
-WORK=$(mktemp -d /tmp/psrun.XXXX); SRV=""
+# TG: temp root is configurable and defaults OUTSIDE /tmp (a cleaned /tmp lost runs mid-way): $PS_TMP or <repo>/../.pstmp; python temp files go there too
+TROOT=${PS_TMP:-$(dirname "$REPO")/.pstmp}; case "$TROOT" in /|/proc*|/sys*|/dev*) echo "REFUSING temp root $TROOT"; exit 2;; esac; mkdir -p "$TROOT"
+WORK=$(mktemp -d "$TROOT/psrun.XXXX"); export TMPDIR="$WORK"; SRV=""
 cleanup(){ [ -n "$SRV" ] && kill "$SRV" 2>/dev/null; if [ -n "${KEEP_WORK:-}" ]; then echo "(KEEP_WORK set: $WORK kept)"; else rm -rf "$WORK"; fi; }
 trap cleanup EXIT
 DF0=$(df -Pk / | awk 'NR==2{print $3}'); MAXG=${DISK_MAX_GROWTH_KB:-2097152}
@@ -38,10 +40,13 @@ run test_freeze python3 tests/test_freeze.py --history "$WORK/history.json"
 run reviewer_repros python3 tests/repros.py --history "$WORK/history.json"   # BP: the SL/GB repros that apply to BP, listed in the log
 run mutation python3 tests/mutate.py --history "$WORK/history.json"     # v9+: every constant/rule mutant must be caught
 [ -f "$PD/test_watch.py" ] && run watch_tool python3 "$PD/test_watch.py"   # watch_past_values.py offline tests (W3)
+run tiingo python3 tests/test_tiingo.py                                   # TG: Tiingo cross-check (mocked, no key)
+run tiingo_mutation python3 tests/mutate_tiingo.py                          # TG: mutants of the new Tiingo code only
+TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"
 run test_freeze_liveURL python3 tests/test_freeze.py                       # F8: against the live data-branch URL (read-only)
 run et_expiry_guard_2027-11-15 bash -c 'if ET_TEST_NOW=2027-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9
 # recap: exactly what the nightly job does: regenerate in a staging copy, then test (strict 1e-6 embedded closes)
-STAGE="$WORK/stage"; case "$STAGE" in /tmp/psrun.*/stage) ;; *) echo "REFUSING to stage outside the temp dir: $STAGE"; exit 2;; esac
+STAGE="$WORK/stage"; case "$STAGE" in "$TROOT"/psrun.*/stage) ;; *) echo "REFUSING to stage outside the temp dir: $STAGE"; exit 2;; esac
 rm -rf "$STAGE"; mkdir "$STAGE"; git -C "$REPO" archive --format=tar HEAD | tar -x -C "$STAGE"   # tracked files of HEAD only
 [ -z "$(git -C "$REPO" status --porcelain --untracked-files=no)" ] || echo "   WARNING: uncommitted changes are NOT in the stage (staged = HEAD)"
 dfcheck stage
