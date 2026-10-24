@@ -9,7 +9,7 @@ a = ap.parse_args(); os.chdir(a.repo)
 H = fetch_json(a.history) if a.history.startswith('http') else json.load(open(a.history))
 C = H['closes']; D = sorted(C); prov = H.get('btc_provisional') or []
 VAL, EV = ledger(C, D, strc_from_ledger(open('assets/js/ledger.js').read()))
-BD = dict(json.load(open('assets/data/btc-daily.json'))['d'])
+BD = dict(json.load(open('assets/data/btc-daily.json'))['d']); BD_RAW = dict(BD)
 for d in D: BD.setdefault(d, C[d]['BTC'])
 num = lambda s: float(re.sub(r'[^\d.\-]', '', s.replace('−', '-')))
 R = []
@@ -40,6 +40,8 @@ for m in months:
     cl = json.loads(re.search(r'const CL=(\{.*?\}\}),', s, re.S).group(1))
     bad = [d for d in D if d <= ME and (d not in cl or any(abs(cl[d][k] - C[d][k]) > 1e-6 for k in cl[d]))]
     chk(f'{m} embedded closes match history through {ME}', not bad, bad[:3])
+    xb = [(d, cl[d]['BTC'], BD_RAW[d]) for d in cl if d in BD_RAW and d <= ME and abs(cl[d]['BTC'] - BD_RAW[d]) > 0.01]   # btc-daily is rounded to cents
+    chk(f'{m} card BTC closes agree with the BTC table (btc-daily.json) (P5: one canonical value)', not xb, xb[:3])
     cells = re.search(r'<table class="btcm">.*?</tr><tr>(.*?)</tr>', s).group(1)
     td = re.findall(r'<td[^>]*>(.*?)</td>', cells)
     days = sorted(d for d in BD if d.startswith(m) and (d <= ME if mtd else d <= mend))
