@@ -68,6 +68,7 @@ def main():
     VAL, EV = ledger(C, D, strc)
     ME = LASTF; pm_cal = (dt.date(y, mo, 1) - dt.timedelta(days=1)).isoformat(); PM = max(d for d in D if d <= pm_cal)
     B = {k: v for k, v in json.load(open('assets/data/btc-daily.json'))['d']}
+    BPROV = set(json.load(open('assets/data/btc-daily.json')).get('provisional') or [])   # v10: fallback-source dates, re-synced to Yahoo's final bar later
     for d in D:
         if d not in B: B[d] = C[d]['BTC']
     bdays = sorted(k for k in B if k.startswith(m) and k <= (f'{m}-{calendar.monthrange(y, mo)[1]:02d}' if final else ME))
@@ -86,7 +87,9 @@ def main():
             '<tr><td>$%s</td><td>$%s</td><td class="%s">%+.2f%%</td><td>$%s · %s</td><td>$%s · %s</td></tr></table></div>'
             '<p class="note">BTC-USD daily closes (UTC day, %s) from the site\'s BTC history (Yahoo Finance). High/low are the highest and lowest daily closes, not intraday extremes.%s</p></div></section>\n') % (
         full + ('' if final else ' (to date)'), nicey(bopen) if mo == 1 else nice(bopen), nice(bdays[-1]), full, full, f'{bo:,.2f}', f'{bc:,.2f}', 'pos' if chg >= 0 else 'neg', chg,
-        f'{B[hi]:,.2f}', nice(hi), f'{B[lo]:,.2f}', nice(lo), days_txt, '' if final else f' Static snapshot through {nicey(bdays[-1])}; the month is not complete.')
+        f'{B[hi]:,.2f}', nice(hi) + (' (provisional)' if hi in BPROV else ''), f'{B[lo]:,.2f}', nice(lo) + (' (provisional)' if lo in BPROV else ''), days_txt,
+        ('' if final else f' Static snapshot through {nicey(bdays[-1])}; the month is not complete.') +
+        ((' Provisional (fallback source until Yahoo\'s final bar arrives): ' + ', '.join(nice(x) for x in sorted(BPROV) if x in bdays) + '.') if any(x in bdays for x in BPROV) else ''))
     s = sub1(s, r'<section><h2>Bitcoin in .*?</section>\n(?=<section><h2>Sleeves vs spot BTC</h2>)', card, re.S)
     s = sub1(s, r'<p class="note" style="margin-bottom:12px">Month = [^<]*',
              f'<p class="note" style="margin-bottom:12px">Month = {nicey(PM) if PM < "2026-01-01" else nice(PM)} → {nice(ME)} close. YTD = Dec 31, 2025 → {nice(ME)} close.')

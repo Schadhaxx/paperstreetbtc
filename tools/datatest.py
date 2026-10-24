@@ -13,7 +13,7 @@ def fresh_history():  # CR-007: bypass the raw.githubusercontent CDN cache (API 
         try: return json.load(urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'paperstreet-test', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache', **h}), timeout=30))
         except urllib.error.HTTPError: continue
     raise SystemExit('history.json unavailable')
-H = fresh_history(); C = H['closes']; D = sorted(C)  # CR-007: API read bypasses raw.githubusercontent CDN cache
+H = json.load(open(os.environ['DT_HISTORY'])) if os.environ.get('DT_HISTORY') else fresh_history(); C = H['closes']; D = sorted(C)  # CR-007: API read bypasses raw.githubusercontent CDN cache
 BD = dict(fetch_json(BASE + '/assets/data/btc-daily.json')['d'])
 for d in D: BD.setdefault(d, C[d]['BTC'])
 get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'paperstreet-test'}), timeout=30).read().decode()
@@ -53,8 +53,27 @@ with sync_playwright() as p:
     R.append(('home', 'pulse', 'note says move = since daily close', 1, 1 if 'since daily close' in pg.inner_text('#pulseNote') and '24h' not in pg.inner_text('#pulseNote') else 0, 0))
     pg.goto(BASE + '/recap/'); pg.wait_for_timeout(1200)
     R.append(('index', 'cards', 'count (= months Jan..newest final close)', len(months), pg.evaluate("document.querySelectorAll('#list a.rc').length"), 0))
+    # ET standard + fix 5 (added checks)
+    for path in ['/', '/compare/', '/custom/', '/recap/', f'/recap/{months[-1]}/']:
+        pg.goto(BASE + path); pg.wait_for_timeout(800)
+        R.append((path, 'ET', 'et.js loaded (window.ET defined)', 1, 1 if pg.evaluate("!!(window.ET&&ET.today)") else 0, 0))
+    pg.goto(BASE + '/'); pg.wait_for_timeout(6000)
+    R.append(('home', 'btcTime', "BTC bar time ends with ' ET'", 1, 1 if pg.inner_text('#btcTime').strip().endswith(' ET') else 0, 0))
+    same = pg.evaluate("(()=>{const c=document.querySelector('.pf-card');c.click();window.dispatchEvent(new CustomEvent('btcprice',{detail:{usd:12345,chg:0,src:'test',time:'x'}}));const n=document.querySelector('.pf-card[data-i=\"'+c.dataset.i+'\"]');return n===c&&c.isConnected&&c.classList.contains('open')})()")
+    R.append(('home', 'cards', 'same card node + open state survive a live update', 1, 1 if same else 0, 0))
     b.close()
-F = [r for r in R if r[4] is None or abs(r[3] - r[4]) > r[5]]
+def tol(r):  # a revised upstream close must not fail the site: ~0.01% on values, 0.01 on %/price checks
+    if isinstance(r[3], (int, float)) and 'value' in str(r[2]) or 'BTC table' in str(r[1]): return max(r[5], abs(r[3]) * 1e-4)
+    return max(r[5], 0.01) if r[5] else r[5]
+STRICT = os.environ.get('LENIENT') != '1'   # strict by default (after P6). LENIENT=1 allows ~0.01% revised-close drift and reports it as WARN
+F = [r for r in R if r[4] is None or abs(r[3] - r[4]) > (r[5] if STRICT else tol(r))]
+W = [r for r in R if r not in F and r[4] is not None and abs(r[3] - r[4]) > r[5]]
+for r in W: print('WARN absorbed by revised-close tolerance (check revisions_ignored):', r)
+if W:
+    print('=' * 70); print(f'WARNINGS: {len(W)} value(s) differ beyond the strict tolerance but were accepted (LENIENT=1):')
+    for r in W: print(f'  WARN {r[0]} {r[1]} {r[2]}: expected {r[3]:.6g}, page {r[4]:.6g}')
+    print('=' * 70)
+    if os.environ.get('GITHUB_STEP_SUMMARY'): open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write(f'### :warning: datatest: {len(W)} WARN\n' + ''.join(f'- {r[0]} {r[1]} {r[2]}: {r[3]:.6g} vs {r[4]:.6g}\n' for r in W))
 for r in F: print('FAIL', r)
-print('CHECKS', len(R), 'FAIL', len(F) + len(fails), fails, 'reqfailed', sorted(set(bad)))
+print('CHECKS', len(R), 'FAIL', len(F) + len(fails), 'WARN', len(W), fails, 'reqfailed', sorted(set(bad)))
 sys.exit(1 if F or fails else 0)

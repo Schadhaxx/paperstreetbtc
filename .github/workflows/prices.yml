@@ -3,6 +3,7 @@ on:
   schedule:
     - cron: '*/5 * * * 1-5'   # Mon-Fri UTC
     - cron: '*/5 0-1 * * 6'   # Sat 00:00-01:59 UTC = Fri evening ET
+    - cron: '17 15 * * 0,6'   # BP: Sat+Sun ~11:17 AM EDT / 10:17 AM EST, btc-daily 48 h stall check ONLY (read-only, never writes prices)
   workflow_dispatch:
     inputs:
       force:
@@ -11,6 +12,7 @@ on:
 permissions: {}
 jobs:
   fetch:
+    if: github.event.schedule != '17 15 * * 0,6'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     concurrency:
@@ -126,10 +128,12 @@ jobs:
                            '2027-01-01','2027-01-18','2027-02-15','2027-03-26','2027-05-31','2027-06-18','2027-07-05','2027-09-06','2027-11-25','2027-12-24'}
           TOL = {'BTC': 0.005}; TOL_STOCK = 0.002
           class HistoryHold(ValueError): pass
+          FEED_ERR = []   # v9 R-i: unresolved fallback disagreements after the post-8 PM ET run -> ::error::
           def _stooq(y, d):
               try:
                   r = _ur.Request(f'https://stooq.com/q/d/l/?s={y.lower().replace("-", ".")}.us&i=d', headers={'User-Agent': 'paperstreetbtc-cache'})
                   txt = _ur.urlopen(r, timeout=10).read().decode('utf-8', 'replace')
+                  if not txt.lstrip().startswith('Date,'): print('Stooq: not CSV (bot challenge/HTML?); no reference'); return None   # v7: fail safe
                   for row in _csv.DictReader(_io.StringIO(txt)):
                       if row.get('Date') == d and row.get('Close') not in (None, '', 'N/D'): return float(row['Close'])
               except Exception: pass
@@ -152,7 +156,7 @@ jobs:
               except Exception as e: print('CoinGecko history failed:', type(e).__name__); return None
           def _agree(k, vals, d):
               """vals: list of (source, value) in priority order. Returns (value, source) or raises HistoryHold on disagreement."""
-              vals = [(s, v) for s, v in vals if v is not None]
+              vals = [(s, v) for s, v in vals if isinstance(v, (int, float)) and v == v and 0 < v < float('inf')]   # P5: 0 / NaN / inf / negative count as missing (was ZeroDivisionError on 0)
               if not vals: return None, None
               tol = TOL.get(k, TOL_STOCK); s0, v0 = vals[0]
               for s, v in vals[1:]:
@@ -160,11 +164,22 @@ jobs:
                       msg = f'{k} {d}: {s0} {v0} vs {s} {v} differ {abs(v - v0) / v0:.2%} (> {tol:.1%}); kept previous history.json, nothing published'
                       HIST_WARN.append(msg); raise HistoryHold(msg)
               return v0, s0
+          NEW_REVS = []
+          DIV_SYMS = {'STRC', 'SPY', 'QQQ'}   # dividend payers: Stooq may be dividend-ADJUSTED, never a cross-check for them
+          # provenance that may freeze: the PRIMARY source (Yahoo bar, optionally confirmed) Fallbacks (coinbase,
+          # coingecko, yahoo-meta, finnhub, stooq) NEVER freeze: they stay marked and are replaced by Yahoo's final bar when it appears.
+          PRIMARY = {'yahoo', 'yahoo+finnhub', 'yahoo+stooq', 'ffill-not-listed'}
+          def is_primary(s): return s in PRIMARY or s == 'yahoo-unchecked-frozen'
+          def _line(m):    # one printable line, no '::' (cannot start a workflow command), bounded
+              return ''.join(c if c.isprintable() else ' ' for c in str(m)).replace('::', ': :')[:400]
+          def _gh(m):      # message data of a ::error/::warning workflow command (GitHub escaping)
+              return _line(m).replace('%', '%25')
           def build_history(fetch, now_utc, hold_prev=None, quotes=None, stooq=_stooq):
               ET_ = _zi.ZoneInfo('America/New_York'); base = _dt.date(2025, 12, 31)
               p0 = int(_dt.datetime(2025, 12, 15, tzinfo=_dt.timezone.utc).timestamp()); p1 = int(now_utc.timestamp()) + 2 * 86400
               SY = {'BTC': 'BTC-USD', 'MSTR': 'MSTR', 'STRC': 'STRC', 'TSLA': 'TSLA', 'PLTR': 'PLTR', 'SPY': 'SPY', 'QQQ': 'QQQ', 'BRK.B': 'BRK-B', 'GLD': 'GLD'}
               quotes = quotes or {}
+              _st0 = stooq; stooq = (lambda y, d: None if y in DIV_SYMS else _st0(y, d)) if _st0 else None   # no Stooq cross-check for dividend payers
               bars, nulls, meta, divs = {}, {}, {}, {}
               for k, y in SY.items():
                   r = fetch(f'https://query1.finance.yahoo.com/v8/finance/chart/{y}?period1={p0}&period2={p1}&interval=1d&events=div')['chart']['result'][0]
@@ -189,52 +204,128 @@ jobs:
               if prevc and (not sess or max(prevc) > sess[-1]):
                   raise HistoryHold(f'rebuild would drop {max(prevc)} (Yahoo gap); keeping previous history')
               def final_btc(d): return now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20)
-              # dates whose values are NEW to the published file (cross-checked); older dates are already published and keep Yahoo's value
-              new_stock = {d for d in sess if d not in prevc}
-              new_btc = {d for d in sess if final_btc(d) and (d not in prevc or d in prevprov)}
+              # P5: values NEW to the published file are cross-checked + sanity-banded; published FINAL values are frozen (see frozen_ok)
+              prev_upd = _dt.datetime.fromisoformat(((hold_prev or {}).get('updated') or '1970-01-01T00:00:00Z').replace('Z', '+00:00'))
+              def stock_cut(d): return _dt.datetime.fromisoformat(d).replace(hour=20, tzinfo=ET_)          # stocks final for freezing: 8 PM ET of the session
+              def frozen_ok(d, k):   # freeze only a PRIMARY-source value a post-cutoff run already published, cross-checked (or unchecked > ~3 days)
+                  s_ = prevfs.get(d, {}).get(k, 'yahoo')
+                  if not s_.endswith('-unchecked'): return is_primary(s_)                           # fallback values never freeze
+                  if not is_primary(s_[:-len('-unchecked')]): return False
+                  return now_utc - _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) > _dt.timedelta(days=2, hours=20)
+              def sane(k, d, v):     # sanity band for any NEW value: finite, > 0, within 40% of the previous session
+                  import math
+                  if v is None or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0: raise HistoryHold(f'{k} {d}: implausible value {v!r}; keeping previous history')
+                  p_ = last.get(k)
+                  if p_ and not (0.6 * p_ <= v <= 1.0 / 0.6 * p_): raise HistoryHold(f'{k} {d}: {v} vs previous {p_} outside the 40% sanity band; keeping previous history')
+                  return v
+              def freeze_src(d, k, val):   # provenance for a frozen value; an UNCHECKED value freezing by age must sit within 15% of the previous session and alerts
+                  s_ = prevfs.get(d, {}).get(k, 'yahoo')
+                  if not s_.endswith('-unchecked'): return s_
+                  p_ = last.get(k)
+                  if p_ and not (0.85 * p_ <= val <= p_ / 0.85): raise HistoryHold(f'{k} {d}: unchecked value {val} vs previous {p_} outside 15%; not freezing, keeping previous history')
+                  msg = f'{k} {d}: value {val} FROZEN WITHOUT A SECOND SOURCE (no cross-check for ~3 days); review it'
+                  HIST_WARN.append(msg); print('::warning::' + msg); revs.append({'date': d, 'sym': k, 'kept': val, 'upstream': None, 'src': 'frozen-unchecked'})
+                  return s_ + '-frozen'
+              def checked(src_, alt):  # single-source values are marked, so the freeze keeps re-checking them
+                  return src_ if len([1 for _, x in alt if isinstance(x, (int, float)) and x == x and 0 < x < float('inf')]) >= 2 else (src_ or 'yahoo') + '-unchecked'
+              prevfs = (hold_prev or {}).get('fallback_sources') or {}
+              def agree_or_keep(k, alt, d):   # v9 R-i: a PUBLISHED FALLBACK whose replacement fails the cross-check keeps its value (unchecked), the rest publishes
+                  ps = prevfs.get(d, {}).get(k, 'yahoo'); pub = (prevc.get(d) or {}).get(k)
+                  try: return _agree(k, alt, d)
+                  except HistoryHold as e_:
+                      if pub is None or is_primary(ps) or (k == 'BTC' and d in prevprov): raise          # a NEW value that disagrees still holds
+                      due = (_dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20)) if k == 'BTC' else stock_cut(d)
+                      msg = f'{k} {d}: published fallback {pub} ({ps}) kept UNCHECKED; replacement disagrees ({e_}); rest of history.json published'
+                      HIST_WARN.append(msg); FEED_ERR.append(msg) if now_utc >= due else print('::warning::' + _gh(msg))
+                      return pub, (ps if ps.endswith('-unchecked') else ps + '-unchecked')
+              recheck = {d for d in sess if d in prevc and any(not frozen_ok(d, k) for k in prevc[d])}   # published single-source values: cross-check again
+              new_stock = {d for d in sess if d not in prevc} | recheck
+              new_btc = {d for d in sess if final_btc(d) and (d not in prevc or d in prevprov or not frozen_ok(d, 'BTC'))}
               btc_gap = {d for d in sess if d < today_utc and d not in bars['BTC']}
               cb = _coinbase_days(fetch, sorted(new_btc | btc_gap))
               first = {k: min(bars[k]) if bars[k] else None for k in SY}
-              closes, prov, last, srcs = {}, [], {}, {}
+              closes, prov, last, srcs = {}, [], {}, {}; revs = []
               for d in sess:
                   row = {}
                   for k in SY:
                       v, src = bars[k].get(d), 'yahoo'
                       if k == 'BTC':
-                          if d < today_utc and (v is None or d in new_btc):
+                          if d in prevc and d not in prevprov and prevc[d].get('BTC') is not None and frozen_ok(d, 'BTC'):   # published FINAL close: frozen, never re-pulled
+                              if v is not None and abs(v / prevc[d]['BTC'] - 1) > 1e-5: revs.append({'date': d, 'sym': 'BTC', 'kept': prevc[d]['BTC'], 'upstream': v, 'src': 'yahoo'})
+                              v = prevc[d]['BTC']; src = freeze_src(d, 'BTC', v)   # keep original provenance
+                          elif d < today_utc and v is None and d in prevc and d not in prevprov and prevc[d].get('BTC') is not None:
+                              v, src = prevc[d]['BTC'], prevfs.get(d, {}).get('BTC', 'coinbase')            # Yahoo final bar not there yet: keep the published fallback (not frozen)
+                          elif d < today_utc and (v is None or d in new_btc):
                               alt = [('yahoo', v), ('coinbase', cb.get(d))]
                               if v is None or cb.get(d) is None: alt.append(('coingecko', _coingecko_close(fetch, d)))
-                              v, src = _agree('BTC', alt, d)
+                              v, src = agree_or_keep('BTC', alt, d)
                               if v is None: raise HistoryHold(f'BTC {d}: Yahoo bar null and no fallback had it; keeping previous history')
+                              v = sane('BTC', d, v); src = checked(src, alt)
+                              ps_ = prevfs.get(d, {}).get('BTC', 'yahoo')
+                              if d in prevc and d not in prevprov and not is_primary(ps_) and src.startswith('yahoo') and prevc[d].get('BTC') != v:
+                                  revs.append({'date': d, 'sym': 'BTC', 'kept': v, 'upstream': prevc[d].get('BTC'), 'src': f'fallback ({ps_}) replaced by primary final bar'})
                           elif v is None: v, src = last.get(k), 'ffill-provisional'   # current UTC day still running (provisional)
+                      elif d in prevc and prevc[d].get(k) is not None and prev_upd >= stock_cut(d) and frozen_ok(d, k):
+                          # FINAL stock close already published by a run at/after 8 PM ET of its session: frozen, upstream revisions logged, not applied
+                          if v is not None and abs(v / prevc[d][k] - 1) > 1e-5: revs.append({'date': d, 'sym': k, 'kept': prevc[d][k], 'upstream': v, 'src': 'yahoo'})
+                          v = prevc[d][k]; src = freeze_src(d, k, v)
                       else:
                           listed = first[k] is not None and first[k] <= d
+                          q = quotes.get(k) or {}
+                          fh = q.get('c') if q.get('t') and _dt.datetime.fromtimestamp(int(q['t']), ET_).date().isoformat() == d else None
+                          mv = meta[k][1] if k in meta and meta[k][0] == d else None
                           if v is None and not listed:
                               v, src = last.get(k), 'ffill-not-listed'
+                          elif v is None and d in prevc and prevc[d].get(k) is not None:
+                              v, src = prevc[d][k], prevfs.get(d, {}).get(k, 'yahoo')                        # Yahoo bar not there (yet): keep the published value, not frozen if fallback
                           elif v is None or d in new_stock:
-                              q = quotes.get(k) or {}
-                              fh = q.get('c') if q.get('t') and _dt.datetime.fromtimestamp(int(q['t']), ET_).date().isoformat() == d else None
-                              mv = meta[k][1] if k in meta and meta[k][0] == d else None
                               if v is None:
                                   alt = [('yahoo-meta', mv), ('finnhub', fh)]
                                   if mv is None and fh is None: alt.append(('stooq', stooq(SY[k], d)))
-                              else: alt = [('yahoo', v), ('finnhub', fh)]
-                              v, src = _agree(k, alt, d)
+                              else:
+                                  alt = [('yahoo', v), ('finnhub', fh)]
+                                  if fh is None: alt.append(('stooq', stooq(SY[k], d)))                     # independent confirmation (never Yahoo meta)
+                              ps_ = prevfs.get(d, {}).get(k, 'yahoo')
+                              v, src = agree_or_keep(k, alt, d)
                               if v is None: raise HistoryHold(f'{k} {d}: Yahoo close null (trades that day) and no fallback had it; keeping previous history')
+                              v = sane(k, d, v); src = checked(src, alt)
+                              if d in prevc and prevc[d].get(k) is not None and not is_primary(ps_) and src.startswith('yahoo') and prevc[d][k] != v:
+                                  revs.append({'date': d, 'sym': k, 'kept': v, 'upstream': prevc[d][k], 'src': f'fallback ({ps_}) replaced by primary final bar'})
+                          elif v is not None and d in prevc and prevc[d].get(k):
+                              # published but not yet frozen (before the 8 PM ET publish): a re-pull may only CHANGE the value if a same-date
+                              # second source confirms it (0.2%); otherwise the published value stays and the difference is logged
+                              p_ = prevc[d][k]
+                              if abs(v / p_ - 1) > TOL_STOCK:
+                                  cf = [(n_, x) for n_, x in (('finnhub', fh), ('stooq', stooq(SY[k], d) if fh is None else None)) if isinstance(x, (int, float)) and x > 0]   # independent only (not Yahoo meta)
+                                  if cf and all(abs(x / v - 1) <= TOL_STOCK for _, x in cf): v = sane(k, d, v); src = 'yahoo+' + cf[0][0]
+                                  else:
+                                      revs.append({'date': d, 'sym': k, 'kept': p_, 'upstream': v, 'src': 'unconfirmed re-pull before freeze'})
+                                      v, src = p_, prevfs.get(d, {}).get(k, 'yahoo')
+                              else: v = sane(k, d, v)                                                # settlement-size change (<= 0.2%): accepted
+                          elif v is not None: v = sane(k, d, v)
                       if v is None: raise HistoryHold(f'missing {k} {d}')
                       row[k] = v; last[k] = v
                       if src != 'yahoo': srcs.setdefault(d, {})[k] = src
                   closes[d] = row
                   if not final_btc(d): prov.append(d)
+              for m_ in FEED_ERR: print('::error title=history.json unresolved source disagreement::' + _gh(m_))
               for d, s in srcs.items(): print('history source', d, s)
+              for r_ in revs: print('REVISION IGNORED (final close frozen)', r_)
+              # durable log: carry the previous file's entries forward (dedupe), and hand the new ones to runlog.jsonl
+              seen, allr = set(), []
+              for r_ in ((hold_prev or {}).get('revisions_ignored') or []) + revs:
+                  key_ = (r_.get('date'), r_.get('sym'), r_.get('kept'), r_.get('upstream'), r_.get('src'))
+                  if key_ not in seen: seen.add(key_); allr.append(r_)
+              old_keys = {(r_.get('date'), r_.get('sym'), r_.get('kept'), r_.get('upstream'), r_.get('src')) for r_ in ((hold_prev or {}).get('revisions_ignored') or [])}
+              NEW_REVS[:] = [r_ for r_ in revs if (r_.get('date'), r_.get('sym'), r_.get('kept'), r_.get('upstream'), r_.get('src')) not in old_keys]
               return {'v': 1, 'updated': now_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), 'base': base.isoformat(), 'source': 'Yahoo Finance chart API (unadjusted close)',
-                      'btc_provisional': prov, 'closes': closes, 'divs': divs, 'fallback_sources': srcs}
+                      'btc_provisional': prov, 'closes': closes, 'divs': divs, 'fallback_sources': srcs, 'revisions_ignored': allr[-500:]}
           def last_session(day):
               while day.weekday() >= 5 or day.isoformat() in NYSE_HOLIDAYS: day -= _dt.timedelta(days=1)
               return day
           def history_stale(h, now_utc):
               if not h or h.get('v') != 1 or not h.get('closes'): return True
-              if now_utc.hour == 23 and now_utc.minute >= 55 or now_utc.hour == 0 and now_utc.minute < 20: return False   # UTC rollover window (7:55-8:20 PM EDT): Yahoo nulls bars
+              if now_utc.hour == 23 and now_utc.minute >= 55 or now_utc.hour == 0 and now_utc.minute < 20: return False   # UTC rollover window (7:55-8:20 PM EDT; 6:55-7:20 PM EST from Nov 1): Yahoo nulls bars
               ET_ = _zi.ZoneInfo('America/New_York'); n = now_utc.astimezone(ET_)
               lc = last_session(n.date() if n.hour >= 16 else n.date() - _dt.timedelta(days=1))
               if max(h['closes']) < lc.isoformat(): return True                                            # a closed session is missing (new close, or morning self-repair)
@@ -249,18 +340,21 @@ jobs:
           try:
               nowu = datetime.datetime.now(datetime.timezone.utc)
               if history_stale(hold, nowu):
-                  json.dump(build_history(get, nowu, hold, out['stocks']), open('history.json', 'w'), separators=(',', ':'))
+                  h_new = build_history(get, nowu, hold, out['stocks']); s_new = json.dumps(h_new, separators=(',', ':'), allow_nan=False); open('history.json', 'w').write(s_new)
                   print('history.json rebuilt')
           except Exception as e:
               print('history failed, keeping previous:', type(e).__name__, e)
+              if not isinstance(e, HistoryHold):   # a code/data error is never silent: red annotation naming the file
+                  print('::error file=history.json,title=history.json NOT rebuilt::' + _gh(f'{type(e).__name__}: {e}'))
               if isinstance(e, HistoryHold) and os.environ.get('GITHUB_STEP_SUMMARY'):
                   open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write(('### :warning: history.json held\n' if HIST_WARN else '### history.json held (feed gap)\n') + f'- {e}\n')
           if ok == 0 and old: out['updated'] = old.get('updated', now)
-          json.dump(out, open('prices.json', 'w'), indent=1)
+          json.dump(out, open('prices.json', 'w'), indent=1, allow_nan=False)
           print('stocks ok:', ok, 'btc src:', (out['btc'] or {}).get('src'))
           ev = os.environ.get('EVT', '')
           rec = {'run': now, 'event': ev, 'trigger': 'cron-job.org' if ev == 'workflow_dispatch' else ('github-schedule' if ev == 'schedule' else ev),
                  'stocks_ok': ok, 'btc': out['btc'], 'stocks': {k: v.get('c') for k, v in out['stocks'].items()}}
+          if NEW_REVS: rec['revisions_ignored'] = NEW_REVS                                        # durable, append-only copy of every ignored revision
           open('runlog.jsonl', 'a').write(json.dumps(rec) + '\n')
           PY
       - name: Final-close check (decides whether the recap job runs)
@@ -315,14 +409,47 @@ jobs:
           new, old = (b, a) if b.get('updated', '') >= a.get('updated', '') else (a, b)
           m = dict(new); m['closes'] = {**old.get('closes', {}), **new.get('closes', {})}
           m['divs'] = {k: {**old.get('divs', {}).get(k, {}), **v} for k, v in new.get('divs', {}).items()}
-          m['btc_provisional'] = [d for d in new.get('btc_provisional', []) if d in m['closes']]
-          json.dump(m, open('history.json', 'w'), separators=(',', ':'))
+          NC = new.get('closes', {})
+          # R-t: a date that exists only in the old copy keeps its provisional mark (never dropped by a push race)
+          m['btc_provisional'] = sorted(set(d for d in new.get('btc_provisional', []) if d in m['closes']) | set(d for d in old.get('btc_provisional', []) if d in m['closes'] and d not in NC))
+          # R-t: an old source tag is dropped ONLY if the new run has that (date, symbol) AND its source there is primary (no tag of its own);
+          # otherwise the old value won the merge and keeps its tag (a fallback never silently becomes primary and freezes)
+          fs = {}
+          for d, s in (old.get('fallback_sources') or {}).items():
+              for k, t in s.items():
+                  if d in m['closes'] and not (d in NC and k in NC[d]): fs.setdefault(d, {})[k] = t
+          for d, s in (new.get('fallback_sources') or {}).items():
+              if d in m['closes']: fs.setdefault(d, {}).update(s)
+          m['fallback_sources'] = {d: {k: t for k, t in s.items() if k in m['closes'].get(d, {})} for d, s in fs.items()}   # a tag only describes a value that exists
+          m['fallback_sources'] = {d: s for d, s in m['fallback_sources'].items() if s}
+          seen, rv = set(), []
+          for r in (old.get('revisions_ignored') or []) + (new.get('revisions_ignored') or []):
+              key = json.dumps(r, sort_keys=True)
+              if key not in seen: seen.add(key); rv.append(r)
+          m['revisions_ignored'] = rv[-500:]
+          json.dump(m, open('history.json', 'w'), separators=(',', ':'), allow_nan=False)
           PY
               fi
               git add prices.json runlog.jsonl history.json && GIT_EDITOR=true git rebase --continue || { git rebase --abort; echo "rebase failed"; }
             fi
           done
           echo "data push failed after 4 tries"; exit 1
+  btcd-stall-check:
+    # BP: weekend 48 h stall alarm for btc-daily. Read-only token, no commit/push step: it can never write prices.json, history.json or btc-daily.json.
+    if: github.event.schedule == '17 15 * * 0,6'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2, pinned
+        with:
+          ref: main
+          persist-credentials: false
+      - name: btc-daily stall check (no writes)
+        run: |
+          git fetch -q --depth 1 origin data && git show FETCH_HEAD:history.json > /tmp/history.json
+          python3 tools/btc_daily.py assets/data/btc-daily.json /tmp/history.json --check-only
 
   recap:
     # Keeps main's recap (current month page + index card) and assets/data/btc-daily.json current from FINAL closes.
@@ -338,7 +465,7 @@ jobs:
       group: recap-main
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2, pinned (SL v6c1-4)
         with:
           ref: main
           fetch-depth: 0
@@ -347,8 +474,10 @@ jobs:
         run: |
           for wait in 0 5 15 30; do sleep $wait; git fetch -q origin data && break; echo "fetch failed, retrying"; done
           git show FETCH_HEAD:history.json > /tmp/history.json
+          git show FETCH_HEAD:btc-heal-once.json > /tmp/btc-heal-once.json 2>/dev/null || rm -f /tmp/btc-heal-once.json   # R-s one-time heal list (DATA, dates only)
           rm -rf /tmp/stage && cp -a . /tmp/stage
-          ( cd /tmp/stage && python3 tools/btc_daily.py ) || echo "::warning::btc-daily update skipped (see log); recap continues"
+          rc=0; ( cd /tmp/stage && python3 tools/btc_daily.py assets/data/btc-daily.json /tmp/history.json --heal-list /tmp/btc-heal-once.json ) || rc=$?
+          if [ $rc -eq 3 ]; then echo "btcd_stalled=1" >> $GITHUB_OUTPUT; elif [ $rc -ne 0 ]; then echo "::warning::btc-daily update skipped (see log); recap continues"; fi
           ( cd /tmp/stage && python3 tools/recap_gen.py --history /tmp/history.json --repo . )
           ( cd /tmp/stage && python3 tests/test_recap.py --history /tmp/history.json --repo . > /tmp/test.log ) || { tail -40 /tmp/test.log; echo "Checks failed in staging; nothing moved into place, live site unchanged."; exit 1; }
           tail -1 /tmp/test.log
@@ -380,6 +509,11 @@ jobs:
         run: |
           for wait in 0 10 30; do sleep $wait; if gh api -X POST repos/${{ github.repository }}/pages/builds --jq .status; then echo "ok=1" >> $GITHUB_OUTPUT; exit 0; fi; done
           echo "::warning::Pages build request failed 3 times; the change IS on main and will deploy with the next Pages build"; exit 0
+      - name: btc-daily stalled > 48 h (run turns red AFTER the recap was published)
+        if: always() && steps.gen.outputs.btcd_stalled == '1'
+        run: |
+          echo "::error::btc-daily is paused at a BTC day still on a fallback source > 48 h. See tools/btc_daily.py header (BP ROLLOUT: stall)."
+          exit 1
       - name: Summary
         if: always()
         run: |
