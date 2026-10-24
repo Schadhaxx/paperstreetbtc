@@ -12,12 +12,15 @@ BP HEAL (generic, no hard-coded dates/values): every EXISTING date is re-synced 
     Without history.json, provisional dates heal from Yahoo's own final bar. A date this script fills from Coinbase is provisional too.
 R-s: a FINAL (non-provisional) row is rewritten only if ALL hold: (1) the date is on record as fallback-sourced: history.json revisions_ignored has a
     'fallback (...) replaced by primary' BTC entry for it, or it is in the one-time heal list kept in DATA (--heal-list PATH: a JSON list of dates,
-    no values; data branch btc-heal-once.json); (2) the date is within 7 days of today (ET); (3) the change is at most 0.5%.
-    Otherwise ::error:: and exit 1 with the file unchanged."""
+    no values; data branch btc-heal-once.json); (2) a revision-log record counts only if src starts with 'fallback (', date and symbol match and kept == today's history value, and
+    only within 7 days of the date (ET); (3) the change is at most 0.5% (compared in cents).
+    Otherwise ::error:: and exit 4 (recap job red, like a stall) with the file byte-identical.
+    One-time-list dates are exempt from the 7-day window; log dates must be within 7 days (ET) of the date. Provisional rows are not final: they heal from
+    Yahoo's bar outside R-s (R-q band only). The no-history path applies the same rules (final rows only via the one-time list)."""
 import json, sys, time, datetime as dt, urllib.request, os, re, zoneinfo
 STALL_H = 48; STALL = []
-HEAL_DAYS = 7; HEAL_MAX = 0.005; HEAL_EPS = 1e-12   # R-s
-HLIST = set()
+HEAL_DAYS = 7; HEAL_MAX_PER_MILLE = 5   # R-s: <= 7 days (log dates only), <= 0.5% compared in cents
+HLIST = set(); FBREC = set()
 if '--heal-list' in sys.argv:                 # R-s (1): one-time heal list from DATA (dates only, never values)
     i_ = sys.argv.index('--heal-list'); hp_ = sys.argv[i_ + 1]; del sys.argv[i_:i_ + 2]
     try:
@@ -82,15 +85,12 @@ try:
                 elif base_ != 'ffill': PROV.add(d_)                                  # fallback in history.json: not final here either
             for d_ in sorted(PROV):
                 if d_ <= last and now - (dt.datetime.fromisoformat(d_).replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1)) > dt.timedelta(hours=STALL_H): STALL.append(d_)
-            FBREC = {str(r_.get('date')) for r_ in (H.get('revisions_ignored') or []) if isinstance(r_, dict) and r_.get('sym') == 'BTC'
-                     and str(r_.get('src', '')).startswith('fallback (') and 'replaced by primary' in str(r_.get('src', ''))}
-            today_et = now.astimezone(zoneinfo.ZoneInfo('America/New_York')).date()
-            for d_ in sorted(HEAL):   # R-s: rewriting a FINAL row needs a fallback record AND <= 7 days (ET) AND <= 0.5%
-                if d_ in PROV0: continue                                          # provisional rows: not final, heal as before
-                rec_ = d_ in FBREC or d_ in HLIST; age_ = (today_et - dt.date.fromisoformat(d_)).days; chg_ = abs(HEAL[d_] / Bd[d_] - 1)
-                if not (rec_ and 0 <= age_ <= HEAL_DAYS and chg_ <= HEAL_MAX + HEAL_EPS):
-                    why_ = [w for w, c in (('no fallback record (revision log / heal list)', not rec_), (f'{age_} days old (> {HEAL_DAYS})', not 0 <= age_ <= HEAL_DAYS), (f'change {chg_:.4%} (> {HEAL_MAX:.1%})', chg_ > HEAL_MAX + HEAL_EPS)) if c]
-                    print(f'::error title=btc-daily heal refused::{d_} {Bd[d_]} -> {HEAL[d_]}: ' + '; '.join(why_) + ' (R-s); file unchanged'); sys.exit(1)
+            HC = {d_: r_.get('BTC') for d_, r_ in H['closes'].items()}
+            for r_ in (H.get('revisions_ignored') or []):   # R-s (1b): a log entry counts only if it is a fallback replacement of THIS date+symbol to TODAY's history value
+                try:
+                    d_ = str(r_.get('date')); hv_ = HC.get(d_)
+                    if r_.get('sym') == 'BTC' and str(r_.get('src', '')).startswith('fallback (') and isinstance(hv_, (int, float)) and round(float(r_.get('kept')) * 100) == round(float(hv_) * 100): FBREC.add(d_)
+                except Exception: pass
             if hold_from:
                 for d_ in [x for x in bars if x >= hold_from[0]]: del bars[d_]
                 print(f'::warning::btc-daily paused at {hold_from[0]} (BTC value pending: fallback source); later days wait so the file stays gap-free')
@@ -100,6 +100,18 @@ try:
             if d_ <= last and d_ in YB:
                 PROV.discard(d_)
                 if dict(j['d']).get(d_) != YB[d_]: HEAL[d_] = YB[d_]
+        for d_, v_ in j['d']:                                # R-s (6): a FINAL row heals here only via the one-time DATA list, same cap
+            if d_ in HLIST and d_ not in PROV0 and d_ in YB and v_ != YB[d_]: HEAL[d_] = YB[d_]
+    today_et = now.astimezone(zoneinfo.ZoneInfo('America/New_York')).date(); Bd0 = dict(j['d'])
+    for d_ in sorted(HEAL):   # R-s: rewriting a FINAL row needs a record (DATA list, or a matching fallback log entry within 7 days of the date) AND <= 0.5% in cents
+        if d_ in PROV0: continue                                          # R-s (5): provisional (fallback-filled) rows heal from Yahoo as before (R-q band only)
+        lst_ = d_ in HLIST; log_ = d_ in FBREC; age_ = (today_et - dt.date.fromisoformat(d_)).days
+        co_, cn_ = round(Bd0[d_] * 100), round(HEAL[d_] * 100); cap_ok = abs(cn_ - co_) * 1000 <= HEAL_MAX_PER_MILLE * co_
+        rec_ok = lst_ or (log_ and 0 <= age_ <= HEAL_DAYS)
+        if not (rec_ok and cap_ok):
+            why_ = [w for w, c in (('no fallback record (one-time DATA list / matching revision-log entry)', not (lst_ or log_)), (f'log record but {age_} days after the date (> {HEAL_DAYS})', log_ and not lst_ and not 0 <= age_ <= HEAL_DAYS), (f'change {abs(cn_ - co_) / co_:.4%} (> 0.5%, in cents)', not cap_ok)) if c]
+            print(f'::error title=btc-daily heal refused::{d_} {Bd0[d_]} -> {HEAL[d_]}: ' + '; '.join(why_) + ' (R-s); file unchanged (byte-identical), recap job turns red')
+            sys.exit(4)
     def done(code=0):
         if STALL and code == 0:
             print(f'::error title=btc-daily stalled::BTC {STALL[0]} still on a fallback source more than {STALL_H} h after its UTC day ended (Yahoo final bar never arrived). See tools/btc_daily.py header / bp ROLLOUT "Stall".')

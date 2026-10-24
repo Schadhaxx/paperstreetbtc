@@ -6,6 +6,8 @@ usage: python3 tests/test_freeze.py [--repo DIR] [--history PATH_OR_URL]
 Independent of the data state: the fixture is the given history with Oct 22 BTC set to Yahoo's final bar (81311.890625),
 the canonical value under Option B, and provenance reset. Works with the live file and with any corrected copy."""
 import argparse, copy, datetime as dt, json, os, re, subprocess, sys, tempfile, textwrap, urllib.request, zoneinfo
+import tempfile as _tf, atexit as _ax, shutil as _sx
+_TROOT = _tf.mkdtemp(prefix='psfreeze.'); _tf.tempdir = _TROOT; _ax.register(lambda: (os.chdir('/'), _sx.rmtree(_TROOT, ignore_errors=True)))   # DISK SAFETY (bp2): every temp dir lives under one root, removed at exit
 ap = argparse.ArgumentParser(); ap.add_argument('--repo', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 ap.add_argument('--history', default='https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/history.json'); a = ap.parse_args()
 YML = open(os.path.join(a.repo, '.github/workflows/prices.yml')).read(); L = YML.split('\n')
@@ -306,7 +308,7 @@ chk('21 heal without history.json: a provisional date heals from Yahoo\'s own fi
 rc6, B6, pv6, out6 = btcd_file([(D21, b21), (D22, 81311.89), (D23, CB23)], Hh, '2026-10-26T02:00:00', prov=[D23])
 chk('21 provisional > 48 h without Yahoo: ::error:: stall + exit 3', rc6 == 3 and 'stalled' in out6, (rc6, out6[-300:]))
 rc7, B7, pv7, o7 = btcd_file([(D21, b21), (D22, 81311.89), (D23, 40000.0)], Hy, '2026-10-24T02:00:00')
-chk('21 heal sanity (R-s): an implausible FINAL stored value is NOT rewritten (no record, > 0.5%): ::error::, exit 1, file unchanged', rc7 == 1 and B7[D23] == 40000.0 and 'heal refused' in o7, (rc7, B7, o7[-200:]))
+chk('21 heal sanity (R-s): an implausible FINAL stored value is NOT rewritten (no record, > 0.5%): ::error::, exit 4, file unchanged', rc7 == 4 and B7[D23] == 40000.0 and 'heal refused' in o7, (rc7, B7, o7[-200:]))
 rc7p, B7p, _, o7p = btcd_file([(D21, b21), (D22, 81311.89), (D23, 40000.0)], Hy, '2026-10-24T02:00:00', prov=[D23])
 chk('21 heal sanity: an implausible PROVISIONAL value is healed to the final close (sane vs neighbours)', rc7p == 0 and B7p[D23] == YX, (rc7p, B7p, o7p[-200:]))
 print('# 22 R-q heal pins')
@@ -471,7 +473,7 @@ def rs(o22, t22, now_iso, heal=None, revs=None, prov=None, rows_extra=()):
     return rc_, B_, o_
 REVOK = [{'date': D22, 'sym': 'BTC', 'kept': 81311.89, 'upstream': 81307.16, 'src': 'fallback (coinbase) replaced by primary final bar'}]
 def healed(r_, want): return r_[0] == 0 and r_[1][D22] == want and 'heal refused' not in r_[2]
-def refused(r_, old): return r_[0] == 1 and r_[1][D22] == old and '::error title=btc-daily heal refused::' in r_[2]
+def refused(r_, old): return r_[0] == 4 and r_[1][D22] == old and '::error title=btc-daily heal refused::' in r_[2]
 T1 = '2026-10-24T01:00:00'
 chk('26 SL-6 R-s (1) heal list in DATA ["2026-10-22"] -> Oct 22 healed', healed(rs(81307.16, 81311.89, T1, heal=['2026-10-22']), 81311.89))
 chk('26 SL-6 R-s (1) revision log "fallback (coinbase) replaced by primary" -> healed', healed(rs(81307.16, 81311.89, T1, revs=REVOK), 81311.89))
@@ -483,8 +485,10 @@ for lab_, hl_ in (('other date only', ['2026-10-21']), ('values (object)', '{"20
     chk(f'26 SL-6 R-s (1) heal list {lab_} -> not a record' + (' (list ignored with ::error::)' if lab_ != 'other date only' else '') + ' -> refused', refused(r_, 81307.16) and (lab_ == 'other date only' or 'heal list ignored' in r_[2]), r_[2][-200:])
 for now_, ok_, lab_ in (('2026-10-30T03:30:00', True, 'Oct 29 11:30 PM ET = 7 days (UTC date is already Oct 30)'), ('2026-10-30T04:05:00', False, 'Oct 30 12:05 AM ET = 8 days'),
                         ('2026-10-29T15:00:00', True, 'Oct 29 = 7 days'), ('2026-11-02T15:00:00', False, 'Nov 2 = 11 days')):
+    r_ = rs(81307.16, 81311.89, now_, revs=REVOK)
+    chk(f'26 SL-6 R-s (2) revision-log record, age in ET days from the date: {lab_} -> {"healed" if ok_ else "refused"}', healed(r_, 81311.89) if ok_ else (refused(r_, 81307.16) and 'days after the date' in r_[2]), r_[2][-200:])
     r_ = rs(81307.16, 81311.89, now_, heal=['2026-10-22'])
-    chk(f'26 SL-6 R-s (2) age in ET days: {lab_} -> {"healed" if ok_ else "refused"}', healed(r_, 81311.89) if ok_ else (refused(r_, 81307.16) and 'days old' in r_[2]), r_[2][-200:])
+    chk(f'26 SL-6 R-s (2) one-time DATA list date is EXEMPT from the window: {lab_} -> healed', healed(r_, 81311.89), r_[2][-200:])
 for t_, ok_, lab_ in ((80400.00, True, '+0.5% exactly'), (80400.01, False, '+0.5% + 1 cent'), (79600.00, True, '-0.5% exactly'), (79599.99, False, '-0.5% - 1 cent'), (80800.00, False, '+1%')):
     r_ = rs(80000.00, t_, T1, heal=['2026-10-22'])
     chk(f'26 SL-6 R-s (3) change {lab_} (80,000.00 -> {t_:,.2f}) -> {"healed" if ok_ else "refused"}', healed(r_, t_) if ok_ else (refused(r_, 80000.00) and 'change' in r_[2]), r_[2][-200:])
@@ -493,7 +497,34 @@ chk('26 SL-6 R-s provisional rows are not final: a 1% heal with no record still 
 r_ = rs(81307.16, 81311.89, T1, rows_extra=[])
 Hn_ = copy.deepcopy(Hy); Hn_['closes'][D22]['BTC'] = 81311.89
 rcn_, Bn_, _, on_ = btcd_file([(D21, b21), (D22, 81300.00)], Hn_, '2026-10-24T02:00:00')
-chk('26 SL-6 R-s a refusal leaves the WHOLE file unchanged (pending Oct 23 append not written either)', rcn_ == 1 and Bn_ == {D21: b21, D22: 81300.00}, (rcn_, Bn_, on_[-200:]))
+chk('26 SL-6 R-s a refusal leaves the WHOLE file unchanged (pending Oct 23 append not written either)', rcn_ == 4 and Bn_ == {D21: b21, D22: 81300.00}, (rcn_, Bn_, on_[-200:]))
+r_ = rs(81307.16, 81311.89, T1, revs=[dict(REVOK[0], kept=81307.16)])
+chk('26 SL-6 R-s (1) revision-log entry whose kept != today\'s history value -> not a record -> refused', refused(r_, 81307.16), r_[2][-200:])
+r_ = rs(81307.16, 81311.89, T1, revs=[dict(REVOK[0], src='fallback (coingecko)')])
+chk('26 SL-6 R-s (1) revision-log src starting with "fallback (" is accepted', healed(r_, 81311.89), r_[2][-200:])
+r_ = rs(81307.16, 81311.89, T1, revs=[dict(REVOK[0], src='was fallback (coinbase)')])
+chk('26 SL-6 R-s (1) src must START with "fallback (" -> refused otherwise', refused(r_, 81307.16), r_[2][-200:])
+r_ = rs(81307.16, 81311.89, T1, revs=[dict(REVOK[0], kept='x')])
+chk('26 SL-6 R-s (1) malformed revision-log entry ignored (no crash) -> refused', refused(r_, 81307.16) and 'Traceback' not in r_[2], r_[2][-200:])
+# (2) cap compared in cents: 0.5% of 80,000.01 = 400.00005 -> 400.00 ok, 400.01 not
+for o_, t_, ok_, lab_ in ((80000.01, 80400.01, True, '80,000.01 -> 80,400.01 (+400.00 = 0.49999%)'), (80000.01, 80400.02, False, '80,000.01 -> 80,400.02 (+400.01 = 0.50001%)')):
+    r_ = rs(o_, t_, T1, heal=['2026-10-22'])
+    chk(f'26 SL-6 R-s (3) cap in cents: {lab_} -> {"healed" if ok_ else "refused"}', healed(r_, t_) if ok_ else refused(r_, o_), r_[2][-200:])
+# (4) refusal: byte-identical, provisional flag kept, red (exit 4)
+td4 = tempfile.mkdtemp(); bp4 = os.path.join(td4, 'bd.json'); json.dump({'d': [[D21, b21], [D22, 81300.0], [D23, CB23]], 'end': D23, 'provisional': [D23]}, open(bp4, 'w'), separators=(',', ':')); raw4 = open(bp4, 'rb').read()
+H4r = copy.deepcopy(Hh); H4r['closes'][D22]['BTC'] = 81311.89
+r4_, raw4b, o4_ = btcd_raw(bp4, H4r, '2026-10-24T01:00:00')
+chk('26 SL-6 R-s (4) refusal: exit 4 (recap red), file byte-identical, provisional flag kept', r4_ == 4 and raw4b == raw4 and json.loads(raw4b).get('provisional') == [D23], (r4_, o4_[-200:]))
+chk('26 SL-6 R-s (4) recap job maps exit 4 to a red step after publishing', 'btcd_stalled=4' in YML and "steps.gen.outputs.btcd_stalled == '4'" in YML)
+# (5) provisional heal separate from window + cap: a Coinbase-filled row 2 weeks old, 1.5% off, heals from Yahoo
+r5_ = rs(81307.16, round(81307.16 * 1.015, 2), '2026-11-06T15:00:00', prov=[D22])
+chk('26 SL-6 R-s (5) provisional (fallback-filled) row heals from Yahoo outside the window and cap', r5_[0] in (0, 3) and r5_[1][D22] == round(81307.16 * 1.015, 2), r5_[2][-200:])
+# (6) no-history path: final row only via the one-time list, same cap
+for lab_, heal_, yb_, want_ in (('final row, not listed, Yahoo differs', None, 81311.89, ('kept', 0)), ('final row, listed, Yahoo +0.006%', ['2026-10-22'], 81311.89, ('healed', 0)),
+                               ('final row, listed, Yahoo +1%', ['2026-10-22'], round(81307.16 * 1.01, 2), ('refused', 4))):
+    rcx, Bx, pvx, ox = btcd_file([(D21, b21), (D22, 81307.16)], {}, '2026-10-24T02:00:00', ybars={D22: yb_}, use_h=False, heal=heal_)
+    exp_v = yb_ if want_[0] == 'healed' else 81307.16
+    chk(f'26 SL-6 R-s (6) no-history path: {lab_} -> {want_[0]}', rcx == want_[1] and Bx[D22] == exp_v, (rcx, Bx, ox[-200:]))
 print('# 27 R-t: push-race merge keeps an old-only date\'s value, source tag and provisional mark')
 def merge_of(old_h, new_h):
     td = tempfile.mkdtemp(); json.dump(old_h, open(os.path.join(td, 'UP'), 'w')); json.dump(new_h, open(os.path.join(td, 'ME'), 'w'))
@@ -533,5 +564,33 @@ chk('27 Grok R-t chain: btc-daily marks Oct 26 provisional while history has the
 oc2_h = copy.deepcopy(oc2)
 rcd_, Bd_, pvd_, od_ = btcd_file(rowsc, oc2_h, '2026-10-29T02:10:00', prov=pvc_)
 chk('27 Grok R-t chain: ... and heals it to Yahoo\'s final, no longer provisional', rcd_ == 0 and Bd_[D26] == 81100.0 and D26 not in pvd_, (rcd_, Bd_.get(D26), pvd_, od_[-200:]))
+print('# 28 pins for Site Launch\'s 7 surviving BP mutants')
+for now_, rc_w, lab_ in (('2026-10-24T23:59:00', 0, '47h59m'), ('2026-10-25T00:00:01', 3, '48h00m01s')):
+    rc_, out_ = btcd_at(Pf, now_)
+    chk(f'28 SL pin stall {lab_} after the UTC day -> exit {rc_w}', rc_ == rc_w and (('::error title=btc-daily stalled' in out_) == (rc_w == 3)), (rc_, out_[-200:]))
+rc_, out_ = btcd_at(Pf, '2026-10-25T00:00:00')
+chk('28 SL pin stall exactly 48h00m00s -> not yet (strictly more than 48 h)', rc_ == 0, (rc_, out_[-200:]))
+import urllib.request as _u28, io as _io28
+for body_ in (b'<!DOCTYPE html><html><head><title>Just a moment...</title></head><body>Date,Close</body></html>', b'<html>\nDate,Open,High,Low,Close,Volume\n2026-10-22,1,1,1,999,1\n'):
+    _o28 = _u28.urlopen; _u28.urlopen = lambda *a_, **k_: _io28.BytesIO(body_)
+    try: sv28 = G['_stooq']('MSTR', D22)
+    finally: _u28.urlopen = _o28
+    chk(f'28 SL pin _stooq fed an HTML body ({body_[:15]!r}...) -> None', sv28 is None, sv28)
+Yinf = Ycopy(P); Yinf[D23]['MSTR'] = float('inf')
+try: oinf = run(P9n, Yinf, N('2026-10-23T21:00:00'), quotes={'MSTR': {'c': P['closes'][D23]['MSTR'], 't': T23}}); einf = None
+except HH as e_: oinf, einf = None, str(e_)
+chk('28 SL pin Yahoo MSTR inf is missing: Finnhub value used, no hold, never published', einf is None and oinf['closes'][D23]['MSTR'] == P['closes'][D23]['MSTR'], einf)
+for mins_, fin_ in ((19, False), (21, True)):
+    o_ = run(P, Ycopy(P), N(f'2026-10-24T00:{mins_:02d}:00'), CB={D23: P['closes'][D23]['BTC']})
+    chk(f'28 SL pin BTC final at the UTC boundary +{mins_} min -> {"final" if fin_ else "still provisional"}', (D23 not in o_['btc_provisional']) == fin_, o_['btc_provisional'])
+Hff = copy.deepcopy(P); Hff['btc_provisional'] = []; Hff['fallback_sources'] = {D22: {'BTC': 'ffill-not-listed'}}
+rcf, Bf_, pvf, of_ = btcd_file([(D21, b21), (D22, 81300.0)], Hff, '2026-10-24T02:00:00')
+chk('28 SL pin ffill provenance in history: not a fallback (no pause, not provisional) and not a heal source (row unchanged)', rcf == 0 and D22 not in pvf and Bf_[D22] == 81300.0 and 'paused' not in of_, (rcf, Bf_, pvf, of_[-200:]))
+upw = copy.deepcopy(P); upw['updated'] = '2026-10-24T21:10:00Z'; upw['closes'][D23]['BTC'] = 81111.0; upw['fallback_sources'] = {}
+mew = copy.deepcopy(P); mew['updated'] = '2026-10-24T21:00:00Z'; mew['closes'][D23]['BTC'] = 81078.04; mew['fallback_sources'] = {D23: {'BTC': 'coinbase'}}
+mw = merge_of(upw, mew)
+chk('28 SL pin merge: the OLDER run (local, coinbase) loses to the newer pushed copy: newer value, and the loser\'s tag does not survive (R-t)', mw['closes'][D23]['BTC'] == 81111.0 and 'BTC' not in mw['fallback_sources'].get(D23, {}), (mw['closes'][D23]['BTC'], mw['fallback_sources'].get(D23)))
+mw2 = merge_of(mew, upw)
+chk('28 SL pin merge: order of the two files does not matter (newest "updated" wins)', mw2['closes'][D23]['BTC'] == 81111.0 and 'BTC' not in mw2['fallback_sources'].get(D23, {}), (mw2['closes'][D23]['BTC'], mw2['fallback_sources'].get(D23)))
 F = [n for n, ok in R if not ok]
 print('FREEZE SIMULATIONS', len(R), 'FAIL', len(F)); sys.exit(1 if F else 0)

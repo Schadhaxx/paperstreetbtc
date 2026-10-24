@@ -26,7 +26,6 @@ M = [  # (name, file, old, new) -- BP code only: freeze rule, fallback replaceme
  ('R-i residual hold restored', Y, "if pub is None or is_primary(ps) or (k == 'BTC' and d in prevprov): raise", "raise"),
  ('R-i ::error:: after 8 PM dropped', Y, "FEED_ERR.append(msg) if now_utc >= due else", "None if True else"),
  ('G5 Stooq for dividend payers (history)', Y, "stooq = (lambda y, d: None if y in DIV_SYMS else _st0(y, d)) if _st0 else None", "stooq = _st0"),
- ('merge: fallback_sources union dropped', Y, "for d, s in (new.get('fallback_sources') or {}).items(): fs.setdefault(d, {}).update(s)", "pass"),
  ('R-q heal neighbour band 0.5x -> 0.4x', B, "0.5 * n_ < v_ < 2 * n_", "0.4 * n_ < v_ < 2 * n_"),
  ('R-q heal neighbour band 2x -> 2.5x', B, "0.5 * n_ < v_ < 2 * n_", "0.5 * n_ < v_ < 2.5 * n_"),
  ('R-q heal neighbour band <= (boundary)', B, "0.5 * n_ < v_ < 2 * n_", "0.5 * n_ <= v_ <= 2 * n_"),
@@ -41,23 +40,33 @@ M = [  # (name, file, old, new) -- BP code only: freeze rule, fallback replaceme
  ('stall: provisional > 48 h no stall', B, "if d_ <= last and now - (", "if False and now - ("),
  ('stall: fallback after last no stall', B, "if d_ > last and now - (", "if False and now - ("),
  ('recap: provisional note dropped', RG, "if any(x in bdays for x in BPROV) else ''", "if False else ''"),
- ('R-s (1) record check dropped', B, "rec_ = d_ in FBREC or d_ in HLIST;", "rec_ = True;"),
- ('R-s (1) heal list ignored', B, "rec_ = d_ in FBREC or d_ in HLIST;", "rec_ = d_ in FBREC;"),
- ('R-s (1) revision log ignored', B, "rec_ = d_ in FBREC or d_ in HLIST;", "rec_ = d_ in HLIST;"),
- ('R-s (1) any revision counts as a fallback record', B, "and str(r_.get('src', '')).startswith('fallback (') and 'replaced by primary' in str(r_.get('src', ''))}", "}"),
- ('R-s (1) revision symbol not checked', B, "r_.get('sym') == 'BTC'", "True"),
- ('R-s (1) revision date not checked', B, "FBREC = {str(r_.get('date')) for r_", "FBREC = {d_ for d_ in Bd for r_"),
+ ('R-s (1) record check dropped', B, "rec_ok = lst_ or (log_ and 0 <= age_ <= HEAL_DAYS)", "rec_ok = True"),
+ ('R-s (1) one-time list ignored', B, "lst_ = d_ in HLIST;", "lst_ = False;"),
+ ('R-s (1) revision log ignored', B, "log_ = d_ in FBREC;", "log_ = False;"),
+ ('R-s (1) log src prefix not checked', B, "str(r_.get('src', '')).startswith('fallback (') and isinstance(hv_", "isinstance(hv_"),
+ ('R-s (1) log symbol not checked', B, "if r_.get('sym') == 'BTC' and str(", "if str("),
+ ('R-s (1) log kept == history value not checked', B, "and round(float(r_.get('kept')) * 100) == round(float(hv_) * 100): FBREC.add(d_)", ": FBREC.add(d_)"),
  ('R-s (1) heal list values accepted', B, "if not (isinstance(L_, list) and all(", "if not (True or all("),
  ('R-s (2) 7 days -> 8', B, "HEAL_DAYS = 7;", "HEAL_DAYS = 8;"),
  ('R-s (2) 7 days -> 6', B, "HEAL_DAYS = 7;", "HEAL_DAYS = 6;"),
  ('R-s (2) age in UTC instead of ET', B, "today_et = now.astimezone(zoneinfo.ZoneInfo('America/New_York')).date()", "today_et = now.date()"),
- ('R-s (2) age check dropped', B, "rec_ and 0 <= age_ <= HEAL_DAYS and chg_", "rec_ and chg_"),
- ('R-s (3) 0.5% -> 0.51%', B, "HEAL_MAX = 0.005;", "HEAL_MAX = 0.0051;"),
- ('R-s (3) 0.5% -> 0.49%', B, "HEAL_MAX = 0.005;", "HEAL_MAX = 0.0049;"),
- ('R-s (3) epsilon dropped (exact -0.5% refused)', B, "HEAL_EPS = 1e-12", "HEAL_EPS = -1e-12"),
- ('R-s (3) change check dropped', B, "and chg_ <= HEAL_MAX + HEAL_EPS):", "):"),
- ('R-s refusal still writes the file', B, " (R-s); file unchanged'); sys.exit(1)", " (R-s); file unchanged')"),
- ('R-s provisional rows treated as final', B, "if d_ in PROV0: continue", "pass"),
+ ('R-s (2) window applied to list dates too', B, "rec_ok = lst_ or (log_ and 0 <= age_ <= HEAL_DAYS)", "rec_ok = (lst_ or log_) and 0 <= age_ <= HEAL_DAYS"),
+ ('R-s (2) window dropped for log dates', B, "rec_ok = lst_ or (log_ and 0 <= age_ <= HEAL_DAYS)", "rec_ok = lst_ or log_"),
+ ('R-s (3) 0.5% -> 0.6%', B, "HEAL_MAX_PER_MILLE = 5 ", "HEAL_MAX_PER_MILLE = 6 "),
+ ('R-s (3) 0.5% -> 0.4%', B, "HEAL_MAX_PER_MILLE = 5 ", "HEAL_MAX_PER_MILLE = 4 "),
+ ('R-s (3) cap <= -> <', B, "abs(cn_ - co_) * 1000 <= HEAL_MAX_PER_MILLE * co_", "abs(cn_ - co_) * 1000 < HEAL_MAX_PER_MILLE * co_"),
+ ('R-s (3) cap in float, not cents', B, "co_, cn_ = round(Bd0[d_] * 100), round(HEAL[d_] * 100)", "co_, cn_ = Bd0[d_] * 100, HEAL[d_] * 100.0001"),
+ ('R-s (3) cap dropped', B, "if not (rec_ok and cap_ok):", "if not rec_ok:"),
+ ('R-s (4) refusal exit 1 (not red)', B, "            sys.exit(4)\n", "            sys.exit(1)\n"),
+ ('R-s (4) refusal still writes the file', B, "            sys.exit(4)\n", "            pass\n"),
+ ('R-s (5) provisional rows treated as final', B, "if d_ in PROV0: continue", "pass"),
+ ('R-s (6) no-history path heals final rows without the list', B, "if d_ in HLIST and d_ not in PROV0 and d_ in YB", "if d_ not in PROV0 and d_ in YB"),
+ ('pin stall > -> >= (48h00m00s fires)', B, "if d_ > last and now - (dt.datetime.fromisoformat(d_).replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1)) > dt.timedelta(hours=STALL_H)", "if d_ > last and now - (dt.datetime.fromisoformat(d_).replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1)) >= dt.timedelta(hours=STALL_H)"),
+ ('pin _agree inf counts as a value', Y, "0 < v < float('inf')]", "0 < v]"),
+ ('pin BTC final +20 -> +19 min', Y, "def final_btc(d): return now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20)", "def final_btc(d): return now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=19)"),
+ ('pin BTC final +20 -> +22 min', Y, "def final_btc(d): return now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20)", "def final_btc(d): return now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=22)"),
+ ('pin ffill treated as a fallback', B, "not in ('yahoo', 'ffill'))", "not in ('yahoo',))"),
+ ('pin merge: older file wins', Y, "new, old = (b, a) if b.get('updated', '') >= a.get('updated', '') else (a, b)", "new, old = b, a"),
  ('R-t old tag dropped when the date is absent from the new run (bp-3b117f801a8d behaviour)', Y, "if d in m['closes'] and not (d in NC and k in NC[d]): fs.setdefault(d, {})[k] = t", "if d in NC and k not in NC[d]: fs.setdefault(d, {})[k] = t"),
  ('R-t old tag never dropped (even if the new run is primary)', Y, "if d in m['closes'] and not (d in NC and k in NC[d]): fs.setdefault(d, {})[k] = t", "if d in m['closes']: fs.setdefault(d, {})[k] = t"),
  ('R-t new tags not applied', Y, "if d in m['closes']: fs.setdefault(d, {}).update(s)", "pass"),
@@ -65,23 +74,34 @@ M = [  # (name, file, old, new) -- BP code only: freeze rule, fallback replaceme
  ('R-t old provisional re-added for a date the new run has', Y, "if d in m['closes'] and d not in NC))", "if d in m['closes']))"),
  ('check-only uses the network', B, "if CHECK: raise RuntimeError('check-only: no fetch')", "if False: raise RuntimeError('check-only: no fetch')"),
 ]
+def stage_repo(dst):
+    # DISK SAFETY (bp2): stage ONLY git-tracked files of HEAD (git archive), never a raw filesystem copy.
+    top = subprocess.run(['git', '-C', REPO, 'rev-parse', '--show-toplevel'], capture_output=True, text=True, check=True).stdout.strip()
+    if os.path.realpath(top) in ('/', '/proc', '/tmp', os.path.expanduser('~')) or not os.path.isfile(os.path.join(top, 'tests/mutate.py')):
+        raise SystemExit(f'REFUSING to stage from {top}')
+    if not os.path.realpath(dst).startswith(os.path.realpath(tempfile.gettempdir()) + '/psmut.'):
+        raise SystemExit(f'REFUSING to stage outside a psmut temp dir: {dst}')
+    os.makedirs(dst)
+    arch = subprocess.Popen(['git', '-C', top, 'archive', '--format=tar', 'HEAD'], stdout=subprocess.PIPE)
+    subprocess.run(['tar', '-x', '-C', dst], stdin=arch.stdout, check=True); arch.stdout.close()
+    if arch.wait() != 0: raise SystemExit('git archive failed')
 def main(argv):
     hist = argv[argv.index('--history') + 1] if '--history' in argv else None
     only = argv[argv.index('--only') + 1] if '--only' in argv else ''
     res = []; surv = 0
     for name, f, old, new in M:
         if only and only not in name: continue
-        td = tempfile.mkdtemp(); dst = os.path.join(td, 'r')
-        shutil.copytree(REPO, dst, ignore=shutil.ignore_patterns('.git'))
+        td = tempfile.mkdtemp(prefix='psmut.'); dst = os.path.join(td, 'r')
+        stage_repo(dst)
         src = open(os.path.join(dst, f)).read()
         if src.count(old) < 1: res.append((name, 'NO MATCH')); surv += 1; shutil.rmtree(td); continue
         open(os.path.join(dst, f), 'w').write(src.replace(old, new, 1))
         cmd = [sys.executable, os.path.join(dst, 'tests/test_freeze.py'), '--repo', dst] + (['--history', hist] if hist else [])
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=300); out = r.stdout + r.stderr
+        try: r = subprocess.run(cmd, capture_output=True, text=True, timeout=300); out = r.stdout + r.stderr
+        finally: shutil.rmtree(td, ignore_errors=True)
         fails = sum(1 for l in out.splitlines() if l.startswith('FAIL ')); crash = 'Traceback' in out
         caught = r.returncode != 0 and (fails > 0 or crash)
         res.append((name, f'caught ({fails} FAIL{", crash" if crash else ""})' if caught else 'SURVIVED')); surv += 0 if caught else 1
-        shutil.rmtree(td)
     for n, v in res: print(f'  {v:<26} {n}')
     print(f'MUTANTS {len(res)} SURVIVED {surv}'); return 1 if surv else 0
 if __name__ == '__main__': sys.exit(main(sys.argv[1:]))

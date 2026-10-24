@@ -477,7 +477,7 @@ jobs:
           git show FETCH_HEAD:btc-heal-once.json > /tmp/btc-heal-once.json 2>/dev/null || rm -f /tmp/btc-heal-once.json   # R-s one-time heal list (DATA, dates only)
           rm -rf /tmp/stage && cp -a . /tmp/stage
           rc=0; ( cd /tmp/stage && python3 tools/btc_daily.py assets/data/btc-daily.json /tmp/history.json --heal-list /tmp/btc-heal-once.json ) || rc=$?
-          if [ $rc -eq 3 ]; then echo "btcd_stalled=1" >> $GITHUB_OUTPUT; elif [ $rc -ne 0 ]; then echo "::warning::btc-daily update skipped (see log); recap continues"; fi
+          if [ $rc -eq 3 ]; then echo "btcd_stalled=1" >> $GITHUB_OUTPUT; elif [ $rc -eq 4 ]; then echo "btcd_stalled=4" >> $GITHUB_OUTPUT; elif [ $rc -ne 0 ]; then echo "::warning::btc-daily update skipped (see log); recap continues"; fi
           ( cd /tmp/stage && python3 tools/recap_gen.py --history /tmp/history.json --repo . )
           ( cd /tmp/stage && python3 tests/test_recap.py --history /tmp/history.json --repo . > /tmp/test.log ) || { tail -40 /tmp/test.log; echo "Checks failed in staging; nothing moved into place, live site unchanged."; exit 1; }
           tail -1 /tmp/test.log
@@ -509,9 +509,10 @@ jobs:
         run: |
           for wait in 0 10 30; do sleep $wait; if gh api -X POST repos/${{ github.repository }}/pages/builds --jq .status; then echo "ok=1" >> $GITHUB_OUTPUT; exit 0; fi; done
           echo "::warning::Pages build request failed 3 times; the change IS on main and will deploy with the next Pages build"; exit 0
-      - name: btc-daily stalled > 48 h (run turns red AFTER the recap was published)
-        if: always() && steps.gen.outputs.btcd_stalled == '1'
+      - name: btc-daily stalled > 48 h or heal refused (run turns red AFTER the recap was published)
+        if: always() && (steps.gen.outputs.btcd_stalled == '1' || steps.gen.outputs.btcd_stalled == '4')
         run: |
+          if [ "${{ steps.gen.outputs.btcd_stalled }}" = 4 ]; then echo "::error::btc-daily heal REFUSED (R-s): btc-daily.json left unchanged. See the btc_daily log and BP ROLLOUT (rollback trigger)."; exit 1; fi
           echo "::error::btc-daily is paused at a BTC day still on a fallback source > 48 h. See tools/btc_daily.py header (BP ROLLOUT: stall)."
           exit 1
       - name: Summary

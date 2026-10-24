@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 # One command for every reviewer (BP): bash tests/run_all.sh [--history PATH_OR_URL]
 # Read-only: serves this checkout on localhost, never pushes, never writes outside $WORK. Exit 0 only if every suite is clean.
-set -u
-cd "$(dirname "$0")/.."; REPO=$(pwd); PORT=${PORT:-8799}; WORK=$(mktemp -d /tmp/psrun.XXXX)
+set -eu
+# DISK SAFETY (bp2): stage ONLY the git-tracked repo (git archive), never cp from / or /proc; temp dir removed on EXIT;
+# df checked before/after every big step, abort if disk use grows > 2 GB (DISK_MAX_GROWTH_KB to override).
+cd "$(dirname "$0")/.."; REPO=$(git rev-parse --show-toplevel); cd "$REPO"; PORT=${PORT:-8799}
+case "$REPO" in /|/proc|/proc/*|/sys|/sys/*|/dev|/dev/*|/tmp|"$HOME") echo "REFUSING: repo root is $REPO"; exit 2;; esac
+[ -f "$REPO/tests/run_all.sh" ] && [ -d "$REPO/assets" ] || { echo "REFUSING: $REPO is not the paperstreet repo"; exit 2; }
+WORK=$(mktemp -d /tmp/psrun.XXXX); SRV=""
+cleanup(){ [ -n "$SRV" ] && kill "$SRV" 2>/dev/null; if [ -n "${KEEP_WORK:-}" ]; then echo "(KEEP_WORK set: $WORK kept)"; else rm -rf "$WORK"; fi; }
+trap cleanup EXIT
+DF0=$(df -Pk / | awk 'NR==2{print $3}'); MAXG=${DISK_MAX_GROWTH_KB:-2097152}
+dfcheck(){ local u; u=$(df -Pk / | awk 'NR==2{print $3}'); echo "   [disk] $1: used $((u/1024)) MB (+$(((u-DF0)/1024)) MB since start), work dir $(du -sm "$WORK" | cut -f1) MB"; if [ $((u-DF0)) -gt "$MAXG" ]; then echo "ABORT: disk use grew more than $((MAXG/1024)) MB"; exit 3; fi; }
+dfcheck start
 OVR=""; HIST="https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/history.json"
 while [ $# -gt 0 ]; do case "$1" in --history) HIST="$2"; shift 2;; *) echo "unknown arg $1"; exit 2;; esac; done
 echo "build tree $(git rev-parse HEAD^{tree} 2>/dev/null) | head $(git rev-parse --short HEAD 2>/dev/null) | $(TZ=America/New_York date '+%a %b %-d %-I:%M %p ET')"
@@ -10,7 +20,7 @@ echo "build tree $(git rev-parse HEAD^{tree} 2>/dev/null) | head $(git rev-parse
 PD=${PATCHES:-$REPO/../fix-proposals/bp}; if ls "$PD"/00[0-9][0-9]-*.patch >/dev/null 2>&1; then echo "unit ID bp-$(cat "$PD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12) (from $PD/00[0-9][0-9]-*.patch)"; fi
 export PS_WATCH=${PS_WATCH:-$PD/watch_past_values.py}   # ops tool (not deployed), used by the Grok simbp1 repros
 declare -A RES; FAILS=0
-run(){ local name="$1"; shift; echo; echo "=== $name"; if "$@" > "$WORK/$name.log" 2>&1; then RES[$name]="PASS"; else RES[$name]="FAIL"; FAILS=$((FAILS+1)); fi; if [ "$name" = mutation ] || [ "$name" = reviewer_repros ]; then cat "$WORK/$name.log"; else tail -n 3 "$WORK/$name.log"; fi; }
+run(){ local name="$1"; shift; echo; echo "=== $name"; if "$@" > "$WORK/$name.log" 2>&1; then RES[$name]="PASS"; else RES[$name]="FAIL"; FAILS=$((FAILS+1)); fi; if [ "$name" = mutation ] || [ "$name" = reviewer_repros ]; then cat "$WORK/$name.log"; else tail -n 3 "$WORK/$name.log"; fi; dfcheck "$name"; }
 # expected data = history (live or given); BP has no overrides.json handling (as live)
 python3 - "$HIST" "$OVR" "$WORK/history.json" <<'PY' || { echo "cannot prepare expected history"; exit 2; }
 import json, sys, urllib.request
@@ -31,7 +41,10 @@ run mutation python3 tests/mutate.py --history "$WORK/history.json"     # v9+: e
 run test_freeze_liveURL python3 tests/test_freeze.py                       # F8: against the live data-branch URL (read-only)
 run et_expiry_guard_2027-11-15 bash -c 'if ET_TEST_NOW=2027-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9
 # recap: exactly what the nightly job does: regenerate in a staging copy, then test (strict 1e-6 embedded closes)
-rm -rf "$WORK/stage" && cp -a "$REPO" "$WORK/stage"
+STAGE="$WORK/stage"; case "$STAGE" in /tmp/psrun.*/stage) ;; *) echo "REFUSING to stage outside the temp dir: $STAGE"; exit 2;; esac
+rm -rf "$STAGE"; mkdir "$STAGE"; git -C "$REPO" archive --format=tar HEAD | tar -x -C "$STAGE"   # tracked files of HEAD only
+[ -z "$(git -C "$REPO" status --porcelain --untracked-files=no)" ] || echo "   WARNING: uncommitted changes are NOT in the stage (staged = HEAD)"
+dfcheck stage
 echo '["2026-10-22"]' > "$WORK/btc-heal-once.json"   # R-s: the one-time heal list shipped on the data branch (dates only)
 run recap_gen bash -c "cd '$WORK/stage' && python3 tools/btc_daily.py assets/data/btc-daily.json '$WORK/history.json' --heal-list '$WORK/btc-heal-once.json' || true; python3 tools/recap_gen.py --history '$WORK/history.json' --repo ."
 run test_recap bash -c "cd '$WORK/stage' && python3 tests/test_recap.py --history '$WORK/history.json' --repo ."
@@ -57,7 +70,8 @@ if [ $ok -ne 1 ] || ! kill -0 $SRV 2>/dev/null; then echo "FATAL: local server o
 echo "server: pid $SRV on 127.0.0.1:$PORT, et.js matches staged build"
 run datatest_strict env DT_HISTORY="$WORK/history.json" python3 "$WORK/stage/tools/datatest.py" "http://127.0.0.1:$PORT"
 run headless python3 tests/headless_matrix.py "http://127.0.0.1:$PORT" "$WORK/shots"
-kill $SRV 2>/dev/null; wait $SRV 2>/dev/null
-echo; echo "=== SUMMARY (logs + screenshots in $WORK)"; for k in $(printf '%s\n' "${!RES[@]}" | sort); do printf '  %-28s %s\n' "$k" "${RES[$k]}"; done
-grep -h "^WARN\|WARNINGS" "$WORK"/datatest_strict.log 2>/dev/null | head -5
+kill $SRV 2>/dev/null; wait $SRV 2>/dev/null || true; SRV=""
+dfcheck end
+echo; echo "=== SUMMARY (logs + screenshots in $WORK; removed on exit unless KEEP_WORK=1)"; for k in $(printf '%s\n' "${!RES[@]}" | sort); do printf '  %-28s %s\n' "$k" "${RES[$k]}"; done
+grep -h "^WARN\|WARNINGS" "$WORK"/datatest_strict.log 2>/dev/null | head -5 || true
 echo "RUN-ALL: $FAILS suite(s) failed"; exit $((FAILS>0))
