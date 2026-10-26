@@ -12,14 +12,15 @@ Evidence:
 - Raw Yahoo pull: see oct26/task2-yahoo-raw.json on this branch.
 
 Open questions:
-- Does Tiingo agree with Yahoo's final 23 Oct BTC bar (81,074.19), and did Tiingo revise any 21-23 Oct stock/ETF close since Friday? Unanswered — Tiingo leg not re-pulled (see below).
+- None on revisions — both sources now checked (see Tiingo addendum below).
 
-Tiingo leg — NOT re-pulled, blocked not 'no revision':
-- Tiingo API returns 403 'Please supply a token' without a token; no Tiingo token is available to this run, and the standing rule forbids printing or requesting an API key, so no Tiingo re-pull was attempted with a credential.
-- No stored Tiingo values exist in the repo to fall back on: code search for 'tiingo' returned 0 results, and data-branch history.json (as of 24 Oct) has no tiingo_ref field — that field is what Task 4 (9:45 p.m.) checks for 26 Oct closes.
-- Consequence: the 'either source revised' question is answered fully for Yahoo and not at all for Tiingo. A Tiingo-side check needs a Grok-side run (Chief of Staff's work folder holds the Friday Tiingo baseline) or a separately authorised Tiingo access route.
+Tiingo leg — COMPLETED Mon 26 Oct 2026, ~9:54 a.m. ET (browser, signed-in Tiingo session):
+- Token page location (for reference, no token value reported): tiingo.com > Account > Profile, left sidebar API > Token, /account/api/token. Token was used inside the browser task only; no account setting or token was changed.
+- Answer: No Tiingo revisions either. Every stock/ETF close for Oct 21, 22, and 23 is identical to the Yahoo baseline and to Friday's Tiingo baseline, to the cent (MSTR 153.48 / 145.80 / 146.01; STRC 99.20 / 98.65 / 99.36; TSLA 386.47 / 374.58 / 372.22; PLTR 201.72 / 196.19 / 196.75; SPY 773.09 / 763.96 / 759.97; QQQ 725.20 / 704.47 / 704.40; BRK.B 538.99 / 546.97 / 542.19; GLD 378.95 / 369.00 / 366.61).
+- BTC Tiingo (crypto endpoint, btcusd): Oct 21 84,026.92 (vs Yahoo 84,011.97, +$14.95 / 0.018%, same gap as Friday); Oct 22 81,315.23 (vs Yahoo 81,311.89, +$3.34 / 0.004%, same gap as Friday); Oct 23 81,083.72 (vs Yahoo final 81,074.19, +$9.53 / 0.012%; vs site Coinbase fallback 81,078.04, +$5.68). Oct 23 Tiingo final differs from Friday's still-open Tiingo snapshot (81,228.10) only because that bar had not closed — not a revision of a final value.
+- Raw Tiingo closes: oct26/task2-tiingo-closes.json, commit 1a09ba69.
 
-Likely price delay: None from Yahoo revisions. No delay is caused by this check; the known Oct 23 BTC stall (site on Coinbase fallback, not Yahoo final) remains, to be checked at tonight's 8:45 p.m. rollover and 9:45 p.m. Tiingo check.
+Likely price delay: None from Yahoo or Tiingo revisions. No delay is caused by this check; the known Oct 23 BTC stall (site on Coinbase fallback, not Yahoo final) remains, to be checked at tonight's 8:45 p.m. rollover and 9:45 p.m. Tiingo check.
 
 LOW: none beyond the known OI-001 23 Oct BTC fallback item, already logged for the Sat 31 Oct weekly review.
 - Nothing was changed on paperstreetbtc.com, the repo main/data branches, or any bot's code. Read-only check, results posted here only.
