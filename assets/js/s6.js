@@ -77,14 +77,26 @@
     return {v:v,y:y,move:v/y-1};
   }
   var ORDER=['Hedge Fund Killer','Berkshire Killer','Hodler Jam Sandwich','Saylor Moon'];
+  /* Part 3, deployed 26 Oct 2026: weekend Pulse label, once, not repeated.
+     Weekend mode = today (ET) is Sat/Sun, base close is the preceding Friday, live mode.
+     In weekend mode each Pulse bubble shows value + % only, and the explanation lives
+     once in the Pulse note below the grid. Weekdays, month-end mode, calculations,
+     base dates, and tracker cards are unchanged. */
+  function weekendPulse(){
+    if(mode==='me')return false;
+    var wd=new Date(todayET()+'T12:00:00Z').getUTCDay();
+    var awd=new Date(ASOF+'T12:00:00Z').getUTCDay();
+    return (wd===0||wd===6)&&awd===5&&PRIOR===ASOF;
+  }
   function renderPulse(){
     var g=document.getElementById('pulseGrid'); if(!g) return;
-    var h='';
+    var wk=weekendPulse(),h='';
     ORDER.forEach(function(n){var p=PF.filter(function(x){return x.name===n;})[0],r=compute(p),ok=mode!=='me'&&BK.nav(p.key,PRIOR)>0;
-      h+='<a class="pulse-card" href="#tracker" data-k="'+p.key+'"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.v/BK.nav(p.key,PRIOR)-1)+' '+chgLabel():'—')+'</span></a>';});
+      h+='<a class="pulse-card" href="#tracker" data-k="'+p.key+'"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.v/BK.nav(p.key,PRIOR)-1)+(wk?'':' '+chgLabel()):'—')+'</span></a>';});
     patch(g,h,'.pulse-card','k',['.pulse-val','.pulse-chg']);
     var stk=Object.keys(src).some(function(k){return src[k];});
     if(mode==='me'){document.getElementById('pulseNote').textContent=asOfLabel()+' · all prices at month-end close';return;}
+    if(wk){document.getElementById('pulseNote').textContent='Weekend move · BTC only · Stocks closed at Friday, '+fmtD(ASOF)+' close · BTC live'+(cacheLabel()?' · '+cacheLabel():'');return;}
     document.getElementById('pulseNote').textContent=asOfLabel()+' · BTC: '+(live.BTC?btcSrc+' (every 60s)'+(btcChg!==null?', move = since daily close':', move since daily close n/a'):'last close')+' · stocks: '+(stk?'cached (every 5 min), move vs prior close':'last close, move 0')+(cacheLabel()?' · '+cacheLabel():'');
   }
   /* Shared live state for the YTD chart: same compute() as tracker + pulse */
