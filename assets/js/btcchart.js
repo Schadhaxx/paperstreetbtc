@@ -1,7 +1,8 @@
 /* Live BTC pill (header + phone menu panel) and the BTC chart popover/bottom sheet.
    Data: assets/data/btc-daily.json (2010-08-18..2014-09-16 blockchain.info, then Yahoo BTC-USD UTC-day closes),
    extended with newer BTC closes from the data branch history.json and Coinbase daily candles (weekends included),
-   plus the live price from the same feed as the header pill (CoinGecko, Coinbase fallback). */
+   plus the live price from the same feed as the header pill (CoinGecko, Coinbase fallback).
+   1D only: true intraday chart from Coinbase 15-minute candles (last 24h, ET), CoinGecko fallback, daily fallback. */
 (function(){
 var SRC=(document.currentScript&&document.currentScript.src)||location.href;
 var U=function(p){return new URL(p,SRC).href;};
@@ -34,6 +35,63 @@ if(!$('btcLive')){
   load();}
 /* data */
 var DATA=null,PROV=false,dataP=null,SPX=null,SPXK=[],SHOWSPX=false,GOLD=null,GOLDK=[],SHOWGLD=false;
+/* Intraday 1D (deployed 26 Oct 2026, Part 1): Coinbase 15-min candles, last 24h.
+   Fallback chain: Coinbase 15-min -> CoinGecko 1-day market chart -> daily closes (in draw1D).
+   S&P 500 / Gold toggles are off for 1D only; SHOWSPX/SHOWGLD are preserved for other ranges. */
+var INTRA=null,INTRA_AT=0,intraP=null;
+function etTime(ms){try{return new Date(ms).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return new Date(ms).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}}
+function etDateTime(ms){try{return new Date(ms).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return new Date(ms).toLocaleString('en-US');}}
+function getIntraday(){
+  if(intraP)return intraP;
+  var now=Date.now();
+  if(INTRA&&now-INTRA_AT<60000)return Promise.resolve(INTRA);
+  var end=new Date(now).toISOString(),start=new Date(now-24*3600*1000).toISOString();
+  var cb=fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&start='+start+'&end='+end,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+    if(!Array.isArray(j))throw new Error('bad candles');
+    var pts=j.map(function(c){return {t:c[0]*1000,v:c[4]};}).filter(function(p){return isFinite(p.v)&&p.v>0&&p.t>now-24*3600*1000;}).sort(function(a,b){return a.t-b.t;});
+    if(pts.length<2)throw new Error('too few candles');
+    return {pts:pts.slice(-96),src:'coinbase'};
+  });
+  var cg=cb.catch(function(){return fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+    if(!j||!Array.isArray(j.prices))throw new Error('bad market chart');
+    var pts=j.prices.map(function(pr){return {t:pr[0],v:pr[1]};}).filter(function(p){return isFinite(p.v)&&p.v>0;}).sort(function(a,b){return a.t-b.t;});
+    if(pts.length<2)throw new Error('too few prices');
+    return {pts:pts,src:'coingecko'};
+  });});
+  intraP=cg.then(function(d){INTRA=d;INTRA_AT=Date.now();intraP=null;return d;},function(e){intraP=null;INTRA=null;throw e;});
+  return intraP;
+}
+function draw1D(){
+  if(!window.Chart)return;
+  head();
+  [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
+  $('bcSc').style.display='none';
+  var sb=$('bcSpx');if(sb){sb.setAttribute('aria-pressed','false');sb.classList.add('off');$('bcSpxT').textContent='+ S&P 500';sb.setAttribute('aria-label','S&P 500 unavailable for 1D intraday');}
+  var gb=$('bcGld');if(gb){gb.setAttribute('aria-pressed','false');gb.classList.add('off');$('bcGldT').textContent='+ Gold';gb.setAttribute('aria-label','Gold unavailable for 1D intraday');}
+  if(!INTRA){
+    $('bcRr').textContent='Loading intraday…';
+    getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){if(dlg&&!dlg.hidden){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' Intraday unavailable — showing daily closes.';}});
+    return;
+  }
+  if(Date.now()-INTRA_AT>5*60*1000&&!intraP){getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){});}
+  var pts=INTRA.pts.slice(),hasLive=live.usd!=null;
+  if(hasLive&&pts.length&&Date.now()>pts[pts.length-1].t)pts.push({t:Date.now(),v:live.usd,live:true});
+  var n=pts.length,a=pts[0].v,b=pts[n-1].v,pc=(b/a-1)*100;
+  var fp=function(x){return (x>=0?'+':'')+(Math.abs(x)>=1e4?Math.round(x).toLocaleString('en-US'):x.toFixed(1))+'%';};
+  $('bcRr').textContent='1D: BTC '+fp(pc)+' · last 24 hours, from '+etTime(pts[0].t)+' ET ('+fmt(a)+')';
+  $('bcNt').textContent='Intraday '+(INTRA.src==='coingecko'?'CoinGecko 1-day chart (Coinbase unavailable)':'Coinbase 15-minute candles')+', last 24 hours (ET); last point is the live price. S&P 500 and Gold toggles are off for 1D only (daily closes only).';
+  var c=$('bcC').getContext('2d'),H=$('bcC').parentNode.clientHeight||300,g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(34,211,238,.28)');g.addColorStop(1,'rgba(34,211,238,0)');
+  var lab=pts.map(function(p){return p.live?'Now (live)':etTime(p.t);});
+  var ds=[{label:'BTC',data:pts.map(function(p){return p.v;}),borderColor:'#22d3ee',backgroundColor:g,fill:true,borderWidth:2,tension:.15,pointRadius:pts.map(function(p,i){return i===n-1&&hasLive?4:0;}),pointHoverRadius:3,pointBackgroundColor:'#22d3ee'}];
+  var opts={animation:false,responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},
+    tooltip:{displayColors:false,callbacks:{title:function(i){var k=i[0].dataIndex,p=pts[k];return p.live?'Now (live)':etDateTime(p.t);},
+      label:function(i){return 'BTC '+fmt(i.parsed.y);}}}},
+    scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0}},
+      y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:function(v){return v>=1000?'$'+(v/1000).toLocaleString('en-US')+'k':'$'+v;}}}}};
+  if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});
+}
+function draw(){if(rng==='1D'){draw1D();}else{drawDaily();}}
+
 function onK(K,M,d){var lo=0,hi=K.length-1,a=-1;while(lo<=hi){var mid=(lo+hi)>>1;if(K[mid]<=d){a=mid;lo=mid+1;}else hi=mid-1;}return a<0?null:M[K[a]];}
 function spxOn(d){return onK(SPXK,SPX,d);}function gldOn(d){return onK(GOLDK,GOLD,d);}
 function getData(){if(dataP)return dataP;
@@ -83,7 +141,7 @@ function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   var last=new Date(d[d.length-1][0]+'T00:00:00Z'),st;
   if(rng==='Max')st='0000';else if(rng==='YTD')st=(last.getUTCFullYear()-1)+'-12-31';else st=new Date(last-DAYS[rng]*864e5).toISOString().slice(0,10);
   return d.filter(function(p){return p[0]>=st;});}
-function draw(){if(!DATA||!window.Chart)return;head();var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,sx=sxo||gxo;
+function drawDaily(){if(!DATA||!window.Chart)return;head();var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,sx=sxo||gxo;
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   var onb=$('bcRgs').querySelector('.on'),rs=$('bcRgs');if(onb&&rs.scrollWidth>rs.clientWidth){var L=onb.offsetLeft-rs.offsetLeft,R=L+onb.offsetWidth;if(L<rs.scrollLeft+16||R>rs.scrollLeft+rs.clientWidth-16)rs.scrollTo({left:Math.max(0,L-(rs.clientWidth-onb.offsetWidth)/2),behavior:'smooth'});}
   $('bcSc').style.display=big?'':'none';[].forEach.call($('bcSc').children,function(b){var on=(b.dataset.s==='log')===LOG;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
