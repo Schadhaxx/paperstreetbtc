@@ -79,15 +79,19 @@ function aggCandles(pts,per){
    - Labels cleaned up: 4 price gridlines, times evenly spaced and inset so first/last do not clip, and the date is shown when the day changes overnight.
    - Razzle, kept minimal: a short fade-in when the candle view first draws, no bounce, no new colours. */
 var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
-/* Clean popup bubble for a selected candle: dark card, rounded corners, thin border, same site colours.
-   Positioned next to the selected candle, clamped inside the chart box, with a small close ✕.
-   Replaces the old bottom info line, which the user found messy / easy to miss. */
+/* High-end popup bubble for a selected candle, matching the site's own .slv-pop card:
+   gradient dark card, 16px rounded corners, cyan-tinted border, soft shadow, small arrow pointing at the candle.
+   On iPhone (sheet mode) it is centred over the chart, never off-screen, with a larger tap target for ✕.
+   Replaces the old bottom info line entirely — no bcSel line is ever shown at the bottom again. */
 function candInfoEl(){
   var el=$('bcSel');if(el)return el;
   var box=$('bcC')&&$('bcC').parentNode;if(!box)return null;
   el=document.createElement('div');el.id='bcSel';
-  el.style.cssText='display:none;position:absolute;z-index:5;max-width:250px;background:#0d1220;border:1px solid #1e293b;border-radius:12px;padding:10px 12px;color:#e8eef7;font:13px/1.45 Inter, sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:auto;';
+  el.style.cssText='display:none;position:absolute;z-index:5;width:230px;max-width:calc(100% - 16px);background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.22);border-radius:16px;padding:14px 16px;color:#e8eef7;font:13px/1.5 Inter, sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.6);pointer-events:auto;';
   box.style.position='relative';box.appendChild(el);
+  /* arrow element, positioned by showCandInfo */
+  var ar=document.createElement('div');ar.id='bcSelAr';ar.style.cssText='position:absolute;width:12px;height:12px;background:#0a1122;border-left:1px solid rgba(34,211,238,.22);border-bottom:1px solid rgba(34,211,238,.22);transform:rotate(-45deg);';
+  el.appendChild(ar);
   return el;
 }
 function showCandInfo(i,geomX,geomTop){
@@ -112,17 +116,28 @@ function showCandInfo(i,geomX,geomTop){
     var b=document.createElement('span');b.style.cssText='font-variant-numeric:tabular-nums;';b.textContent=r[1];
     row.appendChild(a);row.appendChild(b);el.appendChild(row);
   });
-  var ch=document.createElement('div');ch.style.cssText='display:flex;justify-content:space-between;gap:16px;margin-top:6px;padding-top:6px;border-top:1px solid #1e293b;';
+  var ch=document.createElement('div');ch.style.cssText='display:flex;justify-content:space-between;gap:16px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);';
   var ca=document.createElement('span');ca.style.color='#9aa6bc';ca.textContent='Change';
   var cb=document.createElement('span');cb.style.cssText='font-weight:600;color:'+col+';font-variant-numeric:tabular-nums;';cb.textContent=(chg>=0?'+$':'-$')+Math.abs(chg).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';
   ch.appendChild(ca);ch.appendChild(cb);el.appendChild(ch);
-  /* position: next to the candle, clamped inside the chart box, above the candle when there is room */
+  /* position: OVER the candle, centred on it, like a high-end tooltip — never at the bottom, never off-screen.
+     On a phone (narrow box) centre it horizontally in the chart, so it never clips left/right.
+     Arrow points down at the candle when the bubble is above it, up when it is below it. */
   el.style.display='block';
   var box=$('bcC').parentNode,bw=box.clientWidth||640,bh=box.clientHeight||300;
-  var ew=el.offsetWidth||250,eh=el.offsetHeight||170;
-  var left=geomX!=null?geomX+14:16;if(left+ew>bw-8)left=Math.max(8,(geomX!=null?geomX-ew-14:bw-ew-8));
-  var top=geomTop!=null?geomTop-eh-12:8;if(top<8)top=8;if(top+eh>bh-8)top=Math.max(8,bh-eh-8);
+  var ew=el.offsetWidth||230,eh=el.offsetHeight||190,phone=bw<=640;
+  var above=true,top,left;
+  if(phone){left=Math.max(8,(bw-ew)/2);top=8;}
+  else{
+    left=geomX!=null?geomX-ew/2:16;if(left<8)left=8;if(left+ew>bw-8)left=bw-ew-8;
+    top=geomTop!=null?geomTop-eh-18:8;if(top<8){above=false;top=(geomTop!=null?geomTop+18:8);}
+  }
   el.style.left=left+'px';el.style.top=top+'px';
+  var ar=document.createElement('div');ar.style.cssText='position:absolute;left:'+Math.max(14,Math.min(ew-20,(geomX!=null?geomX-left:ew/2)-6))+'px;width:12px;height:12px;background:#0a1122;border-left:1px solid rgba(34,211,238,.22);border-bottom:1px solid rgba(34,211,238,.22);';
+  if(above){ar.style.bottom='-7px';ar.style.transform='rotate(-45deg)';}else{ar.style.top='-7px';ar.style.transform='rotate(135deg)';}
+  el.appendChild(ar);
+  /* larger close tap target on phone */
+  cl.style.padding='8px';cl.style.fontSize='15px';
 }
 function drawCandles1D(candles,label,per){
   if(!candles.length)return false;
@@ -140,18 +155,22 @@ function drawCandles1D(candles,label,per){
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle='rgba(255,255,255,.08)';ctx.fillStyle='#9aa6bc';ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText('$'+Math.round(v).toLocaleString('en-US'),L-6,y+4);});
-  ctx.textAlign='center';CANDGEOM=[];
+  ctx.textAlign='center';CANDGEOM=[];drawCandles1D._lastTx=null;
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
     CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
     ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
     ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
-    /* X-axis, two clean rows so date and time never overlap:
-       - bottom row (H-8): time only, evenly spaced, inset so first/last do not clip
-       - upper row (H-24): date only ("Oct 27"), only at the first candle and when the day changes, clamped inside the chart */
-    var step=Math.max(1,Math.floor(candles.length/6));
-    if(i%step===0&&x>L+28&&x<W-R-28){ctx.fillText(etTime(k.t),x,H-8);}
+    /* X-axis, iPhone-first, two clean rows so date and time never overlap and never overlap each other:
+       - bottom row (H-8): time only, at most 4 labels on a phone (step 6 for 24 candles = ~82px apart on a 390px phone, time label ~55px wide, so no overlap), at most 6 on desktop
+       - upper row (H-24): date only ("Oct 27"), only at the first candle and when the day changes, clamped inside the chart
+       - labels are also spaced by measured width: a label is skipped if it would come within 62px of the previous one */
+    var phoneW=W<=640;
+    var step=phoneW?Math.max(1,Math.ceil(candles.length/4)):Math.max(1,Math.floor(candles.length/6));
+    if(i%step===0&&x>L+32&&x<W-R-32){
+      var _prevX=drawCandles1D._lastTx;if(_prevX==null||x-_prevX>=62){ctx.fillText(etTime(k.t),x,H-8);drawCandles1D._lastTx=x;}
+    }
     var prev=candles[i-1],dayChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
     if(dayChange){
       var dx=Math.max(L+30,Math.min(W-R-30,x));
