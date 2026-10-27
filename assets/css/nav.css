@@ -201,3 +201,9 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 
 /* CR-013 follow-up: whole sleeve card opens its allocation pop-up */
 #sleeves .card.slv-card{cursor:pointer}
+/* Test branch 26 Oct 2026: MSTR toggle + 1D chart-type control */
+.bc-k-mstr i{background:#f97316}.bc-k-mstr:hover{border-color:#f97316}.bc-k-mstr:not(.off){border-color:#f97316!important}
+.bc-ct{display:flex;align-items:center;gap:6px;margin:0 0 8px;flex-wrap:wrap}
+.bc-ct-lab{font:600 .78rem Inter,sans-serif;color:#94a3b8}
+.bc-ct button{font:600 .74rem Inter,sans-serif;padding:5px 12px;border-radius:999px;border:1px solid var(--border,#1e293b);color:#94a3b8;background:transparent;cursor:pointer}
+.bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
