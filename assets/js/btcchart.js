@@ -79,19 +79,17 @@ function aggCandles(pts,per){
    - Labels cleaned up: 4 price gridlines, times evenly spaced and inset so first/last do not clip, and the date is shown when the day changes overnight.
    - Razzle, kept minimal: a short fade-in when the candle view first draws, no bounce, no new colours. */
 var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
-/* High-end popup bubble for a selected candle, matching the site's own .slv-pop card:
-   gradient dark card, 16px rounded corners, cyan-tinted border, soft shadow, small arrow pointing at the candle.
-   On iPhone (sheet mode) it is centred over the chart, never off-screen, with a larger tap target for ✕.
-   Replaces the old bottom info line entirely — no bcSel line is ever shown at the bottom again. */
+/* True pill bubble for a selected candle (v5, user: "more like a pill"):
+   fully rounded ends (999px radius), centred text, compact, no arrow — the white outline + dashed guide
+   on the selected candle already points at it, so the pill can float cleanly over the chart.
+   Tapping the pill itself also dismisses it, so the ✕ is a small circle inside the pill, not a corner button. */
 function candInfoEl(){
   var el=$('bcSel');if(el)return el;
   var box=$('bcC')&&$('bcC').parentNode;if(!box)return null;
   el=document.createElement('div');el.id='bcSel';
-  el.style.cssText='display:none;position:absolute;z-index:5;width:212px;max-width:calc(100% - 16px);background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.22);border-radius:28px;padding:16px 18px;color:#e8eef7;font:13px/1.5 Inter, sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.6);pointer-events:auto;';
+  el.style.cssText='display:none;position:absolute;z-index:5;width:280px;max-width:calc(100% - 24px);background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.30);border-radius:999px;padding:16px 24px;color:#e8eef7;font:13px/1.5 Inter, sans-serif;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.6);pointer-events:auto;cursor:pointer;';
   box.style.position='relative';box.appendChild(el);
-  /* arrow element, positioned by showCandInfo */
-  var ar=document.createElement('div');ar.id='bcSelAr';ar.style.cssText='position:absolute;width:12px;height:12px;background:#0a1122;border-left:1px solid rgba(34,211,238,.22);border-bottom:1px solid rgba(34,211,238,.22);transform:rotate(-45deg);';
-  el.appendChild(ar);
+  el.addEventListener('click',function(ev){ev.stopPropagation();CANDSEL=-1;drawCandles1D(CAND,CANDLBL,CANDPER);showCandInfo(-1);});
   return el;
 }
 function showCandInfo(i,geomX,geomTop){
@@ -100,46 +98,23 @@ function showCandInfo(i,geomX,geomTop){
   var k=CAND[i],dur=CANDPER===4?3600000:14400000,chg=k.c-k.o,pct=k.o?(chg/k.o*100):0;
   var col=k.c>=k.o?'#22c55e':'#ef4444';
   el.innerHTML='';
-  var hd=document.createElement('div');hd.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;';
-  var ti=document.createElement('span');ti.style.cssText='font-weight:600;color:#e8eef7;';ti.textContent=(CANDPER===4?'1-hour':'4-hour')+' candle';
+  /* pill content, centred, three short lines — no table rows, no arrow, no bottom line:
+     line 1: when (small grey) · line 2: High / Low · line 3: Change in green/red.
+     Small ✕ sits inside the pill at the top-right; tapping the pill itself also closes it. */
   var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
-  cl.style.cssText='background:none;border:none;color:#9aa6bc;font-size:13px;line-height:1;cursor:pointer;padding:2px 4px;';
+  cl.style.cssText='position:absolute;top:10px;right:16px;background:none;border:none;color:#9aa6bc;font-size:14px;line-height:1;cursor:pointer;padding:8px;';
   cl.addEventListener('click',function(ev){ev.stopPropagation();CANDSEL=-1;drawCandles1D(CAND,CANDLBL,CANDPER);showCandInfo(-1);});
-  hd.appendChild(ti);hd.appendChild(cl);el.appendChild(hd);
-  /* surface-level info only: when it happened, how high / low it went, and how much it moved.
-     Open and Close are dropped — the change line already tells you up or down and by how much. */
-  var tm=document.createElement('div');tm.style.cssText='color:#9aa6bc;font-size:12px;margin-bottom:8px;';tm.textContent=etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET';el.appendChild(tm);
-  var rows=[
-    ['High',fmt(k.h)],['Low',fmt(k.l)]
-  ];
-  rows.forEach(function(r){
-    var row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;gap:16px;';
-    var a=document.createElement('span');a.style.color='#9aa6bc';a.textContent=r[0];
-    var b=document.createElement('span');b.style.cssText='font-variant-numeric:tabular-nums;';b.textContent=r[1];
-    row.appendChild(a);row.appendChild(b);el.appendChild(row);
-  });
-  var ch=document.createElement('div');ch.style.cssText='display:flex;justify-content:space-between;gap:16px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);';
-  var ca=document.createElement('span');ca.style.color='#9aa6bc';ca.textContent='Change';
-  var cb=document.createElement('span');cb.style.cssText='font-weight:600;color:'+col+';font-variant-numeric:tabular-nums;';cb.textContent=(chg>=0?'+$':'-$')+Math.abs(chg).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';
-  ch.appendChild(ca);ch.appendChild(cb);el.appendChild(ch);
-  /* position: OVER the candle, centred on it, like a high-end tooltip — never at the bottom, never off-screen.
-     On a phone (narrow box) centre it horizontally in the chart, so it never clips left/right.
-     Arrow points down at the candle when the bubble is above it, up when it is below it. */
+  el.appendChild(cl);
+  var tm=document.createElement('div');tm.style.cssText='color:#9aa6bc;font-size:12px;';tm.textContent=(CANDPER===4?'1-hour':'4-hour')+' · '+etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET';el.appendChild(tm);
+  var hl=document.createElement('div');hl.style.cssText='font-size:14px;font-weight:600;color:#e8eef7;font-variant-numeric:tabular-nums;margin:2px 0;';hl.textContent='High '+fmt(k.h)+'  ·  Low '+fmt(k.l);el.appendChild(hl);
+  var ch=document.createElement('div');ch.style.cssText='font-size:14px;font-weight:600;color:'+col+';font-variant-numeric:tabular-nums;';ch.textContent=(chg>=0?'▲ +$':'▼ -$')+Math.abs(chg).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';el.appendChild(ch);
+  /* position: floating pill over the chart, centred horizontally, never at the bottom, never off-screen */
   el.style.display='block';
   var box=$('bcC').parentNode,bw=box.clientWidth||640,bh=box.clientHeight||300;
-  var ew=el.offsetWidth||230,eh=el.offsetHeight||190,phone=bw<=640;
-  var above=true,top,left;
-  if(phone){left=Math.max(8,(bw-ew)/2);top=8;}
-  else{
-    left=geomX!=null?geomX-ew/2:16;if(left<8)left=8;if(left+ew>bw-8)left=bw-ew-8;
-    top=geomTop!=null?geomTop-eh-18:8;if(top<8){above=false;top=(geomTop!=null?geomTop+18:8);}
-  }
+  var ew=el.offsetWidth||280,eh=el.offsetHeight||110;
+  var left=Math.max(12,(bw-ew)/2),top=12;
+  if(geomX!=null&&bw>640){left=geomX-ew/2;if(left<8)left=8;if(left+ew>bw-8)left=bw-ew-8;top=geomTop!=null?Math.max(8,geomTop-eh-16):12;}
   el.style.left=left+'px';el.style.top=top+'px';
-  var ar=document.createElement('div');ar.style.cssText='position:absolute;left:'+Math.max(14,Math.min(ew-20,(geomX!=null?geomX-left:ew/2)-6))+'px;width:12px;height:12px;background:#0a1122;border-left:1px solid rgba(34,211,238,.22);border-bottom:1px solid rgba(34,211,238,.22);';
-  if(above){ar.style.bottom='-7px';ar.style.transform='rotate(-45deg)';}else{ar.style.top='-7px';ar.style.transform='rotate(135deg)';}
-  el.appendChild(ar);
-  /* larger close tap target on phone */
-  cl.style.padding='8px';cl.style.fontSize='15px';
 }
 function drawCandles1D(candles,label,per){
   if(!candles.length)return false;
