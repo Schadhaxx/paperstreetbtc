@@ -74,27 +74,63 @@ function aggCandles(pts,per){
   }
   return out;
 }
-function drawCandles1D(candles,label){
+/* Minimalist interactive candle chart (27 Oct 2026): same dark, clean canvas, plus an interaction layer.
+   - Tap / click a candle (or hover on desktop) to select it: it gets a white outline + soft glow, a thin vertical guide, and its O/H/L/C + change are shown in the info line under the chart.
+   - Labels cleaned up: 4 price gridlines, times evenly spaced and inset so first/last do not clip, and the date is shown when the day changes overnight.
+   - Razzle, kept minimal: a short fade-in when the candle view first draws, no bounce, no new colours. */
+var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
+function candInfoEl(){var el=$('bcSel');if(el)return el;var nt=$('bcNt');if(!nt)return null;el=document.createElement('div');el.id='bcSel';el.className='bc-nt';el.style.display='none';nt.parentNode.insertBefore(el,nt.nextSibling);return el;}
+function showCandInfo(i){
+  if(!CAND||i<0||i>=CAND.length){var el=candInfoEl();if(el)el.style.display='none';return;}
+  var k=CAND[i],dur=CANDPER===4?3600000:14400000,chg=k.c-k.o,pct=k.o?(chg/k.o*100):0;
+  var el=candInfoEl();if(!el)return;
+  el.style.display='';el.style.color='#e8eef7';
+  el.textContent=(CANDPER===4?'1-hour':'4-hour')+' candle · '+etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET · O '+fmt(k.o)+' · H '+fmt(k.h)+' · L '+fmt(k.l)+' · C '+fmt(k.c)+' · Change '+(chg>=0?'+$':'-$')+Math.abs(chg).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';
+}
+function drawCandles1D(candles,label,per){
   if(!candles.length)return false;
+  var prevCAND=CAND; CAND=candles;CANDLBL=label;CANDPER=per||4;
   var c=$('bcC'),ctx=c.getContext('2d'),W=c.parentNode.clientWidth||640,H=c.parentNode.clientHeight||300;
   var dpr=window.devicePixelRatio||1;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  /* short fade-in for the razzle layer, only when the candle set changes (not on hover redraws, or it would flicker) */
+  if(!prevCAND || prevCAND.length!==candles.length || prevCAND[0].t!==candles[0].t || prevCAND!==candles){ /* first draw of a new set fades in; hover redraws reuse the same array object, so they skip the fade */ if(prevCAND!==candles){c.style.transition='opacity .3s ease';c.style.opacity='0';requestAnimationFrame(function(){c.style.opacity='1';});} }
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
-  var L=62,R=12,T=12,B=28,iw=W-L-R,ih=H-T-B;
+  var L=62,R=12,T=18,B=28,iw=W-L-R,ih=H-T-B;
   var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle='rgba(255,255,255,.08)';ctx.fillStyle='#9aa6bc';ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
-  [0,0.5,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText('$'+Math.round(v).toLocaleString('en-US'),L-6,y+4);});
-  ctx.textAlign='center';
+  [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText('$'+Math.round(v).toLocaleString('en-US'),L-6,y+4);});
+  ctx.textAlign='center';CANDGEOM=[];
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
+    var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
+    CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
     ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
-    ctx.fillStyle=col;var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
-    if(i%Math.max(1,Math.floor(candles.length/6))===0)ctx.fillText(etTime(k.t),x,H-8);
+    ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
+    /* time labels: evenly spaced, inset so first/last do not clip, date shown when the day changes */
+    var step=Math.max(1,Math.floor(candles.length/6));
+    if(i%step===0&&x>L+28&&x<W-R-28){
+      var prev=candles[i-1],dayChange=prev&&new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
+      ctx.fillText(dayChange?etDateTime(k.t):etTime(k.t),x,H-8);
+    }
   });
-  /* Label moved out of the bottom time row: it used to sit on the same H-8 baseline as the time labels, crowding the leftmost time. Now it sits in the top margin, above the candles, where it cannot collide with any time label. */
-  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(label, L, 10);
+  /* selected / hovered candle: white outline + glow + vertical guide, drawn last so it sits on top */
+  [CANDHOV,CANDSEL].forEach(function(idx,layer){
+    if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
+    if(layer===0){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
+    else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
+  });
+  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(label, L, 12);
+  /* interaction listeners, attached once */
+  if(!c._candBound){
+    c._candBound=true;
+    var pick=function(evt){var r=c.getBoundingClientRect(),x=(evt.clientX-r.left);var best=-1,bd=1e9;CANDGEOM.forEach(function(g,i){var d=Math.abs(g.x-x);if(d<bd){bd=d;best=i;}});return best;};
+    c.addEventListener('mousemove',function(e){var i=pick(e);if(i!==CANDHOV){CANDHOV=i;if(CANDSEL<0)drawCandles1D(CAND,CANDLBL,CANDPER);else drawCandles1D(CAND,CANDLBL,CANDPER);}});
+    c.addEventListener('mouseleave',function(){CANDHOV=-1;drawCandles1D(CAND,CANDLBL,CANDPER);});
+    c.addEventListener('click',function(e){var i=pick(e);CANDSEL=(i===CANDSEL?-1:i);drawCandles1D(CAND,CANDLBL,CANDPER);showCandInfo(CANDSEL);});
+  }
   return true;
 }
 function draw1D(){
@@ -118,9 +154,9 @@ function draw1D(){
     if(cand.length>=2 && cand[0].o!=null){
       var a0=cand[0].o, b0=cand[cand.length-1].c, pc0=(b0/a0-1)*100;
       $('bcRr').textContent='1D: BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · last 24 hours, '+CT+' candles, from '+etTime(cand[0].t)+' ET ('+fmt(a0)+')';
-      $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Hover / tap a candle in the final build shows O/H/L/C. S&P 500, Gold and MSTR toggles are off for 1D only.';
+      $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its O/H/L/C. S&P 500, Gold and MSTR toggles are off for 1D only.';
       if(ch){ch.destroy();ch=null;}
-      drawCandles1D(cand, CT==='1h'?'1-hour candles':'4-hour candles');
+      CANDSEL=-1;CANDHOV=-1;drawCandles1D(cand, CT==='1h'?'1-hour candles':'4-hour candles', per);
       return;
     }
   }
