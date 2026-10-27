@@ -87,7 +87,7 @@ function candInfoEl(){
   var el=$('bcSel');if(el)return el;
   var box=$('bcC')&&$('bcC').parentNode;if(!box)return null;
   el=document.createElement('div');el.id='bcSel';
-  el.style.cssText='display:none;position:absolute;z-index:5;width:230px;max-width:calc(100% - 16px);background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.22);border-radius:16px;padding:14px 16px;color:#e8eef7;font:13px/1.5 Inter, sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.6);pointer-events:auto;';
+  el.style.cssText='display:none;position:absolute;z-index:5;width:212px;max-width:calc(100% - 16px);background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.22);border-radius:28px;padding:16px 18px;color:#e8eef7;font:13px/1.5 Inter, sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.6);pointer-events:auto;';
   box.style.position='relative';box.appendChild(el);
   /* arrow element, positioned by showCandInfo */
   var ar=document.createElement('div');ar.id='bcSelAr';ar.style.cssText='position:absolute;width:12px;height:12px;background:#0a1122;border-left:1px solid rgba(34,211,238,.22);border-bottom:1px solid rgba(34,211,238,.22);transform:rotate(-45deg);';
@@ -100,15 +100,17 @@ function showCandInfo(i,geomX,geomTop){
   var k=CAND[i],dur=CANDPER===4?3600000:14400000,chg=k.c-k.o,pct=k.o?(chg/k.o*100):0;
   var col=k.c>=k.o?'#22c55e':'#ef4444';
   el.innerHTML='';
-  var hd=document.createElement('div');hd.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;';
+  var hd=document.createElement('div');hd.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;';
   var ti=document.createElement('span');ti.style.cssText='font-weight:600;color:#e8eef7;';ti.textContent=(CANDPER===4?'1-hour':'4-hour')+' candle';
   var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
   cl.style.cssText='background:none;border:none;color:#9aa6bc;font-size:13px;line-height:1;cursor:pointer;padding:2px 4px;';
   cl.addEventListener('click',function(ev){ev.stopPropagation();CANDSEL=-1;drawCandles1D(CAND,CANDLBL,CANDPER);showCandInfo(-1);});
   hd.appendChild(ti);hd.appendChild(cl);el.appendChild(hd);
+  /* surface-level info only: when it happened, how high / low it went, and how much it moved.
+     Open and Close are dropped — the change line already tells you up or down and by how much. */
+  var tm=document.createElement('div');tm.style.cssText='color:#9aa6bc;font-size:12px;margin-bottom:8px;';tm.textContent=etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET';el.appendChild(tm);
   var rows=[
-    ['Time',etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET'],
-    ['Open',fmt(k.o)],['High',fmt(k.h)],['Low',fmt(k.l)],['Close',fmt(k.c)]
+    ['High',fmt(k.h)],['Low',fmt(k.l)]
   ];
   rows.forEach(function(r){
     var row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;gap:16px;';
