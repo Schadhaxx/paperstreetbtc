@@ -146,9 +146,10 @@ function getData(){if(dataP)return dataP;
   var st=fetch(U('../data/btc-daily.json')).then(function(r){return r.json();});
   var sx=fetch(U('../data/spx-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
   var gx=fetch(U('../data/gold-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var mx=fetch(U('../data/mstr-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
   var hj=fetch(RAW+'?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
   var cb=fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  dataP=Promise.all([st,hj,cb,sx,gx]).then(function(r){var m={},s=r[0].d,end=r[0].end;s.forEach(function(p){m[p[0]]=p[1];});
+  dataP=Promise.all([st,hj,cb,sx,gx,mx]).then(function(r){var m={},s=r[0].d,end=r[0].end;s.forEach(function(p){m[p[0]]=p[1];});
     var today=new Date().toISOString().slice(0,10);
     if(Array.isArray(r[2]))r[2].forEach(function(c){var d=new Date(c[0]*1000).toISOString().slice(0,10);if(d>end&&d<today)m[d]=c[4];});
     if(r[1]&&r[1].closes){for(var d in r[1].closes){var v=r[1].closes[d].BTC;if(d>end&&v!=null)m[d]=v;}PROV=(r[1].btc_provisional||[]).length>0;}
@@ -161,7 +162,11 @@ function getData(){if(dataP)return dataP;
     GOLD={};if(r[4]&&r[4].d){var gd=r[4].d,ge=r[4].end,gl=gd[gd.length-1][1];gd.forEach(function(p){GOLD[p[0]]=p[1];});
       var hc2=r[1]&&r[1].closes,g0=hc2&&hc2[ge]&&hc2[ge].GLD;if(g0){Object.keys(hc2).sort().forEach(function(d){if(d>ge&&hc2[d].GLD!=null)GOLD[d]=gl*hc2[d].GLD/g0;});}
       GOLDK=Object.keys(GOLD).sort();}
-    MSTR={};if(r[1]&&r[1].closes){Object.keys(r[1].closes).sort().forEach(function(d){if(r[1].closes[d].MSTR!=null)MSTR[d]=r[1].closes[d].MSTR;});MSTRK=Object.keys(MSTR).sort();}
+    /* MSTR: static daily closes (Yahoo, split-adjusted, back to 2010-08-17); newer sessions extended by history.json MSTR actual closes */
+    MSTR={};if(r[5]&&r[5].d){var md=r[5].d,me=r[5].end;md.forEach(function(p){MSTR[p[0]]=p[1];});
+      var hc3=r[1]&&r[1].closes;if(hc3){Object.keys(hc3).sort().forEach(function(d){if(d>me&&hc3[d].MSTR!=null)MSTR[d]=hc3[d].MSTR;});}
+    }else if(r[1]&&r[1].closes){Object.keys(r[1].closes).sort().forEach(function(d){if(r[1].closes[d].MSTR!=null)MSTR[d]=r[1].closes[d].MSTR;});}
+    MSTRK=Object.keys(MSTR).sort();
     return DATA;});
   dataP.catch(function(){dataP=null;});return dataP;}
 /* dialog */
