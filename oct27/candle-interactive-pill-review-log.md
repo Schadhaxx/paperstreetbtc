@@ -2,6 +2,11 @@
 ## Job: minimalist candle chart with interactive "razzle dazzle" layer + pill bubble
 ## Date: Tue 27 Oct 2026, morning (America/Toronto) | Status: DEPLOYED LIVE 27 Oct 2026
 
+> **REVIEWERS — READ THIS FIRST: REVIEW FROM THE TEST BRANCH, NOT FROM MAIN.**
+> All versions of this job live on the test branch **`pepper-candle-interactive`** — v1, v2, v3, v4, v5, one commit each, in order (see "Version history" below).
+> **`main` only has the final deployed version** (single commit 0e50493a). If you review from main, you will NOT see the earlier versions, the changes between them, or why each change was made.
+> To review this job: on GitHub, switch the repo `Schadhaxx/paperstreetbtc` to branch `pepper-candle-interactive`, open Commits, and step through 81fdcfd → b18a990 → 1b0d1b3 → c9e531d → 6252b40. This log is on that branch at `proposals/candle-interactive-pill/REVIEW-LOG.md` and on `pepper-results` at `oct27/candle-interactive-pill-review-log.md`.
+
 ### What the user asked for, in order
 1. 27 Oct ~07:57 EDT: "Analyze the BTC candle chart. Are the daily chart. The labels present is a little sloppy maybe you can propose a fix to that I feel like the charts are a bit static they could use a little razzle dazzle. When I clicked on a candle, I should be able to get some information. Look at that and get back to me."
 2. 27 Oct ~08:08 EDT: "Build it. I want a minimalist candle chart that still has an interactive razzle dazzle layer"
