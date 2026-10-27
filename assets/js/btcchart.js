@@ -93,7 +93,8 @@ function drawCandles1D(candles,label){
     ctx.fillStyle=col;var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
     if(i%Math.max(1,Math.floor(candles.length/6))===0)ctx.fillText(etTime(k.t),x,H-8);
   });
-  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(label, L, H-8);
+  /* Label moved out of the bottom time row: it used to sit on the same H-8 baseline as the time labels, crowding the leftmost time. Now it sits in the top margin, above the candles, where it cannot collide with any time label. */
+  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(label, L, 10);
   return true;
 }
 function draw1D(){
