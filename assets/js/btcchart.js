@@ -79,17 +79,55 @@ function aggCandles(pts,per){
    - Labels cleaned up: 4 price gridlines, times evenly spaced and inset so first/last do not clip, and the date is shown when the day changes overnight.
    - Razzle, kept minimal: a short fade-in when the candle view first draws, no bounce, no new colours. */
 var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
-function candInfoEl(){var el=$('bcSel');if(el)return el;var nt=$('bcNt');if(!nt)return null;el=document.createElement('div');el.id='bcSel';el.className='bc-nt';el.style.display='none';nt.parentNode.insertBefore(el,nt.nextSibling);return el;}
-function showCandInfo(i){
-  if(!CAND||i<0||i>=CAND.length){var el=candInfoEl();if(el)el.style.display='none';return;}
-  var k=CAND[i],dur=CANDPER===4?3600000:14400000,chg=k.c-k.o,pct=k.o?(chg/k.o*100):0;
+/* Clean popup bubble for a selected candle: dark card, rounded corners, thin border, same site colours.
+   Positioned next to the selected candle, clamped inside the chart box, with a small close ✕.
+   Replaces the old bottom info line, which the user found messy / easy to miss. */
+function candInfoEl(){
+  var el=$('bcSel');if(el)return el;
+  var box=$('bcC')&&$('bcC').parentNode;if(!box)return null;
+  el=document.createElement('div');el.id='bcSel';
+  el.style.cssText='display:none;position:absolute;z-index:5;max-width:250px;background:#0d1220;border:1px solid #1e293b;border-radius:12px;padding:10px 12px;color:#e8eef7;font:13px/1.45 Inter, sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:auto;';
+  box.style.position='relative';box.appendChild(el);
+  return el;
+}
+function showCandInfo(i,geomX,geomTop){
   var el=candInfoEl();if(!el)return;
-  el.style.display='';el.style.color='#e8eef7';
-  el.textContent=(CANDPER===4?'1-hour':'4-hour')+' candle · '+etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET · O '+fmt(k.o)+' · H '+fmt(k.h)+' · L '+fmt(k.l)+' · C '+fmt(k.c)+' · Change '+(chg>=0?'+$':'-$')+Math.abs(chg).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';
+  if(!CAND||i<0||i>=CAND.length){el.style.display='none';return;}
+  var k=CAND[i],dur=CANDPER===4?3600000:14400000,chg=k.c-k.o,pct=k.o?(chg/k.o*100):0;
+  var col=k.c>=k.o?'#22c55e':'#ef4444';
+  el.innerHTML='';
+  var hd=document.createElement('div');hd.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;';
+  var ti=document.createElement('span');ti.style.cssText='font-weight:600;color:#e8eef7;';ti.textContent=(CANDPER===4?'1-hour':'4-hour')+' candle';
+  var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
+  cl.style.cssText='background:none;border:none;color:#9aa6bc;font-size:13px;line-height:1;cursor:pointer;padding:2px 4px;';
+  cl.addEventListener('click',function(ev){ev.stopPropagation();CANDSEL=-1;drawCandles1D(CAND,CANDLBL,CANDPER);showCandInfo(-1);});
+  hd.appendChild(ti);hd.appendChild(cl);el.appendChild(hd);
+  var rows=[
+    ['Time',etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET'],
+    ['Open',fmt(k.o)],['High',fmt(k.h)],['Low',fmt(k.l)],['Close',fmt(k.c)]
+  ];
+  rows.forEach(function(r){
+    var row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;gap:16px;';
+    var a=document.createElement('span');a.style.color='#9aa6bc';a.textContent=r[0];
+    var b=document.createElement('span');b.style.cssText='font-variant-numeric:tabular-nums;';b.textContent=r[1];
+    row.appendChild(a);row.appendChild(b);el.appendChild(row);
+  });
+  var ch=document.createElement('div');ch.style.cssText='display:flex;justify-content:space-between;gap:16px;margin-top:6px;padding-top:6px;border-top:1px solid #1e293b;';
+  var ca=document.createElement('span');ca.style.color='#9aa6bc';ca.textContent='Change';
+  var cb=document.createElement('span');cb.style.cssText='font-weight:600;color:'+col+';font-variant-numeric:tabular-nums;';cb.textContent=(chg>=0?'+$':'-$')+Math.abs(chg).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';
+  ch.appendChild(ca);ch.appendChild(cb);el.appendChild(ch);
+  /* position: next to the candle, clamped inside the chart box, above the candle when there is room */
+  el.style.display='block';
+  var box=$('bcC').parentNode,bw=box.clientWidth||640,bh=box.clientHeight||300;
+  var ew=el.offsetWidth||250,eh=el.offsetHeight||170;
+  var left=geomX!=null?geomX+14:16;if(left+ew>bw-8)left=Math.max(8,(geomX!=null?geomX-ew-14:bw-ew-8));
+  var top=geomTop!=null?geomTop-eh-12:8;if(top<8)top=8;if(top+eh>bh-8)top=Math.max(8,bh-eh-8);
+  el.style.left=left+'px';el.style.top=top+'px';
 }
 function drawCandles1D(candles,label,per){
   if(!candles.length)return false;
   var prevCAND=CAND; CAND=candles;CANDLBL=label;CANDPER=per||4;
+  if(CANDSEL<0){var _b=$('bcSel');if(_b)_b.style.display='none';}
   var c=$('bcC'),ctx=c.getContext('2d'),W=c.parentNode.clientWidth||640,H=c.parentNode.clientHeight||300;
   var dpr=window.devicePixelRatio||1;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
   /* short fade-in for the razzle layer, only when the candle set changes (not on hover redraws, or it would flicker) */
@@ -97,7 +135,7 @@ function drawCandles1D(candles,label,per){
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
-  var L=62,R=12,T=18,B=28,iw=W-L-R,ih=H-T-B;
+  var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle='rgba(255,255,255,.08)';ctx.fillStyle='#9aa6bc';ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
@@ -109,11 +147,16 @@ function drawCandles1D(candles,label,per){
     CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
     ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
     ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
-    /* time labels: evenly spaced, inset so first/last do not clip, date shown when the day changes */
+    /* X-axis, two clean rows so date and time never overlap:
+       - bottom row (H-8): time only, evenly spaced, inset so first/last do not clip
+       - upper row (H-24): date only ("Oct 27"), only at the first candle and when the day changes, clamped inside the chart */
     var step=Math.max(1,Math.floor(candles.length/6));
-    if(i%step===0&&x>L+28&&x<W-R-28){
-      var prev=candles[i-1],dayChange=prev&&new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
-      ctx.fillText(dayChange?etDateTime(k.t):etTime(k.t),x,H-8);
+    if(i%step===0&&x>L+28&&x<W-R-28){ctx.fillText(etTime(k.t),x,H-8);}
+    var prev=candles[i-1],dayChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
+    if(dayChange){
+      var dx=Math.max(L+30,Math.min(W-R-30,x));
+      ctx.fillStyle='#64748b';ctx.fillText(new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),dx,H-24);
+      ctx.fillStyle='#9aa6bc';
     }
   });
   /* selected / hovered candle: white outline + glow + vertical guide, drawn last so it sits on top */
@@ -129,7 +172,7 @@ function drawCandles1D(candles,label,per){
     var pick=function(evt){var r=c.getBoundingClientRect(),x=(evt.clientX-r.left);var best=-1,bd=1e9;CANDGEOM.forEach(function(g,i){var d=Math.abs(g.x-x);if(d<bd){bd=d;best=i;}});return best;};
     c.addEventListener('mousemove',function(e){var i=pick(e);if(i!==CANDHOV){CANDHOV=i;if(CANDSEL<0)drawCandles1D(CAND,CANDLBL,CANDPER);else drawCandles1D(CAND,CANDLBL,CANDPER);}});
     c.addEventListener('mouseleave',function(){CANDHOV=-1;drawCandles1D(CAND,CANDLBL,CANDPER);});
-    c.addEventListener('click',function(e){var i=pick(e);CANDSEL=(i===CANDSEL?-1:i);drawCandles1D(CAND,CANDLBL,CANDPER);showCandInfo(CANDSEL);});
+    c.addEventListener('click',function(e){var i=pick(e);CANDSEL=(i===CANDSEL?-1:i);drawCandles1D(CAND,CANDLBL,CANDPER);var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
   }
   return true;
 }
