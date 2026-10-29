@@ -85,10 +85,14 @@ var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
    CANDRANGE marks that the shared candle canvas + pill are currently showing range candles,
    so the shared listeners and pill dismiss redraw the range view, not the 1D view. */
 var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='';
-var RGCT='line',RGGRAN='daily';
+/* Per-range default candle size, explicit by range — NOT "first button in
+   the list" (the button order is finest-first: Daily, Weekly, Monthly).
+   1M defaults to Weekly; 3M/6M/YTD/1Y default to Monthly; 1W is daily only. */
+function defaultGran(r){return r==='1M'?'weekly':(r==='3M'||r==='6M'||r==='YTD'||r==='1Y')?'monthly':'daily';}
+var RGCT='line',RGGRAN=defaultGran('1M');
 /* Candle ranges, Day 2: 3M/6M/YTD/1Y join 1W/1M. Granularity choices:
    1W daily only; 1M weekly|daily (default weekly); 3M/6M/YTD/1Y monthly|weekly
-   (default monthly, the first-listed choice in the confirmed spec). */
+   (default monthly). */
 var CANDLE_RANGES=['1W','1M','3M','6M','YTD','1Y'];
 /* Fix 29 Oct 2026 (browser test, Day 1): the pill + canvas listeners are shared
    between the 1D candle view and the 1W/1M range candle view, and the old code
@@ -371,6 +375,10 @@ function drawRange(){
   var sb=$('bcSpx');if(sb){sb.setAttribute('aria-pressed','false');sb.classList.add('off');$('bcSpxT').textContent='+ S&P 500';sb.setAttribute('aria-label','S&P 500 unavailable for candle view');}
   var gb=$('bcGld');if(gb){gb.setAttribute('aria-pressed','false');gb.classList.add('off');$('bcGldT').textContent='+ Gold';gb.setAttribute('aria-label','Gold unavailable for candle view');}
   var mb=$('bcMstr');if(mb){mb.setAttribute('aria-pressed','false');mb.classList.add('off');$('bcMstrT').textContent='+ MSTR';mb.setAttribute('aria-label','MSTR unavailable for candle view');}
+  /* First-time candles for a range must use that range's default, even if
+     RGGRAN was left over from another range or from the initial load. */
+  var allowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily']:[]);
+  if(allowed.length&&allowed.indexOf(RGGRAN)<0)RGGRAN=defaultGran(rng);
   syncCg();
   var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;if(cg)cg.style.display='';syncCg();};
   var win,cut;
@@ -524,7 +532,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
   $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
   $('bcX').addEventListener('click',close);
-  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=(rng==='1M'?'weekly':(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?'monthly':'daily');}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
+  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
@@ -572,7 +580,7 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});}
 function needChart(){return window.Chart?Promise.resolve():new Promise(function(ok,no){var s=document.createElement('script');s.src=U('../vendor/chart.umd.min.js');s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
 function open(from){if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
-  rng='1M';LOG=false;dim.hidden=false;dlg.hidden=false;place();head();syncVehBtns();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
+  rng='1M';RGGRAN=defaultGran(rng);LOG=false;dim.hidden=false;dlg.hidden=false;place();head();syncVehBtns();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
   $('bcRr').textContent='Loading…';$('bcX').focus();
   Promise.all([getData(),needChart()]).then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
 function close(){if(!dlg||dlg.hidden)return;dlg.hidden=true;dim.hidden=true;[pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
