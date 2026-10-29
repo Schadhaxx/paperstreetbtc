@@ -252,10 +252,10 @@ function vehicleVals(VD, veh) {
   const bcJs = fs.readFileSync(path.join(root, 'assets/js/btcchart.js'), 'utf8');
   check('popover chart stays Spot, note present (open decision, unchanged)',
     bcJs.includes('This chart stays Spot BTC'), '');
-  check('no prices.yml IBIT/FBTC change (deliberately outstanding)',
-    !fs.readFileSync(path.join(root, '.github/workflows/prices.yml'), 'utf8').includes('IBIT'), '');
+  check('prices.yml live-quote list includes IBIT and FBTC (approved 29 Oct, test branch only)',
+    fs.readFileSync(path.join(root, '.github/workflows/prices.yml'), 'utf8').includes("'GLD','IBIT','FBTC'"), '');
 
-  console.log(failures === 0 ? 'ALL CHECKS PASSED (plus 1 known issue reported as INFO above: compare failure path)' : failures + ' CHECK(S) FAILED');
+  console.log(failures === 0 ? 'ALL CHECKS PASSED' : failures + ' CHECK(S) FAILED');
   console.log('passes: ' + passes + ', failures: ' + failures);
   process.exit(failures === 0 ? 0 : 1);
 })().catch((e) => { console.error('HARNESS ERROR', e); process.exit(1); });

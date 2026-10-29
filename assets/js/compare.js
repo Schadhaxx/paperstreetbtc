@@ -34,7 +34,7 @@ let on=new Set(['hodlr','BTC','GLD','MSTR']),rng='YTD';
    ETF mode. Benchmarks (incl. Spot BTC) are untouched. Until the
    prices.yml live-quote change lands, vehicle prices are latest
    closes from vehicle-daily.json. */
-let VEH='SPOT', VEHD=null;
+let VEH='SPOT', VEHD=null, VEHFAIL=false;
 function vehicleVals(VD,veh){const VM={};VD.vehicles[veh].forEach(p=>{VM[p[0]]=p[1];});const out={};
  for(const k in L.sleeves){const sl=L.sleeves[k],h={},b=CL[L.base];for(const a in sl.w)h[a]=a==='BTC'?L.start*sl.w[a]/VM[L.base]:L.start*sl.w[a]/b[a];let rec=[];const v={};
   const evs=L.strc.map(([ex,pay,amt])=>({ex:firstOn(ex),pay:firstOn(pay),payS:pay,amt})).filter(e=>e.ex&&e.ex<=LAST);
@@ -53,11 +53,11 @@ const ch=new Chart(document.getElementById('pvChart'),{type:'line',data:{labels:
 function draw(){const ds=dates();ch.data.labels=ds;ch.data.datasets=[...on].map(k=>{const v=ds.map(d=>SER[k].v[d]);const isB=k==='BTC';
  return{label:isB&&prov()?'Spot BTC (close provisional until '+ET.btcCloseLabel(LAST)+')':SER[k].n,raw:v,data:v.map(x=>pct(v[0],x)),borderColor:COL[k],backgroundColor:COL[k],borderWidth:isB?2.5:2,pointRadius:ds.length<10?3:0,tension:.2}});ch.update();
  sp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',on.has(b.dataset.k)));rp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r===rng));
- document.getElementById('pvChartNote').innerHTML=`% change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`)+(VEH!=='SPOT'?` You are in ${VEH} mode — BTC sleeve priced in ${VEH} at its latest close (live ETF quotes pending the prices.yml change). Spot BTC remains the hurdle.`:'')}
+ document.getElementById('pvChartNote').innerHTML=`% change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`)+(VEHFAIL?` Vehicle data unavailable — showing Spot BTC.`:'')+(VEH!=='SPOT'?` You are in ${VEH} mode — BTC sleeve priced in ${VEH} at its latest close (live ETF quotes pending the prices.yml change). Spot BTC remains the hurdle.`:'')}
 sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;on.has(k)?(on.size>1&&on.delete(k)):on.add(k);draw()};rp.onclick=e=>{if(e.target.dataset.r){rng=e.target.dataset.r;draw()}};draw();
 function vehApply(m){VEH=m;if(m==='SPOT'){for(const k in L.sleeves)SER[k].v=VAL[k];draw();return;}
  if(VEHD){const VV=vehicleVals(VEHD,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();return;}
- fetch('../assets/data/vehicle-daily.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{VEHD=j;const VV=vehicleVals(j,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();}).catch(e=>console.warn('vehicle data unavailable, Compare stays Spot',e));}
+ fetch('../assets/data/vehicle-daily.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{VEHD=j;VEHFAIL=false;const VV=vehicleVals(j,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();}).catch(e=>{console.warn('vehicle data unavailable, Compare stays Spot',e);VEH='SPOT';VEHFAIL=true;try{sessionStorage.setItem('psVehicle','SPOT');}catch(_){}for(const k in L.sleeves)SER[k].v=VAL[k];draw();});}
 window.addEventListener('psvehicle',e=>vehApply(e.detail.vehicle||'SPOT'));
 try{const m=sessionStorage.getItem('psVehicle');if(m==='IBIT'||m==='FBTC')vehApply(m);}catch(e){}
 }
