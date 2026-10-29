@@ -23,13 +23,12 @@
     var out = rows.filter(function (r) {
       if (state.filter === 'gainers' && !(r.dayChangePct > 0)) return false;
       if (state.filter === 'losers' && !(r.dayChangePct < 0)) return false;
-      if (state.filter === 'private' && r.status !== 'Private') return false;
       if (q && (r.symbol + ' ' + r.name).toLowerCase().indexOf(q) === -1) return false;
       return true;
     });
     var key = state.sortKey, dir = state.sortDir;
     out.sort(function (a, b) {
-      // SpaceX (private, no price) always sorts last on price sorts.
+      // Rows with no price sort last on price sorts.
       if (key === 'price') {
         if (a.price === null) return 1;
         if (b.price === null) return -1;
