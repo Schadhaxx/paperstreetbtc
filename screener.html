@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stock Screener — Maple Leaf Pack</title>
+<!-- REMOVABLE BY DESIGN: This page is part of the additive Maple Leaf Screener pack.
+     To shut it off and delete it, delete screener.html, assets/data/screener-pack.json,
+     assets/js/screener.js, assets/js/maple-screener.js, and remove the one maple-screener.js
+     script tag from index.html. No existing file's logic was modified, no old version needs
+     restoring, and with that script tag gone the footer maple leaf simply does nothing on
+     double-click again. -->
+<style>
+  body { background:#070b18; color:#e8eef7; font-family:Inter,Outfit,system-ui,sans-serif; margin:0; padding:24px 16px 48px; }
+  .wrap { max-width:900px; margin:0 auto; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  .asof { color:#94a3b8; margin:0 0 20px; }
+  .pills { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; }
+  .pill { background:#121a2e; border:1px solid #1e293b; border-radius:999px; padding:8px 16px; font-size:14px; }
+  .pill b { color:#f97316; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .controls input { flex:1; min-width:200px; background:#121a2e; border:1px solid #1e293b; border-radius:999px; color:#e8eef7; padding:10px 16px; font-size:15px; }
+  .btn { background:#121a2e; border:1px solid #1e293b; border-radius:999px; color:#e8eef7; padding:10px 16px; font-size:14px; cursor:pointer; }
+  .btn.active { border-color:#22d3ee; color:#22d3ee; }
+  table { width:100%; border-collapse:collapse; background:#121a2e; border:1px solid #1e293b; border-radius:12px; overflow:hidden; }
+  th, td { text-align:left; padding:12px; border-bottom:1px solid #1e293b; font-size:15px; }
+  th { cursor:pointer; color:#94a3b8; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+  .up { color:#22c55e; } .down { color:#ef4444; }
+  .row-note { color:#94a3b8; font-size:13px; margin-top:4px; }
+  .count { color:#94a3b8; margin-top:12px; font-size:14px; }
+  .disclaimer { color:#94a3b8; font-size:13px; margin-top:24px; line-height:1.6; }
+  a { color:#22d3ee; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Stock Screener — Maple Leaf Pack</h1>
+  <p class="asof">Closes as of 28 Oct 2026. Open the footer maple leaf with a double-click to reach this page.</p>
+  <div class="pills">
+    <span class="pill">Biggest gainer: <b>MU +5.86%</b></span>
+    <span class="pill">Biggest loser: <b>PLTR −0.97%</b></span>
+  </div>
+  <div class="controls">
+    <input id="screener-search" type="search" placeholder="Search symbol or name…" aria-label="Search screener">
+    <button class="btn active" data-filter="all">All</button>
+    <button class="btn" data-filter="gainers">Gainers</button>
+    <button class="btn" data-filter="losers">Losers</button>
+    <button class="btn" data-filter="private">Private</button>
+  </div>
+  <table>
+    <thead><tr>
+      <th data-sort="symbol">Symbol ↕</th><th>Name</th><th data-sort="price">Price ↕</th>
+      <th data-sort="dayChangePct">Day change ↕</th><th data-sort="ytdPct">YTD ↕</th><th>Status</th>
+    </tr></thead>
+    <tbody id="screener-body"><tr><td colspan="6">Loading…</td></tr></tbody>
+  </table>
+  <p class="count" id="screener-count"></p>
+  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. Prices shown are closes as of 28 Oct 2026 from the sources noted in the data pack; they are not live quotes. SpaceX is a private company with no public share price, shown as a watch item only. <a href="index.html">Back to the main page</a>.</p>
+</div>
+<script src="assets/js/screener.js"></script>
+</body>
+</html>
