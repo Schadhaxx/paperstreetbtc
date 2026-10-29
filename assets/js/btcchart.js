@@ -86,6 +86,10 @@ var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
    so the shared listeners and pill dismiss redraw the range view, not the 1D view. */
 var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='';
 var RGCT='line',RGGRAN='daily';
+/* Candle ranges, Day 2: 3M/6M/YTD/1Y join 1W/1M. Granularity choices:
+   1W daily only; 1M weekly|daily (default weekly); 3M/6M/YTD/1Y monthly|weekly
+   (default monthly, the first-listed choice in the confirmed spec). */
+var CANDLE_RANGES=['1W','1M','3M','6M','YTD','1Y'];
 /* Fix 29 Oct 2026 (browser test, Day 1): the pill + canvas listeners are shared
    between the 1D candle view and the 1W/1M range candle view, and the old code
    let them resurrect a stale candle canvas after switching to a line view:
@@ -94,10 +98,10 @@ var RGCT='line',RGGRAN='daily';
    Rule from now on: switching chart type ALWAYS clears pill + selection +
    guide; dismissing a pill NEVER changes the chart type and NEVER touches
    the canvas unless a candle view is currently active. */
-function candViewActive(){return (rng==='1D'&&CT!=='line')||((rng==='1W'||rng==='1M')&&RGCT==='candles');}
+function candViewActive(){return (rng==='1D'&&CT!=='line')||(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles');}
 function hideCandPill(){var el=$('bcSel');if(el)el.style.display='none';}
 function clearCandState(){CANDSEL=-1;CANDHOV=-1;hideCandPill();}
-function dismissCandInfo(){clearCandState();if(candViewActive()&&((rng==='1D'&&CAND&&CAND.length)||((rng==='1W'||rng==='1M')&&RGCAND&&RGCAND.length)))redrawCandles();}
+function dismissCandInfo(){clearCandState();if(candViewActive()&&((rng==='1D'&&CAND&&CAND.length)||(CANDLE_RANGES.indexOf(rng)>=0&&RGCAND&&RGCAND.length)))redrawCandles();}
 function redrawCandles(){if(!candViewActive()){hideCandPill();return;}if(CANDRANGE)drawCandlesRange();else drawCandles1D(CAND,CANDLBL,CANDPER);}
 /* True pill bubble for a selected candle (v5, user: "more like a pill"):
    fully rounded ends (999px radius), centred text, compact, no arrow — the white outline + dashed guide
@@ -126,7 +130,7 @@ function showCandInfo(i,geomX,geomTop){
   cl.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   el.appendChild(cl);
   var tm=document.createElement('div');tm.style.cssText='color:#9aa6bc;font-size:12px;';
-  if(CANDRANGE){var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' ET';}
+  if(CANDRANGE){if(CANDGRAN==='monthly'){tm.textContent='Monthly candle · '+new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'long',year:'numeric'})+' ET';}else{var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' ET';}}
   else tm.textContent=(CANDPER===4?'1-hour':'4-hour')+' · '+etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET';
   el.appendChild(tm);
   var hl=document.createElement('div');hl.style.cssText='font-size:14px;font-weight:600;color:#e8eef7;font-variant-numeric:tabular-nums;margin:2px 0;';hl.textContent='High '+fmt(k.h)+'  ·  Low '+fmt(k.l);el.appendChild(hl);
@@ -214,7 +218,17 @@ function bindCandListeners(c){
    the same shape with calendar-month buckets and is a later step, not here. */
 function aggDailyCandles(daily,mode){
   if(!Array.isArray(daily)||!daily.length)return [];
-  if(mode!=='weekly')return daily.map(function(p){return {t:p.t,end:p.t,o:p.o,h:p.h,l:p.l,c:p.c};});
+  if(mode!=='weekly'&&mode!=='monthly')return daily.map(function(p){return {t:p.t,end:p.t,o:p.o,h:p.h,l:p.l,c:p.c};});
+  if(mode==='monthly'){
+    var outM=[],curM=null,curKeyM=null;
+    daily.forEach(function(p){
+      var d=new Date(p.t),key=d.getUTCFullYear()*12+d.getUTCMonth();
+      if(key!==curKeyM){if(curM)outM.push(curM);curKeyM=key;curM={t:p.t,end:p.t,o:p.o,h:p.h,l:p.l,c:p.c};}
+      else{curM.h=Math.max(curM.h,p.h);curM.l=Math.min(curM.l,p.l);curM.c=p.c;curM.end=p.t;}
+    });
+    if(curM)outM.push(curM);
+    return outM;
+  }
   var out=[],cur=null,curKey=null;
   daily.forEach(function(p){
     var d=new Date(p.t),dow=d.getUTCDay();
@@ -286,12 +300,47 @@ function drawCandlesRange(){
   bindCandListeners(c);
   return true;
 }
+/* Candle ranges, Day 2: extended daily candles for YTD and 1Y.
+   Coinbase's no-window daily fetch returns only ~300 candles, but YTD late
+   in the year needs up to 365 days and 1Y needs 366 — so those two ranges
+   fetch in batched windows (<=250 days each, start/end params), deduped by
+   timestamp and sorted oldest-first. If ANY window fails, the whole extended
+   fetch fails and the view falls back to the line (never a partial window
+   silently presented as the full range). CBEXT_ERR is sticky for the session
+   so a failed fetch is not hammered on every redraw. */
+var CBEXT=null,CBEXT_P=null,CBEXT_ERR=false,CBEXT_DAYS=0;
+function fetchDailyWindow(startMs,endMs){
+  var s=new Date(startMs).toISOString(),e=new Date(endMs).toISOString();
+  return fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start='+s+'&end='+e,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+    if(!Array.isArray(j))throw new Error('bad candles');
+    return j.map(function(c){return {t:c[0]*1000,o:c[3],h:c[2],l:c[1],c:c[4]};}).filter(function(p){return isFinite(p.c)&&p.c>0&&isFinite(p.o)&&isFinite(p.h)&&isFinite(p.l);});
+  });
+}
+/* Pure merge for batched daily windows: dedupe by timestamp (later window
+   wins on a shared boundary day), sort oldest-first. Extracted so the
+   headless harness can check it without fetching anything. */
+function mergeDailyCandles(chunks){
+  var m={};chunks.forEach(function(arr){arr.forEach(function(p){m[p.t]=p;});});
+  return Object.keys(m).sort(function(a,b){return a-b;}).map(function(k){return m[k];});
+}
+function loadExtendedDaily(days){
+  if(CBEXT&&CBEXT_DAYS>=days)return Promise.resolve(CBEXT);
+  if(CBEXT_P)return CBEXT_P;
+  var now=Date.now(),chunk=250*864e5,parts=[],s=now-days*864e5;
+  while(s<now){var e=Math.min(now,s+chunk);parts.push(fetchDailyWindow(s,e));s=e;}
+  CBEXT_P=Promise.all(parts).then(function(chunks){
+    CBEXT=mergeDailyCandles(chunks);
+    CBEXT_DAYS=days;CBEXT_P=null;return CBEXT;
+  },function(e){CBEXT_P=null;CBEXT_ERR=true;throw e;});
+  return CBEXT_P;
+}
 function syncCg(){
   var cg=$('bcCg');if(!cg)return;
-  var candlesOn=(rng==='1W'||rng==='1M')&&RGCT==='candles';
+  var candlesOn=CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles';
   [].forEach.call(cg.querySelectorAll('[data-cg]'),function(b){b.classList.toggle('on',b.dataset.cg===RGCT);b.setAttribute('aria-pressed',b.dataset.cg===RGCT);});
-  var gl=$('bcCgGranLab');if(gl)gl.style.display=candlesOn&&rng==='1M'?'':'none';
-  [].forEach.call(cg.querySelectorAll('[data-cggran]'),function(b){var show=candlesOn&&rng==='1M';b.style.display=show?'':'none';b.classList.toggle('on',b.dataset.cggran===RGGRAN);b.setAttribute('aria-pressed',b.dataset.cggran===RGGRAN);});
+  var granAllowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:[];
+  var gl=$('bcCgGranLab');if(gl)gl.style.display=candlesOn&&granAllowed.length?'':'none';
+  [].forEach.call(cg.querySelectorAll('[data-cggran]'),function(b){var show=candlesOn&&granAllowed.indexOf(b.dataset.cggran)>=0;b.style.display=show?'':'none';b.classList.toggle('on',b.dataset.cggran===RGGRAN);b.setAttribute('aria-pressed',b.dataset.cggran===RGGRAN);});
 }
 function drawRange(){
   head();
@@ -304,15 +353,33 @@ function drawRange(){
   var gb=$('bcGld');if(gb){gb.setAttribute('aria-pressed','false');gb.classList.add('off');$('bcGldT').textContent='+ Gold';gb.setAttribute('aria-label','Gold unavailable for candle view');}
   var mb=$('bcMstr');if(mb){mb.setAttribute('aria-pressed','false');mb.classList.add('off');$('bcMstrT').textContent='+ MSTR';mb.setAttribute('aria-label','MSTR unavailable for candle view');}
   syncCg();
-  if(!CBDAILY||CBDAILY.length<2){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' Coinbase daily candles unavailable — showing daily closes.';if(cg)cg.style.display='';syncCg();return;}
-  var days=rng==='1W'?7:31,cut=Date.now()-days*864e5;
-  var win=CBDAILY.filter(function(p){return p.t>=cut;});
+  var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;if(cg)cg.style.display='';syncCg();};
+  var win,cut;
+  if(rng==='YTD'||rng==='1Y'){
+    /* Day 2: these two ranges need MORE than Coinbase's ~300-candle default
+       window (YTD late in the year needs up to 365 days, 1Y needs 366), so
+       they use the batched extended fetch, not CBDAILY. */
+    if(!CBEXT&&!CBEXT_ERR){
+      if(!CBEXT_P){var dys=rng==='YTD'?Math.ceil((Date.now()-Date.UTC(new Date().getUTCFullYear(),0,1))/864e5):366;
+        loadExtendedDaily(dys).then(function(){if(dlg&&!dlg.hidden&&(rng==='YTD'||rng==='1Y')&&RGCT==='candles')draw();}).catch(function(){if(dlg&&!dlg.hidden)draw();});}
+      $('bcRr').textContent='Loading '+(rng==='YTD'?'year-to-date':'1-year')+' candles…';return;
+    }
+    if(!CBEXT){fallback('Extended Coinbase candles unavailable — showing daily closes.');return;}
+    cut=rng==='YTD'?Date.UTC(new Date().getUTCFullYear(),0,1):Date.now()-366*864e5;
+    win=CBEXT.filter(function(p){return p.t>=cut;});
+  }else{
+    if(!CBDAILY||CBDAILY.length<2){fallback('Coinbase daily candles unavailable — showing daily closes.');return;}
+    var days=rng==='1W'?7:(rng==='1M'?31:(rng==='3M'?92:183));
+    cut=Date.now()-days*864e5;
+    win=CBDAILY.filter(function(p){return p.t>=cut;});
+  }
   var cand=aggDailyCandles(win,RGGRAN);
-  if(cand.length<2){drawDaily();var nt2=$('bcNt');if(nt2)nt2.textContent+=' Not enough daily candles — showing daily closes.';if(cg)cg.style.display='';syncCg();return;}
-  RGCAND=cand;RGLBL=rng+' · '+(RGGRAN==='weekly'?'weekly':'daily')+' candles';
+  if(cand.length<2){fallback('Not enough daily candles — showing daily closes.');return;}
+  RGCAND=cand;RGLBL=rng+' · '+RGGRAN+' candles';
   var a0=cand[0].o,b0=cand[cand.length-1].c,pc0=(b0/a0-1)*100;
-  $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+(RGGRAN==='weekly'?'weekly':'daily')+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'})+' ('+fmt(a0)+')';
-  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+(RGGRAN==='weekly'?'by Monday-start UTC week':'by day')+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
+  $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'})+' ('+fmt(a0)+')';
+  var aggTxt=RGGRAN==='monthly'?'by calendar month (UTC)':(RGGRAN==='weekly'?'by Monday-start UTC week':'by day');
+  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
   if(ch){ch.destroy();ch=null;}
   CANDSEL=-1;CANDHOV=-1;drawCandlesRange();
 }
@@ -362,7 +429,7 @@ function draw1D(){
       y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:function(v){return v>=1000?'$'+(v/1000).toLocaleString('en-US')+'k':'$'+v;}}}}};
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});
 }
-function draw(){if(rng==='1D'){draw1D();}else if((rng==='1W'||rng==='1M')&&RGCT==='candles'){drawRange();}else{drawDaily();}}
+function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}}
 
 function onK(K,M,d){var lo=0,hi=K.length-1,a=-1;while(lo<=hi){var mid=(lo+hi)>>1;if(K[mid]<=d){a=mid;lo=mid+1;}else hi=mid-1;}return a<0?null:M[K[a]];}
 function spxOn(d){return onK(SPXK,SPX,d);}function gldOn(d){return onK(GOLDK,GOLD,d);}function mstrOn(d){return onK(MSTRK,MSTR,d);}
@@ -398,7 +465,7 @@ function getData(){if(dataP)return dataP;
     return DATA;});
   dataP.catch(function(){dataP=null;});return dataP;}
 /* dialog */
-var RANGES=['1D','1W','1M','3M','YTD','1Y','5Y','10Y','Max'],DAYS={'1D':1,'1W':7,'1M':31,'3M':92,'1Y':366,'5Y':1827,'10Y':3653};
+var RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'],DAYS={'1D':1,'1W':7,'1M':31,'3M':92,'6M':183,'1Y':366,'5Y':1827,'10Y':3653};
 var rng='1M',LOG=false,dlg=null,dim=null,ch=null,opener=null;
 function isPhone(){return window.innerWidth<=640;}
 /* Vehicle toggle, Day 3: the popover carries the same shared toggle.
@@ -416,7 +483,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
    +'<div class="bc-veh" id="bcVeh" role="group" aria-label="Bitcoin vehicle"><span class="bc-ct-lab">Vehicle</span><button type="button" data-veh="SPOT">Spot BTC</button><button type="button" data-veh="IBIT">IBIT</button><button type="button" data-veh="FBTC">FBTC</button></div><div class="bc-veh-nt" id="bcVehNt" style="display:none">Vehicle mode applies to Pulse, tracker, holdings and Compare. This chart stays Spot BTC.</div>'
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
    +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
-   +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="daily" style="display:none">Daily</button></div>'
+   +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="monthly" style="display:none">Monthly</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="daily" style="display:none">Daily</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../compare/index.html')+'">See full Compare →</a>';
   document.body.appendChild(dim);document.body.appendChild(dlg);
   dim.addEventListener('click',close);$('bcVeh').addEventListener('click',function(e){var b=e.target.closest('[data-veh]');if(!b||b.disabled)return;var v=b.dataset.veh;
@@ -425,7 +492,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
   $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
   $('bcX').addEventListener('click',close);
-  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=(rng==='1M'?'weekly':'daily');}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
+  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=(rng==='1M'?'weekly':(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?'monthly':'daily');}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
@@ -439,7 +506,7 @@ function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   var last=new Date(d[d.length-1][0]+'T00:00:00Z'),st;
   if(rng==='Max')st='0000';else if(rng==='YTD')st=(last.getUTCFullYear()-1)+'-12-31';else st=new Date(last-DAYS[rng]*864e5).toISOString().slice(0,10);
   return d.filter(function(p){return p[0]>=st;});}
-function drawDaily(){if(!DATA||!window.Chart)return;clearCandState();head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(rng==='1W'||rng==='1M'){_cg.style.display='';syncCg();}else _cg.style.display='none';}var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
+function drawDaily(){if(!DATA||!window.Chart)return;clearCandState();head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(CANDLE_RANGES.indexOf(rng)>=0){_cg.style.display='';syncCg();}else _cg.style.display='none';}var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   var onb=$('bcRgs').querySelector('.on'),rs=$('bcRgs');if(onb&&rs.scrollWidth>rs.clientWidth){var L=onb.offsetLeft-rs.offsetLeft,R=L+onb.offsetWidth;if(L<rs.scrollLeft+16||R>rs.scrollLeft+rs.clientWidth-16)rs.scrollTo({left:Math.max(0,L-(rs.clientWidth-onb.offsetWidth)/2),behavior:'smooth'});}
   $('bcSc').style.display=big?'':'none';[].forEach.call($('bcSc').children,function(b){var on=(b.dataset.s==='log')===LOG;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
