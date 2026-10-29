@@ -86,6 +86,15 @@ var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
    so the shared listeners and pill dismiss redraw the range view, not the 1D view. */
 var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='';
 var RGCT='line',RGGRAN='daily';
+/* Candle ranges, Day 3 (exploration only, NOT a decided build): SMA 20 /
+   EMA 20 / Bollinger (20, 2σ) overlays on range candles, ported from the
+   playground prototype. All three are OFF by default, visible only in
+   candle view, and calculated on the DISPLAYED candle closes only — so
+   "20" means 20 candles of whatever size is shown (a weekly chart's
+   SMA 20 is a 20-week SMA, not a 20-day SMA). Buttons say so plainly.
+   The first 19 candles have no overlay value: nothing is padded or
+   invented for them. 1D intraday is untouched. */
+var OV={sma:false,ema:false,bb:false};
 /* Candle ranges, Day 2: 3M/6M/YTD/1Y join 1W/1M. Granularity choices:
    1W daily only; 1M weekly|daily (default weekly); 3M/6M/YTD/1Y monthly|weekly
    (default monthly, the first-listed choice in the confirmed spec). */
@@ -248,6 +257,42 @@ function aggDailyCandles(daily,mode){
   if(cur)out.push(cur);
   return out;
 }
+/* Candle ranges, Day 3 (exploration): overlay maths, pure functions so a
+   headless harness can extract and check them without a DOM. Playground
+   semantics preserved exactly: SMA = mean of the last 20 closes; EMA is
+   seeded on the first close with k = 2/(20+1) and only returned from the
+   20th candle on; Bollinger = SMA ± 2 × population standard deviation
+   (divide by 20) of the same 20 closes. Indices before the 20th candle
+   are null, never padded. */
+function calcSMA(closes,n){
+  n=n||20;var out=[];
+  closes.forEach(function(v,i){
+    if(i<n-1){out.push(null);return;}
+    var s=0,j;for(j=i-n+1;j<=i;j++)s+=closes[j];
+    out.push(s/n);
+  });
+  return out;
+}
+function calcEMA(closes,n){
+  n=n||20;var k=2/(n+1),e=null,out=[];
+  closes.forEach(function(v,i){
+    if(i===0)e=v;else e=v*k+e*(1-k);
+    out.push(i>=n-1?e:null);
+  });
+  return out;
+}
+function calcBollinger(closes,n,mult){
+  n=n||20;mult=mult||2;
+  var sma=calcSMA(closes,n),out=[];
+  closes.forEach(function(v,i){
+    if(i<n-1){out.push(null);return;}
+    var m=sma[i],s=0,j;
+    for(j=i-n+1;j<=i;j++)s+=(closes[j]-m)*(closes[j]-m);
+    var sd=Math.sqrt(s/n);
+    out.push({mid:m,upper:m+mult*sd,lower:m-mult*sd});
+  });
+  return out;
+}
 /* Range-candle x-axis label indices: evenly spaced, first and last always
    included, at most one label per ~64px of plot width so labels never
    collide. This replaces the old first-candle-plus-month-change rule, which
@@ -273,6 +318,14 @@ function drawCandlesRange(){
   var dpr=window.devicePixelRatio||1;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
+  /* Day 3 overlays: extend the price range to include overlay values so
+     overlay lines are never clipped by the candle-only range. */
+  var OVCL=candles.map(function(k){return k.c;});
+  var OVSMA=OV.sma?calcSMA(OVCL,20):null;
+  var OVEMA=OV.ema?calcEMA(OVCL,20):null;
+  var OVBB=OV.bb?calcBollinger(OVCL,20,2):null;
+  [OVSMA,OVEMA].forEach(function(arr){if(!arr)return;arr.forEach(function(v){if(v!=null){if(v<lo)lo=v;if(v>hi)hi=v;}});});
+  if(OVBB)OVBB.forEach(function(b){if(!b)return;if(b.lower<lo)lo=b.lower;if(b.upper>hi)hi=b.upper;});
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
@@ -299,12 +352,32 @@ function drawCandlesRange(){
       if(lastTx==null||dx-lastTx>=56){ctx.fillStyle='#64748b';ctx.fillText(md,dx,H-24);ctx.fillStyle='#9aa6bc';lastTx=dx;}
     }
   });
+  /* Day 3 overlays, drawn after the candles and before the selection
+     outline, so the outline stays on top. Lines skip nulls (the first 19
+     candles) by starting a new path segment at the first real value.
+     Bollinger is a filled band plus upper/lower lines plus a faint mid. */
+  var drawLine=function(arr,col){
+    ctx.strokeStyle=col;ctx.lineWidth=1.6;ctx.beginPath();var started=false;
+    arr.forEach(function(v,i){if(v==null)return;if(!started){ctx.moveTo(X(i),Y(v));started=true;}else ctx.lineTo(X(i),Y(v));});
+    ctx.stroke();ctx.lineWidth=1;
+  };
+  if(OVBB){
+    ctx.beginPath();var bs=false;
+    OVBB.forEach(function(b,i){if(!b)return;if(!bs){ctx.moveTo(X(i),Y(b.upper));bs=true;}else ctx.lineTo(X(i),Y(b.upper));});
+    for(var bi=OVBB.length-1;bi>=0;bi--){if(OVBB[bi])ctx.lineTo(X(bi),Y(OVBB[bi].lower));}
+    ctx.closePath();ctx.fillStyle='rgba(248,113,113,0.10)';ctx.fill();
+    drawLine(OVBB.map(function(b){return b?b.upper:null;}),'rgba(248,113,113,0.8)');
+    drawLine(OVBB.map(function(b){return b?b.lower:null;}),'rgba(248,113,113,0.8)');
+    drawLine(OVBB.map(function(b){return b?b.mid:null;}),'rgba(248,113,113,0.45)');
+  }
+  if(OVSMA)drawLine(OVSMA,'#facc15');
+  if(OVEMA)drawLine(OVEMA,'#22d3ee');
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
     if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
     if(layer===0){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
-  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(RGLBL, L, 12);
+  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(RGLBL+((OV.sma||OV.ema||OV.bb)?' · '+[OV.sma?'SMA 20':null,OV.ema?'EMA 20':null,OV.bb?'Bollinger':null].filter(function(s){return s;}).join(' · '):''), L, 12);
   bindCandListeners(c);
   return true;
 }
@@ -361,11 +434,22 @@ function syncCg(){
   var gl=$('bcCgGranLab');if(gl)gl.style.display=candlesOn&&granAllowed.length?'':'none';
   [].forEach.call(cg.querySelectorAll('[data-cggran]'),function(b){var show=candlesOn&&granAllowed.indexOf(b.dataset.cggran)>=0;b.style.display=show?'':'none';b.classList.toggle('on',b.dataset.cggran===RGGRAN);b.setAttribute('aria-pressed',b.dataset.cggran===RGGRAN);});
 }
+/* Day 3 overlays: the toggle row is visible only in range candle view,
+   never in line view and never in 1D. Toggling re-runs draw(), which
+   repaints the range candles with the new overlay set; switching to
+   Line or to 1D hides the row and the canvas repaint drops the lines
+   with it (same clear-state rule as the Day 1 fix). */
+function syncOv(){
+  var ov=$('bcOv');if(!ov)return;
+  var on=CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles';
+  ov.style.display=on?'':'none';
+  [].forEach.call(ov.querySelectorAll('[data-ov]'),function(b){b.classList.toggle('on',!!OV[b.dataset.ov]);b.setAttribute('aria-pressed',OV[b.dataset.ov]?'true':'false');});
+}
 function drawRange(){
   head();
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   $('bcSc').style.display='none';var _ct=$('bcCt');if(_ct)_ct.style.display='none';
-  var cg=$('bcCg');if(cg)cg.style.display='';
+  var cg=$('bcCg');if(cg)cg.style.display='';syncOv();
   /* Candles are BTC-only, same rule as the 1D view: the S&P 500 / Gold / MSTR
      buttons are greyed for the candle view and their line behaviour is untouched. */
   var sb=$('bcSpx');if(sb){sb.setAttribute('aria-pressed','false');sb.classList.add('off');$('bcSpxT').textContent='+ S&P 500';sb.setAttribute('aria-label','S&P 500 unavailable for candle view');}
@@ -408,7 +492,7 @@ function drawRange(){
   var a0=cand[0].o,b0=cand[cand.length-1].c,pc0=(b0/a0-1)*100;
   $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')';
   var aggTxt=RGGRAN==='monthly'?'by calendar month (UTC)':(RGGRAN==='weekly'?'by Monday-start UTC week':'by day');
-  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
+  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.'+((OV.sma||OV.ema||OV.bb)?' Overlays are calculated on the candles shown: 20 means 20 candles of the size shown, not 20 days, unless the size is daily.':'');
   if(ch){ch.destroy();ch=null;}
   CANDSEL=-1;CANDHOV=-1;drawCandlesRange();
 }
@@ -421,7 +505,7 @@ function draw1D(){
   var gb=$('bcGld');if(gb){gb.setAttribute('aria-pressed','false');gb.classList.add('off');$('bcGldT').textContent='+ Gold';gb.setAttribute('aria-label','Gold unavailable for 1D intraday');}
   var mb=$('bcMstr');if(mb){mb.setAttribute('aria-pressed','false');mb.classList.add('off');$('bcMstrT').textContent='+ MSTR';mb.setAttribute('aria-label','MSTR unavailable for 1D intraday');}
   var ct=$('bcCt');if(ct){ct.style.display='';[].forEach.call(ct.querySelectorAll('[data-ct]'),function(b){b.classList.toggle('on',b.dataset.ct===CT);b.setAttribute('aria-pressed',b.dataset.ct===CT);});}
-  var cg1=$('bcCg');if(cg1)cg1.style.display='none';
+  var cg1=$('bcCg');if(cg1)cg1.style.display='none';syncOv();
   if(!INTRA){
     $('bcRr').textContent='Loading intraday…';
     getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){if(dlg&&!dlg.hidden){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' Intraday unavailable — showing daily closes.';}});
@@ -513,6 +597,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
    +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
    +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="monthly" style="display:none">Monthly</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="daily" style="display:none">Daily</button></div>'
+   +'<div class="bc-ct" id="bcOv" role="group" aria-label="Candle overlays" style="display:none"><span class="bc-ct-lab">Overlays</span><button type="button" data-ov="sma">SMA 20 (candles shown)</button><button type="button" data-ov="ema">EMA 20 (candles shown)</button><button type="button" data-ov="bb">Bollinger (20, 2σ)</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../compare/index.html')+'">See full Compare →</a>';
   document.body.appendChild(dim);document.body.appendChild(dlg);
   dim.addEventListener('click',close);$('bcVeh').addEventListener('click',function(e){var b=e.target.closest('[data-veh]');if(!b||b.disabled)return;var v=b.dataset.veh;
@@ -520,6 +605,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
     syncVehBtns();});window.addEventListener('psvehicle',syncVehBtns);
   $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
+  $('bcOv').addEventListener('click',function(e){var b=e.target.closest('[data-ov]');if(!b)return;OV[b.dataset.ov]=!OV[b.dataset.ov];syncOv();draw();});
   $('bcX').addEventListener('click',close);
   $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=(rng==='1M'?'weekly':(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?'monthly':'daily');}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
@@ -535,7 +621,11 @@ function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   var last=new Date(d[d.length-1][0]+'T00:00:00Z'),st;
   if(rng==='Max')st='0000';else if(rng==='YTD')st=(last.getUTCFullYear()-1)+'-12-31';else st=new Date(last-DAYS[rng]*864e5).toISOString().slice(0,10);
   return d.filter(function(p){return p[0]>=st;});}
-function drawDaily(){if(!DATA||!window.Chart)return;clearCandState();head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(CANDLE_RANGES.indexOf(rng)>=0){_cg.style.display='';syncCg();}else _cg.style.display='none';}var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
+function drawDaily(){if(!DATA||!window.Chart)return;clearCandState();head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(CANDLE_RANGES.indexOf(rng)>=0){_cg.style.display='';syncCg();}else _cg.style.display='none';}
+/* Day 3: drawDaily is the line view (including the candle-failure fallback,
+   where RGCT is still 'candles' but no candles are drawn), so the overlay
+   row is hidden outright here rather than via syncOv(). */
+var _ov=$('bcOv');if(_ov)_ov.style.display='none';var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   var onb=$('bcRgs').querySelector('.on'),rs=$('bcRgs');if(onb&&rs.scrollWidth>rs.clientWidth){var L=onb.offsetLeft-rs.offsetLeft,R=L+onb.offsetWidth;if(L<rs.scrollLeft+16||R>rs.scrollLeft+rs.clientWidth-16)rs.scrollTo({left:Math.max(0,L-(rs.clientWidth-onb.offsetWidth)/2),behavior:'smooth'});}
   $('bcSc').style.display=big?'':'none';[].forEach.call($('bcSc').children,function(b){var on=(b.dataset.s==='log')===LOG;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
