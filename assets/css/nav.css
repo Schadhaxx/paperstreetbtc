@@ -41,6 +41,7 @@
 .bc-rr{color:#94a3b8;font-size:.8rem;margin-top:2px;min-height:1em}
 .bc-x{width:36px;height:36px;border-radius:10px;border:1px solid var(--border,#1e293b);background:transparent;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:1.1rem;cursor:pointer;flex:0 0 auto}
 .bc-rg{display:flex;flex-wrap:wrap;gap:5px;margin:14px 0 8px;align-items:center}
+.bc-rg-hint{display:none}
 .bc-rg button{font:600 .74rem Inter,sans-serif;padding:5px 9px;border-radius:999px;border:1px solid var(--border,#1e293b);color:#94a3b8;background:transparent;cursor:pointer}
 .bc-rg button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
 .bc-sc{display:inline-flex;border:1px solid var(--border,#1e293b);border-radius:8px;overflow:hidden;margin-left:auto}
@@ -82,6 +83,7 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
     -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent)}
   .bc-rgs::-webkit-scrollbar{display:none}
   .bc-rgs button{flex:0 0 auto;scroll-snap-align:center;min-height:44px;min-width:48px;white-space:nowrap}
+  .bc-rg-hint{display:block;flex:1 1 100%;text-align:right;color:#94a3b8;font:600 .7rem Inter,sans-serif;margin-top:2px}
   .bc-sc button{min-height:36px}
 }
 /* v6: Details card shows the rules image */
