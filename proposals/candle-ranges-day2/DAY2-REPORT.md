@@ -90,6 +90,76 @@ therefore uses the batched route for BOTH YTD and 1Y:
   browser-verify on the test-branch preview before this is called done.
   No browser pass is claimed here.
 
+## 5. Fix 29 Oct 2026 — 1Y candles showed the YTD set (browser test, same branch)
+
+Browser testing of commit `c6d240d` found 1Y Candles showing the YTD set
+("1Y: BTC -7.22% · 10 monthly candles, from Dec 31 ($87,498)", 44 weekly
+candles), identical to YTD, with no "Loading 1-year candles…" state and no
+Oct–Dec 2025 candles — while the 1Y Line view correctly read -28.1% from
+2025-10-28 ($112,956). Two separate causes, both fixed in `btcchart.js`
+only (no spec, default, or other-range change):
+
+### 5a. Root cause 1 — coverage was never checked (the 1Y bug)
+
+`drawRange` gated the extended fetch on `!CBEXT` alone: if the visitor
+had already opened YTD candles, `CBEXT` held only the ~302-day YTD window
+and `CBEXT_DAYS` ≈ 302, so switching to 1Y skipped the load entirely, saw
+no loading state, and filtered that YTD window by the 1Y cut — presenting
+the YTD set as 1Y. Visiting 1Y first happened to work (the 366-day set
+also covers YTD), which is why the bug was order-dependent.
+
+Fix: the gate now computes the range's own need (YTD = days since Jan 1,
+1Y = 366) and reloads whenever `!CBEXT || CBEXT_DAYS < need`, showing the
+range's own loading state ("Loading 1-year candles…"). A set too short
+for the requested range is now treated exactly like no set: if the larger
+fetch has failed, it falls back to the daily-closes line rather than
+silently presenting the short set. `loadExtendedDaily` also tracks the
+pending size (`CBEXT_P_DAYS`): a smaller fetch already in flight no
+longer satisfies a larger request — the larger request chains onto it and
+then fetches the larger window. After the fix, 1Y candles genuinely cover
+Oct 28 2025 → present: 13 monthly / ~53 weekly candles, in the -28.1%
+area of the 1Y Line view.
+
+### 5b. Root cause 2 — the October monthly candle was mislabelled, not dropped
+
+The browser test also reported no October monthly candle on YTD (rightmost
+read as September). The bucket was never dropped: monthly aggregation
+keeps partial months (final bucket pushed), and the YTD monthly count was
+10 — Jan through Oct. The bug was display timezone. Range candles are UTC
+days/weeks/months, but their pill, axis, and header labels were formatted
+in ET, which shifts every UTC-midnight timestamp back a day — and a
+month-boundary candle back a whole month. The October candle (t = Oct 1
+00:00 UTC) therefore read "September 2026" in its pill and "Sep 30" on the
+axis, and the YTD header read "from Dec 31 ($87,498)" for the Jan 1 candle
+(whose open ≈ the Dec 31 close, verified against live Coinbase data:
+Dec 31 close $87,497.94, Jan 1 open $87,497.95).
+
+Fix: range-candle labels are now UTC — monthly pill titles read
+"Monthly candle · October 2026 UTC", weekly/daily range pills and the
+range axis/header use UTC dates. The October monthly candle is therefore
+present AND labelled October. 1D intraday pills keep ET, which is correct
+for intraday times; line views are untouched.
+
+### 5c. Verification of the fix
+
+- `node --check assets/js/btcchart.js` — passes.
+- Day 1 harness (`proposals/candle-ranges-day1/test-agg.js`) — still ALL PASS.
+- Day 2 harness (`proposals/candle-ranges-day2/test-agg-day2.js`) — still ALL PASS.
+- NEW `proposals/candle-ranges-day2/test-1y-coverage.js` — 16 checks, ALL
+  PASS, extracting `loadExtendedDaily` / `fetchDailyWindow` /
+  `mergeDailyCandles` / `aggDailyCandles` from the shipped file against a
+  stubbed fetch: YTD-sized load then 1Y demand reloads to ~366 days
+  covering now−366d; 1Y monthly aggregation gives 13 buckets with the
+  last in October (UTC); the Oct-1-UTC → September-in-ET / October-in-UTC
+  mechanism is demonstrated; a pending 200-day load chains to the 366-day
+  set instead of satisfying it.
+- NOT re-verified in a browser by this fix (generic subagent cannot
+  operate a live browser): the parent should browser-re-verify 1Y candles
+  specifically — 1Y Candles after visiting YTD first, the "Loading 1-year
+  candles…" state, Oct–Dec 2025 candles, and the October monthly pill
+  reading October — on the new test-branch preview before this is called
+  done.
+
 ## 4. What was NOT built, and what remains
 
 - SMA 20 / EMA 20 / Bollinger Bands (20, 2σ): EXPLORATION ONLY, not built

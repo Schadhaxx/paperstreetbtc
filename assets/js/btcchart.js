@@ -130,7 +130,15 @@ function showCandInfo(i,geomX,geomTop){
   cl.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   el.appendChild(cl);
   var tm=document.createElement('div');tm.style.cssText='color:#9aa6bc;font-size:12px;';
-  if(CANDRANGE){if(CANDGRAN==='monthly'){tm.textContent='Monthly candle · '+new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'long',year:'numeric'})+' ET';}else{var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' ET';}}
+  /* Fix 29 Oct 2026 (browser test, Day 2): range candles are UTC days /
+     weeks / months, so their labels must be UTC too. ET formatting shifted
+     every UTC-midnight timestamp back a day — and a month-boundary candle
+     back a whole month — so the October monthly candle (t = Oct 1 00:00
+     UTC) read "September 2026" in its pill and "Sep 30" on the axis, and
+     looked like no October candle existed. The bucket was never dropped;
+     it was mislabelled. 1D intraday pills below keep ET, which is right
+     for intraday times. */
+  if(CANDRANGE){if(CANDGRAN==='monthly'){tm.textContent='Monthly candle · '+new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',year:'numeric'})+' UTC';}else{var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' UTC';}}
   else tm.textContent=(CANDPER===4?'1-hour':'4-hour')+' · '+etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET';
   el.appendChild(tm);
   var hl=document.createElement('div');hl.style.cssText='font-size:14px;font-weight:600;color:#e8eef7;font-variant-numeric:tabular-nums;margin:2px 0;';hl.textContent='High '+fmt(k.h)+'  ·  Low '+fmt(k.l);el.appendChild(hl);
@@ -286,7 +294,7 @@ function drawCandlesRange(){
        separate last-candle label on a second row is gone: the last candle
        is in this row, so it is no longer skipped by its own x test. */
     if(labIdx.indexOf(i)>=0){
-      var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'});
+      var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});
       var dx=Math.max(24,Math.min(W-24,x));
       if(lastTx==null||dx-lastTx>=56){ctx.fillStyle='#64748b';ctx.fillText(md,dx,H-24);ctx.fillStyle='#9aa6bc';lastTx=dx;}
     }
@@ -308,7 +316,7 @@ function drawCandlesRange(){
    fetch fails and the view falls back to the line (never a partial window
    silently presented as the full range). CBEXT_ERR is sticky for the session
    so a failed fetch is not hammered on every redraw. */
-var CBEXT=null,CBEXT_P=null,CBEXT_ERR=false,CBEXT_DAYS=0;
+var CBEXT=null,CBEXT_P=null,CBEXT_P_DAYS=0,CBEXT_ERR=false,CBEXT_DAYS=0;
 function fetchDailyWindow(startMs,endMs){
   var s=new Date(startMs).toISOString(),e=new Date(endMs).toISOString();
   return fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start='+s+'&end='+e,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
@@ -325,13 +333,24 @@ function mergeDailyCandles(chunks){
 }
 function loadExtendedDaily(days){
   if(CBEXT&&CBEXT_DAYS>=days)return Promise.resolve(CBEXT);
-  if(CBEXT_P)return CBEXT_P;
+  /* Fix 29 Oct 2026 (browser test, Day 2): a smaller extended fetch already
+     in flight must NOT satisfy a larger request — previously drawRange
+     never re-called this once CBEXT existed at all, so a YTD-sized set was
+     silently presented as 1Y. If a smaller fetch is pending, chain onto it
+     and then fetch the larger window; the chained handler runs after the
+     original settle handler has cleared CBEXT_P, so the second call starts
+     a real fetch instead of returning the small promise. */
+  if(CBEXT_P){
+    if(CBEXT_P_DAYS>=days)return CBEXT_P;
+    return CBEXT_P.then(function(){return loadExtendedDaily(days);});
+  }
   var now=Date.now(),chunk=250*864e5,parts=[],s=now-days*864e5;
   while(s<now){var e=Math.min(now,s+chunk);parts.push(fetchDailyWindow(s,e));s=e;}
+  CBEXT_P_DAYS=days;
   CBEXT_P=Promise.all(parts).then(function(chunks){
     CBEXT=mergeDailyCandles(chunks);
-    CBEXT_DAYS=days;CBEXT_P=null;return CBEXT;
-  },function(e){CBEXT_P=null;CBEXT_ERR=true;throw e;});
+    CBEXT_DAYS=days;CBEXT_P=null;CBEXT_P_DAYS=0;return CBEXT;
+  },function(e){CBEXT_P=null;CBEXT_P_DAYS=0;CBEXT_ERR=true;throw e;});
   return CBEXT_P;
 }
 function syncCg(){
@@ -358,13 +377,23 @@ function drawRange(){
   if(rng==='YTD'||rng==='1Y'){
     /* Day 2: these two ranges need MORE than Coinbase's ~300-candle default
        window (YTD late in the year needs up to 365 days, 1Y needs 366), so
-       they use the batched extended fetch, not CBDAILY. */
-    if(!CBEXT&&!CBEXT_ERR){
-      if(!CBEXT_P){var dys=rng==='YTD'?Math.ceil((Date.now()-Date.UTC(new Date().getUTCFullYear(),0,1))/864e5):366;
-        loadExtendedDaily(dys).then(function(){if(dlg&&!dlg.hidden&&(rng==='YTD'||rng==='1Y')&&RGCT==='candles')draw();}).catch(function(){if(dlg&&!dlg.hidden)draw();});}
+       they use the batched extended fetch, not CBDAILY.
+       Fix 29 Oct 2026 (browser test): coverage is checked against the
+       RANGE, not just "is CBEXT set". Previously, visiting YTD first left
+       CBEXT holding only the ~302-day YTD window, and switching to 1Y then
+       skipped the load entirely (CBEXT was truthy) and filtered that YTD
+       window by the 1Y cut — presenting the YTD set as 1Y, with no loading
+       state and no Oct–Dec 2025 candles. A set that is too short for the
+       requested range is now treated exactly like no set: it loads the
+       larger window (with its own "Loading 1-year candles…" state), and if
+       the larger fetch has failed it falls back to the line rather than
+       silently presenting the short set as the full range. */
+    var need=rng==='YTD'?Math.ceil((Date.now()-Date.UTC(new Date().getUTCFullYear(),0,1))/864e5):366;
+    if(!CBEXT||CBEXT_DAYS<need){
+      if(CBEXT_ERR){fallback('Extended Coinbase candles unavailable — showing daily closes.');return;}
+      loadExtendedDaily(need).then(function(){if(dlg&&!dlg.hidden&&(rng==='YTD'||rng==='1Y')&&RGCT==='candles')draw();}).catch(function(){if(dlg&&!dlg.hidden)draw();});
       $('bcRr').textContent='Loading '+(rng==='YTD'?'year-to-date':'1-year')+' candles…';return;
     }
-    if(!CBEXT){fallback('Extended Coinbase candles unavailable — showing daily closes.');return;}
     cut=rng==='YTD'?Date.UTC(new Date().getUTCFullYear(),0,1):Date.now()-366*864e5;
     win=CBEXT.filter(function(p){return p.t>=cut;});
   }else{
@@ -377,7 +406,7 @@ function drawRange(){
   if(cand.length<2){fallback('Not enough daily candles — showing daily closes.');return;}
   RGCAND=cand;RGLBL=rng+' · '+RGGRAN+' candles';
   var a0=cand[0].o,b0=cand[cand.length-1].c,pc0=(b0/a0-1)*100;
-  $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'})+' ('+fmt(a0)+')';
+  $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')';
   var aggTxt=RGGRAN==='monthly'?'by calendar month (UTC)':(RGGRAN==='weekly'?'by Monday-start UTC week':'by day');
   $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
   if(ch){ch.destroy();ch=null;}
