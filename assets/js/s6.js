@@ -12,6 +12,18 @@
     {name:'Saylor Moon',start:'$50k MSTR / $50k STRC',key:'saylor'}
   ];
   var root=document.getElementById('pfLive'); if(!root) return;
+  /* Vehicle toggle, Day 3: one shared mode, driven by the 'psvehicle'
+     event from vehicle.js (tracker toggle) or the chart popover.
+     vehicle!=='SPOT' implies vehLoaded: vehicle.js keeps ETF buttons
+     disabled until vehicle-daily.json has loaded, and forces Spot if
+     the file fails, so this code never shows spot values in ETF mode. */
+  var vehicle='SPOT', vehLoaded=false;
+  window.addEventListener('psvehicle',function(e){vehicle=e.detail.vehicle||'SPOT';vehLoaded=!!e.detail.loaded;render();});
+  function vehPriceDate(d){if(!vehLoaded||vehicle==='SPOT')return null;var ds=BK.vehicleDates[vehicle];if(!ds||!ds.length)return null;var out=null;for(var i=0;i<ds.length;i++){if(ds[i]<=d)out=ds[i];else break;}return out||ds[0];}
+  function vehPx(d){var pd=vehPriceDate(d);if(pd==null)return null;return BK.vehicleMaps[vehicle][pd];}
+  function vehPrevPx(d){var pd=vehPriceDate(d);if(pd==null)return null;var ds=BK.vehicleDates[vehicle],i=ds.indexOf(pd);if(i>0)return BK.vehicleMaps[vehicle][ds[i-1]];return BK.vehicleMaps[vehicle][pd];}
+  function navPrior(p){return (vehicle!=='SPOT'&&vehLoaded)?BK.navV(p.key,PRIOR,vehicle):BK.nav(p.key,PRIOR);}
+
   var btcSrc='CoinGecko',live={BTC:null}, src={}, prev={}, open={}, btcTime=null, btcChg=null, stkTime=null, lastTs=0;
   function anyLive(){return !!live.BTC||['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!live[k];});}
   /* Month-end mode: date from prices.json monthEnd (workflow: last actual trading session <= prior ET month's last calendar day); prices = that session's close in history.json
@@ -30,12 +42,15 @@
   function isLive(){return mode!=='me'&&(stocksFresh()||(live.BTC&&lastTs&&Date.now()-lastTs<180000));}
   function ytdLabel(){return !isLive()?'YTD':stocksFresh()?'YTD (live)':'YTD (BTC live)';}
   window.PSLiveLabel=function(){return isLive();};window.PSMktOpen=function(){return stocksFresh();};
-  function asOfLabel(){if(mode==='me')return 'Month-end close · '+meLabel();
+  function asOfLabelOrig(){if(mode==='me')return 'Month-end close · '+meLabel();
     if(!anyLive()||!(cacheUpd||lastTs))return 'Last close · '+fmtD(ASOF);
     if(!stocksFresh())return 'BTC live · stocks at '+fmtD(ASOF)+' close · updated '+ET.time(new Date(lastTs||cacheUpd));
     return 'Live market value · updated '+ET.time(new Date(cacheUpd||lastTs));}
-  function px(a){if(mode==='me'){var hc=BK.close(ME_D);if(hc&&hc[a])return hc[a];if(ME&&ME[a])return ME[a];}return live[a]||CLOSE[a];}
-  function lbl(a){if(mode==='me')return 'close '+meLabel().replace(/, \d+$/,'');if(a==='BTC')return live.BTC?'live '+btcSrc:'last close '+fmtD(ASOF).replace(/, \d+$/,'');return src[a]||'last close '+fmtD(ASOF).replace(/, \d+$/,'');}
+  function asOfLabel(){var s=asOfLabelOrig();return (vehicle!=='SPOT'&&vehLoaded)?s+' · You are in '+vehicle+' mode':s;}
+  function px(a){if(a==='BTC'&&vehicle!=='SPOT'&&vehLoaded){var vp=vehPx(mode==='me'?ME_D:todayET());if(vp!=null)return vp;}
+    if(mode==='me'){var hc=BK.close(ME_D);if(hc&&hc[a])return hc[a];if(ME&&ME[a])return ME[a];}return live[a]||CLOSE[a];}
+  function lbl(a){if(a==='BTC'&&vehicle!=='SPOT'&&vehLoaded){var pd=vehPriceDate(mode==='me'?ME_D:todayET());return vehicle+' · '+(mode==='me'?'close '+meLabel().replace(/, \d+$/,''):'latest close '+(pd?fmtD(pd).replace(/, \d+$/,''):''))+(pd&&pd<BK.last?' (latest available)':'');}
+    if(mode==='me')return 'close '+meLabel().replace(/, \d+$/,'');if(a==='BTC')return live.BTC?'live '+btcSrc:'last close '+fmtD(ASOF).replace(/, \d+$/,'');return src[a]||'last close '+fmtD(ASOF).replace(/, \d+$/,'');}
   function hhmm(t){return ET.time(new Date(t*1000));}
   function mktOpen(){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',minute:'numeric',hour12:false}).formatToParts(new Date()),o={};p.forEach(function(x){o[x.type]=x.value;});
     var mins=(+o.hour%24)*60+(+o.minute);var cm=ET.closeMin(ET.today());return cm>0&&mins>=235&&mins<=(cm<960?1020:1215);}   /* pre-market 3:55 AM to after-hours end (8:15 PM; 5:00 PM on early-close days) */
@@ -64,14 +79,15 @@
   function pct(x){return '<span class="'+(x>=0?'up':'down')+'">'+(x>=0?'+':'')+(x*100).toFixed(2)+'%</span>';}
   /* Shared valuation: used by tracker cards AND the pulse strip */
   /* holdings + receivable actually held: at the month-end session in month-end mode, as of today (ET) in live mode */
-  function held(p){return BK.at(p.key,mode==='me'?ME_D:todayET());}
+  function held(p){var d=mode==='me'?ME_D:todayET();return (vehicle!=='SPOT'&&vehLoaded)?BK.atV(p.key,d,vehicle):BK.at(p.key,d);}
   function compute(p){
     var q=held(p), v=q.cash, y=q.cash;
     Object.keys(q.h).forEach(function(a){var u=q.h[a],c=px(a);v+=u*c;
       /* yesterday: BTC from CoinGecko 24h change; stocks from Finnhub prior close (pc); fallback -> move 0 */
       var yc=c;
       if(mode==='me'){y+=u*c;return;}
-      if(a==='BTC'){if(live.BTC&&btcChg!==null)yc=c/(1+btcChg/100);}
+      if(a==='BTC'){if(vehicle!=='SPOT'&&vehLoaded){var pp=vehPrevPx(mode==='me'?ME_D:todayET());if(pp!=null)yc=pp;}
+        else if(live.BTC&&btcChg!==null)yc=c/(1+btcChg/100);}
       else if(live[a]&&prev[a])yc=prev[a];
       y+=u*yc;});
     return {v:v,y:y,move:v/y-1};
@@ -91,8 +107,8 @@
   function renderPulse(){
     var g=document.getElementById('pulseGrid'); if(!g) return;
     var wk=weekendPulse(),h='';
-    ORDER.forEach(function(n){var p=PF.filter(function(x){return x.name===n;})[0],r=compute(p),ok=mode!=='me'&&BK.nav(p.key,PRIOR)>0;
-      h+='<a class="pulse-card" href="#tracker" data-k="'+p.key+'"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.v/BK.nav(p.key,PRIOR)-1)+(wk?'':' '+chgLabel()):'—')+'</span></a>';});
+    ORDER.forEach(function(n){var p=PF.filter(function(x){return x.name===n;})[0],r=compute(p),ok=mode!=='me'&&navPrior(p)>0;
+      h+='<a class="pulse-card" href="#tracker" data-k="'+p.key+'"><span class="pulse-name">'+n+'</span><span class="pulse-val">'+m(r.v)+'</span><span class="pulse-chg">'+(ok?pct(r.v/navPrior(p)-1)+(wk?'':' '+chgLabel()):'—')+'</span></a>';});
     patch(g,h,'.pulse-card','k',['.pulse-val','.pulse-chg']);
     var stk=Object.keys(src).some(function(k){return src[k];});
     if(mode==='me'){document.getElementById('pulseNote').textContent=asOfLabel()+' · all prices at month-end close';return;}
@@ -101,7 +117,7 @@
   }
   /* Shared live state for the YTD chart: same compute() as tracker + pulse */
   var KEYS=['berkshire','hodlr','hf','saylor'];
-  function liveState(){var o={sleeves:{},btc:live.BTC||null,spy:live.SPY||null,qqq:live.QQQ||null,brk:live['BRK.B']||null,mstr:live.MSTR||null,gold:live.GLD||null,btcTime:live.BTC?btcTime:null,
+  function liveState(){var o={vehicle:vehicle,vehicleLoaded:vehLoaded,sleeves:{},btc:live.BTC||null,spy:live.SPY||null,qqq:live.QQQ||null,brk:live['BRK.B']||null,mstr:live.MSTR||null,gold:live.GLD||null,btcTime:live.BTC?btcTime:null,
       stocksLive:['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!src[k];}),stkTime:stkTime,label:asOfLabel(),meLabel:meLabel(),ts:lastTs,mode:mode,meDate:ME_D,me:ME};
     PF.forEach(function(p,i){o.sleeves[KEYS[i]]=compute(p).v;});return o;}
   window.PSLive={state:liveState};
@@ -122,11 +138,11 @@
     PF.forEach(function(p,i){
       var v=compute(p).v, q=held(p), rows='';
       var ow={};p.start.split(' / ').forEach(function(x){var q=x.match(/\$(\d+)k (\w+)/);if(q)ow[q[2]]=+q[1];});
-      Object.keys(q.h).forEach(function(a){var u=q.h[a],val=u*px(a);
-        rows+='<tr><td>'+a+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td><td>'+(ow[a]!=null?ow[a]+'%':'')+'</td><td>'+(val/v*100).toFixed(1)+'%</td></tr>';});
+      Object.keys(q.h).forEach(function(a){var u=q.h[a],val=u*px(a),an=(a==='BTC'&&vehicle!=='SPOT'&&vehLoaded)?'BTC ('+vehicle+')':a;
+        rows+='<tr><td>'+an+'</td><td>'+mp(px(a))+' <em>'+lbl(a)+'</em>'+'</td><td>'+m(val)+'</td><td>'+(ow[a]!=null?ow[a]+'%':'')+'</td><td>'+(val/v*100).toFixed(1)+'%</td></tr>';});
       rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(q.cash)+'</td><td></td><td>'+(q.cash/v*100).toFixed(1)+'%</td></tr>';
       html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'" role="button" tabindex="0" aria-expanded="'+(open[i]?'true':'false')+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
-        '<span class="pf-sub">'+chgLabel()+' '+pct(v/BK.nav(p.key,PRIOR)-1)+' &middot; '+ytdLabel()+' '+pct(v/START-1)+'</span></div>'+
+        '<span class="pf-sub">'+chgLabel()+' '+pct(v/navPrior(p)-1)+' &middot; '+ytdLabel()+' '+pct(v/START-1)+'</span></div>'+
         '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p><span class="pf-toggle" aria-hidden="true"><svg class="pf-chev" viewBox="0 0 16 16" width="16" height="16"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>';
     });
     patch(root.querySelector('.pf-grid'),html,'.pf-card','i',['.pf-val','.pf-sub','.pf-tbl','.pf-start']);

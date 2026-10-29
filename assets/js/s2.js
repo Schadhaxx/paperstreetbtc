@@ -8,13 +8,17 @@ const sleeves = {
 // Everything below is computed on page load by PSBook (book.js) from the site's ledger (ledger.js) and its own daily closes (history.json):
 // points = January 1st, 2026 start (2025-12-31 close), each completed month-end session close, and the latest close. No stored NAVs.
 let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null, BTCPROV = false;
+/* Vehicle toggle, Day 3: paths are rebuilt from book.js navV when the
+   shared 'psvehicle' event fires. Benchmarks stay Spot BTC (the hurdle)
+   in every mode; only the sleeve lines are re-priced. */
+let BKREF = null, vehicle = 'SPOT', vehLoaded = false;
 const PROVNOTE = () => ' · BTC close provisional until ' + ET.btcCloseLabel(B_LAST);
 let B_LAST = null;
 const MN3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildFromBook(B){
   ISO = B.points();
   labels = ISO.map((d, i) => i === 0 ? '1 Jan' : (+d.slice(8)) + ' ' + MN3[+d.slice(5, 7) - 1]);
-  Object.keys(sleeves).forEach(k => { vals[k] = ISO.map(d => B.nav(k, d)); paths[k] = vals[k].map(v => Math.round(v / 10) / 100);
+  Object.keys(sleeves).forEach(k => { vals[k] = ISO.map(d => (vehicle !== 'SPOT' && vehLoaded && B.tlV && B.tlV[vehicle]) ? B.navV(k, d, vehicle) : B.nav(k, d)); paths[k] = vals[k].map(v => Math.round(v / 10) / 100);
     sleeves[k].now = vals[k].at(-1); sleeves[k].ytd = (sleeves[k].now / 100000 - 1) * 100; });
   Object.keys(B.BM).forEach(k => { benchmarks[k] = ISO.map(d => Math.round(B.bench(k, d) * 100) / 100); });
   LASTC = B.close(B.last);
@@ -58,6 +62,15 @@ function applyLive(st){
   if (chart) render();
 }
 window.addEventListener('pslive', e => applyLive(e.detail));
+window.addEventListener('psvehicle', e => {
+  vehicle = e.detail.vehicle || 'SPOT'; vehLoaded = !!e.detail.loaded;
+  if (!BKREF) return;
+  buildFromBook(BKREF); render();
+  /* s6 re-renders synchronously on the same event, but its listener was
+     registered after s2's, so refresh the live Now/YTD stats on the
+     next tick, once PSLive.state() is vehicle-aware. */
+  setTimeout(() => { if (window.PSLive) applyLive(window.PSLive.state()); }, 0);
+});
 function ytdLbl(){ const l = document.getElementById('ytdLbl'); if (l) l.textContent = (liveNow && !meView && window.PSLiveLabel && PSLiveLabel()) ? (window.PSMktOpen && PSMktOpen() ? 'YTD (live)' : 'YTD (BTC live)') : 'YTD'; }
 
 let selected = new Set(['berkshire']);
@@ -155,4 +168,4 @@ document.querySelectorAll('.bench-selector .bench-btn').forEach(btn => {
   });
 });
 
-if (window.PSBook) PSBook.ready.then(B => { buildFromBook(B); render(); if (window.PSLive) applyLive(window.PSLive.state()); }).catch(() => {});
+if (window.PSBook) PSBook.ready.then(B => { BKREF = B; buildFromBook(B); render(); if (window.PSLive) applyLive(window.PSLive.state()); }).catch(() => {});

@@ -26,6 +26,22 @@ if(document.getElementById('pvChart')){
 // chart
 const COL={berkshire:'#22d3ee',hodlr:'#3b82f6',hf:'#a78bfa',saylor:'#f472b6',BTC:'#f97316',GLD:'#facc15',MSTR:'#94a3b8',SPY:'#e2e8f0',QQQ:'#86efac','BRK-B':'#fb7185'};
 let on=new Set(['hodlr','BTC','GLD','MSTR']),rng='YTD';
+/* Vehicle toggle, Day 3: the Compare sleeve lines follow the shared
+   session mode (set on the homepage or in the BTC chart popover).
+   Sleeve values are recomputed with the same re-basing as book.js:
+   BTC units = $weight / vehicle base close, other assets unchanged,
+   STRC cash buys the vehicle at the pay session's vehicle close in
+   ETF mode. Benchmarks (incl. Spot BTC) are untouched. Until the
+   prices.yml live-quote change lands, vehicle prices are latest
+   closes from vehicle-daily.json. */
+let VEH='SPOT', VEHD=null;
+function vehicleVals(VD,veh){const VM={};VD.vehicles[veh].forEach(p=>{VM[p[0]]=p[1];});const out={};
+ for(const k in L.sleeves){const sl=L.sleeves[k],h={},b=CL[L.base];for(const a in sl.w)h[a]=a==='BTC'?L.start*sl.w[a]/VM[L.base]:L.start*sl.w[a]/b[a];let rec=[];const v={};
+  const evs=L.strc.map(([ex,pay,amt])=>({ex:firstOn(ex),pay:firstOn(pay),payS:pay,amt})).filter(e=>e.ex&&e.ex<=LAST);
+  for(const d of D){for(const e of evs){if(e.ex===d){e.cash=h.STRC*e.amt;e.sh=h.STRC;rec.push(e)}}
+   rec=rec.filter(e=>{if(e.pay&&e.pay===d){e.buys={};for(const a in sl.div){const px=a==='BTC'?(VM[d]!=null?VM[d]:VM[lastOn(d)]):CL[d][a];const q=e.cash*sl.div[a]/px;h[a]=(h[a]||0)+q;e.buys[a]=q}return false}return true});
+   let t=rec.reduce((x,e)=>x+e.cash,0);for(const a in h)t+=h[a]*(a==='BTC'?(VM[d]!=null?VM[d]:VM[lastOn(d)]):CL[d][a]);v[d]=t}out[k]=v}return out;}
+
 let BPROV=[]; /* history.json btc_provisional; same rule as s2.js: provisional until the UTC day ends */
 const prov=()=>!!CL[LAST]&&BPROV.indexOf(LAST)>=0&&Date.now()<Date.parse(LAST+'T00:00:00Z')+864e5;
 function dates(){const n=D.length;if(rng==='1W')return D.slice(n-6);if(rng==='1M')return D.slice(n-22);if(rng==='3M'||rng==='6M'||rng==='1Y'){const mo=rng==='3M'?3:(rng==='6M'?6:12);const t=new Date(D[n-1]+'T00:00:00Z');t.setUTCMonth(t.getUTCMonth()-mo);const st=t.toISOString().slice(0,10);let i=0;while(i<n-1&&D[i+1]<=st)i++;return D.slice(i)}return D}
@@ -37,8 +53,13 @@ const ch=new Chart(document.getElementById('pvChart'),{type:'line',data:{labels:
 function draw(){const ds=dates();ch.data.labels=ds;ch.data.datasets=[...on].map(k=>{const v=ds.map(d=>SER[k].v[d]);const isB=k==='BTC';
  return{label:isB&&prov()?'Spot BTC (close provisional until '+ET.btcCloseLabel(LAST)+')':SER[k].n,raw:v,data:v.map(x=>pct(v[0],x)),borderColor:COL[k],backgroundColor:COL[k],borderWidth:isB?2.5:2,pointRadius:ds.length<10?3:0,tension:.2}});ch.update();
  sp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',on.has(b.dataset.k)));rp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r===rng));
- document.getElementById('pvChartNote').innerHTML=`% change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`)}
+ document.getElementById('pvChartNote').innerHTML=`% change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`)+(VEH!=='SPOT'?` You are in ${VEH} mode — BTC sleeve priced in ${VEH} at its latest close (live ETF quotes pending the prices.yml change). Spot BTC remains the hurdle.`:'')}
 sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;on.has(k)?(on.size>1&&on.delete(k)):on.add(k);draw()};rp.onclick=e=>{if(e.target.dataset.r){rng=e.target.dataset.r;draw()}};draw();
+function vehApply(m){VEH=m;if(m==='SPOT'){for(const k in L.sleeves)SER[k].v=VAL[k];draw();return;}
+ if(VEHD){const VV=vehicleVals(VEHD,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();return;}
+ fetch('../assets/data/vehicle-daily.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{VEHD=j;const VV=vehicleVals(j,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();}).catch(e=>console.warn('vehicle data unavailable, Compare stays Spot',e));}
+window.addEventListener('psvehicle',e=>vehApply(e.detail.vehicle||'SPOT'));
+try{const m=sessionStorage.getItem('psVehicle');if(m==='IBIT'||m==='FBTC')vehApply(m);}catch(e){}
 }
 if(document.getElementById('pvCalc')){
 // calculator
