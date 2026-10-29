@@ -86,7 +86,19 @@ var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
    so the shared listeners and pill dismiss redraw the range view, not the 1D view. */
 var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='';
 var RGCT='line',RGGRAN='daily';
-function redrawCandles(){if(CANDRANGE)drawCandlesRange();else drawCandles1D(CAND,CANDLBL,CANDPER);}
+/* Fix 29 Oct 2026 (browser test, Day 1): the pill + canvas listeners are shared
+   between the 1D candle view and the 1W/1M range candle view, and the old code
+   let them resurrect a stale candle canvas after switching to a line view:
+   switching to Line left the pill visible, and dismissing it called
+   redrawCandles(), which repainted the old 4H candles over the line chart.
+   Rule from now on: switching chart type ALWAYS clears pill + selection +
+   guide; dismissing a pill NEVER changes the chart type and NEVER touches
+   the canvas unless a candle view is currently active. */
+function candViewActive(){return (rng==='1D'&&CT!=='line')||((rng==='1W'||rng==='1M')&&RGCT==='candles');}
+function hideCandPill(){var el=$('bcSel');if(el)el.style.display='none';}
+function clearCandState(){CANDSEL=-1;CANDHOV=-1;hideCandPill();}
+function dismissCandInfo(){clearCandState();if(candViewActive()&&((rng==='1D'&&CAND&&CAND.length)||((rng==='1W'||rng==='1M')&&RGCAND&&RGCAND.length)))redrawCandles();}
+function redrawCandles(){if(!candViewActive()){hideCandPill();return;}if(CANDRANGE)drawCandlesRange();else drawCandles1D(CAND,CANDLBL,CANDPER);}
 /* True pill bubble for a selected candle (v5, user: "more like a pill"):
    fully rounded ends (999px radius), centred text, compact, no arrow — the white outline + dashed guide
    on the selected candle already points at it, so the pill can float cleanly over the chart.
@@ -97,7 +109,7 @@ function candInfoEl(){
   el=document.createElement('div');el.id='bcSel';
   el.style.cssText='display:none;position:absolute;z-index:5;width:280px;max-width:calc(100% - 24px);background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.30);border-radius:999px;padding:16px 24px;color:#e8eef7;font:13px/1.5 Inter, sans-serif;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.6);pointer-events:auto;cursor:pointer;';
   box.style.position='relative';box.appendChild(el);
-  el.addEventListener('click',function(ev){ev.stopPropagation();CANDSEL=-1;redrawCandles();showCandInfo(-1);});
+  el.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   return el;
 }
 function showCandInfo(i,geomX,geomTop){
@@ -111,7 +123,7 @@ function showCandInfo(i,geomX,geomTop){
      Small ✕ sits inside the pill at the top-right; tapping the pill itself also closes it. */
   var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
   cl.style.cssText='position:absolute;top:10px;right:16px;background:none;border:none;color:#9aa6bc;font-size:14px;line-height:1;cursor:pointer;padding:8px;';
-  cl.addEventListener('click',function(ev){ev.stopPropagation();CANDSEL=-1;redrawCandles();showCandInfo(-1);});
+  cl.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   el.appendChild(cl);
   var tm=document.createElement('div');tm.style.cssText='color:#9aa6bc;font-size:12px;';
   if(CANDRANGE){var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' ET';}
@@ -182,9 +194,12 @@ function bindCandListeners(c){
   if(c._candBound)return;
   c._candBound=true;
   var pick=function(evt){var r=c.getBoundingClientRect(),x=(evt.clientX-r.left);var best=-1,bd=1e9;CANDGEOM.forEach(function(g,i){var d=Math.abs(g.x-x);if(d<bd){bd=d;best=i;}});return best;};
-  c.addEventListener('mousemove',function(e){var i=pick(e);if(i!==CANDHOV){CANDHOV=i;redrawCandles();}});
-  c.addEventListener('mouseleave',function(){CANDHOV=-1;redrawCandles();});
-  c.addEventListener('click',function(e){var i=pick(e);CANDSEL=(i===CANDSEL?-1:i);redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  /* Guard: in a line view this canvas is a Chart.js line chart, not candles.
+     Without the guard, hover/click here used stale CANDGEOM and repainted
+     old candles over the line chart. */
+  c.addEventListener('mousemove',function(e){if(!candViewActive())return;var i=pick(e);if(i!==CANDHOV){CANDHOV=i;redrawCandles();}});
+  c.addEventListener('mouseleave',function(){if(!candViewActive())return;CANDHOV=-1;redrawCandles();});
+  c.addEventListener('click',function(e){if(!candViewActive())return;var i=pick(e);if(i===CANDSEL){dismissCandInfo();return;}CANDSEL=i;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
 }
 /* Candle ranges, Day 1: aggregate Coinbase daily candles into range candles.
    Daily mode is identity (one candle per UTC day). Weekly mode buckets by the
@@ -226,17 +241,22 @@ function drawCandlesRange(){
   ctx.strokeStyle='rgba(255,255,255,.08)';ctx.fillStyle='#9aa6bc';ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText('$'+Math.round(v).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];
+  var lastTx=null;
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
     CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
     ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
     ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
-    /* X-axis: date only (month + day), at the first candle and when the ET month changes,
-       spaced so labels never collide (same 62px guard as the 1D view). */
+    /* X-axis: date only (month + day), at the first candle and when the ET month changes.
+       Fix 29 Oct 2026: the old code drew both labels unconditionally, so on 1M Daily
+       the first candle (Sep 28) and the month-change candle (Oct 1) sat ~18px apart
+       and ran together as "Sep 28Oct 1". Now the same 62px spacing guard as the
+       1D view applies: a label is skipped if it would land within 62px of the
+       previous one (the first label is always drawn). */
     var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'});
     var prev=candles[i-1],mChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'numeric'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'numeric'});
-    if(i===0||mChange){var dx=Math.max(L+30,Math.min(W-R-30,x));ctx.fillStyle='#64748b';ctx.fillText(md,dx,H-24);ctx.fillStyle='#9aa6bc';}
+    if(i===0||mChange){var dx=Math.max(L+30,Math.min(W-R-30,x));if(lastTx==null||dx-lastTx>=62){ctx.fillStyle='#64748b';ctx.fillText(md,dx,H-24);ctx.fillStyle='#9aa6bc';lastTx=dx;}}
     if(i===candles.length-1&&x>L+32&&x<W-R-32){ctx.fillText(new Date(k.end).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),x,H-8);}
   });
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
@@ -306,6 +326,9 @@ function draw1D(){
       return;
     }
   }
+  /* Line view: any open candle pill/selection from the candle view is gone,
+     and nothing here repaints candles (see fix note at candViewActive). */
+  clearCandState();
   if(hasLive&&pts.length&&Date.now()>pts[pts.length-1].t)pts.push({t:Date.now(),v:live.usd,live:true});
   var n=pts.length,a=pts[0].v,b=pts[n-1].v,pc=(b/a-1)*100;
   var fp=function(x){return (x>=0?'+':'')+(Math.abs(x)>=1e4?Math.round(x).toLocaleString('en-US'):x.toFixed(1))+'%';};
@@ -375,7 +398,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
    +'<div class="bc-veh" id="bcVeh" role="group" aria-label="Bitcoin vehicle"><span class="bc-ct-lab">Vehicle</span><button type="button" data-veh="SPOT">Spot BTC</button><button type="button" data-veh="IBIT">IBIT</button><button type="button" data-veh="FBTC">FBTC</button></div><div class="bc-veh-nt" id="bcVehNt" style="display:none">Vehicle mode applies to Pulse, tracker, holdings and Compare. This chart stays Spot BTC.</div>'
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
    +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
-   +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Candles</span><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="daily" style="display:none">Daily</button></div>'
+   +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="daily" style="display:none">Daily</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../compare/index.html')+'">See full Compare →</a>';
   document.body.appendChild(dim);document.body.appendChild(dlg);
   dim.addEventListener('click',close);$('bcVeh').addEventListener('click',function(e){var b=e.target.closest('[data-veh]');if(!b||b.disabled)return;var v=b.dataset.veh;
@@ -398,7 +421,7 @@ function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   var last=new Date(d[d.length-1][0]+'T00:00:00Z'),st;
   if(rng==='Max')st='0000';else if(rng==='YTD')st=(last.getUTCFullYear()-1)+'-12-31';else st=new Date(last-DAYS[rng]*864e5).toISOString().slice(0,10);
   return d.filter(function(p){return p[0]>=st;});}
-function drawDaily(){if(!DATA||!window.Chart)return;head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(rng==='1W'||rng==='1M'){_cg.style.display='';syncCg();}else _cg.style.display='none';}var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
+function drawDaily(){if(!DATA||!window.Chart)return;clearCandState();head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(rng==='1W'||rng==='1M'){_cg.style.display='';syncCg();}else _cg.style.display='none';}var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   var onb=$('bcRgs').querySelector('.on'),rs=$('bcRgs');if(onb&&rs.scrollWidth>rs.clientWidth){var L=onb.offsetLeft-rs.offsetLeft,R=L+onb.offsetWidth;if(L<rs.scrollLeft+16||R>rs.scrollLeft+rs.clientWidth-16)rs.scrollTo({left:Math.max(0,L-(rs.clientWidth-onb.offsetWidth)/2),behavior:'smooth'});}
   $('bcSc').style.display=big?'':'none';[].forEach.call($('bcSc').children,function(b){var on=(b.dataset.s==='log')===LOG;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
