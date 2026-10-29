@@ -149,3 +149,9 @@ Sunil pointed out it was weird that META, MU and SPCX had no YTD numbers. He was
 - Live merging for GOLD is enabled in the screener code with no special-casing: mergeList() is generic by symbol, so once the pipeline writes a GOLD key (GC=F, via the parent's separate prices.yml edit), the GOLD row goes Live in market hours / dated pipeline close outside hours automatically, with no further screener change. Until that pipeline edit lands, GOLD shows its honest 28 Oct 2026 futures close from the pack, never a Live label.
 - The quoted pipeline block in the section above is the block as landed for WTI/US10Y/VIX (commit f5cc6f4); the parent's separate edit adds GOLD (GC=F) to it. That quoted block is a historical record of the WTI/US10Y/VIX edit, not the current pipeline text for GOLD.
 - Pack fetch buster bumped ?v=5 → ?v=6 (pack v7) so the new futures snapshot is not served from cache.
+
+## 29 Oct 2026 — YTD column removed from Market Indicators only (Sunil: "Get rid of the ytd column for market indicators")
+
+- The Market Indicators box (WTI, Gold (COMEX futures), US10Y, VIX) no longer has a YTD column at all — header, rows, and the box's YTD note are gone. The table is now Symbol / Name / Level / Day change, with the status line below the table unchanged.
+- The Stocks box is untouched: it keeps its YTD column exactly as before, including META/MU true YTD and SPCX "Since listing 12 Jun 2026". The stocks-only comparison chart is untouched, including its YTD view.
+- Day change in the Market Indicators box keeps the signed-number colour rule (green positive, red negative, black signed zero). No pack change was needed (indicators' ytdPct values were already null and are simply no longer rendered), so the pack fetch buster was not bumped.

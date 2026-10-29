@@ -205,8 +205,7 @@
         var note = r.note ? '<div class="row-note">' + r.note + '</div>' : '';
         return '<tr><td><strong>' + r.symbol + '</strong></td><td>' + r.name + note + '</td>'
           + '<td>' + formatValue(r) + '</td>'
-          + '<td class="' + signCls(r.dayChangePct) + '">' + dayText(r) + '</td>'
-          + '<td class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + (r.ytdBasis === 'listing' ? '<div class="row-note">Since listing 12 Jun 2026</div>' : '') + '</td></tr>';
+          + '<td class="' + signCls(r.dayChangePct) + '">' + dayText(r) + '</td></tr>';
       }).join('');
     }
     updatePills();
@@ -259,7 +258,7 @@
         var b = document.getElementById('screener-body');
         if (b) b.innerHTML = '<tr><td colspan="5">Screener data could not be loaded.</td></tr>';
         var ib = document.getElementById('indicators-body');
-        if (ib) ib.innerHTML = '<tr><td colspan="5">Screener data could not be loaded.</td></tr>';
+        if (ib) ib.innerHTML = '<tr><td colspan="4">Screener data could not be loaded.</td></tr>';
       });
     var search = document.getElementById('screener-search');
     if (search) search.addEventListener('input', function (e) { state.q = e.target.value; render(); });
