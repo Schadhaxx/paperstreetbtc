@@ -226,6 +226,23 @@ function aggDailyCandles(daily,mode){
   if(cur)out.push(cur);
   return out;
 }
+/* Range-candle x-axis label indices: evenly spaced, first and last always
+   included, at most one label per ~64px of plot width so labels never
+   collide. This replaces the old first-candle-plus-month-change rule, which
+   on 1M Daily produced only "Sep 28" (Oct 1 was skipped by the 62px guard,
+   and the last candle failed its own x test) — a blank axis. */
+function rangeLabelIndices(n,iw){
+  if(!n||n<=0)return [];
+  var maxLabels=Math.max(2,Math.floor(iw/64));
+  var count=Math.min(n,maxLabels);
+  if(count<=1)return [0];
+  var out=[];
+  for(var k=0;k<count;k++){
+    var idx=Math.round(k*(n-1)/(count-1));
+    if(out.indexOf(idx)<0)out.push(idx);
+  }
+  return out;
+}
 function drawCandlesRange(){
   var candles=RGCAND;if(!candles||!candles.length)return false;
   CANDRANGE=true;CANDGRAN=RGGRAN;CAND=candles;CANDLBL=RGLBL;
@@ -241,23 +258,24 @@ function drawCandlesRange(){
   ctx.strokeStyle='rgba(255,255,255,.08)';ctx.fillStyle='#9aa6bc';ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText('$'+Math.round(v).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];
-  var lastTx=null;
+  var lastTx=null,labIdx=rangeLabelIndices(candles.length,iw);
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
     CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
     ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
     ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
-    /* X-axis: date only (month + day), at the first candle and when the ET month changes.
-       Fix 29 Oct 2026: the old code drew both labels unconditionally, so on 1M Daily
-       the first candle (Sep 28) and the month-change candle (Oct 1) sat ~18px apart
-       and ran together as "Sep 28Oct 1". Now the same 62px spacing guard as the
-       1D view applies: a label is skipped if it would land within 62px of the
-       previous one (the first label is always drawn). */
-    var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'});
-    var prev=candles[i-1],mChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'numeric'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'numeric'});
-    if(i===0||mChange){var dx=Math.max(L+30,Math.min(W-R-30,x));if(lastTx==null||dx-lastTx>=62){ctx.fillStyle='#64748b';ctx.fillText(md,dx,H-24);ctx.fillStyle='#9aa6bc';lastTx=dx;}}
-    if(i===candles.length-1&&x>L+32&&x<W-R-32){ctx.fillText(new Date(k.end).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),x,H-8);}
+    /* X-axis: date only (month + day), evenly spaced via rangeLabelIndices
+       (first and last included, ~64px apart). The 62px guard stays as a
+       safety net — it now rarely fires, instead of swallowing every label
+       after the first, as the old first-plus-month-change rule did. The old
+       separate last-candle label on a second row is gone: the last candle
+       is in this row, so it is no longer skipped by its own x test. */
+    if(labIdx.indexOf(i)>=0){
+      var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'});
+      var dx=Math.max(24,Math.min(W-24,x));
+      if(lastTx==null||dx-lastTx>=56){ctx.fillStyle='#64748b';ctx.fillText(md,dx,H-24);ctx.fillStyle='#9aa6bc';lastTx=dx;}
+    }
   });
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
     if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';

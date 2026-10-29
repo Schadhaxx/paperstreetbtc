@@ -67,6 +67,56 @@ because the granularity group label span (`bcCgGranLab`) also said
 the row reads "Chart Line Candles Size Weekly Daily". The span's id and its
 show/hide logic in `syncCg()` are unchanged.
 
+## 2c. MINOR — FIXED: 1M Daily x-axis too sparse (only "Sep 28")
+
+Browser retest on 829ce4a4: the 2a guard fixed the collision but overcorrected.
+On 1M Candles → Size: Daily (31 daily candles), the axis showed only "Sep 28"
+legibly, unlike the 1M Line view (09-28, 10-03, 10-08, 10-13, 10-18, 10-23,
+10-28). 1W and 1M Weekly were sparse for the same reason.
+
+### Root cause (not just "the guard is too aggressive")
+
+`drawCandlesRange` only ever *considered* labels at the first candle and at
+ET month changes — two candidates on 1M Daily (Sep 28, Oct 1). Oct 1 was then
+killed by the guard: it was clamped to L+30 = 92px while Sep 28 was also
+clamped to 92px, ~27px apart, under the 62px threshold. And the separate
+last-candle label on a second row never drew at all, because the last
+candle's x (= W−R) fails that row's `x < W−R−32` test. So the guard was not
+the whole story — the candidate set was.
+
+### Fix (all in `assets/js/btcchart.js`)
+
+- New `rangeLabelIndices(n, iw)`: evenly spaced label indices, first and
+  last always included, at most one label per ~64px of plot width
+  (count = min(n, max(2, floor(iw/64))), indices rounded evenly across
+  0..n−1). `drawCandlesRange` labels exactly those indices, in one row.
+- The 62px guard stays as a safety net, tightened to 56px for this view
+  only (labels are ~40px wide, so 56px centre spacing still leaves a clear
+  gap; 56px is what lets the last label survive its 24px edge clamp at
+  wide widths, where it otherwise sat 61px from its neighbour).
+- Edge clamp narrowed from L+30 / W−R−30 to 24px from the canvas edge
+  (the label's half-width): the old L+30 clamp pushed the first label 30px
+  right, which would have made the second label fail the guard again.
+  The 1D view's own clamp is unchanged.
+- The separate last-candle second-row label is removed — the last candle
+  is now in the main label row, so it cannot be skipped by its own x test.
+
+### Label sets produced (headless, `rangeLabelIndices` extracted from the
+shipped file, not a transcription; dates shown are the test series'
+relative positions — the live chart's own candle times set the actual dates)
+
+- 31 candles, popover width 640 (plot 566px): indices
+  [0, 4, 9, 13, 17, 21, 26, 30] — 8 labels, every ~4–5 days, first to last,
+  minimum centre spacing 63px, guard passes on all.
+- 31 candles, width 500: [0, 6, 12, 18, 24, 30] — 6 labels, ~6 days apart.
+- 31 candles, phone width 390: [0, 10, 20, 30] — 4 labels, ~10 days apart.
+- 31 candles, width 800: [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30] — 11 labels,
+  minimum spacing 61px, guard passes on all.
+- 7 candles (1W): all 7 at width 640; [0, 2, 4, 6] at phone width 390.
+- 5 candles (1M Weekly): all 5 at width 640; [0, 1, 3, 4] at phone width 390.
+- `node --check assets/js/btcchart.js`: passes. Browser re-test still
+  needed (parent) on the new commit below.
+
 ## What was NOT changed
 
 No spec, default, or 1D behaviour change: 1W/1M control, defaults (Line,
