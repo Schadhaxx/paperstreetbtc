@@ -6,7 +6,7 @@
 <title>Stock Screener — Maple Leaf Pack</title>
 <!-- REMOVABLE BY DESIGN: This page is part of the additive Maple Leaf Screener pack.
      To shut it off and delete it, delete screener.html, assets/data/screener-pack.json,
-     assets/js/screener.js, assets/js/maple-screener.js, and remove the one maple-screener.js
+     assets/js/screener.js, assets/js/screener-chart.js, assets/js/maple-screener.js, and remove the one maple-screener.js
      script tag from index.html. No existing file's logic was modified, no old version needs
      restoring, and with that script tag gone the footer maple leaf simply does nothing on
      double-click again. -->
@@ -28,6 +28,11 @@
   .up { color:#22c55e; } .down { color:#ef4444; }
   .row-note { color:#94a3b8; font-size:13px; margin-top:4px; }
   .count { color:#94a3b8; margin-top:12px; font-size:14px; }
+  .chart-card { background:#121a2e; border:1px solid #1e293b; border-radius:12px; padding:16px; margin-top:24px; }
+  .chart-card h2 { font-size:18px; margin:0 0 12px; }
+  .chart-wrap { position:relative; height:320px; }
+  .chart-note { color:#94a3b8; font-size:13px; margin:12px 0 0; }
+  #screener-body tr.row-highlight td { background:#16233a; }
   .disclaimer { color:#94a3b8; font-size:13px; margin-top:24px; line-height:1.6; }
   a { color:#22d3ee; }
 </style>
@@ -54,8 +59,19 @@
     <tbody id="screener-body"><tr><td colspan="6">Loading…</td></tr></tbody>
   </table>
   <p class="count" id="screener-count"></p>
+  <section class="chart-card" aria-label="Comparison chart">
+    <h2>Comparison chart</h2>
+    <div class="controls">
+      <button class="btn active" data-chart-metric="day">Day change %</button>
+      <button class="btn" data-chart-metric="ytd">YTD %</button>
+    </div>
+    <div class="chart-wrap"><canvas id="screener-chart"></canvas></div>
+    <p class="chart-note" id="screener-chart-note"></p>
+  </section>
   <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. Prices shown are closes as of 28 Oct 2026 from the sources noted in the data pack; they are not live quotes. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. <a href="index.html">Back to the main page</a>.</p>
 </div>
+<script src="assets/vendor/chart.umd.min.js"></script>
 <script src="assets/js/screener.js"></script>
+<script src="assets/js/screener-chart.js"></script>
 </body>
 </html>
