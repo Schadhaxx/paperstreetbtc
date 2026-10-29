@@ -193,7 +193,7 @@
         return '<tr><td><strong>' + r.symbol + '</strong></td><td>' + r.name + note + '</td>'
           + '<td>' + money(r.price) + '</td>'
           + '<td class="' + signCls(r.dayChangePct) + '">' + dayText(r) + '</td>'
-          + '<td class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + '</td></tr>';
+          + '<td class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + (r.ytdBasis === 'listing' ? '<div class="row-note">Since listing 12 Jun 2026</div>' : '') + '</td></tr>';
       }).join('');
       var count = document.getElementById('screener-count');
       if (count) count.textContent = list.length + ' of ' + rows.length + ' shown';
@@ -205,7 +205,7 @@
         return '<tr><td><strong>' + r.symbol + '</strong></td><td>' + r.name + note + '</td>'
           + '<td>' + formatValue(r) + '</td>'
           + '<td class="' + signCls(r.dayChangePct) + '">' + dayText(r) + '</td>'
-          + '<td class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + '</td></tr>';
+          + '<td class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + (r.ytdBasis === 'listing' ? '<div class="row-note">Since listing 12 Jun 2026</div>' : '') + '</td></tr>';
       }).join('');
     }
     updatePills();
@@ -238,7 +238,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=4')
+    fetch('assets/data/screener-pack.json?v=5')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];

@@ -1,8 +1,10 @@
+> **29 Oct 2026 YTD fix (pack v6): Sunil was right — META and MU traded all through 2025, so they now have true YTD figures. META base 31 Dec 2025 $660.09 → YTD −7.21% at the 28 Oct close $612.49. MU base 31 Dec 2025 $285.41 → YTD +244.50% at the 28 Oct close $983.23. SPCX was NOT public on 31 Dec 2025, so it has NO true YTD: its YTD column now shows return since its 12 Jun 2026 first trading close $160.95 → −9.77% at $145.23, labelled "Since listing 12 Jun 2026" in the cell, in the Stocks box note, and in the chart note — never presented as Dec 31 YTD, and SPCX is excluded from the YTD chart for that reason. The $135 IPO price was NOT used as the base. Pack fetch is now ?v=5 (pack v6).**
+
 > **HIDDEN EXPERIMENTAL FEATURE — This screener is NOT advertised anywhere on the site. It is reachable ONLY by double-clicking (desktop) or double-tapping (iPhone/iPad/mobile) the footer Canadian maple leaf. It is experimental, it may be changed or removed at any time, and it is not part of the main PaperStreet tracker. Do not announce it, link it, or list it on the site unless Sunil explicitly says to.**
 
 > **Correction 29 Oct 2026: SpaceX was wrongly shown as private. SpaceX is public as SPCX (IPO 12 June 2026, $135), 28 Oct close $145.23. META (Meta Platforms / Facebook) added, 28 Oct close $612.49. Screener now has 7 rows, all public; the Private filter was removed.**
 
-> **Chart added 29 Oct 2026: an interactive "Comparison chart" now sits below the table on the screener page, built with the site's own vendored Chart.js. It shows bars for the seven symbols with a toggle between "Day change %" (default) and "YTD %"; bars are green for positive and red for negative, tooltips show symbol, name, and the exact %, and clicking a bar highlights that row in the table (clicking a table row highlights the matching bar). The chart reads its values from screener-pack.json (pack v2) only — no second copy of the numbers and no invented price series. In YTD view, MU, SPCX, and META are omitted and a note says so, because the pack holds no Dec 31 value for them.**
+> **Chart added 29 Oct 2026: an interactive "Comparison chart" now sits below the table on the screener page, built with the site's own vendored Chart.js. It shows bars for the seven symbols with a toggle between "Day change %" (default) and "YTD %"; bars are green for positive and red for negative, tooltips show symbol, name, and the exact %, and clicking a bar highlights that row in the table (clicking a table row highlights the matching bar). The chart reads its values from screener-pack.json (pack v2) only — no second copy of the numbers and no invented price series. In YTD view, SPCX is omitted and a note says why (its figure is since-listing, not YTD); META and MU are now included, since their 31 Dec 2025 bases were added 29 Oct 2026 (pack v6).**
 
 > **29 Oct 2026 cache fix: pack fetch now uses ?v=2 (pack v3) so the live page cannot keep serving a cached v1 pack after an update.**
 
@@ -32,13 +34,13 @@ Double-click the footer maple leaf (the red leaf at the bottom of the main page)
 | PLTR | Palantir | $196.81 | −$1.92 (−0.97%, vs 27 Oct $198.73) | +10.72% (31 Dec 2025 $177.75) |
 | MSTR | Strategy | $145.16 | +$3.76 (+2.66%, vs 27 Oct $141.40) | −4.47% (31 Dec 2025 $151.95) |
 | IBIT | iShares Bitcoin Trust | $46.14 | +$0.44 (+0.96%, vs 27 Oct $45.70) | −7.07% (31 Dec 2025 $49.65) |
-| MU | Micron Technology | $983.23 | +$54.47 (+5.86%, vs 27 Oct $928.76) | n/a — no Dec 31 price in site data, so none is shown |
-| SPCX | Space Exploration Technologies (SpaceX) | $145.23 | −$3.35 (−2.25%, vs 27 Oct $148.58) | n/a — not public on 31 Dec 2025 (IPO 12 June 2026 at $135), so none is shown |
-| META | Meta Platforms (Facebook) | $612.49 | −$7.70 (−1.24%, vs 27 Oct $620.19) | n/a — no Dec 31 price in site data, so none is shown |
+| MU | Micron Technology | $983.23 | +$54.47 (+5.86%, vs 27 Oct $928.76) | +244.50% (31 Dec 2025 $285.41) |
+| SPCX | Space Exploration Technologies (SpaceX) | $145.23 | −$3.35 (−2.25%, vs 27 Oct $148.58) | −9.77% SINCE LISTING (first trading close 12 Jun 2026 $160.95 — NOT a Dec 31 YTD) |
+| META | Meta Platforms (Facebook) | $612.49 | −$7.70 (−1.24%, vs 27 Oct $620.19) | −7.21% (31 Dec 2025 $660.09) |
 
 Summary pills on the page: biggest gainer MU +5.86%, biggest loser SPCX −2.25%.
 
-Two honest limits, stated on the page itself: MU's and META's year-to-date figures are shown as "n/a" because no 31 Dec 2025 price for them is in the site data — no price was invented. SPCX's year-to-date figure is likewise "n/a" because SpaceX was not public on 31 Dec 2025. MU's day move is noted in one plain line as following memory-chip news (SK hynix), with no recommendation attached.
+Two honest limits, stated on the page itself (UPDATED 29 Oct 2026 — the n/a figures below are superseded): MU's and META's year-to-date figures were first shown as "n/a" because no 31 Dec 2025 price for them was in the site data. They now have true YTD figures from verified 31 Dec 2025 closes (MU $285.41, META $660.09 — see the YTD fix section). SPCX still has no Dec 31 YTD, because SpaceX was not public on 31 Dec 2025; its figure is return since listing, labelled as such, never as YTD. MU's day move is noted in one plain line as following memory-chip news (SK hynix), with no recommendation attached.
 
 ## Features borrowed from the site
 
@@ -128,3 +130,13 @@ In .github/workflows/prices.yml, in the "Fetch prices" step, AFTER the Finnhub s
               except Exception as e: print(key, 'Yahoo failed, keeping previous:', type(e).__name__)
 ```
 After this lands, stocks_ok should read 16 (13 stocks + WTI + US10Y + VIX); GOLD is not counted. No Finnhub list change is needed for this update — the 13-symbol Finnhub list is unchanged.
+
+## 29 Oct 2026 — YTD fix: META and MU get true YTD, SPCX gets since-listing (pack v6)
+
+Sunil pointed out it was weird that META, MU and SPCX had no YTD numbers. He was right for META and MU, and partly right for SPCX — fixed properly, nothing invented:
+- META: 31 Dec 2025 close $660.09 (UNADJUSTED close, matching the site's Yahoo unadjusted convention — the $658.40 figure seen in some tables is the dividend-adjusted close and was NOT used). Sources converging on $660.09: Digrin "Real price" for Dec 2025, financecharts 12/31/2025 close, companiesmarketcap 31 Dec 2025 price, daytrading Dec 2025 close, Motley Fool year-end figure — and a cross-check: Finnhub's YTD at its live price $624.52 is −5.39%, which implies a base of $660.08, matching $660.09 to the cent. YTD at the pack close: $612.49 vs $660.09 = −7.21% (red).
+- MU: 31 Dec 2025 close $285.41 (unadjusted; Digrin "Real price" $285.41 vs adjusted $285.25). Sources converging on $285.41: Digrin, Momoview, Macrotrends year close $285.20 (adjusted, close to it), and multiple 13F holdings prices at 31 Dec 2025 ($285.41) — and the same Finnhub cross-check: Finnhub YTD at $934.27 is +227.34%, which implies a base of $285.41 exactly. YTD at the pack close: $983.23 vs $285.41 = +244.50% (green).
+- SPCX: NO Dec 31 YTD exists and none was faked. Base used is the first trading close, 12 June 2026: $160.95 (Axi, stockmarketwatch, TradingView/Benzinga, financer — all agree; opened $150, IPO priced $135 on 11 June). The $135 IPO price was NOT used as the base, because it was never a traded close. Return at the pack close: $145.23 vs $160.95 = −9.77% (red), shown in the YTD column ONLY with the label "Since listing 12 Jun 2026" in the cell itself, plus the Stocks box note and the SPCX row note. SPCX is excluded from the YTD comparison chart, because a since-listing return must not sit on a YTD axis. If the first-trading close had not verified, SPCX would have stayed n/a — it verified three-plus ways, so it did not need to.
+- Live behaviour: when a pipeline quote arrives, META/MU YTD recomputes vs their Dec 31 bases and SPCX recomputes vs $160.95, keeping its since-listing label — so live YTD values will move after the pack snapshot, which is correct.
+- Sign colours apply to all three new figures (green positive, red negative, black signed zero, as in the two-box update).
+- No Finnhub-derived YTD shortcut was used: the bases above are actual closes, and the Finnhub YTD figures are cited only as an independent cross-check that lands on the same bases.

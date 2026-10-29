@@ -16,7 +16,7 @@
   var metric = 'day'; // 'day' = Day change %, 'ytd' = YTD %
 
   function chartRows() {
-    if (metric === 'ytd') return allRows.filter(function (r) { return r.ytdPct !== null && r.ytdPct !== undefined; });
+    if (metric === 'ytd') return allRows.filter(function (r) { return r.ytdPct !== null && r.ytdPct !== undefined && r.ytdBasis !== 'listing'; });
     return allRows.slice();
   }
 
@@ -54,7 +54,7 @@
     var note = document.getElementById('screener-chart-note');
     if (note) {
       note.textContent = metric === 'ytd'
-        ? 'YTD not shown for MU, SPCX, META — no Dec 31 value in the pack. Market Indicators are not charted here — dollars, %, and VIX points do not share an axis.'
+        ? 'YTD vs 31 Dec 2025 (META $660.09, MU $285.41 added 29 Oct 2026). SPCX is not in this YTD chart — its table figure is return since its 12 Jun 2026 first close ($160.95), not YTD. Market Indicators are not charted here — dollars, %, and VIX points do not share an axis.'
         : "Day change vs each stock's prior close (live rows vs the prior session close; snapshot rows vs 27 Oct 2026). Market Indicators are not charted here — dollars, %, and VIX points do not share an axis.";
     }
     var data = {
