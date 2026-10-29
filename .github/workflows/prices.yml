@@ -72,20 +72,20 @@ jobs:
                       out['stocks'][s] = {'c': q['c'], 'pc': q.get('pc'), 't': q.get('t')}; ok += 1
                   else: print(s, 'bad data, keeping previous')
               except Exception as e: print(s, 'failed, keeping previous:', type(e).__name__)
-            # --- market indicators (Yahoo chart, keyless) ---
-            # Finnhub /quote is US-stocks-only, so it cannot carry these.
-            # Yahoo chart meta is the same source the history rebuild uses.
-            # Gold spot deliberately NOT mapped: Yahoo has no working XAUUSD
-            # spot ticker (GC=F is futures, not spot) — do not map GC=F
-            # into GOLD silently.
-            for key, sym in [('WTI', 'CL%3DF'), ('US10Y', '%5ETNX'), ('VIX', '%5EVIX'), ('GOLD', 'GC%3DF')]:  # GOLD is COMEX futures (GC=F), not spot, added with explicit owner approval
-                try:
-                    m = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d')['chart']['result'][0]['meta']
-                    c_, pc_ = m.get('regularMarketPrice'), m.get('chartPreviousClose')
-                    if isinstance(c_, (int, float)) and c_ > 0 and isinstance(pc_, (int, float)) and pc_ > 0:
-                        out['stocks'][key] = {'c': c_, 'pc': pc_, 't': m.get('regularMarketTime')}; ok += 1
-                    else: print(key, 'bad Yahoo meta, keeping previous')
-                except Exception as e: print(key, 'Yahoo failed, keeping previous:', type(e).__name__)
+          # --- market indicators (Yahoo chart, keyless) ---
+          # Finnhub /quote is US-stocks-only, so it cannot carry these.
+          # Yahoo chart meta is the same source the history rebuild uses.
+          # Gold is COMEX futures (GC=F), not spot, per owner approval 29 Oct 2026.
+          # (GC=F futures, not XAUUSD spot.)
+          # Do not map spot into GOLD.
+          for key, sym in [('WTI', 'CL%3DF'), ('US10Y', '%5ETNX'), ('VIX', '%5EVIX'), ('GOLD', 'GC%3DF')]:
+              try:
+                  m = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d')['chart']['result'][0]['meta']
+                  c_, pc_ = m.get('regularMarketPrice'), m.get('chartPreviousClose')
+                  if isinstance(c_, (int, float)) and c_ > 0 and isinstance(pc_, (int, float)) and pc_ > 0:
+                      out['stocks'][key] = {'c': c_, 'pc': pc_, 't': m.get('regularMarketTime')}; ok += 1
+                  else: print(key, 'bad Yahoo meta, keeping previous')
+              except Exception as e: print(key, 'Yahoo failed, keeping previous:', type(e).__name__)
           try:
               b = get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true')['bitcoin']
               out['btc'] = {'usd': b['usd'], 'chg24h': b.get('usd_24h_change'), 'src': 'CoinGecko', 'time': now}
