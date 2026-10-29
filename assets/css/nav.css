@@ -207,3 +207,10 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .bc-ct-lab{font:600 .78rem Inter,sans-serif;color:#94a3b8}
 .bc-ct button{font:600 .74rem Inter,sans-serif;padding:5px 12px;border-radius:999px;border:1px solid var(--border,#1e293b);color:#94a3b8;background:transparent;cursor:pointer}
 .bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
+
+/* Vehicle toggle, Day 3: popover row, same language as the 1D chart-type control */
+.bc-veh{display:flex;align-items:center;gap:6px;margin:0 0 8px;flex-wrap:wrap}
+.bc-veh button{font:600 .74rem Inter,sans-serif;padding:5px 12px;border-radius:999px;border:1px solid var(--border,#1e293b);color:#94a3b8;background:transparent;cursor:pointer}
+.bc-veh button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
+.bc-veh button:disabled{opacity:.45;cursor:not-allowed}
+.bc-veh-nt{color:#94a3b8;font-size:.74rem;margin:-4px 0 8px}
