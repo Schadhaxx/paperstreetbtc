@@ -1,7 +1,8 @@
 // Stock Screener — Comparison chart (Maple Leaf Pack)
-// Reads values ONLY from assets/data/screener-pack.json (the same file
-// the table renders from). No second copy of the numbers lives here,
-// no live price API, no other data source.
+// Reads values ONLY from the merged rows screener.js hands it
+// (pack + live pipeline quotes, via ScreenerChartUpdate / 'screener-rows').
+// No second copy of the numbers lives here, no separate pack fetch,
+// no live price API of its own, no other data source.
 (function () {
   var chart = null;
   var allRows = [];
@@ -47,7 +48,7 @@
     if (note) {
       note.textContent = metric === 'ytd'
         ? 'YTD not shown for MU, SPCX, META — no Dec 31 value in the pack.'
-        : 'Day change vs the 27 Oct 2026 close.';
+        : "Day change vs each row's prior close (live rows vs the prior session close; snapshot rows vs 27 Oct 2026).";
     }
     var data = {
       labels: labels,
@@ -91,17 +92,18 @@
     chart = new Chart(canvas, { type: 'bar', data: data, options: options });
   }
 
+  // Single source of truth: screener.js merges pack + live quotes and
+  // hands the merged rows here. No independent pack fetch, so the chart
+  // can never show different numbers from the table.
+  window.ScreenerChartUpdate = function (rows) {
+    allRows = rows || [];
+    build();
+  };
+  window.addEventListener('screener-rows', function (e) {
+    allRows = (e && e.detail) || [];
+    build();
+  });
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=2')
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        allRows = data.rows || [];
-        build();
-      })
-      .catch(function () {
-        var note = document.getElementById('screener-chart-note');
-        if (note) note.textContent = 'Chart data could not be loaded.';
-      });
     document.querySelectorAll('[data-chart-metric]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         metric = btn.getAttribute('data-chart-metric');

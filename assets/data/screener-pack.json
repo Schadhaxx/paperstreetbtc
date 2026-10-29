@@ -1,1 +1,88 @@
-{"asOf":"2026-10-28","pack":"maple-leaf-screener","removable":true,"rows":[{"baseClose":449.72,"dayChange":-3.24,"dayChangePct":-0.79,"name":"Tesla","prevClose":407.46,"price":404.22,"status":"Live data","symbol":"TSLA","ytdPct":-10.11},{"baseClose":177.75,"dayChange":-1.92,"dayChangePct":-0.97,"name":"Palantir","prevClose":198.73,"price":196.81,"status":"Live data","symbol":"PLTR","ytdPct":10.72},{"baseClose":151.95,"dayChange":3.76,"dayChangePct":2.66,"name":"Strategy","prevClose":141.4,"price":145.16,"status":"Live data","symbol":"MSTR","ytdPct":-4.47},{"baseClose":49.65,"dayChange":0.44,"dayChangePct":0.96,"name":"iShares Bitcoin Trust","prevClose":45.7,"price":46.14,"status":"Live data","symbol":"IBIT","ytdPct":-7.07},{"baseClose":null,"dayChange":54.47,"dayChangePct":5.86,"name":"Micron Technology","note":"Day move followed memory-chip news (SK hynix).","prevClose":928.76,"price":983.23,"status":"Live data","symbol":"MU","ytdPct":null},{"baseClose":null,"dayChange":-3.35,"dayChangePct":-2.25,"name":"Space Exploration Technologies","note":"Public since 12 June 2026 IPO at $135.","prevClose":148.58,"price":145.23,"status":"Live data","symbol":"SPCX","ytdPct":null},{"baseClose":null,"dayChange":-7.7,"dayChangePct":-1.24,"name":"Meta Platforms","prevClose":620.19,"price":612.49,"status":"Live data","symbol":"META","ytdPct":null}],"sources":"Site data (Yahoo unadjusted closes) for TSLA, PLTR, MSTR, IBIT; MU 28 Oct 2026 close from public reports, corroborated twice; SPCX (SpaceX, public since 12 June 2026 IPO) and META 28 Oct 2026 closes from public reports.","version":3}
+{
+ "asOf": "2026-10-28",
+ "pack": "maple-leaf-screener",
+ "removable": true,
+ "rows": [
+  {
+   "baseClose": 449.72,
+   "dayChange": -3.24,
+   "dayChangePct": -0.79,
+   "name": "Tesla",
+   "prevClose": 407.46,
+   "price": 404.22,
+   "status": "28 Oct close",
+   "symbol": "TSLA",
+   "ytdPct": -10.11
+  },
+  {
+   "baseClose": 177.75,
+   "dayChange": -1.92,
+   "dayChangePct": -0.97,
+   "name": "Palantir",
+   "prevClose": 198.73,
+   "price": 196.81,
+   "status": "28 Oct close",
+   "symbol": "PLTR",
+   "ytdPct": 10.72
+  },
+  {
+   "baseClose": 151.95,
+   "dayChange": 3.76,
+   "dayChangePct": 2.66,
+   "name": "Strategy",
+   "prevClose": 141.4,
+   "price": 145.16,
+   "status": "28 Oct close",
+   "symbol": "MSTR",
+   "ytdPct": -4.47
+  },
+  {
+   "baseClose": 49.65,
+   "dayChange": 0.44,
+   "dayChangePct": 0.96,
+   "name": "iShares Bitcoin Trust",
+   "prevClose": 45.7,
+   "price": 46.14,
+   "status": "28 Oct close",
+   "symbol": "IBIT",
+   "ytdPct": -7.07
+  },
+  {
+   "baseClose": null,
+   "dayChange": 54.47,
+   "dayChangePct": 5.86,
+   "name": "Micron Technology",
+   "note": "Day move followed memory-chip news (SK hynix).",
+   "prevClose": 928.76,
+   "price": 983.23,
+   "status": "28 Oct close",
+   "symbol": "MU",
+   "ytdPct": null
+  },
+  {
+   "baseClose": null,
+   "dayChange": -3.35,
+   "dayChangePct": -2.25,
+   "name": "Space Exploration Technologies",
+   "note": "Public since 12 June 2026 IPO at $135.",
+   "prevClose": 148.58,
+   "price": 145.23,
+   "status": "28 Oct close",
+   "symbol": "SPCX",
+   "ytdPct": null
+  },
+  {
+   "baseClose": null,
+   "dayChange": -7.7,
+   "dayChangePct": -1.24,
+   "name": "Meta Platforms",
+   "prevClose": 620.19,
+   "price": 612.49,
+   "status": "28 Oct close",
+   "symbol": "META",
+   "ytdPct": null
+  }
+ ],
+ "sources": "Site data (Yahoo unadjusted closes) for TSLA, PLTR, MSTR, IBIT; MU 28 Oct 2026 close from public reports, corroborated twice; SPCX (SpaceX, public since 12 June 2026 IPO) and META 28 Oct 2026 closes from public reports.",
+ "version": 4
+}

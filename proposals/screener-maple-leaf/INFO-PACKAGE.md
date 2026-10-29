@@ -6,6 +6,8 @@
 
 > **29 Oct 2026 cache fix: pack fetch now uses ?v=2 (pack v3) so the live page cannot keep serving a cached v1 pack after an update.**
 
+> **29 Oct 2026 live-price fix: the screener was showing only the 28 Oct 2026 snapshot while every row was labelled "Live data" — that was the error, and Sunil caught it. It now reads the site's own pipeline prices.json on page load (and every 5 minutes while open) for TSLA, PLTR, MSTR and IBIT, recomputing day change vs the prior close and YTD vs the pack's Dec 31 value; during market hours those rows are labelled Live, outside hours they show the latest pipeline close dated honestly. MU, SPCX and META have no pipeline quote, so they honestly show their 28 Oct 2026 close, never a live label. The table, summary pills and chart all use the same merged rows; pack fetch is now ?v=3 (pack v4, row statuses corrected to "28 Oct close").**
+
 # Stock Screener — Maple Leaf Pack: Information Package for the Grok Bot
 
 ## Hidden and experimental — status
