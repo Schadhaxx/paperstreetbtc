@@ -26,6 +26,14 @@
   th, td { text-align:left; padding:12px; border-bottom:1px solid #1e293b; font-size:15px; }
   th { cursor:pointer; color:#94a3b8; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
   .up { color:#22c55e; } .down { color:#ef4444; }
+  /* Signed zero = pure black, per Sunil's rule. NOTE: on this dark page
+     (#070b18 background, #121a2e cards) pure black is near-invisible —
+     flagged in the delivery report; applied literally, not substituted. */
+  .flat { color:#000000; }
+  .pill b.up { color:#22c55e; } .pill b.down { color:#ef4444; } .pill b.flat { color:#000000; }
+  h2 { font-size:20px; margin:28px 0 12px; }
+  .box-note { color:#94a3b8; font-size:13px; margin:0 0 16px; line-height:1.6; }
+  .status-line { color:#94a3b8; margin-top:12px; font-size:14px; }
   .row-note { color:#94a3b8; font-size:13px; margin-top:4px; }
   .count { color:#94a3b8; margin-top:12px; font-size:14px; }
   .chart-card { background:#121a2e; border:1px solid #1e293b; border-radius:12px; padding:16px; margin-top:24px; }
@@ -40,10 +48,12 @@
 <body>
 <div class="wrap">
   <h1>Stock Screener — Maple Leaf Pack</h1>
-  <p class="asof" id="screener-asof">Loading prices… Open the footer maple leaf with a double-click to reach this page.</p>
+  <p class="asof" id="screener-asof">Stocks in the first box, Market Indicators in a separate box below. The status line under each table is the status for that whole table — all rows in a table trade on the same clock.</p>
+  <section aria-label="Stocks">
+  <h2>Stocks</h2>
   <div class="pills">
-    <span class="pill">Biggest gainer: <b id="pill-gainer-val">MU +5.86%</b></span>
-    <span class="pill">Biggest loser: <b id="pill-loser-val">SPCX −2.25%</b></span>
+    <span class="pill">Biggest gainer: <b id="pill-gainer-val" class="up">MU +5.86%</b></span>
+    <span class="pill">Biggest loser: <b id="pill-loser-val" class="down">SPCX −2.25%</b></span>
   </div>
   <div class="controls">
     <input id="screener-search" type="search" placeholder="Search symbol or name…" aria-label="Search screener">
@@ -54,11 +64,13 @@
   <table>
     <thead><tr>
       <th data-sort="symbol">Symbol ↕</th><th>Name</th><th data-sort="price">Price ↕</th>
-      <th data-sort="dayChangePct">Day change ↕</th><th data-sort="ytdPct">YTD ↕</th><th>Status</th>
+      <th data-sort="dayChangePct">Day change ↕</th><th data-sort="ytdPct">YTD ↕</th>
     </tr></thead>
-    <tbody id="screener-body"><tr><td colspan="6">Loading…</td></tr></tbody>
+    <tbody id="screener-body"><tr><td colspan="5">Loading…</td></tr></tbody>
   </table>
   <p class="count" id="screener-count"></p>
+  <p class="status-line" id="stocks-status">Loading status…</p>
+  </section>
   <section class="chart-card" aria-label="Comparison chart">
     <h2>Comparison chart</h2>
     <div class="controls">
@@ -68,7 +80,18 @@
     <div class="chart-wrap"><canvas id="screener-chart"></canvas></div>
     <p class="chart-note" id="screener-chart-note"></p>
   </section>
-  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. Prices labelled Live are the site's pipeline quotes (data-branch prices.json, refreshed on weekdays); rows labelled with a date show that session's close, not a live quote. Rows with no pipeline quote show their 28 Oct 2026 close from the data pack. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. <a href="index.html">Back to the main page</a>.</p>
+  <section aria-label="Market Indicators">
+  <h2>Market Indicators</h2>
+  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold spot in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. YTD is n/a for all four — no Dec 31 value in the pack, none invented. Search, filters and sorting above apply to the Stocks box only; this box always shows all four indicators.</p>
+  <table>
+    <thead><tr>
+      <th>Symbol</th><th>Name</th><th>Level</th><th>Day change</th><th>YTD</th>
+    </tr></thead>
+    <tbody id="indicators-body"><tr><td colspan="5">Loading…</td></tr></tbody>
+  </table>
+  <p class="status-line" id="indicators-status">Loading status…</p>
+  </section>
+  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. The status line under each table states whether that table is live or showing a dated close — there is no per-row status column. Rows with no pipeline quote show their 28 Oct 2026 close from the data pack. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. Gold here is spot (OANDA XAU/USD), not COMEX futures; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
 </div>
 <script src="assets/vendor/chart.umd.min.js"></script>
 <script src="assets/js/screener.js"></script>

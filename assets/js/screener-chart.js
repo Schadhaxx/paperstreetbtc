@@ -1,8 +1,15 @@
-// Stock Screener — Comparison chart (Maple Leaf Pack)
-// Reads values ONLY from the merged rows screener.js hands it
+// Stock Screener — Comparison chart (Maple Leaf Pack), STOCKS ONLY.
+// Reads values ONLY from the merged stock rows screener.js hands it
 // (pack + live pipeline quotes, via ScreenerChartUpdate / 'screener-rows').
 // No second copy of the numbers lives here, no separate pack fetch,
 // no live price API of its own, no other data source.
+// Market Indicators are deliberately NOT charted here: dollars, %,
+// and VIX points do not share an axis, so charting them together would
+// imply comparability that does not exist.
+// Signed-number colours (Sunil's rule): positive green #22c55e,
+// negative red #ef4444, signed zero black #000000. NOTE: pure black on
+// this dark chart card is near-invisible — flagged in the delivery
+// report; applied literally here, not silently replaced.
 (function () {
   var chart = null;
   var allRows = [];
@@ -43,12 +50,12 @@
     var list = chartRows();
     var labels = list.map(function (r) { return r.symbol; });
     var values = list.map(function (r) { return metric === 'ytd' ? r.ytdPct : r.dayChangePct; });
-    var colors = values.map(function (v) { return v >= 0 ? '#22c55e' : '#ef4444'; });
+    var colors = values.map(function (v) { return v > 0 ? '#22c55e' : (v < 0 ? '#ef4444' : '#000000'); });
     var note = document.getElementById('screener-chart-note');
     if (note) {
       note.textContent = metric === 'ytd'
-        ? 'YTD not shown for MU, SPCX, META — no Dec 31 value in the pack.'
-        : "Day change vs each row's prior close (live rows vs the prior session close; snapshot rows vs 27 Oct 2026).";
+        ? 'YTD not shown for MU, SPCX, META — no Dec 31 value in the pack. Market Indicators are not charted here — dollars, %, and VIX points do not share an axis.'
+        : "Day change vs each stock's prior close (live rows vs the prior session close; snapshot rows vs 27 Oct 2026). Market Indicators are not charted here — dollars, %, and VIX points do not share an axis.";
     }
     var data = {
       labels: labels,

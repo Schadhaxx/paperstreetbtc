@@ -1,5 +1,55 @@
 {
  "asOf": "2026-10-28",
+ "indicators": [
+  {
+   "baseClose": null,
+   "dayChange": 2.88,
+   "dayChangePct": 2.88,
+   "name": "WTI Crude Oil",
+   "note": "NYMEX front-month futures \u2014 the usual WTI quote, $/barrel.",
+   "prevClose": 99.9,
+   "price": 102.78,
+   "symbol": "WTI",
+   "unit": "usd-barrel",
+   "ytdPct": null
+  },
+  {
+   "baseClose": null,
+   "dayChange": 6.45,
+   "dayChangePct": 0.16,
+   "name": "Gold Spot",
+   "note": "Spot (OANDA XAU/USD), $/troy oz. No pipeline quote yet \u2014 pack close only, never Live.",
+   "prevClose": 4060.84,
+   "price": 4067.29,
+   "symbol": "GOLD",
+   "unit": "usd-oz",
+   "ytdPct": null
+  },
+  {
+   "baseClose": null,
+   "dayChange": 0.06,
+   "dayChangePct": 1.2,
+   "name": "10-Year Treasury Yield",
+   "note": "U.S. Treasury daily par yield, %. Day change in percentage points.",
+   "prevClose": 4.99,
+   "price": 5.05,
+   "symbol": "US10Y",
+   "unit": "pct",
+   "ytdPct": null
+  },
+  {
+   "baseClose": null,
+   "dayChange": -0.61,
+   "dayChangePct": -3.48,
+   "name": "CBOE Volatility Index (VIX)",
+   "note": "Index level in points, not a price. No VIX ETF substituted.",
+   "prevClose": 17.52,
+   "price": 16.91,
+   "symbol": "VIX",
+   "unit": "points",
+   "ytdPct": null
+  }
+ ],
  "pack": "maple-leaf-screener",
  "removable": true,
  "rows": [
@@ -10,7 +60,6 @@
    "name": "Tesla",
    "prevClose": 407.46,
    "price": 404.22,
-   "status": "28 Oct close",
    "symbol": "TSLA",
    "ytdPct": -10.11
   },
@@ -21,7 +70,6 @@
    "name": "Palantir",
    "prevClose": 198.73,
    "price": 196.81,
-   "status": "28 Oct close",
    "symbol": "PLTR",
    "ytdPct": 10.72
   },
@@ -32,7 +80,6 @@
    "name": "Strategy",
    "prevClose": 141.4,
    "price": 145.16,
-   "status": "28 Oct close",
    "symbol": "MSTR",
    "ytdPct": -4.47
   },
@@ -43,7 +90,6 @@
    "name": "iShares Bitcoin Trust",
    "prevClose": 45.7,
    "price": 46.14,
-   "status": "28 Oct close",
    "symbol": "IBIT",
    "ytdPct": -7.07
   },
@@ -55,7 +101,6 @@
    "note": "Day move followed memory-chip news (SK hynix).",
    "prevClose": 928.76,
    "price": 983.23,
-   "status": "28 Oct close",
    "symbol": "MU",
    "ytdPct": null
   },
@@ -67,7 +112,6 @@
    "note": "Public since 12 June 2026 IPO at $135.",
    "prevClose": 148.58,
    "price": 145.23,
-   "status": "28 Oct close",
    "symbol": "SPCX",
    "ytdPct": null
   },
@@ -78,11 +122,10 @@
    "name": "Meta Platforms",
    "prevClose": 620.19,
    "price": 612.49,
-   "status": "28 Oct close",
    "symbol": "META",
    "ytdPct": null
   }
  ],
- "sources": "Site data (Yahoo unadjusted closes) for TSLA, PLTR, MSTR, IBIT; MU 28 Oct 2026 close from public reports, corroborated twice; SPCX (SpaceX, public since 12 June 2026 IPO) and META 28 Oct 2026 closes from public reports.",
- "version": 4
+ "sources": "Site data (Yahoo unadjusted closes) for TSLA, PLTR, MSTR, IBIT; MU 28 Oct 2026 close from public reports, corroborated twice; SPCX (SpaceX, public since 12 June 2026 IPO) and META 28 Oct 2026 closes from public reports. WTI 28 Oct 2026 close $102.78 vs 27 Oct $99.90 (NYMEX front-month, corroborated by Mercatus Data, goldoilprice and EL7); Gold spot 28 Oct 2026 close $4,067.29 (Finnhub OANDA XAU/USD listing, corroborated by Ausecure) vs 27 Oct $4,060.84; 10-Year Treasury 28 Oct 2026 par yield 5.05% vs 27 Oct 4.99% (U.S. Treasury via YCharts and stockmarketwatch); VIX 28 Oct 2026 close 16.91 vs 27 Oct 17.52 (Bloomberg via ad-hoc-news, corroborated by Cboe dashboard prev close 17.52).",
+ "version": 5
 }
