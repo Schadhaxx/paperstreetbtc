@@ -10,8 +10,9 @@
 // (GitHub Actions writes it every ~5 min on weekdays; visitors never call
 // a quote API and no key is in here). Stocks: Finnhub quotes via the
 // pipeline. Indicators: Yahoo chart quotes via the pipeline (WTI <- CL=F,
-// 10Y <- ^TNX, VIX <- ^VIX) once the pipeline block lands; Gold spot has
-// NO pipeline quote yet, so it stays on its dated pack close — never Live.
+// 10Y <- ^TNX, VIX <- ^VIX, GOLD <- GC=F (COMEX futures)) once the
+// pipeline block lands; until then an indicator stays on its dated
+// pack close — never Live.
 // Signed-number colours (Sunil's rule): positive green #22c55e,
 // negative red #ef4444, signed zero black #000000 (.flat). NOTE: pure
 // black on this page's dark background (#070b18 / #121a2e) is
@@ -238,7 +239,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=5')
+    fetch('assets/data/screener-pack.json?v=6')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];

@@ -1,132 +1,132 @@
 {
- "asOf": "2026-10-28",
- "indicators": [
-  {
-   "baseClose": null,
-   "dayChange": 2.88,
-   "dayChangePct": 2.88,
-   "name": "WTI Crude Oil",
-   "note": "NYMEX front-month futures \u2014 the usual WTI quote, $/barrel.",
-   "prevClose": 99.9,
-   "price": 102.78,
-   "symbol": "WTI",
-   "unit": "usd-barrel",
-   "ytdPct": null
-  },
-  {
-   "baseClose": null,
-   "dayChange": 6.45,
-   "dayChangePct": 0.16,
-   "name": "Gold Spot",
-   "note": "Spot (OANDA XAU/USD), $/troy oz. No pipeline quote yet \u2014 pack close only, never Live.",
-   "prevClose": 4060.84,
-   "price": 4067.29,
-   "symbol": "GOLD",
-   "unit": "usd-oz",
-   "ytdPct": null
-  },
-  {
-   "baseClose": null,
-   "dayChange": 0.06,
-   "dayChangePct": 1.2,
-   "name": "10-Year Treasury Yield",
-   "note": "U.S. Treasury daily par yield, %. Day change in percentage points.",
-   "prevClose": 4.99,
-   "price": 5.05,
-   "symbol": "US10Y",
-   "unit": "pct",
-   "ytdPct": null
-  },
-  {
-   "baseClose": null,
-   "dayChange": -0.61,
-   "dayChangePct": -3.48,
-   "name": "CBOE Volatility Index (VIX)",
-   "note": "Index level in points, not a price. No VIX ETF substituted.",
-   "prevClose": 17.52,
-   "price": 16.91,
-   "symbol": "VIX",
-   "unit": "points",
-   "ytdPct": null
-  }
- ],
- "pack": "maple-leaf-screener",
- "removable": true,
- "rows": [
-  {
-   "baseClose": 449.72,
-   "dayChange": -3.24,
-   "dayChangePct": -0.79,
-   "name": "Tesla",
-   "prevClose": 407.46,
-   "price": 404.22,
-   "symbol": "TSLA",
-   "ytdPct": -10.11
-  },
-  {
-   "baseClose": 177.75,
-   "dayChange": -1.92,
-   "dayChangePct": -0.97,
-   "name": "Palantir",
-   "prevClose": 198.73,
-   "price": 196.81,
-   "symbol": "PLTR",
-   "ytdPct": 10.72
-  },
-  {
-   "baseClose": 151.95,
-   "dayChange": 3.76,
-   "dayChangePct": 2.66,
-   "name": "Strategy",
-   "prevClose": 141.4,
-   "price": 145.16,
-   "symbol": "MSTR",
-   "ytdPct": -4.47
-  },
-  {
-   "baseClose": 49.65,
-   "dayChange": 0.44,
-   "dayChangePct": 0.96,
-   "name": "iShares Bitcoin Trust",
-   "prevClose": 45.7,
-   "price": 46.14,
-   "symbol": "IBIT",
-   "ytdPct": -7.07
-  },
-  {
-   "baseClose": 285.41,
-   "dayChange": 54.47,
-   "dayChangePct": 5.86,
-   "name": "Micron Technology",
-   "note": "Day move followed memory-chip news (SK hynix). YTD vs 31 Dec 2025 close $285.41.",
-   "prevClose": 928.76,
-   "price": 983.23,
-   "symbol": "MU",
-   "ytdPct": 244.5
-  },
-  {
-   "baseClose": 160.95,
-   "dayChange": -3.35,
-   "dayChangePct": -2.25,
-   "name": "Space Exploration Technologies",
-   "note": "Public since 12 June 2026 IPO at $135; first trading close $160.95. YTD column shows return since that first close, NOT from 31 Dec 2025.",
-   "prevClose": 148.58,
-   "price": 145.23,
-   "symbol": "SPCX",
-   "ytdBasis": "listing",
-   "ytdPct": -9.77
-  },
-  {
-   "baseClose": 660.09,
-   "dayChange": -7.7,
-   "dayChangePct": -1.24,
-   "name": "Meta Platforms",
-   "prevClose": 620.19,
-   "price": 612.49,
-   "symbol": "META",
-   "ytdPct": -7.21
-  }
- ],
- "sources": "Site data (Yahoo unadjusted closes) for TSLA, PLTR, MSTR, IBIT; MU 28 Oct 2026 close from public reports, corroborated twice; SPCX (SpaceX, public since 12 June 2026 IPO) and META 28 Oct 2026 closes from public reports. WTI 28 Oct 2026 close $102.78 vs 27 Oct $99.90 (NYMEX front-month, corroborated by Mercatus Data, goldoilprice and EL7); Gold spot 28 Oct 2026 close $4,067.29 (Finnhub OANDA XAU/USD listing, corroborated by Ausecure) vs 27 Oct $4,060.84; 10-Year Treasury 28 Oct 2026 par yield 5.05% vs 27 Oct 4.99% (U.S. Treasury via YCharts and stockmarketwatch); VIX 28 Oct 2026 close 16.91 vs 27 Oct 17.52 (Bloomberg via ad-hoc-news, corroborated by Cboe dashboard prev close 17.52). META 31 Dec 2025 close $660.09 (unadjusted; Digrin real price, financecharts 12/31/2025, companiesmarketcap Dec 31 price, corroborated by Finnhub YTD-implied base); MU 31 Dec 2025 close $285.41 (unadjusted; Digrin real price, Macrotrends/Momoview, multiple 13F holdings prices, corroborated by Finnhub YTD-implied base); SPCX first trading close 12 June 2026 $160.95 (Axi, stockmarketwatch, TradingView/Benzinga, financer \u2014 IPO $135 is NOT used as the base).",
- "version": 6
+  "asOf": "2026-10-28",
+  "indicators": [
+    {
+      "baseClose": null,
+      "dayChange": 2.88,
+      "dayChangePct": 2.88,
+      "name": "WTI Crude Oil",
+      "note": "NYMEX front-month futures \u2014 the usual WTI quote, $/barrel.",
+      "prevClose": 99.9,
+      "price": 102.78,
+      "symbol": "WTI",
+      "unit": "usd-barrel",
+      "ytdPct": null
+    },
+    {
+      "baseClose": null,
+      "dayChange": -23.0,
+      "dayChangePct": -0.56,
+      "name": "Gold (COMEX futures)",
+      "note": "COMEX gold futures (GC=F), $/troy oz. Pack close only until the pipeline writes GOLD.",
+      "prevClose": 4074.6,
+      "price": 4051.6,
+      "symbol": "GOLD",
+      "unit": "usd-oz",
+      "ytdPct": null
+    },
+    {
+      "baseClose": null,
+      "dayChange": 0.06,
+      "dayChangePct": 1.2,
+      "name": "10-Year Treasury Yield",
+      "note": "U.S. Treasury daily par yield, %. Day change in percentage points.",
+      "prevClose": 4.99,
+      "price": 5.05,
+      "symbol": "US10Y",
+      "unit": "pct",
+      "ytdPct": null
+    },
+    {
+      "baseClose": null,
+      "dayChange": -0.61,
+      "dayChangePct": -3.48,
+      "name": "CBOE Volatility Index (VIX)",
+      "note": "Index level in points, not a price. No VIX ETF substituted.",
+      "prevClose": 17.52,
+      "price": 16.91,
+      "symbol": "VIX",
+      "unit": "points",
+      "ytdPct": null
+    }
+  ],
+  "pack": "maple-leaf-screener",
+  "removable": true,
+  "rows": [
+    {
+      "baseClose": 449.72,
+      "dayChange": -3.24,
+      "dayChangePct": -0.79,
+      "name": "Tesla",
+      "prevClose": 407.46,
+      "price": 404.22,
+      "symbol": "TSLA",
+      "ytdPct": -10.11
+    },
+    {
+      "baseClose": 177.75,
+      "dayChange": -1.92,
+      "dayChangePct": -0.97,
+      "name": "Palantir",
+      "prevClose": 198.73,
+      "price": 196.81,
+      "symbol": "PLTR",
+      "ytdPct": 10.72
+    },
+    {
+      "baseClose": 151.95,
+      "dayChange": 3.76,
+      "dayChangePct": 2.66,
+      "name": "Strategy",
+      "prevClose": 141.4,
+      "price": 145.16,
+      "symbol": "MSTR",
+      "ytdPct": -4.47
+    },
+    {
+      "baseClose": 49.65,
+      "dayChange": 0.44,
+      "dayChangePct": 0.96,
+      "name": "iShares Bitcoin Trust",
+      "prevClose": 45.7,
+      "price": 46.14,
+      "symbol": "IBIT",
+      "ytdPct": -7.07
+    },
+    {
+      "baseClose": 285.41,
+      "dayChange": 54.47,
+      "dayChangePct": 5.86,
+      "name": "Micron Technology",
+      "note": "Day move followed memory-chip news (SK hynix). YTD vs 31 Dec 2025 close $285.41.",
+      "prevClose": 928.76,
+      "price": 983.23,
+      "symbol": "MU",
+      "ytdPct": 244.5
+    },
+    {
+      "baseClose": 160.95,
+      "dayChange": -3.35,
+      "dayChangePct": -2.25,
+      "name": "Space Exploration Technologies",
+      "note": "Public since 12 June 2026 IPO at $135; first trading close $160.95. YTD column shows return since that first close, NOT from 31 Dec 2025.",
+      "prevClose": 148.58,
+      "price": 145.23,
+      "symbol": "SPCX",
+      "ytdBasis": "listing",
+      "ytdPct": -9.77
+    },
+    {
+      "baseClose": 660.09,
+      "dayChange": -7.7,
+      "dayChangePct": -1.24,
+      "name": "Meta Platforms",
+      "prevClose": 620.19,
+      "price": 612.49,
+      "symbol": "META",
+      "ytdPct": -7.21
+    }
+  ],
+  "sources": "Site data (Yahoo unadjusted closes) for TSLA, PLTR, MSTR, IBIT; MU 28 Oct 2026 close from public reports, corroborated twice; SPCX (SpaceX, public since 12 June 2026 IPO) and META 28 Oct 2026 closes from public reports. WTI 28 Oct 2026 close $102.78 vs 27 Oct $99.90 (NYMEX front-month, corroborated by Mercatus Data, goldoilprice and EL7); Gold (COMEX futures) 28 Oct 2026 close $4,051.60 (Yahoo GC=F, COMEX front-month, corroborated by the 28 Oct COMEX daily bar high $4,097.2 / low $4,036.9 / close $4,051.6) vs 27 Oct $4,074.60; 10-Year Treasury 28 Oct 2026 par yield 5.05% vs 27 Oct 4.99% (U.S. Treasury via YCharts and stockmarketwatch); VIX 28 Oct 2026 close 16.91 vs 27 Oct 17.52 (Bloomberg via ad-hoc-news, corroborated by Cboe dashboard prev close 17.52). META 31 Dec 2025 close $660.09 (unadjusted; Digrin real price, financecharts 12/31/2025, companiesmarketcap Dec 31 price, corroborated by Finnhub YTD-implied base); MU 31 Dec 2025 close $285.41 (unadjusted; Digrin real price, Macrotrends/Momoview, multiple 13F holdings prices, corroborated by Finnhub YTD-implied base); SPCX first trading close 12 June 2026 $160.95 (Axi, stockmarketwatch, TradingView/Benzinga, financer \u2014 IPO $135 is NOT used as the base).",
+  "version": 7
 }
