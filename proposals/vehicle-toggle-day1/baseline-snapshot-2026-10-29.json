@@ -1,0 +1,128 @@
+{
+ "history_updated": "2026-10-29T00:20:18Z",
+ "history_last_session": "2026-10-28",
+ "prices_updated": "2026-10-29T11:45:17Z",
+ "live_prices_used": {
+  "BTC": 80108,
+  "MSTR": 145.16,
+  "STRC": 99.92,
+  "TSLA": 404.22,
+  "PLTR": 196.81,
+  "SPY": 772.31,
+  "QQQ": 725.61,
+  "BRK.B": 540.34,
+  "GLD": 373.51
+ },
+ "live_price_sources": {
+  "BTC": "CoinGecko",
+  "MSTR": "prices.json Finnhub cache",
+  "STRC": "prices.json Finnhub cache",
+  "TSLA": "prices.json Finnhub cache",
+  "PLTR": "prices.json Finnhub cache",
+  "SPY": "prices.json Finnhub cache",
+  "QQQ": "prices.json Finnhub cache",
+  "BRK.B": "prices.json Finnhub cache",
+  "GLD": "prices.json Finnhub cache"
+ },
+ "latest_close": {
+  "BTC": 81249.31,
+  "MSTR": 145.160004,
+  "STRC": 99.919998,
+  "TSLA": 404.220001,
+  "PLTR": 196.809998,
+  "SPY": 772.309998,
+  "QQQ": 725.609985,
+  "BRK.B": 540.340027,
+  "GLD": 373.51001
+ },
+ "sleeves": {
+  "berkshire": {
+   "holdings_units_at_last_session": {
+    "BTC": 0.483384,
+    "STRC": 202.439399,
+    "TSLA": 66.708174,
+    "PLTR": 56.25879
+   },
+   "receivable_cash": 101.22,
+   "NOW_live_value": 97088.96,
+   "NOW_vs_100k_pct": -2.91,
+   "latest_close_value": 97640.65,
+   "latest_close_vs_100k_pct": -2.36,
+   "open_dividend_events_receivable": [
+    {
+     "ex": "2026-10-15",
+     "pay": "2026-10-31",
+     "pay_session": null,
+     "dps": 0.5,
+     "cash": 101.22,
+     "buy": {}
+    }
+   ]
+  },
+  "hodlr": {
+   "holdings_units_at_last_session": {
+    "BTC": 0.813063,
+    "STRC": 101.219699,
+    "MSTR": 131.622247
+   },
+   "receivable_cash": 50.61,
+   "NOW_live_value": 94403.61,
+   "NOW_vs_100k_pct": -5.6,
+   "latest_close_value": 95331.57,
+   "latest_close_vs_100k_pct": -4.67,
+   "open_dividend_events_receivable": [
+    {
+     "ex": "2026-10-15",
+     "pay": "2026-10-31",
+     "pay_session": null,
+     "dps": 0.5,
+     "cash": 50.61,
+     "buy": {}
+    }
+   ]
+  },
+  "hf": {
+   "holdings_units_at_last_session": {
+    "BTC": 0.63508,
+    "MSTR": 234.076697,
+    "STRC": 101.219699
+   },
+   "receivable_cash": 50.61,
+   "NOW_live_value": 95018.03,
+   "NOW_vs_100k_pct": -4.98,
+   "latest_close_value": 95742.85,
+   "latest_close_vs_100k_pct": -4.26,
+   "open_dividend_events_receivable": [
+    {
+     "ex": "2026-10-15",
+     "pay": "2026-10-31",
+     "pay_session": null,
+     "dps": 0.5,
+     "cash": 50.61,
+     "buy": {}
+    }
+   ]
+  },
+  "saylor": {
+   "holdings_units_at_last_session": {
+    "MSTR": 366.433273,
+    "STRC": 506.098497
+   },
+   "receivable_cash": 253.05,
+   "NOW_live_value": 104013.87,
+   "NOW_vs_100k_pct": 4.01,
+   "latest_close_value": 104013.87,
+   "latest_close_vs_100k_pct": 4.01,
+   "open_dividend_events_receivable": [
+    {
+     "ex": "2026-10-15",
+     "pay": "2026-10-31",
+     "pay_session": null,
+     "dps": 0.5,
+     "cash": 253.05,
+     "buy": {}
+    }
+   ]
+  }
+ }
+}
