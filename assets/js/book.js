@@ -41,13 +41,25 @@
     B.tlV={SPOT:B.tl}; B.vehicleMaps={}; B.vehicleDates={};
   }
   /* Load vehicle-daily.json (parsed object) and build one timeline per vehicle.
-     Throws if a vehicle series does not cover every history session, so a
-     partial series can never silently value a session at the wrong price. */
+     A session missing from a vehicle series is filled with that vehicle's
+     latest on-or-before close — the same flat rule vehiclePriceOnOrBefore
+     already uses for weekends/holidays, and the "ETF priced at its latest
+     close" label — so the toggle never disables just because the latest
+     session has not been appended yet. It still throws only if a vehicle
+     has NO prior close at all for a session (before its series starts),
+     so a genuinely empty/broken series still fails loudly instead of
+     silently valuing a session at zero. */
   B.loadVehicleData=function(vd){
     if(!B.H)throw new Error('history not loaded');
     ['IBIT','FBTC'].forEach(function(v){
-      var m={};(vd.vehicles[v]||[]).forEach(function(p){m[p[0]]=p[1];});
-      B.dates.forEach(function(d){if(!(m[d]>0))throw new Error('vehicle '+v+' missing session '+d);});
+      var raw={};(vd.vehicles[v]||[]).forEach(function(p){raw[p[0]]=p[1];});
+      var rawDates=Object.keys(raw).sort(), m={};
+      B.dates.forEach(function(d){
+        var prior=null;
+        for(var i=0;i<rawDates.length;i++){if(rawDates[i]<=d)prior=raw[rawDates[i]];else break;}
+        if(!(prior>0))throw new Error('vehicle '+v+' missing session '+d+' (no prior close)');
+        m[d]=prior;
+      });
       B.vehicleMaps[v]=m; B.vehicleDates[v]=Object.keys(m).sort();
       B.tlV[v]=buildTimeline(function(a,d){return a==='BTC'?m[d]:B.H.closes[d][a];});
     });
