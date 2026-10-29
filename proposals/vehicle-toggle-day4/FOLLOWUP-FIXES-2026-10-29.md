@@ -3,6 +3,21 @@
 Approved by Sunil 29 Oct 2026 ~8:39 a.m. ET (items 1 and 5 of the Day 4
 decision list). No main change, no deploy.
 
+## CORRECTION — prices.yml NOT on the remote branch (read this first)
+
+The Compare fix (§1) IS on the branch (commit b126146f, verified).
+The prices.yml change (§2) is prepared locally ONLY and is NOT on the
+remote branch. The push-files attempt that included
+`.github/workflows/prices.yml` failed with GitHub API 403 "Resource
+not accessible by integration": GitHub does not let an App token
+modify workflow files through the API. A second push without the
+workflow file succeeded, so nothing from the failed attempt was
+committed. Landing the prices.yml change needs a different route —
+a git push authenticated as the user, or a web edit as the user —
+which is outside this subagent's push route and was NOT done here.
+Do not treat §2 as landed until that route is used and the remote
+branch's prices.yml is re-checked.
+
 ## 1. Compare failure-path fix (approved)
 
 **Problem (Day 4 report §b):** `compare.js` `vehApply(m)` set `VEH = m`
@@ -32,9 +47,10 @@ code (Chart/DOM-bound) and was not executed headlessly; the browser
 failure-path check (load Compare with `vehicle-daily.json` unavailable)
 remains a Day 5 browser item.
 
-## 2. prices.yml live-quote change (approved, test branch only)
+## 2. prices.yml live-quote change (approved, PREPARED LOCALLY ONLY — not pushed, see correction above)
 
-**Change (`.github/workflows/prices.yml`, live-quote loop only):**
+**Prepared change (`.github/workflows/prices.yml`, live-quote loop only,
+local file only):**
 - Before: `['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD']`
 - After: `['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD','IBIT','FBTC']`
 - No other workflow step changed. The history/Tiingo symbol maps were
