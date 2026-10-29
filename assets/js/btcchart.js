@@ -89,7 +89,7 @@ var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='';
    the list" (the button order is finest-first: Daily, Weekly, Monthly).
    1M defaults to Weekly; 3M/6M/YTD/1Y default to Monthly; 1W is daily only. */
 function defaultGran(r){return r==='1M'?'weekly':(r==='3M'||r==='6M'||r==='YTD'||r==='1Y')?'monthly':'daily';}
-var RGCT='line',RGGRAN=defaultGran('1M');
+var RGCT='line',RGGRAN=defaultGran('1M'),RGSEEN={};
 /* Candle ranges, Day 2: 3M/6M/YTD/1Y join 1W/1M. Granularity choices:
    1W daily only; 1M weekly|daily (default weekly); 3M/6M/YTD/1Y monthly|weekly
    (default monthly). */
@@ -376,8 +376,18 @@ function drawRange(){
   var gb=$('bcGld');if(gb){gb.setAttribute('aria-pressed','false');gb.classList.add('off');$('bcGldT').textContent='+ Gold';gb.setAttribute('aria-label','Gold unavailable for candle view');}
   var mb=$('bcMstr');if(mb){mb.setAttribute('aria-pressed','false');mb.classList.add('off');$('bcMstrT').textContent='+ MSTR';mb.setAttribute('aria-label','MSTR unavailable for candle view');}
   /* First-time candles for a range must use that range's default, even if
-     RGGRAN was left over from another range or from the initial load. */
+     RGGRAN was left over from another range or from the initial load.
+     Fix 29 Oct 2026 (live 1M default): the previous fix only reset RGGRAN
+     in open() and when the value was not allowed — but Daily IS allowed
+     for 1M, so a stale 'daily' initial value survived the Line->Candles
+     switch untouched and won (31 daily candles, Daily selected). This
+     first-visit rule is the backstop: the first candle draw for a range
+     in this session always uses that range's default, whatever RGGRAN
+     was before. After that first draw RGSEEN[rng] is set, so a
+     user-picked valid size is preserved across Line<->Candles switches;
+     range-tab clicks reset to the default independently. */
   var allowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily']:[]);
+  if(!RGSEEN[rng]){RGGRAN=defaultGran(rng);RGSEEN[rng]=true;}
   if(allowed.length&&allowed.indexOf(RGGRAN)<0)RGGRAN=defaultGran(rng);
   syncCg();
   var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;if(cg)cg.style.display='';syncCg();};
