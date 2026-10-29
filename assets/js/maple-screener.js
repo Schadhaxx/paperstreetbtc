@@ -15,6 +15,12 @@
     var box = document.querySelector('.ca-leaf-box') || document.querySelector('.ca-leaf');
     if (!box) return;
     box.title = 'Double-click for the stock screener';
+    // Root cause fix: nav.css sets .ca-leaf-box { pointer-events:none },
+    // which otherwise lets clicks/taps pass straight through the leaf so
+    // no handler on it can ever fire. This JS-only override in the
+    // removable pack file itself makes the leaf clickable; nav.css,
+    // index.html and the leaf SVG are untouched.
+    box.style.pointerEvents = 'auto';
     box.style.cursor = 'pointer';
 
     var DOUBLE_MS = 400;      // two taps/clicks within this window count as a double
@@ -28,7 +34,8 @@
       var now = Date.now();
       if (now < openedUntil) return;
       openedUntil = now + COOLDOWN_MS;
-      window.open('screener.html', '_blank');
+      var w = window.open('screener.html', '_blank');
+      if (!w) window.location.href = 'screener.html';
     }
 
     // Shared double-detection for click and touchend. A single tap/click
