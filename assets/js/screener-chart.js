@@ -92,7 +92,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json')
+    fetch('assets/data/screener-pack.json?v=2')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         allRows = data.rows || [];

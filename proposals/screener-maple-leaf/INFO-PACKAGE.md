@@ -4,6 +4,8 @@
 
 > **Chart added 29 Oct 2026: an interactive "Comparison chart" now sits below the table on the screener page, built with the site's own vendored Chart.js. It shows bars for the seven symbols with a toggle between "Day change %" (default) and "YTD %"; bars are green for positive and red for negative, tooltips show symbol, name, and the exact %, and clicking a bar highlights that row in the table (clicking a table row highlights the matching bar). The chart reads its values from screener-pack.json (pack v2) only — no second copy of the numbers and no invented price series. In YTD view, MU, SPCX, and META are omitted and a note says so, because the pack holds no Dec 31 value for them.**
 
+> **29 Oct 2026 cache fix: pack fetch now uses ?v=2 (pack v3) so the live page cannot keep serving a cached v1 pack after an update.**
+
 # Stock Screener — Maple Leaf Pack: Information Package for the Grok Bot
 
 ## Hidden and experimental — status
