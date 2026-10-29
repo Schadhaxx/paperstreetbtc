@@ -516,7 +516,7 @@ function getData(){if(dataP)return dataP;
   dataP.catch(function(){dataP=null;});return dataP;}
 /* dialog */
 var RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'],DAYS={'1D':1,'1W':7,'1M':31,'3M':92,'6M':183,'1Y':366,'5Y':1827,'10Y':3653};
-var rng='1M',LOG=false,dlg=null,dim=null,ch=null,opener=null;
+var rng='1D',LOG=false,dlg=null,dim=null,ch=null,opener=null;
 function isPhone(){return window.innerWidth<=640;}
 /* Vehicle toggle, Day 3: the popover carries the same shared toggle.
    It changes the shared mode (tracker / Pulse / holdings / Compare);
@@ -590,7 +590,7 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});}
 function needChart(){return window.Chart?Promise.resolve():new Promise(function(ok,no){var s=document.createElement('script');s.src=U('../vendor/chart.umd.min.js');s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
 function open(from){if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
-  rng='1M';RGGRAN=defaultGran(rng);LOG=false;dim.hidden=false;dlg.hidden=false;place();head();syncVehBtns();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
+  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;place();head();syncVehBtns();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
   $('bcRr').textContent='Loading…';$('bcX').focus();
   Promise.all([getData(),needChart()]).then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
 function close(){if(!dlg||dlg.hidden)return;dlg.hidden=true;dim.hidden=true;[pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
