@@ -28,6 +28,12 @@
   function fmtMoney(v) {
     return '$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
+  // Yields are in percent, never dollars: 3 decimals, so displayed
+  // values match the shipped JSON exactly (the screener tile rounds
+  // to 2 decimals — a display rounding difference, not a data one).
+  function fmtYield(v) {
+    return v.toFixed(3) + '%';
+  }
   function fmtDateUTC(d) {
     var MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return d.getUTCDate() + ' ' + MN[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
@@ -56,6 +62,17 @@
       currentPrefix: 'Current ',
       subBlurb: 'NYMEX front-month WTI futures (CL=F), $/barrel. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. WTI is a continuous front-month series — there are gaps where contracts roll over. Candles are shipped with this page, data as of 30 Oct 2026, 3:42 p.m. ET — a dated snapshot, not a live quote. The latest week is in progress, not a final close. Tap a candle for its week and open / high / low / close.',
       lastInProgress: 'in progress, as of 30 Oct 2026, 3:42 p.m. ET'
+    },
+    US10Y: {
+      symbol: 'US10Y',
+      title: '10-Year — YTD weekly candles',
+      dataUrl: 'assets/data/us10y-weekly.json?v=1',
+      format: fmtYield,
+      currentPrefix: 'Current ',
+      subBlurb: '10-Year Treasury Yield, Yahoo ^TNX (CBOE Interest Rate 10 Year T Note), in %. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. The latest week is a final close, not in progress. Tap a candle for its week and open / high / low / close in %.',
+      lastInProgress: null,
+      ppChange: true,
+      footNote: ' Source is Yahoo ^TNX (CBOE Interest Rate 10 Year T Note), not Treasury par yield. Latest week is a final close (30 Oct 2026 yield 4.929%), not in progress. Manual refresh only, when Sunil asks.'
     }
   };
 
@@ -173,6 +190,7 @@
         var last = state.weeks[state.weeks.length - 1];
         var foot = 'Source: ' + (data.source || cfg.symbol) + ', weekly candles shipped with the screener, data as of ' + (data.asOf || '30 Oct 2026') + ' · latest week ends ' + fmtDateUTC(last.sunday) + ' · ' + state.weeks.length + ' weekly candles, YTD — a dated snapshot, not a live quote. First week is partial: 1 trading day (2 Jan 2026), week starting 29 Dec 2025.';
         if (cfg.symbol === 'WTI') foot += ' WTI is a continuous front-month series — there are gaps where contracts roll over. Latest week in progress, as of 30 Oct 2026, 3:42 p.m. ET — its close is an intraday snapshot, not a daily close. Manual refresh only, when Sunil asks.';
+        if (cfg.footNote) foot += cfg.footNote;
         state.loading = false;
         showFooterInfo(foot);
         draw();
@@ -292,6 +310,12 @@
       var html = '<b>Week ' + w.label + ' (UTC, ' + w.days + ' trading day' + (w.days === 1 ? ' — partial week' : 's') + ')</b><br>'
         + 'Open ' + state.cfg.format(w.open) + ' · High ' + state.cfg.format(w.high) + ' · Low ' + state.cfg.format(w.low) + ' · Close ' + state.cfg.format(w.close)
         + '<br>Week change ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+      // Yields move in percentage points: show the pp move first,
+      // then the relative % — never a dollar figure for US10Y.
+      if (state.cfg.ppChange) {
+        var pp = w.close - w.open;
+        html += ' (' + (pp >= 0 ? '+' : '') + pp.toFixed(3) + ' pp)';
+      }
       if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
       pill.style.display = 'block';
       pill.innerHTML = html;
@@ -307,7 +331,7 @@
       var onInfo = e.target.closest ? (e.target.closest('#ind-info-pill') || e.target.closest('.ind-info-btn')) : null;
       if (inDialog && !onInfo) { hideInfo(); return; }
     }
-    var tile = e.target.closest ? e.target.closest('.tile[data-symbol="GOLD"], .tile[data-symbol="WTI"]') : null;
+    var tile = e.target.closest ? e.target.closest('.tile[data-symbol="GOLD"], .tile[data-symbol="WTI"], .tile[data-symbol="US10Y"]') : null;
     if (tile) {
       var cfg = CONFIGS[tile.getAttribute('data-symbol')];
       if (cfg) {
