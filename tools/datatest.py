@@ -18,11 +18,40 @@ BD = dict(fetch_json(BASE + '/assets/data/btc-daily.json')['d'])
 for d in D: BD.setdefault(d, C[d]['BTC'])
 get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'paperstreet-test'}), timeout=30).read().decode()
 VAL, EV = ledger(C, D, strc_from_ledger(get(BASE + '/assets/js/ledger.js')))
+# DIV-NOV (daily STRC from Nov 1 2026, Oct 29 8-K): the three dividend lists, checked as served
+R = []
+LJ = strc_from_ledger(get(BASE + '/assets/js/ledger.js'))
+pair = lambda t: [(x, z, float(w)) for x, z, w in re.findall(r"\['(\d{4}-\d\d-\d\d)','(\d{4}-\d\d-\d\d)',([\d.]+)\]", t)]
+CJ = pair(get(BASE + '/assets/js/compare.js')); RJ = pair(get(BASE + '/recap/2026-10/'))
+nov = [e for e in LJ if e[0].startswith('2026-11')]
+R.append(('ledger', 'DIV-NOV', 'ledger.js has 30 November STRC records', 30, len(nov), 0))
+R.append(('ledger', 'DIV-NOV', 'November $/share sums to $1.00', 1.0, sum(e[2] for e in nov), 1e-5))
+R.append(('ledger', 'DIV-NOV', 'compare.js list == ledger.js list (ex, pay, $)', 1, 1 if CJ == LJ else 0, 0))
+R.append(('ledger', 'DIV-NOV', 'recap/2026-10 inline list == ledger.js list', 1, 1 if RJ == LJ else 0, 0))
+R.append(('ledger', 'DIV-NOV', 'no cancelled Nov 15 $0.50 entry', 0, sum(1 for e in LJ if e[1] == '2026-11-15' and abs(e[2] - 0.5) < 1e-9), 0))
+# STRC "Business Day" non-weekend closures used for November pay dates. ONE-LINE CHANGE POINT.
+# Business Day = not Sat/Sun and not a day the NY Fed is closed (STRC CoD, Ex 3.2 to the Oct 29 2026 8-K). Nov 11 = Veterans Day, NY Fed holiday
+# (Sunil, Oct 30: "Use Nov 12 for the Nov 10 dividend"); Nov 26 = Thanksgiving.
+DIV_PAY_HOLIDAYS = {'2026-11-11', '2026-11-26'}
+def _next_bd(d):
+    x = dt.date.fromisoformat(d) + dt.timedelta(days=1)
+    while x.weekday() >= 5 or x.isoformat() in DIV_PAY_HOLIDAYS: x += dt.timedelta(days=1)
+    return x.isoformat()
+_days = ['2026-11-%02d' % i for i in range(1, 31)]
+for _lab, _lst in [('ledger.js', [(x, z) for x, z, _ in LJ]), ('compare.js', [(x, z) for x, z, _ in CJ]), ('recap/2026-10', [(x, z) for x, z, _ in RJ])]:
+    _n = [(x, z) for x, z in _lst if x.startswith('2026-11')]
+    R.append(('ledger', 'DIV-NOV', f'{_lab}: November ex/record dates are exactly Nov 1..30, once each', 1, 1 if sorted(x for x, _ in _n) == _days else 0, 0))
+    R.append(('ledger', 'DIV-NOV', f'{_lab}: every November pay date = next Business Day (holidays {sorted(DIV_PAY_HOLIDAYS)})', 0, sum(1 for x, z in _n if z != _next_bd(x)), 0))
+_C = {d: v for d, v in C.items() if d <= '2026-10-30'}; _x = dict(_C[max(_C)]); _C['2026-11-02'] = _x; _C['2026-11-03'] = _x   # synthetic flat closes: tests the dates, not prices
+_, _E = ledger(_C, sorted(_C), LJ)
+_b = [e for e in _E if e[0] == 'berkshire' and e[2] == '2026-11-02']
+R.append(('ledger', 'DIV-NOV', 'Nov 1 record + Oct 15 record both bought at the Nov 2 close (Berkshire)', 2, len(_b), 0))
+R.append(('ledger', 'DIV-NOV', 'Oct 15 record still pays $0.50/sh at the Nov 2 close', 1, 1 if any(abs(e[3] / (20000 / C['2025-12-31']['STRC']) - 0.5) < 1e-9 for e in _b) else 0, 0))
 NM = {SL[k][0]: k for k in SL}
 S = {n: VAL[k] for n, k in NM.items()}; S['Spot BTC'] = {d: C[d]['BTC'] for d in D}
 num = lambda s: float(re.sub(r'[^\d.\-]', '', s.replace('−', '-'))) if s and re.search(r'\d', s) else None
 months = expected_months(C, H.get('btc_provisional'))
-R = []; fails = []
+fails = []
 exe = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
 with sync_playwright() as p:
     b = p.chromium.launch(**({'executable_path': exe} if exe else {})); pg = b.new_page(); bad = []
@@ -40,7 +69,7 @@ with sync_playwright() as p:
             R += [(m, n, 'value', v[ME], num(big), 1), (m, n, 'month %', pc(v[PM], v[ME]), num(rows[1]), 0.006), (m, n, 'YTD %', pc(v['2025-12-31'], v[ME]), num(rows[3]), 0.006)]
         rows = pg.evaluate("[...document.querySelectorAll('#divs tr')].slice(1).map(r=>[...r.children].map(c=>c.textContent))")
         ev = [e for e in EV if e[2] >= m + '-01' and e[2] <= ME]
-        R += [(m, 'divs', 'rows', len(ev), len(rows), 0), (m, 'divs', 'cash', sum(e[3] for e in ev), sum(num(r[4]) for r in rows), 0.05)]
+        R += [(m, 'divs', 'rows (one per sleeve per pay date)', len({(e[0], e[2]) for e in ev}), len(rows), 0), (m, 'divs', 'cash (sum of the page\'s cent-rounded rows)', sum(round(sum(e[3] for e in ev if (e[0], e[2]) == g), 2) for g in {(e[0], e[2]) for e in ev}), sum(num(r[4]) for r in rows), 0.011)]
         cells = pg.evaluate("[...document.querySelectorAll('table.btcm tr:nth-child(2) td')].map(t=>t.textContent)")
         ds_ = sorted(d for d in BD if d.startswith(m) and (d <= ME if mtd else d <= mend))
         bo = BD[max(d for d in BD if d <= pend)]
