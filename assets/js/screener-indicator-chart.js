@@ -308,13 +308,17 @@
     var pill = el('ind-pill');
     if (pill) {
       var html = '<b>Week ' + w.label + ' (UTC, ' + w.days + ' trading day' + (w.days === 1 ? ' — partial week' : 's') + ')</b><br>'
-        + 'Open ' + state.cfg.format(w.open) + ' · High ' + state.cfg.format(w.high) + ' · Low ' + state.cfg.format(w.low) + ' · Close ' + state.cfg.format(w.close)
-        + '<br>Week change ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
-      // Yields move in percentage points: show the pp move first,
-      // then the relative % — never a dollar figure for US10Y.
+        + 'Open ' + state.cfg.format(w.open) + ' · High ' + state.cfg.format(w.high) + ' · Low ' + state.cfg.format(w.low) + ' · Close ' + state.cfg.format(w.close);
+      // Yields move in percentage points: for ppChange symbols the pill
+      // LEADS with the pp move, then the relative % in parentheses
+      // (Sunil decision 30 Oct 2026, Grok Bot recommendation) — so
+      // "-0.074 pp" cannot be misread as a 1.48-point fall. Dollar-price
+      // symbols (gold, WTI) keep the old "Week change x.xx%" lead.
       if (state.cfg.ppChange) {
         var pp = w.close - w.open;
-        html += ' (' + (pp >= 0 ? '+' : '') + pp.toFixed(3) + ' pp)';
+        html += '<br>Week change ' + (pp >= 0 ? '+' : '') + pp.toFixed(3) + ' pp (' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%)';
+      } else {
+        html += '<br>Week change ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
       }
       if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
       pill.style.display = 'block';

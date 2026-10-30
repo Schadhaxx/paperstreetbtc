@@ -1,12 +1,19 @@
 # REVIEW — 10-Year YTD weekly candle chart (test branch, NOT live)
 
+## WORDING FIXES — Sunil's decisions, 30 Oct 2026 ~5:30 p.m. ET (Grok Bot's three non-blocking wording issues)
+- **1. Candle pill leads with pp — DONE, Grok Bot's recommendation adopted.** The US10Y pill now reads "Week change −0.074 pp (−1.48%)" for the last week (pp first, relative % second), instead of "Week change −1.48% (−0.074 pp)". No yield value changed, only the order. This is US10Y-specific (`ppChange` configs only): gold and WTI pills keep their "Week change x.xx%" lead, unchanged.
+- **2. Tile-note contradiction fixed with Grok's (Yahoo ^TNX) naming — DONE.** The US10Y "+" note in `assets/data/screener-pack.json` now reads "Yahoo ^TNX 10-Year Treasury Yield index, %. Day change in percentage points." (was "U.S. Treasury daily par yield, %. Day change in percentage points."). The chart text is unchanged (it already said Yahoo ^TNX). No other note text changed. Pack version bumped 7 → 8 with this change; **at the eventual live deploy, the fetch buster in `assets/js/screener.js` must also be bumped `?v=6` → `?v=7` so the new note is not served from cache** — that buster change is deliberately NOT in this test-branch commit, so this commit stays wording-only.
+- **3. Footer line — LEFT ALONE, deferred.** "Manual refresh only, when Sunil asks" stays exactly as is, on US10Y and on live WTI. Sunil: "Don't remove yet. One day for sure." Footer removal is deferred, not rejected.
+- **Status after this commit: still QUEUED, still TEST BRANCH ONLY, NOT live.** Live only after the daily-dividend push, one at a time, with Sunil's own yes.
+
 ## FILE / FOLDER LIST — find everything here
 - **Test branch:** `pepper-indicator-charts-us10y` (from main `75b96488`, WTI live)
 - **New 10-year data file:** `assets/data/us10y-weekly.json`
 - **Shared chart module (reused, NOT copied):** `assets/js/screener-indicator-chart.js` — US10Y added as a third config entry alongside GOLD and WTI
 - **Screener page:** `screener.html` — CSS tile selectors + box note only (US10Y tile made clickable/hoverable; note now says "Tap the gold, WTI or 10-year tile")
 - **Review note itself:** `proposals/indicator-charts-us10y/REVIEW.md` (this file)
-- **NOT changed on this branch:** `assets/data/gold-weekly.json`, `assets/data/wti-weekly.json`, `index.html`, `assets/js/btcchart.js`, tracker/compare files, pipeline files, `proposals/screener-maple-leaf/INFO-PACKAGE.md`, and the screener pack / tile "+" note texts (see source-naming note below)
+- **Screener pack (wording fix, 30 Oct ~5:30 p.m. ET commit only):** `assets/data/screener-pack.json` — US10Y "+" note only, version 7 → 8; no other note or data changed
+- **NOT changed on this branch:** `assets/data/gold-weekly.json`, `assets/data/wti-weekly.json`, `index.html`, `assets/js/btcchart.js`, tracker/compare files, pipeline files, `proposals/screener-maple-leaf/INFO-PACKAGE.md`, and all other screener pack note texts
 - **Status:** TEST BRANCH ONLY. NOT deployed to main, NOT live. HOLD here for Grok Bot's checks, as Sunil instructed 30 Oct 2026 ~5:11 p.m. ET.
 
 ## What was built
@@ -16,7 +23,7 @@ Tap the US10Y Market Indicator tile itself (not its "+") opens "10-Year — YTD 
 1. **One at a time, weekly only, manual refresh, data date shown:** only US10Y built; VIX is NOT built on this branch. Weekly candles only. No refresh job or pipeline change. Modal and file say "data as of 30 Oct 2026".
 2. **Latest week is a FINAL close — NOT in progress (this is different from WTI/gold, on purpose):** the ^TNX pull was retrieved Fri 30 Oct 2026 ~5:11 p.m. ET, after the regular period ended, and the JSON gives a full-day close for 30 Oct: 4.929%, vs 29 Oct 4.989% (−0.060 pp). The current line reads "Current 4.929%" with NO "(in progress)" label, and `lastInProgress` is null for US10Y. Do NOT copy WTI's in-progress label onto this chart. (Gold's last candle, by contrast, was a Friday intraday pull — that separate correction is still outstanding on main and is not changed here.)
 3. **Source named correctly in the modal:** "Yahoo ^TNX (CBOE Interest Rate 10 Year T Note)" — NOT "Treasury par yield". This is in the modal sub-blurb, the footer source line, and the JSON source field.
-   - **Open question for a later step (not decided here):** the screener tile's "+" note still says "U.S. Treasury daily par yield, %. Day change in percentage points." That note text was deliberately NOT changed on this branch (pack text untouched, per the build instructions). Grok Bot + Sunil to decide whether the "+" note should also be corrected to ^TNX, or left as-is.
+   - **Decided 30 Oct 2026 ~5:30 p.m. ET (Sunil, Grok Bot's recommendation):** the "+" note was corrected to Yahoo ^TNX in the wording-fix commit (see "WORDING FIXES" at the top). The note now matches the chart; no contradiction remains.
 4. **No continuous-series roll note needed:** that note is WTI-specific (front-month roll gaps). US10Y has no equivalent note.
 5. **Data checks (see below):** 44 weeks / 209 trading days, script-checked; first week partial labelled; second-source spot checks done for 30 Oct and 29 Oct.
 6. **One shared module, fallback dropped, "+" behaviour, rollback:** US10Y is a config entry in `screener-indicator-chart.js` (fmtYield, ppChange, footNote); no `screener-us10y.js` copy exists. No Yahoo URL in the module. Tile opens chart, "+" opens note only. **Rollback:** delete `assets/data/us10y-weekly.json`, remove the US10Y config entry from the shared module, revert the `screener.html` CSS/box-note lines, and restore from main `75b96488`.
