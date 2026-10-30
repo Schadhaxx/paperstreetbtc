@@ -22,7 +22,7 @@ Tap the VIX Market Indicator tile itself (not its "+") opens "VIX — YTD weekly
 The ^VIX pull was retrieved Fri 30 Oct 2026 ~7:20 p.m. ET, after the regular session ended, with a full-day close for 30 Oct of **19.42 points**. The current line reads "Current 19.42 pts" with NO "(in progress)" label, and `lastInProgress` is null for VIX. Do NOT copy WTI's in-progress label onto this chart. (Gold's last candle, by contrast, was a Friday intraday pull — that separate correction is still outstanding on main and is not changed here.)
 
 ## Day-count investigation — 211 days, RESOLVED (not a data error)
-Gold, WTI and US10Y each have 209 trading days YTD. VIX has **211**. The two extra days are real closes in the source series, not null or duplicate bars:
+Gold, WTI and US10Y each have 209 trading days YTD. VIX has **211 in Yahoo's data**. The two extra days are real closes in the source series, not null or duplicate bars:
 - **Week of 26 May 2026 counts 5 for VIX, 4 for the others.** The extra day is Mon 25 May 2026: Cboe VIXCLS (via FRED, reproduced in a second source) lists a VIX close of **16.59** that day, then 17.01 (26 May), 16.29 (27 May), 15.74 (28 May), 15.32 (29 May). The supplied weekly candle closes at **15.32**, matching the Friday close in both sources, and its open/high/low (16.81 / 17.23 / 15.22) bracket those daily closes plausibly. The stock, futures and yield series are closed that Monday, so they count 4.
 - **Week of 7 Sep 2026 counts 5 for VIX, 4 for the others.** The extra day is Mon 7 Sep 2026: Cboe VIXCLS lists **15.30** that day, then 15.72 (8 Sep), 16.46 (9 Sep), 17.84 (10 Sep), 15.84 (11 Sep). The supplied weekly candle closes at **15.84**, matching the Friday close in both sources.
 - All other holiday weeks match the other indicators (MLK week 19 Jan: 4; Presidents week 16 Feb: 4; Good Friday week 30 Mar: 4; Juneteenth week 15 Jun: 4; 3 Jul week 29 Jun: 4), so the difference is specific to those two Mondays, not a systematic bucketing error.
@@ -39,7 +39,7 @@ Gold, WTI and US10Y each have 209 trading days YTD. VIX has **211**. The two ext
 - Week of 7 Sep 2026 close **15.84** matches the same Cboe VIXCLS table for that week, including the 7 Sep close of 15.30.
 - Week of 5 Oct 2026 close **14.84** matches the same table (5 Oct 15.52, 6 Oct 15.01, 7 Oct 15.08, 8 Oct 15.41, 9 Oct 14.84).
 - Week of 2 Mar 2026 close **29.49** matches the same table (2 Mar 21.44, 3 Mar 23.57, 4 Mar 21.15, 5 Mar 23.75, 6 Mar 29.49).
-- The FRED table itself stops at 13 Oct 2026, so weeks after 13 Oct (including the final week) rest on the Yahoo ^VIX pull alone — stated plainly, not claimed otherwise.
+- The FRED table itself runs to 29 Oct 2026, so only the final week (close 30 Oct) rests on the Yahoo ^VIX pull alone — stated plainly, not claimed otherwise.
 
 ## Conditions (Grok Bot's conditions, applied to VIX)
 1. **One at a time, weekly only, manual refresh, data date shown:** only VIX built; no other indicator added. Weekly candles only. No refresh job or pipeline change. Modal and file say "data as of 30 Oct 2026".
