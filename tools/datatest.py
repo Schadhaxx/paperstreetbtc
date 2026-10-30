@@ -90,6 +90,41 @@ with sync_playwright() as p:
     R.append(('home', 'btcTime', "BTC bar time ends with ' ET'", 1, 1 if pg.inner_text('#btcTime').strip().endswith(' ET') else 0, 0))
     same = pg.evaluate("(()=>{const c=document.querySelector('.pf-card');c.click();window.dispatchEvent(new CustomEvent('btcprice',{detail:{usd:12345,chg:0,src:'test',time:'x'}}));const n=document.querySelector('.pf-card[data-i=\"'+c.dataset.i+'\"]');return n===c&&c.isConnected&&c.classList.contains('open')})()")
     R.append(('home', 'cards', 'same card node + open state survive a live update', 1, 1 if same else 0, 0))
+    # CR-005: Custom-page extra contributions are bought at the trading day's OPEN (assets/data/opens.json), weekend/holiday
+    # dates held to the next trading day's open, STRC dividends on them reinvested at the pay day's open; valued at the latest close.
+    try: OPN = fetch_json(BASE + '/assets/data/opens.json')['o']
+    except Exception as e: OPN = {}; fails.append(('custom', 'CR-005 opens.json unreadable', str(e)[:60]))
+    CJS = get(BASE + '/assets/js/compare.js')
+    CST = [(x, z, float(w)) for x, z, w in re.findall(r"\['(\d{4}-\d\d-\d\d)','(\d{4}-\d\d-\d\d)',([\d.]+)\]", CJS)]
+    LST = D[-1]; fo = lambda d: next((x for x in D if x >= d), None)
+    def lump(k, d, c, px):
+        w, dv = SL[k][1], SL[k][2]; h = {a: c * w[a] / px(d, a) for a in w}; rec = []
+        evs = [dict(ex=fo(ex), pay=fo(pay), amt=amt) for ex, pay, amt in CST if fo(ex) and fo(ex) > d and fo(ex) <= LST]
+        for x in D:
+            if x <= d: continue
+            for e in evs:
+                if e['ex'] == x: e['cash'] = h['STRC'] * e['amt']; rec.append(e)
+            keep = []
+            for e in rec:
+                if e['pay'] and e['pay'] == x:
+                    for a in dv: h[a] = h.get(a, 0) + e['cash'] * dv[a] / px(x, a)
+                else: keep.append(e)
+            rec = keep
+        return sum(e['cash'] for e in rec) + sum(h[a] * C[LST][a] for a in h)
+    po = lambda d, a: OPN.get(d, {}).get(a, C[d][a]); pcl = lambda d, a: C[d][a]
+    pg.goto(BASE + '/custom/'); pg.wait_for_timeout(6000)
+    for k, dd, why in [('berkshire', '2026-10-21', 'weekday'), ('berkshire', '2026-10-24', 'Saturday -> Mon open'), ('hf', '2026-01-19', 'holiday (MLK) -> next open'),
+                       ('saylor', '2026-01-05', 'dividends reinvested at pay-day open'), ('hf', '2026-03-02', 'dividends to BTC+MSTR at open')]:
+        bd = fo(dd)
+        note = pg.evaluate("""([k,dd])=>{const s=document.getElementById('pvS');s.value=k;s.dispatchEvent(new Event('input'));const w=document.getElementById('pvX');w.innerHTML='';
+          document.getElementById('pvXAdd').click();const r=w.querySelector('.pvx-row');const a=r.querySelector('.pvx-a'),d=r.querySelector('.pvx-d');a.value='1000';d.value=dd;
+          d.dispatchEvent(new Event('input'));return r.querySelector('.pvx-n').textContent}""", [k, dd])
+        mw = re.search(r'Worth \$([\d,]+) today', note); got = float(mw.group(1).replace(',', '')) if mw else None
+        R.append(('custom', f'CR-005 {k} {dd}', f'lump value at {bd} open ({why})', lump(k, bd, 1000, po), got, 1))
+        R.append(('custom', f'CR-005 {k} {dd}', 'test is sensitive: open vs close value differ > $1', 1, 1 if abs(lump(k, bd, 1000, po) - lump(k, bd, 1000, pcl)) > 1 else 0, 0))
+        R.append(('custom', f'CR-005 {k} {dd}', f'note says bought at the {bd} open, no close wording', 1, 1 if (bd + ' open') in note.replace("open, " + bd, bd + ' open') and not re.search(r'\bclose\b', note) else 0, 0))
+    pg.evaluate("document.getElementById('pvX').innerHTML=''")
+    R.append(('custom', 'CR-005', 'contributions note says each at its trading day open', 1, 1 if "trading day's open" in pg.inner_text('.pvx .note') and not re.search(r'\bclose\b', pg.inner_text('.pvx .note')) else 0, 0))
     b.close()
 def tol(r):  # a revised upstream close must not fail the site: ~0.01% on values, 0.01 on %/price checks
     if isinstance(r[3], (int, float)) and 'value' in str(r[2]) or 'BTC table' in str(r[1]): return max(r[5], abs(r[3]) * 1e-4)

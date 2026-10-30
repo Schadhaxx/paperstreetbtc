@@ -64,12 +64,13 @@ try{const m=sessionStorage.getItem('psVehicle');if(m==='IBIT'||m==='FBTC')vehApp
 if(document.getElementById('pvCalc')){
 // calculator
 const cS=document.getElementById('pvS');cS.innerHTML=Object.keys(L.sleeves).map(k=>`<option value="${k}">${L.sleeves[k].n}</option>`).join('');document.getElementById('pvD').max=LAST;
-/* CR-005: extra lump-sum contributions, each bought at its date's daily close at the sleeve's target weights; STRC dividends on those shares are reinvested like the book */
+/* CR-005: extra lump-sum contributions, each bought at its trading day's 9:30 AM ET OPEN (assets/data/opens.json; BTC = Coinbase 9:30 AM ET price) at the sleeve's target weights; weekend/holiday dates are held to the next trading day's open; STRC dividends on those shares are reinvested at the pay day's open. A missing/bad open falls back to that day's close and the row says so. */
 const cW=document.getElementById('pvX'),cAdd=document.getElementById('pvXAdd');
-function lumpVal(k,d,c){const s=L.sleeves[k],h={},b=CL[d];for(const a in s.w)h[a]=c*s.w[a]/b[a];let rec=[];
+let LFB=0;const opx=(d,a)=>{const o=OP&&OP[d]&&OP[d][a],c=CL[d]&&CL[d][a];if(typeof o==='number'&&isFinite(o)&&o>0&&!(c>0&&Math.abs(o/c-1)>.25))return o;LFB++;return c};
+function lumpVal(k,d,c){const s=L.sleeves[k],h={};for(const a in s.w)h[a]=c*s.w[a]/opx(d,a);let rec=[];
  const evs=L.strc.map(([ex,pay,amt])=>({ex:firstOn(ex),pay:firstOn(pay),amt})).filter(e=>e.ex&&e.ex>d&&e.ex<=LAST);
  for(const x of D){if(x<=d)continue;for(const e of evs)if(e.ex===x){e.cash=h.STRC*e.amt;rec.push(e)}
-  rec=rec.filter(e=>{if(e.pay&&e.pay===x){for(const a in s.div)h[a]=(h[a]||0)+e.cash*s.div[a]/CL[x][a];return false}return true})}
+  rec=rec.filter(e=>{if(e.pay&&e.pay===x){for(const a in s.div)h[a]=(h[a]||0)+e.cash*s.div[a]/opx(x,a);return false}return true})}
  let t=rec.reduce((y,e)=>y+e.cash,0);for(const a in h)t+=h[a]*CL[LAST][a];return t}
 function addRow(amt,dt){const r=document.createElement('div');r.className='pvx-row';
  r.innerHTML='<label>Amount (USD)<input type="number" class="pvx-a" min="1" step="1" inputmode="numeric" value="'+(amt||1000)+'"></label><label>Date<input type="date" class="pvx-d" min="2026-01-01" max="'+LAST+'" value="'+(dt||LAST)+'"></label><button type="button" class="pvx-rm" aria-label="Remove contribution">✕</button><p class="note pvx-n"></p>';
@@ -81,17 +82,19 @@ function calc(e){e&&e.preventDefault();const k=cS.value;let a=+document.getEleme
   if(!(c>0)){n.textContent='Enter an amount above $0 to include this contribution.';return}
   if(!dd){n.textContent='Pick a date to include this contribution.';return}
   if(dd<'2026-01-01'){n.textContent='Data starts Jan 1, 2026; pick a later date. Not included.';return}
-  const bd=firstOn(dd);if(!bd){n.textContent='No daily close yet for '+dd+' (latest close is '+LAST+'). Not included.';return}
-  const lv=lumpVal(k,bd,c);sv+=lv;bv+=c*CL[LAST].BTC/CL[bd].BTC;inv+=c;nx++;
-  n.textContent=(bd!==dd?dd+' has no close (market closed); bought at the next close, '+bd+'. ':'Bought at the '+bd+' daily close. ')+'Worth '+usd(lv)+' today.'});
+  const bd=firstOn(dd);if(!bd){n.textContent='No trading day in the data yet for '+dd+' (latest is '+LAST+'). Not included.';return}
+  LFB=0;const lv=lumpVal(k,bd,c);const bo=opx(bd,'BTC');sv+=lv;bv+=c*CL[LAST].BTC/bo;inv+=c;nx++;
+  n.textContent=(bd!==dd?dd+' is not a trading day (market closed); bought at the next trading day\'s open, '+bd+'. ':'Bought at the '+bd+' open. ')+(LFB?'Open price missing for part of this buy, so that part uses the close. ':'')+'Worth '+usd(lv)+' today.'});
  a=inv;
  document.getElementById('pvRS').textContent=usd(sv);document.getElementById('pvRSp').innerHTML=`<span class="${cls(sv-a)}">${fp(pct(a,sv))}</span>`;
  document.getElementById('pvRB').textContent=usd(bv);document.getElementById('pvRBp').innerHTML=`<span class="${cls(bv-a)}">${fp(pct(a,bv))}</span>`;
- document.getElementById('pvRN').textContent=`Bought at the ${s0} close${nx?` plus ${nx} extra contribution${nx>1?'s':''} (each at its date's daily close, target weights), total invested ${usd(inv)}`:''}, valued at the ${LAST} close. ${sv>=bv?'Beat':'Trailed'} spot BTC by ${usd(Math.abs(sv-bv))}.`}
+ document.getElementById('pvRN').textContent=`Bought at the ${s0} close${nx?` plus ${nx} extra contribution${nx>1?'s':''} (each at its trading day's open, target weights), total invested ${usd(inv)}`:''}, valued at the ${LAST} close. ${sv>=bv?'Beat':'Trailed'} spot BTC by ${usd(Math.abs(sv-bv))}.`}
 document.getElementById('pvCalc').onsubmit=calc;['pvS','pvD','pvA'].forEach(i=>document.getElementById(i).oninput=calc);calc();
 
 }
 }
-fetch('https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/history.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(h=>{const c=h&&h.closes;if(!c||!c[L.base])throw new Error('bad history');CL=c;BPROV=h.btc_provisional||[];BX={};for(const d in c)if(c[d].SPY!=null&&c[d].QQQ!=null)BX[d]={SPY:c[d].SPY,QQQ:c[d].QQQ,'BRK.B':c[d]['BRK.B']};if(h.divs&&h.divs.SPY&&h.divs.QQQ)BXD=h.divs}).catch(e=>console.warn('history.json unavailable, using embedded closes',e)).finally(run);
+let OP=null; /* CR-005 opens: {date:{asset:open}}, read by opx() in run() */
+const opP=!document.getElementById('pvCalc')?Promise.resolve():fetch('../assets/data/opens.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(j=>{if(!j||typeof j.o!=='object'||Array.isArray(j.o))throw new Error('bad opens');OP=j.o}).catch(e=>{OP=null;console.warn('opens.json unavailable, lump sums priced at the close',e)});
+fetch('https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/history.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(h=>{const c=h&&h.closes;if(!c||!c[L.base])throw new Error('bad history');CL=c;BPROV=h.btc_provisional||[];BX={};for(const d in c)if(c[d].SPY!=null&&c[d].QQQ!=null)BX[d]={SPY:c[d].SPY,QQQ:c[d].QQQ,'BRK.B':c[d]['BRK.B']};if(h.divs&&h.divs.SPY&&h.divs.QQQ)BXD=h.divs}).catch(e=>console.warn('history.json unavailable, using embedded closes',e)).finally(()=>opP.finally(run));
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();})();

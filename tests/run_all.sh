@@ -40,6 +40,7 @@ run test_freeze python3 tests/test_freeze.py --history "$WORK/history.json"
 run reviewer_repros python3 tests/repros.py --history "$WORK/history.json"   # BP: the SL/GB repros that apply to BP, listed in the log
 run mutation python3 tests/mutate.py --history "$WORK/history.json"     # v9+: every constant/rule mutant must be caught
 [ -f "$PD/test_watch.py" ] && run watch_tool python3 "$PD/test_watch.py"   # watch_past_values.py offline tests (W3)
+run opens python3 tests/test_opens.py --history "$WORK/history.json"   # CR-005: opens validation, DST, coverage, golden values, page fallback
 run tiingo python3 tests/test_tiingo.py                                   # TG: Tiingo cross-check (mocked, no key)
 run tiingo_mutation python3 tests/mutate_tiingo.py                          # TG: mutants of the new Tiingo code only
 TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"
