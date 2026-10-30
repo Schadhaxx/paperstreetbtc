@@ -1,6 +1,6 @@
 {
   "source": "Yahoo CL=F (NYMEX front-month WTI futures, continuous series), $/barrel",
-  "asOf": "2026-10-30T15:42 ET",
+  "asOf": "30 Oct 2026, 3:42 p.m. ET",
   "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Latest week (26 Oct 2026) is IN PROGRESS as of 30 Oct 2026, 3:42 p.m. ET: its close $104.24 is an intraday snapshot, NOT a final daily close. WTI is a continuous front-month series; there are gaps where contracts roll over. Dated snapshot shipped with the screener \u2014 not a live quote. Manual refresh only, when Sunil asks.",
   "weeks": [
     {

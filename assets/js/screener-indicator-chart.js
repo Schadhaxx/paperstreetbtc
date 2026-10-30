@@ -59,7 +59,28 @@
     }
   };
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '' };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0 };
+
+  // Reset EVERYTHING the previous symbol left on screen, before the
+  // new symbol's title is shown. This is the stale-state fix (Grok
+  // Bot review, 30 Oct 2026): a candle pill, info popup, source "+",
+  // selection or canvas from the old symbol must never survive a
+  // symbol switch, even while the new symbol is still loading.
+  function resetModalVisuals() {
+    state.selected = -1;
+    var pill = el('ind-pill');
+    if (pill) pill.style.display = 'none';
+    hideInfo();
+    state.footerText = '';
+    var footBtn = el('ind-info-foot');
+    if (footBtn) footBtn.style.display = 'none';
+    var canvas = el('ind-canvas');
+    if (canvas) {
+      var ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      delete canvas._plot;
+    }
+  }
 
   function showInfo(text) {
     var pill = el('ind-info-pill'), span = el('ind-info-text');
@@ -98,6 +119,7 @@
   function openModal(cfg) {
     var m = el('ind-modal');
     if (!m) return;
+    var switched = !state.cfg || state.cfg.symbol !== cfg.symbol;
     state.cfg = cfg;
     var t = el('ind-title');
     if (t) t.textContent = cfg.title;
@@ -105,10 +127,23 @@
     if (sub) sub.textContent = cfg.subBlurb;
     m.classList.add('open');
     m.setAttribute('aria-hidden', 'false');
-    if (!state.weeks.length || state.cfg.symbol !== (state.loadedSymbol || '')) {
+    // A different symbol always starts blank: clear the old pill,
+    // popup, source "+" and canvas, and invalidate any load still
+    // in flight for the old symbol (its response is ignored below).
+    // A same-symbol reopen keeps its loaded weeks but still clears
+    // the old candle selection/pill so it cannot linger either.
+    resetModalVisuals();
+    if (switched) {
+      state.loadToken++;
+      state.weeks = [];
+      state.loadedSymbol = '';
+      loadData();
+    } else if (state.weeks.length && state.loadedSymbol === cfg.symbol) {
+      draw();
+    } else {
       state.weeks = [];
       loadData();
-    } else draw();
+    }
   }
   function closeModal() {
     var m = el('ind-modal');
@@ -120,6 +155,11 @@
   // Shipped file ONLY — no browser fetch fallback (see header).
   function loadData() {
     var cfg = state.cfg;
+    // Token-guard the async load: a response that arrives after the
+    // symbol has changed (slow connection, or a retry for the old
+    // symbol) is ignored entirely — it must not draw, must not set
+    // the current line, and must not leave the old chart on screen.
+    var token = ++state.loadToken;
     state.loading = true;
     setStatus('Loading ' + cfg.symbol + ' weekly candles…');
     var r = el('ind-retry');
@@ -127,6 +167,7 @@
     fetch(cfg.dataUrl)
       .then(function (res) { if (!res.ok) throw new Error('no static file'); return res.json(); })
       .then(function (data) {
+        if (token !== state.loadToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale response: ignore
         state.weeks = weeksFromStatic(data);
         state.loadedSymbol = cfg.symbol;
         var last = state.weeks[state.weeks.length - 1];
@@ -137,6 +178,12 @@
         draw();
       })
       .catch(function () {
+        if (token !== state.loadToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale failure: ignore
+        // A failed load for the NEW symbol must clear the previous
+        // chart, not leave it drawn under the new title.
+        state.weeks = [];
+        state.loadedSymbol = '';
+        resetModalVisuals();
         state.loading = false;
         setStatus(cfg.symbol + ' weekly candles could not be loaded. Check your connection and tap Retry — no chart is shown until real data arrives.', true);
         var rr = el('ind-retry');
@@ -147,6 +194,9 @@
   function draw() {
     var canvas = el('ind-canvas');
     if (!canvas || !state.weeks.length) return;
+    // Never draw weeks that belong to a different symbol than the
+    // one the modal is currently showing.
+    if (state.loadedSymbol && state.cfg && state.loadedSymbol !== state.cfg.symbol) return;
     var dpr = window.devicePixelRatio || 1;
     var cssW = canvas.clientWidth || 320;
     var cssH = 280;
