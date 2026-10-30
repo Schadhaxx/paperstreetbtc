@@ -38,7 +38,16 @@
   .gold-modal.open { display:flex; }
   .gold-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.6); }
   .gold-dialog h3 { margin:0 0 4px; font-size:19px; }
-  .gold-dialog .gold-sub { color:var(--mut); font-size:13px; line-height:1.5; margin:0 0 12px; }
+  .gold-dialog .gold-sub { display:none; }
+  /* Gold modal info "+" buttons (30 Oct 2026): same pill style as the
+     screener's "+" note pills, smaller (40px). They hide the top
+     description blurb and the bottom source blurb behind a tap. */
+  .gold-info-btn { width:40px; height:40px; min-width:40px; border-radius:50%; border:1px solid #475569; background:#1e293b; color:#fff; font-size:20px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .gold-info-btn:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  #gold-info-foot { display:none; margin-left:auto; }
+  #gold-info-pill { display:none; margin:0 0 12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:13px; line-height:1.55; text-align:center; color:var(--mut); cursor:pointer; position:relative; }
+  #gold-info-x { position:absolute; top:6px; right:10px; background:none; border:none; color:var(--mut); font-size:14px; cursor:pointer; padding:4px; }
+  .gold-footrow { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   #gold-canvas { width:100%; display:block; background:#0b1226; border-radius:14px; }
   #gold-pill { display:none; margin-top:12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:14px; line-height:1.55; text-align:center; cursor:pointer; }
   #gold-status { color:var(--mut); font-size:13px; line-height:1.55; margin-top:12px; }
@@ -149,11 +158,12 @@
 <script src="assets/vendor/chart.umd.min.js"></script>
 <div class="gold-modal" id="gold-modal" aria-hidden="true" role="dialog" aria-label="Gold YTD weekly candle chart">
   <div class="gold-dialog">
-    <div class="gold-head"><h3>Gold — YTD weekly candles</h3><button type="button" class="btn" id="gold-close" aria-label="Close gold chart">✕</button></div>
-    <p class="gold-sub">COMEX gold futures (GC=F), $/troy oz. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. Tap a candle for its week and open / high / low / close.</p>
+    <div class="gold-head"><h3>Gold — YTD weekly candles</h3><span style="display:flex;gap:8px;"><button type="button" class="gold-info-btn" id="gold-info-top" aria-label="About this chart">+</button><button type="button" class="btn" id="gold-close" aria-label="Close gold chart">✕</button></span></div>
+    <p class="gold-sub" id="gold-sub" hidden>COMEX gold futures (GC=F), $/troy oz. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. Tap a candle for its week and open / high / low / close.</p>
+    <div id="gold-info-pill" role="note" tabindex="0"><button type="button" id="gold-info-x" aria-label="Dismiss">✕</button><span id="gold-info-text"></span></div>
     <canvas id="gold-canvas" width="320" height="280" aria-label="Gold weekly candle chart, year to date"></canvas>
     <div id="gold-pill" role="button" tabindex="0"></div>
-    <p id="gold-status">Tap a candle for its week.</p>
+    <div class="gold-footrow"><p id="gold-status">Tap a candle for its week.</p><button type="button" class="gold-info-btn" id="gold-info-foot" aria-label="About this chart's source">+</button></div>
     <button type="button" class="btn" id="gold-retry">Retry</button>
   </div>
 </div>

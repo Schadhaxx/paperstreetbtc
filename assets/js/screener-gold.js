@@ -15,11 +15,53 @@
 // week labels are UTC. YTD only in this first version (1 Jan 2026 to
 // the latest week). Candle colours match the site: green #22c55e,
 // red #ef4444. Tap a candle for its week + OHLC in a pill.
+// 30 Oct 2026 adjustments (Sunil): the top description blurb and the
+// bottom source blurb are NOT shown by default — each hides behind a
+// small "+" button that opens a popup pill INSIDE the modal with the
+// blurb's text word for word. The x-axis shows only one label per
+// month (3-letter month, first candle of that month by Thursday).
+// A dashed current-price line spans the chart at the latest weekly
+// close, labelled "Current $..." at its right end. The shipped
+// gold-weekly.json data itself is unchanged by these adjustments.
 (function () {
   var YTD_START = 1767225600; // 2026-01-01 00:00 UTC
   var YAHOO_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?period1=' + YTD_START + '&interval=1d';
   var STATIC_URL = 'assets/data/gold-weekly.json?v=2';
-  var state = { weeks: [], dataLabel: '', loading: false, selected: -1 };
+  var state = { weeks: [], dataLabel: '', loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '' };
+
+  // Popup-on-a-popup: the info pill inside the modal. Shows a blurb's
+  // text word for word; dismiss by tapping the pill again, tapping
+  // elsewhere in the modal, the pill's ✕, or Escape.
+  function showInfo(text) {
+    var pill = el('gold-info-pill'), span = el('gold-info-text');
+    if (!pill || !span) return;
+    span.textContent = text;
+    pill.style.display = 'block';
+    state.infoOpen = true; state.infoText = text;
+  }
+  function hideInfo() {
+    var pill = el('gold-info-pill');
+    if (pill) pill.style.display = 'none';
+    state.infoOpen = false; state.infoText = '';
+  }
+  function toggleInfo(text) {
+    if (state.infoOpen && state.infoText === text) hideInfo();
+    else showInfo(text);
+  }
+  function topBlurbText() {
+    var sub = el('gold-sub');
+    return sub ? sub.textContent : '';
+  }
+  // After a successful load, the bottom source blurb hides behind its
+  // "+" button instead of sitting under the chart. Loading and error
+  // states stay visible — they are not blurbs and must never hide.
+  function showFooterInfo(text) {
+    state.footerText = text; state.dataLabel = text;
+    var s = el('gold-status');
+    if (s) s.style.display = 'none';
+    var btn = el('gold-info-foot');
+    if (btn) btn.style.display = 'inline-flex';
+  }
 
   function fmtMoney(v) {
     return '$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -95,7 +137,7 @@
 
   function setStatus(text, isError) {
     var s = el('gold-status');
-    if (s) { s.textContent = text; s.style.color = isError ? '#ef4444' : '#94a3b8'; }
+    if (s) { s.textContent = text; s.style.color = isError ? '#ef4444' : '#94a3b8'; s.style.display = 'block'; }
   }
 
   function weeksFromStatic(data) {
@@ -118,7 +160,7 @@
         var last = state.weeks[state.weeks.length - 1];
         state.dataLabel = 'Source: Yahoo GC=F (COMEX futures), weekly candles shipped with the screener, data as of ' + (data.asOf || '30 Oct 2026') + ' · latest week ends ' + fmtDateUTC(last.sunday) + ' · ' + state.weeks.length + ' weekly candles, YTD — a dated snapshot, not a live quote. First week is partial: 1 trading day (2 Jan 2026), week starting 29 Dec 2025.';
         state.loading = false;
-        setStatus(state.dataLabel, false);
+        showFooterInfo(state.dataLabel);
         draw();
       })
       .catch(function () {
@@ -132,7 +174,7 @@
             var last = state.weeks[state.weeks.length - 1];
             state.dataLabel = 'Source: Yahoo GC=F (COMEX futures), fetched ' + fmtDateUTC(new Date()) + ' · latest week ends ' + fmtDateUTC(last.sunday) + ' · ' + state.weeks.length + ' weekly candles, YTD';
             state.loading = false;
-            setStatus(state.dataLabel, false);
+            showFooterInfo(state.dataLabel);
             draw();
           })
           .catch(function () {
@@ -176,6 +218,7 @@
     var n = state.weeks.length;
     var slot = plotW / n;
     var bw = Math.max(2, Math.min(14, slot * 0.6));
+    var seenMonths = {};
     state.weeks.forEach(function (w, i) {
       var cx = padL + slot * i + slot / 2;
       var up = w.close >= w.open;
@@ -188,19 +231,55 @@
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
         ctx.strokeRect(cx - bw / 2 - 3, y(w.high) - 3, bw + 6, y(w.low) - y(w.high) + 6);
       }
-      // Week labels: every 4th week, plus the last, by Monday date.
-      if (i % 4 === 0 || i === n - 1) {
+      // X-axis, clean (30 Oct 2026): ONE label per month only — the
+      // first candle of that month, labelled with the 3-letter month.
+      // The month is taken from the week's Thursday (Mon+3 days):
+      // that puts the partial first week (Mon 29 Dec 2025, trading day
+      // 2 Jan) under Jan, not Dec, and keeps every month to one label
+      // with no duplicates, no rotation, no stacking. All candles
+      // still draw; only the label density changes.
+      var thu = new Date(w.monday.getTime() + 3 * 86400000);
+      var mkey = thu.getUTCFullYear() + '-' + thu.getUTCMonth();
+      if (!seenMonths[mkey]) {
+        seenMonths[mkey] = true;
         ctx.fillStyle = '#94a3b8';
-        var lab = w.monday.getUTCDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][w.monday.getUTCMonth()];
-        ctx.fillText(lab, Math.max(padL, Math.min(cx - 12, cssW - padR - 30)), cssH - 10);
+        ctx.font = '10px -apple-system, system-ui, sans-serif';
+        var lab = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][thu.getUTCMonth()];
+        ctx.fillText(lab, Math.max(padL, Math.min(cx - 9, cssW - padR - 22)), cssH - 10);
+        ctx.font = '11px -apple-system, system-ui, sans-serif';
       }
     });
+    // Current-price line (30 Oct 2026): a horizontal dashed line
+    // across the full chart width at the LATEST weekly close, read
+    // from the shipped data (never a hardcoded price), labelled with
+    // that price at the line's right end. Cyan stands out against
+    // the green/red candles without obscuring them.
+    var current = state.weeks[n - 1].close;
+    var cy = y(current);
+    ctx.save();
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(padL, cy); ctx.lineTo(cssW - padR, cy); ctx.stroke();
+    ctx.setLineDash([]);
+    var curLab = 'Current ' + fmtMoney(current);
+    ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+    var tw = ctx.measureText(curLab).width;
+    var lx = cssW - padR - tw - 12;
+    var ly = cy - 8;
+    if (ly < 14) ly = cy + 16;
+    ctx.fillStyle = '#22d3ee';
+    ctx.fillRect(lx - 4, ly - 11, tw + 8, 16);
+    ctx.fillStyle = '#0b1226';
+    ctx.fillText(curLab, lx, ly);
+    ctx.restore();
     canvas._plot = { padL: padL, slot: slot, n: n };
   }
 
   function onCanvasTap(e) {
     var canvas = el('gold-canvas');
     if (!canvas || !canvas._plot) return;
+    // A tap while the info popup is open dismisses the popup first;
+    // it does not also select a candle underneath it.
+    if (state.infoOpen) { hideInfo(); return; }
     var rect = canvas.getBoundingClientRect();
     var x = (e.clientX - rect.left) - canvas._plot.padL;
     var idx = Math.floor(x / canvas._plot.slot);
@@ -221,6 +300,14 @@
   document.addEventListener('click', function (e) {
     var btn = e.target.closest ? e.target.closest('.note-btn') : null;
     if (btn) return; // "+" note button keeps its own job.
+    // Popup-on-a-popup dismissal: a tap elsewhere inside the modal
+    // (not on the info pill or its "+" buttons) dismisses the info
+    // pill only — it does not close the modal or select a candle.
+    if (state.infoOpen) {
+      var inDialog = e.target.closest ? e.target.closest('.gold-dialog') : null;
+      var onInfo = e.target.closest ? (e.target.closest('#gold-info-pill') || e.target.closest('.gold-info-btn')) : null;
+      if (inDialog && !onInfo) { hideInfo(); return; }
+    }
     var tile = e.target.closest ? e.target.closest('.tile[data-symbol="GOLD"]') : null;
     if (tile) { openModal(); return; }
     if (e.target.closest && e.target.closest('#gold-close')) { closeModal(); return; }
@@ -234,7 +321,11 @@
     if (pill && e.target === pill) pill.style.display = 'none';
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      // Escape dismisses the info popup first, the modal second.
+      if (state.infoOpen) { hideInfo(); return; }
+      closeModal();
+    }
   });
   window.addEventListener('resize', function () {
     var modal = el('gold-modal');
@@ -245,6 +336,15 @@
     if (canvas) canvas.addEventListener('click', onCanvasTap);
     var pill = el('gold-pill');
     if (pill) pill.addEventListener('click', function () { pill.style.display = 'none'; });
+    // Info "+" buttons: top shows the top blurb, bottom shows the
+    // footer/source blurb (once loaded). Tapping the same "+" again
+    // dismisses its popup.
+    var topBtn = el('gold-info-top');
+    if (topBtn) topBtn.addEventListener('click', function () { toggleInfo(topBlurbText()); });
+    var footBtn = el('gold-info-foot');
+    if (footBtn) footBtn.addEventListener('click', function () { if (state.footerText) toggleInfo(state.footerText); });
+    var infoPill = el('gold-info-pill');
+    if (infoPill) infoPill.addEventListener('click', function () { hideInfo(); });
   });
 
   // Exposed for the headless verification harness only.
