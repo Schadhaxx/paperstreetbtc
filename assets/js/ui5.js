@@ -17,7 +17,7 @@ if(d){
   body.innerHTML='<header class="prx-hd"><span class="prx-kick">PaperStreet BTC</span><h2 id="prxTitle">Portfolio rules in detail</h2></header>'+
    '<section class="prx-rule" id="prx-weights"><span class="prx-n">01</span><div><h3>Weights are the book.</h3><p>They do not get rewritten mid-year because a tape looks ugly.</p></div></section>'+
    '<section class="prx-rule" id="prx-dividends"><span class="prx-n">02</span><div><h3>Dividends move on issue day</h3><p>— not when it feels clever.</p><ul class="prx-routes"><li>Berkshire Killer and Hodler Jam Sandwich: STRC → BTC.</li><li>Hedge Fund Killer: STRC → BTC and MSTR at 50/50.</li><li>Saylor Moon: STRC → MSTR.</li></ul></div></section>'+
-   '<section class="prx-rule prx-dca" id="prx-dca"><span class="prx-n">03</span><div><h3>DCA is monthly.</h3><p>That is the strategy. The point of the book is to stop helping people time the market.</p></div></section>'+
+   '<section class="prx-rule prx-dca" id="prx-dca"><span class="prx-n">03</span><div><h3>DCA is daily.</h3><p>That is the strategy. The point of the book is to stop helping people time the market.</p></div></section>'+
    '<section class="prx-alloc" id="prx-alloc" aria-label="Allocations"><div class="prx-grid">'+
      al('Berkshire Killer',[[40,'BTC'],[20,'STRC'],[30,'TSLA'],[10,'PLTR']])+al('Hodler Jam Sandwich',[[70,'BTC'],[10,'STRC'],[20,'MSTR']])+
      al('Hedge Fund Killer',[[55,'BTC'],[35,'MSTR'],[10,'STRC']])+al('Saylor Moon',[[50,'MSTR'],[50,'STRC']])+'</div></section>';
