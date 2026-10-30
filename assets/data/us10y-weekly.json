@@ -1,0 +1,447 @@
+{
+  "source": "Yahoo ^TNX (CBOE Interest Rate 10 Year T Note), yields in %",
+  "asOf": "30 Oct 2026",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Yields in percent, shown to 3 decimals. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Latest week (26 Oct 2026) is a FINAL close: 30 Oct 2026 yield 4.929%, vs 29 Oct 4.989% (-0.060 pp) \u2014 it is NOT in progress. Source is Yahoo ^TNX, not Treasury par yield. Dated snapshot shipped with the screener \u2014 not a live quote. Manual refresh only, when Sunil asks.",
+  "weeks": [
+    {
+      "monday": "2025-12-29",
+      "sunday": "2026-01-04",
+      "label": "29 Dec 2025 \u2013 4 Jan 2026",
+      "days": 1,
+      "open": 4.161,
+      "high": 4.197,
+      "low": 4.159,
+      "close": 4.187
+    },
+    {
+      "monday": "2026-01-05",
+      "sunday": "2026-01-11",
+      "label": "5 Jan 2026 \u2013 11 Jan 2026",
+      "days": 5,
+      "open": 4.183,
+      "high": 4.211,
+      "low": 4.124,
+      "close": 4.171
+    },
+    {
+      "monday": "2026-01-12",
+      "sunday": "2026-01-18",
+      "label": "12 Jan 2026 \u2013 18 Jan 2026",
+      "days": 5,
+      "open": 4.197,
+      "high": 4.233,
+      "low": 4.132,
+      "close": 4.231
+    },
+    {
+      "monday": "2026-01-19",
+      "sunday": "2026-01-25",
+      "label": "19 Jan 2026 \u2013 25 Jan 2026",
+      "days": 4,
+      "open": 4.279,
+      "high": 4.311,
+      "low": 4.233,
+      "close": 4.239
+    },
+    {
+      "monday": "2026-01-26",
+      "sunday": "2026-02-01",
+      "label": "26 Jan 2026 \u2013 1 Feb 2026",
+      "days": 5,
+      "open": 4.213,
+      "high": 4.271,
+      "low": 4.203,
+      "close": 4.241
+    },
+    {
+      "monday": "2026-02-02",
+      "sunday": "2026-02-08",
+      "label": "2 Feb 2026 \u2013 8 Feb 2026",
+      "days": 5,
+      "open": 4.236,
+      "high": 4.3,
+      "low": 4.194,
+      "close": 4.206
+    },
+    {
+      "monday": "2026-02-09",
+      "sunday": "2026-02-15",
+      "label": "9 Feb 2026 \u2013 15 Feb 2026",
+      "days": 5,
+      "open": 4.238,
+      "high": 4.238,
+      "low": 4.046,
+      "close": 4.056
+    },
+    {
+      "monday": "2026-02-16",
+      "sunday": "2026-02-22",
+      "label": "16 Feb 2026 \u2013 22 Feb 2026",
+      "days": 4,
+      "open": 4.031,
+      "high": 4.106,
+      "low": 4.025,
+      "close": 4.086
+    },
+    {
+      "monday": "2026-02-23",
+      "sunday": "2026-03-01",
+      "label": "23 Feb 2026 \u2013 1 Mar 2026",
+      "days": 5,
+      "open": 4.075,
+      "high": 4.075,
+      "low": 3.956,
+      "close": 3.962
+    },
+    {
+      "monday": "2026-03-02",
+      "sunday": "2026-03-08",
+      "label": "2 Mar 2026 \u2013 8 Mar 2026",
+      "days": 5,
+      "open": 3.998,
+      "high": 4.187,
+      "low": 3.996,
+      "close": 4.133
+    },
+    {
+      "monday": "2026-03-09",
+      "sunday": "2026-03-15",
+      "label": "9 Mar 2026 \u2013 15 Mar 2026",
+      "days": 5,
+      "open": 4.173,
+      "high": 4.29,
+      "low": 4.104,
+      "close": 4.285
+    },
+    {
+      "monday": "2026-03-16",
+      "sunday": "2026-03-22",
+      "label": "16 Mar 2026 \u2013 22 Mar 2026",
+      "days": 5,
+      "open": 4.236,
+      "high": 4.394,
+      "low": 4.189,
+      "close": 4.391
+    },
+    {
+      "monday": "2026-03-23",
+      "sunday": "2026-03-29",
+      "label": "23 Mar 2026 \u2013 29 Mar 2026",
+      "days": 5,
+      "open": 4.376,
+      "high": 4.484,
+      "low": 4.312,
+      "close": 4.44
+    },
+    {
+      "monday": "2026-03-30",
+      "sunday": "2026-04-05",
+      "label": "30 Mar 2026 \u2013 5 Apr 2026",
+      "days": 4,
+      "open": 4.374,
+      "high": 4.38,
+      "low": 4.287,
+      "close": 4.313
+    },
+    {
+      "monday": "2026-04-06",
+      "sunday": "2026-04-12",
+      "label": "6 Apr 2026 \u2013 12 Apr 2026",
+      "days": 5,
+      "open": 4.36,
+      "high": 4.38,
+      "low": 4.234,
+      "close": 4.317
+    },
+    {
+      "monday": "2026-04-13",
+      "sunday": "2026-04-19",
+      "label": "13 Apr 2026 \u2013 19 Apr 2026",
+      "days": 5,
+      "open": 4.349,
+      "high": 4.351,
+      "low": 4.226,
+      "close": 4.246
+    },
+    {
+      "monday": "2026-04-20",
+      "sunday": "2026-04-26",
+      "label": "20 Apr 2026 \u2013 26 Apr 2026",
+      "days": 5,
+      "open": 4.262,
+      "high": 4.353,
+      "low": 4.244,
+      "close": 4.31
+    },
+    {
+      "monday": "2026-04-27",
+      "sunday": "2026-05-03",
+      "label": "27 Apr 2026 \u2013 3 May 2026",
+      "days": 5,
+      "open": 4.312,
+      "high": 4.432,
+      "low": 4.31,
+      "close": 4.378
+    },
+    {
+      "monday": "2026-05-04",
+      "sunday": "2026-05-10",
+      "label": "4 May 2026 \u2013 10 May 2026",
+      "days": 5,
+      "open": 4.4,
+      "high": 4.464,
+      "low": 4.314,
+      "close": 4.364
+    },
+    {
+      "monday": "2026-05-11",
+      "sunday": "2026-05-17",
+      "label": "11 May 2026 \u2013 17 May 2026",
+      "days": 5,
+      "open": 4.392,
+      "high": 4.599,
+      "low": 4.378,
+      "close": 4.595
+    },
+    {
+      "monday": "2026-05-18",
+      "sunday": "2026-05-24",
+      "label": "18 May 2026 \u2013 24 May 2026",
+      "days": 5,
+      "open": 4.599,
+      "high": 4.687,
+      "low": 4.528,
+      "close": 4.558
+    },
+    {
+      "monday": "2026-05-25",
+      "sunday": "2026-05-31",
+      "label": "25 May 2026 \u2013 31 May 2026",
+      "days": 4,
+      "open": 4.489,
+      "high": 4.512,
+      "low": 4.426,
+      "close": 4.453
+    },
+    {
+      "monday": "2026-06-01",
+      "sunday": "2026-06-07",
+      "label": "1 Jun 2026 \u2013 7 Jun 2026",
+      "days": 5,
+      "open": 4.457,
+      "high": 4.554,
+      "low": 4.428,
+      "close": 4.536
+    },
+    {
+      "monday": "2026-06-08",
+      "sunday": "2026-06-14",
+      "label": "8 Jun 2026 \u2013 14 Jun 2026",
+      "days": 5,
+      "open": 4.54,
+      "high": 4.56,
+      "low": 4.457,
+      "close": 4.487
+    },
+    {
+      "monday": "2026-06-15",
+      "sunday": "2026-06-21",
+      "label": "15 Jun 2026 \u2013 21 Jun 2026",
+      "days": 4,
+      "open": 4.455,
+      "high": 4.479,
+      "low": 4.42,
+      "close": 4.451
+    },
+    {
+      "monday": "2026-06-22",
+      "sunday": "2026-06-28",
+      "label": "22 Jun 2026 \u2013 28 Jun 2026",
+      "days": 5,
+      "open": 4.495,
+      "high": 4.515,
+      "low": 4.363,
+      "close": 4.372
+    },
+    {
+      "monday": "2026-06-29",
+      "sunday": "2026-07-05",
+      "label": "29 Jun 2026 \u2013 5 Jul 2026",
+      "days": 4,
+      "open": 4.378,
+      "high": 4.505,
+      "low": 4.367,
+      "close": 4.485
+    },
+    {
+      "monday": "2026-07-06",
+      "sunday": "2026-07-12",
+      "label": "6 Jul 2026 \u2013 12 Jul 2026",
+      "days": 5,
+      "open": 4.457,
+      "high": 4.597,
+      "low": 4.457,
+      "close": 4.569
+    },
+    {
+      "monday": "2026-07-13",
+      "sunday": "2026-07-19",
+      "label": "13 Jul 2026 \u2013 19 Jul 2026",
+      "days": 5,
+      "open": 4.585,
+      "high": 4.618,
+      "low": 4.511,
+      "close": 4.541
+    },
+    {
+      "monday": "2026-07-20",
+      "sunday": "2026-07-26",
+      "label": "20 Jul 2026 \u2013 26 Jul 2026",
+      "days": 5,
+      "open": 4.566,
+      "high": 4.714,
+      "low": 4.56,
+      "close": 4.679
+    },
+    {
+      "monday": "2026-07-27",
+      "sunday": "2026-08-02",
+      "label": "27 Jul 2026 \u2013 2 Aug 2026",
+      "days": 5,
+      "open": 4.647,
+      "high": 4.747,
+      "low": 4.588,
+      "close": 4.745
+    },
+    {
+      "monday": "2026-08-03",
+      "sunday": "2026-08-09",
+      "label": "3 Aug 2026 \u2013 9 Aug 2026",
+      "days": 5,
+      "open": 4.671,
+      "high": 4.702,
+      "low": 4.603,
+      "close": 4.66
+    },
+    {
+      "monday": "2026-08-10",
+      "sunday": "2026-08-16",
+      "label": "10 Aug 2026 \u2013 16 Aug 2026",
+      "days": 5,
+      "open": 4.662,
+      "high": 4.703,
+      "low": 4.613,
+      "close": 4.696
+    },
+    {
+      "monday": "2026-08-17",
+      "sunday": "2026-08-23",
+      "label": "17 Aug 2026 \u2013 23 Aug 2026",
+      "days": 5,
+      "open": 4.694,
+      "high": 4.746,
+      "low": 4.637,
+      "close": 4.738
+    },
+    {
+      "monday": "2026-08-24",
+      "sunday": "2026-08-30",
+      "label": "24 Aug 2026 \u2013 30 Aug 2026",
+      "days": 5,
+      "open": 4.714,
+      "high": 4.73,
+      "low": 4.621,
+      "close": 4.72
+    },
+    {
+      "monday": "2026-08-31",
+      "sunday": "2026-09-06",
+      "label": "31 Aug 2026 \u2013 6 Sep 2026",
+      "days": 5,
+      "open": 4.728,
+      "high": 4.812,
+      "low": 4.726,
+      "close": 4.784
+    },
+    {
+      "monday": "2026-09-07",
+      "sunday": "2026-09-13",
+      "label": "7 Sep 2026 \u2013 13 Sep 2026",
+      "days": 4,
+      "open": 4.794,
+      "high": 4.985,
+      "low": 4.76,
+      "close": 4.975
+    },
+    {
+      "monday": "2026-09-14",
+      "sunday": "2026-09-20",
+      "label": "14 Sep 2026 \u2013 20 Sep 2026",
+      "days": 5,
+      "open": 4.979,
+      "high": 5.016,
+      "low": 4.934,
+      "close": 4.998
+    },
+    {
+      "monday": "2026-09-21",
+      "sunday": "2026-09-27",
+      "label": "21 Sep 2026 \u2013 27 Sep 2026",
+      "days": 5,
+      "open": 4.953,
+      "high": 5.23,
+      "low": 4.926,
+      "close": 5.184
+    },
+    {
+      "monday": "2026-09-28",
+      "sunday": "2026-10-04",
+      "label": "28 Sep 2026 \u2013 4 Oct 2026",
+      "days": 5,
+      "open": 5.209,
+      "high": 5.342,
+      "low": 5.157,
+      "close": 5.277
+    },
+    {
+      "monday": "2026-10-05",
+      "sunday": "2026-10-11",
+      "label": "5 Oct 2026 \u2013 11 Oct 2026",
+      "days": 5,
+      "open": 5.273,
+      "high": 5.364,
+      "low": 5.223,
+      "close": 5.244
+    },
+    {
+      "monday": "2026-10-12",
+      "sunday": "2026-10-18",
+      "label": "12 Oct 2026 \u2013 18 Oct 2026",
+      "days": 5,
+      "open": 5.24,
+      "high": 5.329,
+      "low": 5.037,
+      "close": 5.098
+    },
+    {
+      "monday": "2026-10-19",
+      "sunday": "2026-10-25",
+      "label": "19 Oct 2026 \u2013 25 Oct 2026",
+      "days": 5,
+      "open": 5.09,
+      "high": 5.15,
+      "low": 4.939,
+      "close": 4.988
+    },
+    {
+      "monday": "2026-10-26",
+      "sunday": "2026-11-01",
+      "label": "26 Oct 2026 \u2013 1 Nov 2026",
+      "days": 5,
+      "open": 5.003,
+      "high": 5.049,
+      "low": 4.908,
+      "close": 4.929
+    }
+  ]
+}

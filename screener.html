@@ -30,8 +30,8 @@
   .secsub, .box-note { color:var(--mut); font-size:14px; margin:0 2px 14px; line-height:1.5; }
   .kpis { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 4px; }
   .tile { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:20px; padding:16px; min-height:118px; }
-  .tile[data-symbol="GOLD"], .tile[data-symbol="WTI"] { cursor:pointer; }
-  .tile[data-symbol="GOLD"]:hover, .tile[data-symbol="WTI"]:hover { border-color:#3b82f6; }
+  .tile[data-symbol="GOLD"], .tile[data-symbol="WTI"], .tile[data-symbol="US10Y"] { cursor:pointer; }
+  .tile[data-symbol="GOLD"]:hover, .tile[data-symbol="WTI"]:hover, .tile[data-symbol="US10Y"]:hover { border-color:#3b82f6; }
   /* Gold YTD weekly candle modal (30 Oct 2026): iPhone-first, one
      column, dismiss by close button, tap outside, or Escape. */
   .ind-modal { display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.72); align-items:flex-end; justify-content:center; padding:16px; }
@@ -118,7 +118,7 @@
 
   <section aria-label="Market Indicators">
   <h2>Market Indicators</h2>
-  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting below apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET). Tap the gold or WTI tile for its YTD weekly candle chart; tap its + for its note.</p>
+  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting below apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET). Tap the gold, WTI or 10-year tile for its YTD weekly candle chart; tap its + for its note.</p>
   <div class="kpis" id="indicators-body"><p>Loading…</p></div>
   <p class="status-line" id="indicators-status">Loading status…</p>
   </section>
@@ -168,7 +168,7 @@
   </div>
 </div>
 <script src="assets/js/screener.js"></script>
-<script src="assets/js/screener-indicator-chart.js"></script>
+<script src="assets/js/screener-indicator-chart.js?v=us10y1"></script>
 <script src="assets/js/screener-chart.js"></script>
 <script src="assets/js/btcchart.js?v=et4"></script>
 </body>

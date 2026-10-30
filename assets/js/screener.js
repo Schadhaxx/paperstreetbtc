@@ -346,7 +346,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=6')
+    fetch('assets/data/screener-pack.json?v=7')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];
