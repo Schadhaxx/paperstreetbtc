@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stock Screener — Maple Leaf Pack</title>
+<link rel="stylesheet" href="assets/css/nav.css?v=cr015">
 <!-- REMOVABLE BY DESIGN: This page is part of the additive Maple Leaf Screener pack.
      To shut it off and delete it, delete screener.html, assets/data/screener-pack.json,
      assets/js/screener.js, assets/js/screener-chart.js, assets/js/maple-screener.js, and remove the one maple-screener.js
@@ -16,6 +17,8 @@
   h1 { font-size:28px; margin:0 0 4px; }
   .asof { color:#94a3b8; margin:0 0 20px; }
   .pills { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; }
+  .btc-pill-row { display:flex; margin:0 0 16px; }
+  .btc-pill-row .hdr-tick { margin:0; }
   .pill { background:#121a2e; border:1px solid #1e293b; border-radius:999px; padding:8px 16px; font-size:14px; }
   .pill b { color:#f97316; }
   .controls { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
@@ -51,8 +54,9 @@
 </head>
 <body>
 <div class="wrap">
+  <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
   <h1>Stock Screener — Maple Leaf Pack</h1>
-  <p class="asof" id="screener-asof">Stocks in the first box, Market Indicators in a separate box below. The status line under each table is the status for that whole table — all rows in a table trade on the same clock.</p>
+  <p class="asof" id="screener-asof">Stocks in the first box, Market Indicators in a separate box below. Each table has one status line below it: stocks follow US stock hours, while Market Indicators split by instrument — WTI and gold follow futures hours, the 10-year yield and VIX follow stock hours — and the indicators line names which rows are live and which are on a dated close.</p>
   <section aria-label="Stocks">
   <h2>Stocks</h2>
   <p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX: its YTD cell shows return since its 12 Jun 2026 first trading close ($160.95), labelled "Since listing 12 Jun 2026" — SPCX was not public on 31 Dec 2025, so a true Dec 31 YTD does not exist for it.</p>
@@ -87,7 +91,7 @@
   </section>
   <section aria-label="Market Indicators">
   <h2>Market Indicators</h2>
-  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting above apply to the Stocks box only; this box always shows all four indicators.</p>
+  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting above apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET).</p>
   <table>
     <thead><tr>
       <th>Symbol</th><th>Name</th><th>Level</th><th>Day change</th>
@@ -96,10 +100,11 @@
   </table>
   <p class="status-line" id="indicators-status">Loading status…</p>
   </section>
-  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. The status line under each table states whether that table is live or showing a dated close — there is no per-row status column. Rows with no pipeline quote show their 28 Oct 2026 close from the data pack. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
+  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. The status line under each table states whether its rows are live or showing a dated close — the indicators line names which rows are live and which are dated — and there is no per-row status column. Rows with no pipeline quote show their 28 Oct 2026 close from the data pack. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
 </div>
 <script src="assets/vendor/chart.umd.min.js"></script>
 <script src="assets/js/screener.js"></script>
 <script src="assets/js/screener-chart.js"></script>
+<script src="assets/js/btcchart.js?v=et4"></script>
 </body>
 </html>

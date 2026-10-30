@@ -10,9 +10,19 @@
 // (GitHub Actions writes it every ~5 min on weekdays; visitors never call
 // a quote API and no key is in here). Stocks: Finnhub quotes via the
 // pipeline. Indicators: Yahoo chart quotes via the pipeline (WTI <- CL=F,
-// 10Y <- ^TNX, VIX <- ^VIX, GOLD <- GC=F (COMEX futures)) once the
-// pipeline block lands; until then an indicator stays on its dated
-// pack close — never Live.
+// 10Y <- ^TNX, VIX <- ^VIX, GOLD <- GC=F (COMEX futures)).
+// CLOCK SPLIT (30 Oct 2026, Sunil): the two boxes no longer share one
+// clock. Stocks are Live only in US stock hours (Mon-Fri 9:30 a.m.-
+// 4:00 p.m. ET). Indicators split by instrument: WTI and GOLD (COMEX
+// futures) are Live in CME Globex futures hours (Sun 6:00 p.m. ET
+// through Fri 5:00 p.m. ET, excluding the daily 5:00-6:00 p.m. ET
+// maintenance break); US10Y and VIX stay on stock hours. A row is Live
+// only when its own pipeline quote is fresh (<30 min, by that symbol's
+// own pipeline timestamp where present, else the file stamp); otherwise
+// it shows the latest pipeline value with a dated close label, never
+// labelled Live. Each table still has ONE status line below it, and the
+// indicators line names which rows are Live and which are dated, so it
+// never claims the whole indicators table is Live when it is not.
 // Signed-number colours (Sunil's rule): positive green #22c55e,
 // negative red #ef4444, signed zero black #000000 (.flat). NOTE: pure
 // black on this page's dark background (#070b18 / #121a2e) is
@@ -118,8 +128,23 @@
     var mins = (+p.hour % 24) * 60 + (+p.minute);
     return mins >= 570 && mins < 960;
   }
+  // CME Globex futures hours (ET): Sun 6:00 p.m. through Fri 5:00 p.m.,
+  // excluding the daily 5:00-6:00 p.m. maintenance break. Saturday is
+  // fully closed; Sunday daytime (before 6:00 p.m.) is closed.
+  function futuresOpenNow() {
+    var p = etParts(new Date());
+    var weekday = p.weekday;
+    var mins = (+p.hour % 24) * 60 + (+p.minute);
+    if (weekday === 'Sat') return false;
+    if (weekday === 'Sun') return mins >= 1080;
+    if (weekday === 'Fri') return mins < 1020;
+    return !(mins >= 1020 && mins < 1080);
+  }
 
-  function mergeList(srcRows, prices) {
+  // isLiveFn(r): clock rule for this list's rows. Stocks pass nothing
+  // (stock hours for every row); indicators pass a per-symbol split
+  // (futures hours for WTI/GOLD, stock hours for US10Y/VIX).
+  function mergeList(srcRows, prices, isLiveFn) {
     var out = srcRows.map(function (r) {
       var copy = {};
       Object.keys(r).forEach(function (k) { copy[k] = r[k]; });
@@ -129,8 +154,7 @@
     });
     if (!prices || !prices.stocks) return out;
     var updated = Date.parse(prices.updated);
-    var fresh = !isNaN(updated) && (Date.now() - updated) < 30 * 60 * 1000;
-    var live = fresh && marketOpenNow();
+    var fileFresh = !isNaN(updated) && (Date.now() - updated) < 30 * 60 * 1000;
     out.forEach(function (r) {
       var q = prices.stocks[r.symbol];
       if (!q || typeof q.c !== 'number' || !(q.c > 0) ||
@@ -142,14 +166,26 @@
       if (r.baseClose !== null && r.baseClose !== undefined) {
         r.ytdPct = (q.c / r.baseClose - 1) * 100;
       }
-      if (live) {
+      // Freshness by the symbol's own pipeline timestamp where present
+      // (Finnhub quote time / Yahoo regularMarketTime); otherwise the
+      // file stamp. A stale quote never reads Live, even in hours.
+      var qt = Number(q.t);
+      var fresh = (qt > 0) ? (Date.now() - qt * 1000) < 30 * 60 * 1000 : fileFresh;
+      var inHours = isLiveFn ? isLiveFn(r) : marketOpenNow();
+      if (fresh && inHours) {
         r._src = 'live';
       } else {
         r._src = 'close';
-        r._closeDate = !isNaN(updated) ? etDateLabel(new Date(updated)) : fmtIso(packAsOf);
+        // Date the quote itself belongs to, not the file-write date:
+        // a morning file carrying yesterday's closes must say yesterday.
+        r._closeDate = (qt > 0) ? etDateLabel(new Date(qt * 1000))
+          : (!isNaN(updated) ? etDateLabel(new Date(updated)) : fmtIso(packAsOf));
       }
     });
     return out;
+  }
+  function indicatorLiveFn(r) {
+    return (r.symbol === 'WTI' || r.symbol === 'GOLD') ? futuresOpenNow() : marketOpenNow();
   }
 
   function notifyChart() {
@@ -167,11 +203,23 @@
     var close = list.filter(function (r) { return r._src === 'close'; });
     var snap = list.filter(function (r) { return r._src === 'snapshot'; }).map(function (r) { return r.symbol; });
     if (live.length === list.length) return 'Live — site pipeline, market hours.';
-    if (close.length === list.length) return (close[0]._closeDate || fmtIso(packAsOf)) + ' close — site pipeline, not a live quote.';
+    if (close.length === list.length) {
+      // Dated rows may belong to different dates now (e.g. futures break
+      // today vs stock close yesterday): group by close date instead of
+      // lumping every dated row under the first row's date.
+      var groups = {};
+      close.forEach(function (r) { var d = r._closeDate || fmtIso(packAsOf); (groups[d] = groups[d] || []).push(r.symbol); });
+      var gs = Object.keys(groups).map(function (d) { return d + ' close for ' + groups[d].join(', '); });
+      return gs.join(' · ') + ' — site pipeline, not a live quote.';
+    }
     if (snap.length === list.length) return fmtIso(packAsOf) + ' closes from the data pack — not live quotes.';
     var parts = [];
     if (live.length) parts.push('Live for ' + live.join(', '));
-    if (close.length) parts.push((close[0]._closeDate || fmtIso(packAsOf)) + ' close for ' + close.map(function (r) { return r.symbol; }).join(', '));
+    if (close.length) {
+      var groups2 = {};
+      close.forEach(function (r) { var d = r._closeDate || fmtIso(packAsOf); (groups2[d] = groups2[d] || []).push(r.symbol); });
+      Object.keys(groups2).forEach(function (d) { parts.push(d + ' close for ' + groups2[d].join(', ')); });
+    }
     if (snap.length) parts.push(fmtIso(packAsOf) + ' closes for ' + snap.join(', ') + ' (no pipeline quote)');
     return parts.join(' · ') + '.';
   }
@@ -268,7 +316,7 @@
     fetchPrices().then(function (prices) {
       pricesFailed = !prices;
       rows = mergeList(packRows, prices);
-      indRows = mergeList(packIndicators, prices);
+      indRows = mergeList(packIndicators, prices, indicatorLiveFn);
       render();
       notifyChart();
     });
@@ -286,7 +334,7 @@
       .then(function (prices) {
         pricesFailed = !prices;
         rows = mergeList(packRows, prices);
-        indRows = mergeList(packIndicators, prices);
+        indRows = mergeList(packIndicators, prices, indicatorLiveFn);
         render();
         notifyChart();
         setInterval(refreshLive, 5 * 60 * 1000);
