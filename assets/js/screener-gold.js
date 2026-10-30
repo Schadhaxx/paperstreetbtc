@@ -2,14 +2,15 @@
 // Opens when the GOLD Market Indicator tile itself is tapped/clicked.
 // The tile's "+" button keeps its existing job (the note pill) and does
 // NOT open this chart: clicks on .note-btn are ignored here.
-// Data: Yahoo GC=F (COMEX gold futures, the same series the site
-// pipeline uses for the GOLD indicator), fetched live in the visitor's
-// browser — no key, no pipeline change, no static snapshot shipped, so
-// nothing here can ever be mistaken for a live quote when it is not.
-// If the live fetch fails, the modal says so plainly with a Retry
-// button; it never invents candles and never labels a failure as live.
-// A future static file assets/data/gold-weekly.json, if one ever
-// appears, is tried as a fallback only (same weekly shape, dated).
+// Data: the candle data is SHIPPED WITH the screener, in
+// assets/data/gold-weekly.json (Yahoo GC=F, COMEX gold futures, the
+// same series the site pipeline uses for the GOLD indicator), dated
+// 30 Oct 2026 — a dated snapshot, never labelled live. That file is
+// read FIRST, so the chart draws with no browser fetch at all. The
+// Yahoo browser fetch is kept only as a later fallback, because it
+// failed live on 30 Oct 2026 (load error, Retry failed). If both
+// sources fail, the modal says so plainly with a Retry button; it
+// never invents candles and never labels a failure as live.
 // Weekly candles: UTC Monday-Sunday weeks, like the BTC candle ranges;
 // week labels are UTC. YTD only in this first version (1 Jan 2026 to
 // the latest week). Candle colours match the site: green #22c55e,
@@ -17,7 +18,7 @@
 (function () {
   var YTD_START = 1767225600; // 2026-01-01 00:00 UTC
   var YAHOO_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?period1=' + YTD_START + '&interval=1d';
-  var STATIC_URL = 'assets/data/gold-weekly.json?v=1';
+  var STATIC_URL = 'assets/data/gold-weekly.json?v=2';
   var state = { weeks: [], dataLabel: '', loading: false, selected: -1 };
 
   function fmtMoney(v) {
@@ -97,32 +98,39 @@
     if (s) { s.textContent = text; s.style.color = isError ? '#ef4444' : '#94a3b8'; }
   }
 
+  function weeksFromStatic(data) {
+    if (!data || !data.weeks || !data.weeks.length) throw new Error('no static weeks');
+    return data.weeks.map(function (w) {
+      return { monday: new Date(w.monday), sunday: new Date(w.sunday), label: w.label, days: w.days, open: w.open, high: w.high, low: w.low, close: w.close };
+    });
+  }
+
+  // Shipped file FIRST: the chart must draw with no browser fetch.
+  // Yahoo in the browser is only a later fallback (it failed live on
+  // 30 Oct 2026), and if both fail no chart is shown at all.
   function loadData() {
     state.loading = true;
     setStatus('Loading gold weekly candles…');
-    fetch(YAHOO_URL)
-      .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+    fetch(STATIC_URL)
+      .then(function (res) { if (!res.ok) throw new Error('no static file'); return res.json(); })
       .then(function (data) {
-        var result = data && data.chart && data.chart.result && data.chart.result[0];
-        if (!result || !result.timestamp || !result.indicators || !result.indicators.quote) throw new Error('No Yahoo data');
-        state.weeks = aggregateWeekly(result.timestamp, result.indicators.quote[0]);
-        if (!state.weeks.length) throw new Error('No usable weeks');
+        state.weeks = weeksFromStatic(data);
         var last = state.weeks[state.weeks.length - 1];
-        state.dataLabel = 'Source: Yahoo GC=F (COMEX futures), fetched ' + fmtDateUTC(new Date()) + ' · latest week ends ' + fmtDateUTC(last.sunday) + ' · ' + state.weeks.length + ' weekly candles, YTD';
+        state.dataLabel = 'Source: Yahoo GC=F (COMEX futures), weekly candles shipped with the screener, data as of ' + (data.asOf || '30 Oct 2026') + ' · latest week ends ' + fmtDateUTC(last.sunday) + ' · ' + state.weeks.length + ' weekly candles, YTD — a dated snapshot, not a live quote. First week is partial: 1 trading day (2 Jan 2026), week starting 29 Dec 2025.';
         state.loading = false;
         setStatus(state.dataLabel, false);
         draw();
       })
       .catch(function () {
-        // Fallback only: a dated static file, if one ever exists.
-        fetch(STATIC_URL)
-          .then(function (res) { if (!res.ok) throw new Error('no static file'); return res.json(); })
+        fetch(YAHOO_URL)
+          .then(function (res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
           .then(function (data) {
-            if (!data || !data.weeks || !data.weeks.length) throw new Error('no static weeks');
-            state.weeks = data.weeks.map(function (w) {
-              return { monday: new Date(w.monday), sunday: new Date(w.sunday), label: w.label, days: w.days, open: w.open, high: w.high, low: w.low, close: w.close };
-            });
-            state.dataLabel = 'Source: dated snapshot ' + (data.asOf || '') + ' — not a live quote.';
+            var result = data && data.chart && data.chart.result && data.chart.result[0];
+            if (!result || !result.timestamp || !result.indicators || !result.indicators.quote) throw new Error('No Yahoo data');
+            state.weeks = aggregateWeekly(result.timestamp, result.indicators.quote[0]);
+            if (!state.weeks.length) throw new Error('No usable weeks');
+            var last = state.weeks[state.weeks.length - 1];
+            state.dataLabel = 'Source: Yahoo GC=F (COMEX futures), fetched ' + fmtDateUTC(new Date()) + ' · latest week ends ' + fmtDateUTC(last.sunday) + ' · ' + state.weeks.length + ' weekly candles, YTD';
             state.loading = false;
             setStatus(state.dataLabel, false);
             draw();
@@ -203,7 +211,7 @@
     var pill = el('gold-pill');
     if (pill) {
       pill.style.display = 'block';
-      pill.innerHTML = '<b>Week ' + w.label + ' (UTC, ' + w.days + ' trading day' + (w.days === 1 ? '' : 's') + ')</b><br>'
+      pill.innerHTML = '<b>Week ' + w.label + ' (UTC, ' + w.days + ' trading day' + (w.days === 1 ? ' — partial week' : 's') + ')</b><br>'
         + 'Open ' + fmtMoney(w.open) + ' · High ' + fmtMoney(w.high) + ' · Low ' + fmtMoney(w.low) + ' · Close ' + fmtMoney(w.close)
         + '<br>Week change ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
     }
