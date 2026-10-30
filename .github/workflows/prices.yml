@@ -571,14 +571,23 @@ jobs:
             if ! cmp -s "/tmp/stage/$f" "$f"; then mkdir -p "$(dirname "$f")"; cp "/tmp/stage/$f" "$f.tmp" && mv "$f.tmp" "$f"; echo "updated $f"; changed=1; fi
           done
           echo "changed=$changed" >> $GITHUB_OUTPUT
+      - name: CR-005 lump-sum opens (validated; never blocks the recap or prices)
+        id: opens
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          cp assets/data/opens.json /tmp/opens.json 2>/dev/null || true
+          python3 tools/opens.py /tmp/opens.json --history /tmp/history.json && python3 tools/opens.py /tmp/opens.json --history /tmp/history.json --check-only || { echo "::warning::opens update skipped; lump sums use the close for missing days"; exit 0; }
+          if ! cmp -s /tmp/opens.json assets/data/opens.json; then cp /tmp/opens.json assets/data/opens.json.tmp && mv assets/data/opens.json.tmp assets/data/opens.json; echo "changed=1" >> $GITHUB_OUTPUT; fi
       - name: Commit and push (fast-forward only, retries)
         id: push
-        if: steps.gen.outputs.changed == '1'
+        if: steps.gen.outputs.changed == '1' || steps.opens.outputs.changed == '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- recap/ assets/data/btc-daily.json
-          git commit -q -m "recap/btc-daily: refresh from final closes $(date -u +%FT%TZ)"
+          git add -- recap/ assets/data/btc-daily.json assets/data/opens.json
+          msg=""; [ "${{ steps.gen.outputs.changed }}" = 1 ] && msg="recap/btc-daily"; [ "${{ steps.opens.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }opens"
+          git commit -q -m "$msg: refresh from final closes $(date -u +%FT%TZ)"
           for wait in 0 5 15 30; do
             sleep $wait
             if git push -q origin HEAD:main; then echo "pushed=1" >> $GITHUB_OUTPUT; exit 0; fi
