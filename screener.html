@@ -30,6 +30,20 @@
   .secsub, .box-note { color:var(--mut); font-size:14px; margin:0 2px 14px; line-height:1.5; }
   .kpis { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 4px; }
   .tile { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:20px; padding:16px; min-height:118px; }
+  .tile[data-symbol="GOLD"] { cursor:pointer; }
+  .tile[data-symbol="GOLD"]:hover { border-color:#3b82f6; }
+  /* Gold YTD weekly candle modal (30 Oct 2026): iPhone-first, one
+     column, dismiss by close button, tap outside, or Escape. */
+  .gold-modal { display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.72); align-items:flex-end; justify-content:center; padding:16px; }
+  .gold-modal.open { display:flex; }
+  .gold-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .gold-dialog h3 { margin:0 0 4px; font-size:19px; }
+  .gold-dialog .gold-sub { color:var(--mut); font-size:13px; line-height:1.5; margin:0 0 12px; }
+  #gold-canvas { width:100%; display:block; background:#0b1226; border-radius:14px; }
+  #gold-pill { display:none; margin-top:12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:14px; line-height:1.55; text-align:center; cursor:pointer; }
+  #gold-status { color:var(--mut); font-size:13px; line-height:1.55; margin-top:12px; }
+  #gold-retry { display:none; margin-top:10px; }
+  .gold-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .tile .k { font-size:11px; letter-spacing:.14em; color:var(--mut); font-weight:800; text-transform:uppercase; }
   .tile .v { font-size:27px; font-weight:850; letter-spacing:-.02em; margin:7px 0 3px; line-height:1.1; }
   .tile .d { font-weight:800; font-size:14px; }
@@ -95,7 +109,7 @@
 
   <section aria-label="Market Indicators">
   <h2>Market Indicators</h2>
-  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting below apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET).</p>
+  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting below apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET). Tap the gold tile for its YTD weekly candle chart; tap its + for its note.</p>
   <div class="kpis" id="indicators-body"><p>Loading…</p></div>
   <p class="status-line" id="indicators-status">Loading status…</p>
   </section>
@@ -133,7 +147,18 @@
   <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. The status line under each box states whether its rows are live or showing a dated close — the indicators line names which rows are live and which are dated — and there is no per-row status column. Rows with no pipeline quote show their 28 Oct 2026 close from the data pack. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
 </div>
 <script src="assets/vendor/chart.umd.min.js"></script>
+<div class="gold-modal" id="gold-modal" aria-hidden="true" role="dialog" aria-label="Gold YTD weekly candle chart">
+  <div class="gold-dialog">
+    <div class="gold-head"><h3>Gold — YTD weekly candles</h3><button type="button" class="btn" id="gold-close" aria-label="Close gold chart">✕</button></div>
+    <p class="gold-sub">COMEX gold futures (GC=F), $/troy oz. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Tap a candle for its week and open / high / low / close.</p>
+    <canvas id="gold-canvas" width="320" height="280" aria-label="Gold weekly candle chart, year to date"></canvas>
+    <div id="gold-pill" role="button" tabindex="0"></div>
+    <p id="gold-status">Tap a candle for its week.</p>
+    <button type="button" class="btn" id="gold-retry">Retry</button>
+  </div>
+</div>
 <script src="assets/js/screener.js"></script>
+<script src="assets/js/screener-gold.js"></script>
 <script src="assets/js/screener-chart.js"></script>
 <script src="assets/js/btcchart.js?v=et4"></script>
 </body>
