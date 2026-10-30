@@ -88,6 +88,7 @@
       currentPrefix: 'Current ',
       subBlurb: 'CBOE Volatility Index, Yahoo ^VIX, in points — an index level. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. The latest week is a final close, not in progress. No VIX ETF is substituted. Tap a candle for its week and open / high / low / close in points.',
       lastInProgress: null,
+      ptsChange: true,
       footNote: ' Source is Yahoo ^VIX (CBOE Volatility Index), in points — an index level, and no VIX ETF is substituted. Latest week is a final close (30 Oct 2026 level 19.42 points), not in progress. VIX counts 211 trading days YTD (other indicators 209) because closes are published on 25 May and 7 Sep 2026. Manual refresh only, when Sunil asks.'
     }
   };
@@ -333,6 +334,13 @@
       if (state.cfg.ppChange) {
         var pp = w.close - w.open;
         html += '<br>Week change ' + (pp >= 0 ? '+' : '') + pp.toFixed(3) + ' pp (' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%)';
+      } else if (state.cfg.ptsChange) {
+        // Points move in points: for ptsChange symbols (VIX only) the
+        // pill LEADS with the points move, then the relative % in
+        // parentheses — Grok Bot's optional item, applied 30 Oct 2026.
+        // Dollar-price symbols (gold, WTI) keep the old lead.
+        var pts = w.close - w.open;
+        html += '<br>Week change ' + (pts >= 0 ? '+' : '') + pts.toFixed(2) + ' pts (' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%)';
       } else {
         html += '<br>Week change ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
       }
