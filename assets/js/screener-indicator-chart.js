@@ -34,6 +34,12 @@
   function fmtYield(v) {
     return v.toFixed(3) + '%';
   }
+  // VIX is an index level in points, never a dollar value: 2
+  // decimals with a "pts" unit, so a bare number can
+  // never be misread as a dollar value.
+  function fmtPoints(v) {
+    return v.toFixed(2) + ' pts';
+  }
   function fmtDateUTC(d) {
     var MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return d.getUTCDate() + ' ' + MN[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
@@ -73,6 +79,16 @@
       lastInProgress: null,
       ppChange: true,
       footNote: ' Source is Yahoo ^TNX (CBOE Interest Rate 10 Year T Note), not Treasury par yield. Latest week is a final close (30 Oct 2026 yield 4.929%), not in progress. Manual refresh only, when Sunil asks.'
+    },
+    VIX: {
+      symbol: 'VIX',
+      title: 'VIX — YTD weekly candles',
+      dataUrl: 'assets/data/vix-weekly.json?v=1',
+      format: fmtPoints,
+      currentPrefix: 'Current ',
+      subBlurb: 'CBOE Volatility Index, Yahoo ^VIX, in points — an index level. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. The latest week is a final close, not in progress. No VIX ETF is substituted. Tap a candle for its week and open / high / low / close in points.',
+      lastInProgress: null,
+      footNote: ' Source is Yahoo ^VIX (CBOE Volatility Index), in points — an index level, and no VIX ETF is substituted. Latest week is a final close (30 Oct 2026 level 19.42 points), not in progress. VIX counts 211 trading days YTD (other indicators 209) because closes are published on 25 May and 7 Sep 2026. Manual refresh only, when Sunil asks.'
     }
   };
 
@@ -335,7 +351,7 @@
       var onInfo = e.target.closest ? (e.target.closest('#ind-info-pill') || e.target.closest('.ind-info-btn')) : null;
       if (inDialog && !onInfo) { hideInfo(); return; }
     }
-    var tile = e.target.closest ? e.target.closest('.tile[data-symbol="GOLD"], .tile[data-symbol="WTI"], .tile[data-symbol="US10Y"]') : null;
+    var tile = e.target.closest ? e.target.closest('.tile[data-symbol="GOLD"], .tile[data-symbol="WTI"], .tile[data-symbol="US10Y"], .tile[data-symbol="VIX"]') : null;
     if (tile) {
       var cfg = CONFIGS[tile.getAttribute('data-symbol')];
       if (cfg) {
