@@ -30,6 +30,40 @@
   var rows = [];
   var indRows = [];
   var pricesFailed = false;
+  var noteBySymbol = {};
+  var openNotePill = null;
+  var openNoteBtn = null;
+
+  function escapeHtml(v) {
+    return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function closeNotePill() {
+    if (openNotePill && openNotePill.parentNode) openNotePill.parentNode.removeChild(openNotePill);
+    openNotePill = null; openNoteBtn = null;
+  }
+  function toggleNotePill(btn) {
+    var symbol = btn.getAttribute('data-symbol');
+    var text = noteBySymbol[symbol];
+    if (!text) return;
+    if (openNoteBtn === btn) { closeNotePill(); return; }
+    closeNotePill();
+    var pill = document.createElement('div');
+    pill.className = 'note-pill';
+    pill.setAttribute('role', 'button');
+    pill.setAttribute('tabindex', '0');
+    pill.setAttribute('aria-label', 'Dismiss note about ' + symbol);
+    pill.textContent = text;
+    pill.addEventListener('click', function () { closeNotePill(); });
+    pill.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeNotePill(); } });
+    document.body.appendChild(pill);
+    var rect = btn.getBoundingClientRect();
+    var w = Math.min(320, window.innerWidth - 32);
+    var left = Math.max(16, Math.min(rect.left, window.innerWidth - w - 16));
+    pill.style.width = w + 'px';
+    pill.style.left = left + 'px';
+    pill.style.top = (rect.bottom + 6) + 'px';
+    openNotePill = pill; openNoteBtn = btn;
+  }
 
   function money(v) {
     return v === null || v === undefined ? '—' : '$' + v.toFixed(2);
@@ -189,9 +223,11 @@
     var tbody = document.getElementById('screener-body');
     if (tbody) {
       var list = visible();
+      noteBySymbol = {};
       tbody.innerHTML = list.map(function (r) {
-        var note = r.note ? '<div class="row-note">' + r.note + '</div>' : '';
-        return '<tr><td><strong>' + r.symbol + '</strong></td><td>' + r.name + note + '</td>'
+        if (r.note) noteBySymbol[r.symbol] = r.note;
+        var noteBtn = r.note ? ' <button type="button" class="note-btn" data-symbol="' + escapeHtml(r.symbol) + '" aria-label="More about ' + escapeHtml(r.symbol) + '">+</button>' : '';
+        return '<tr><td><strong>' + escapeHtml(r.symbol) + '</strong></td><td class="name-cell">' + escapeHtml(r.name) + noteBtn + '</td>'
           + '<td>' + money(r.price) + '</td>'
           + '<td class="' + signCls(r.dayChangePct) + '">' + dayText(r) + '</td>'
           + '<td class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + (r.ytdBasis === 'listing' ? '<div class="row-note">Since listing 12 Jun 2026</div>' : '') + '</td></tr>';
@@ -202,8 +238,9 @@
     var itbody = document.getElementById('indicators-body');
     if (itbody) {
       itbody.innerHTML = indRows.map(function (r) {
-        var note = r.note ? '<div class="row-note">' + r.note + '</div>' : '';
-        return '<tr><td><strong>' + r.symbol + '</strong></td><td>' + r.name + note + '</td>'
+        if (r.note) noteBySymbol[r.symbol] = r.note;
+        var noteBtn = r.note ? ' <button type="button" class="note-btn" data-symbol="' + escapeHtml(r.symbol) + '" aria-label="More about ' + escapeHtml(r.symbol) + '">+</button>' : '';
+        return '<tr><td><strong>' + escapeHtml(r.symbol) + '</strong></td><td class="name-cell">' + escapeHtml(r.name) + noteBtn + '</td>'
           + '<td>' + formatValue(r) + '</td>'
           + '<td class="' + signCls(r.dayChangePct) + '">' + dayText(r) + '</td></tr>';
       }).join('');
@@ -260,6 +297,16 @@
         var ib = document.getElementById('indicators-body');
         if (ib) ib.innerHTML = '<tr><td colspan="4">Screener data could not be loaded.</td></tr>';
       });
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('.note-btn') : null;
+      if (btn) { toggleNotePill(btn); return; }
+      if (openNotePill && !(e.target.closest && e.target.closest('.note-pill'))) closeNotePill();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeNotePill();
+    });
+    window.addEventListener('scroll', closeNotePill, true);
+    window.addEventListener('resize', closeNotePill);
     var search = document.getElementById('screener-search');
     if (search) search.addEventListener('input', function (e) { state.q = e.target.value; render(); });
     document.querySelectorAll('[data-filter]').forEach(function (btn) {
