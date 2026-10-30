@@ -12,74 +12,114 @@
      restoring, and with that script tag gone the footer maple leaf simply does nothing on
      double-click again. -->
 <style>
-  body { background:#070b18; color:#e8eef7; font-family:Inter,Outfit,system-ui,sans-serif; margin:0; padding:24px 16px 48px; }
-  .wrap { max-width:900px; margin:0 auto; }
-  h1 { font-size:28px; margin:0 0 4px; }
-  .asof { color:#94a3b8; margin:0 0 20px; }
-  .pills { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; }
-  .btc-pill-row { display:flex; margin:0 0 16px; }
-  .btc-pill-row .hdr-tick { margin:0; }
-  .pill { background:#121a2e; border:1px solid #1e293b; border-radius:999px; padding:8px 16px; font-size:14px; }
-  .pill b { color:#f97316; }
-  .controls { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
-  .controls input { flex:1; min-width:200px; background:#121a2e; border:1px solid #1e293b; border-radius:999px; color:#e8eef7; padding:10px 16px; font-size:15px; }
-  .btn { background:#121a2e; border:1px solid #1e293b; border-radius:999px; color:#e8eef7; padding:10px 16px; font-size:14px; cursor:pointer; }
-  .btn.active { border-color:#22d3ee; color:#22d3ee; }
-  table { width:100%; border-collapse:collapse; background:#121a2e; border:1px solid #1e293b; border-radius:12px; overflow:hidden; }
-  th, td { text-align:left; padding:12px; border-bottom:1px solid #1e293b; font-size:15px; }
-  th { cursor:pointer; color:#94a3b8; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
-  .up { color:#22c55e; } .down { color:#ef4444; }
+  * { box-sizing:border-box; }
+  :root { --bg:#05070f; --card:#121a2e; --card2:#16213d; --line:#233253; --txt:#eef2fb; --mut:#94a3b8; --green:#22c55e; --red:#ef4444; --cyan:#22d3ee; --orange:#f97316; }
+  body { margin:0; background:radial-gradient(900px 400px at 85% -10%,rgba(34,211,238,.22),transparent 60%),radial-gradient(700px 350px at -10% 0,rgba(249,115,22,.14),transparent 55%),var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Outfit,system-ui,sans-serif; -webkit-text-size-adjust:100%; }
+  .wrap { max-width:1060px; margin:0 auto; padding:18px 14px 44px; }
+  header { padding:22px 2px 8px; }
+  h1 { font-size:30px; line-height:1.05; margin:0; letter-spacing:-.02em; }
+  .sub { color:var(--mut); font-size:15px; line-height:1.5; margin:8px 0 0; }
+  .asof { color:var(--mut); font-size:14px; line-height:1.6; margin:0 0 4px; }
+  .btc-pill-row { display:flex; margin:18px 0 0; }
+  .btc-pill-row .hdr-tick { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:56px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 18px; box-shadow:0 14px 40px rgba(0,0,0,.45); color:var(--txt); font-size:19px; font-weight:800; cursor:pointer; }
+  .pills { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 4px; }
+  .pill { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:8px 16px; font-size:14px; }
+  .pill b { color:var(--orange); }
+  .pill b.up { color:var(--green); } .pill b.down { color:var(--red); } .pill b.flat { color:#000000; }
+  h2 { font-size:22px; margin:26px 2px 4px; letter-spacing:-.01em; }
+  .secsub, .box-note { color:var(--mut); font-size:14px; margin:0 2px 14px; line-height:1.5; }
+  .kpis { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 4px; }
+  .tile { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:20px; padding:16px; min-height:118px; }
+  .tile .k { font-size:11px; letter-spacing:.14em; color:var(--mut); font-weight:800; text-transform:uppercase; }
+  .tile .v { font-size:27px; font-weight:850; letter-spacing:-.02em; margin:7px 0 3px; line-height:1.1; }
+  .tile .d { font-weight:800; font-size:14px; }
+  .up { color:var(--green); } .down { color:var(--red); }
   /* Signed zero = pure black, per Sunil's rule. NOTE: on this dark page
-     (#070b18 background, #121a2e cards) pure black is near-invisible —
-     flagged in the delivery report; applied literally, not substituted. */
+     pure black is near-invisible — flagged in the delivery report; applied
+     literally, not substituted. */
   .flat { color:#000000; }
-  .pill b.up { color:#22c55e; } .pill b.down { color:#ef4444; } .pill b.flat { color:#000000; }
-  h2 { font-size:20px; margin:28px 0 12px; }
-  .box-note { color:#94a3b8; font-size:13px; margin:0 0 16px; line-height:1.6; }
-  .status-line { color:#94a3b8; margin-top:12px; font-size:14px; }
-  .row-note { color:#94a3b8; font-size:13px; margin-top:4px; }
-  .name-cell { white-space:nowrap; }
-  .note-btn { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; margin-left:8px; border-radius:999px; background:#0f172a; border:1px solid #22d3ee; color:#22d3ee; font-size:16px; font-weight:700; line-height:1; cursor:pointer; vertical-align:middle; }
-  .note-btn:focus-visible { outline:2px solid #22d3ee; outline-offset:2px; }
-  .note-pill { position:fixed; z-index:50; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:28px; padding:12px 18px; font-size:14px; line-height:1.5; color:#e8eef7; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,.5); cursor:pointer; }
-  .count { color:#94a3b8; margin-top:12px; font-size:14px; }
-  .chart-card { background:#121a2e; border:1px solid #1e293b; border-radius:12px; padding:16px; margin-top:24px; }
+  .tile .u { color:var(--mut); font-size:12px; margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 12px; align-items:center; }
+  .controls input { flex:1; min-width:0; height:48px; border-radius:14px; border:1px solid var(--line); background:#0b1226; color:var(--txt); padding:0 16px; font-size:16px; outline:none; }
+  .controls input:focus { border-color:var(--cyan); }
+  .btn { height:48px; padding:0 16px; border-radius:999px; border:1px solid var(--line); background:#0b1226; color:var(--txt); font-size:14px; font-weight:700; cursor:pointer; }
+  .btn.active { background:var(--cyan); color:#05070f; border-color:var(--cyan); }
+  .cards { display:grid; gap:12px; }
+  .card { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:22px; padding:16px; position:relative; cursor:pointer; }
+  .card:hover { border-color:#3b82f6; }
+  .card.loser { border-color:rgba(239,68,68,.45); }
+  .card.row-highlight { border-color:var(--cyan); box-shadow:0 0 0 2px rgba(34,211,238,.35); }
+  .card .top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  .sym { font-size:20px; font-weight:850; letter-spacing:.01em; }
+  .nm { color:var(--mut); font-size:14px; margin-top:2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .price { font-size:29px; font-weight:850; letter-spacing:-.02em; text-align:right; line-height:1; }
+  .day-pill { display:inline-block; margin-top:7px; padding:7px 12px; border-radius:999px; font-weight:850; font-size:14px; }
+  .day-pill.up { background:rgba(34,197,94,.16); color:var(--green); }
+  .day-pill.down { background:rgba(239,68,68,.16); color:var(--red); }
+  .day-pill.flat { background:rgba(255,255,255,.08); color:#000000; }
+  .meta { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.07); }
+  .ytd { font-size:15px; } .ytd b { font-size:16px; }
+  .ytd .row-note { color:var(--mut); font-size:13px; margin-top:4px; }
+  .move { display:flex; align-items:center; gap:8px; color:var(--mut); font-size:13px; }
+  .bar { width:72px; height:8px; border-radius:99px; background:#1e293b; overflow:hidden; }
+  .bar i { display:block; height:100%; border-radius:99px; }
+  .note-btn { width:44px; height:44px; min-width:44px; border-radius:50%; border:1px solid #475569; background:#1e293b; color:#fff; font-size:20px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .note-btn:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  .note-pill { position:fixed; z-index:50; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px 20px; font-size:15px; line-height:1.55; color:var(--txt); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.6); cursor:pointer; }
+  .status-line { color:var(--mut); font-size:13px; line-height:1.55; margin:12px 2px 0; }
+  .status-line b { color:var(--txt); }
+  .live-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--green); box-shadow:0 0 0 4px rgba(34,197,94,.2); margin-right:6px; }
+  .count { color:var(--mut); margin-top:12px; font-size:14px; }
+  .chart-card { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:22px; padding:16px; margin-top:26px; }
   .chart-card h2 { font-size:18px; margin:0 0 12px; }
   .chart-wrap { position:relative; height:320px; }
-  .chart-note { color:#94a3b8; font-size:13px; margin:12px 0 0; }
-  #screener-body tr.row-highlight td { background:#16233a; }
-  .disclaimer { color:#94a3b8; font-size:13px; margin-top:24px; line-height:1.6; }
-  a { color:#22d3ee; }
+  .chart-note { color:var(--mut); font-size:13px; margin:12px 0 0; line-height:1.5; }
+  .disclaimer { color:var(--mut); font-size:13px; margin-top:26px; line-height:1.6; }
+  a { color:var(--cyan); }
+  @media (min-width:700px) {
+    .wrap { padding:26px 22px 56px; } h1 { font-size:42px; }
+    .kpis { grid-template-columns:repeat(4,1fr); }
+    .cards { grid-template-columns:1fr 1fr; } .tile .v { font-size:30px; }
+  }
+  @media (min-width:1000px) { .cards { grid-template-columns:1fr 1fr 1fr; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
-  <h1>Stock Screener — Maple Leaf Pack</h1>
-  <p class="asof" id="screener-asof">Stocks in the first box, Market Indicators in a separate box below. Each table has one status line below it: stocks follow US stock hours, while Market Indicators split by instrument — WTI and gold follow futures hours, the 10-year yield and VIX follow stock hours — and the indicators line names which rows are live and which are on a dated close.</p>
+  <header>
+    <h1>Your watchlist,<br>at a glance.</h1>
+    <p class="sub">Seven stocks, four market indicators, one honest status line each. Tap a card's <b>+</b> for its note. Trend bars show only the size of today's move — they are not price history.</p>
+    <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
+  </header>
+  <p class="asof">Stocks in the second box, Market Indicators in the first box below. Each box has one status line below it: stocks follow US stock hours, while Market Indicators split by instrument — WTI and gold follow futures hours, the 10-year yield and VIX follow stock hours — and the indicators line names which rows are live and which are on a dated close.</p>
+
+  <section aria-label="Market Indicators">
+  <h2>Market Indicators</h2>
+  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting below apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET).</p>
+  <div class="kpis" id="indicators-body"><p>Loading…</p></div>
+  <p class="status-line" id="indicators-status">Loading status…</p>
+  </section>
+
   <section aria-label="Stocks">
   <h2>Stocks</h2>
-  <p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX: its YTD cell shows return since its 12 Jun 2026 first trading close ($160.95), labelled "Since listing 12 Jun 2026" — SPCX was not public on 31 Dec 2025, so a true Dec 31 YTD does not exist for it.</p>
+  <p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX: its YTD figure shows return since its 12 Jun 2026 first trading close ($160.95), labelled "Since listing 12 Jun 2026" — SPCX was not public on 31 Dec 2025, so a true Dec 31 YTD does not exist for it.</p>
   <div class="pills">
-    <span class="pill">Biggest gainer: <b id="pill-gainer-val" class="up">MU +5.86%</b></span>
-    <span class="pill">Biggest loser: <b id="pill-loser-val" class="down">SPCX −2.25%</b></span>
+    <span class="pill">Biggest gainer: <b id="pill-gainer-val" class="up">—</b></span>
+    <span class="pill">Biggest loser: <b id="pill-loser-val" class="down">—</b></span>
   </div>
   <div class="controls">
     <input id="screener-search" type="search" placeholder="Search symbol or name…" aria-label="Search screener">
     <button class="btn active" data-filter="all">All</button>
     <button class="btn" data-filter="gainers">Gainers</button>
     <button class="btn" data-filter="losers">Losers</button>
+    <button class="btn" data-sort="dayChangePct">Day ↕</button>
+    <button class="btn" data-sort="ytdPct">YTD ↕</button>
   </div>
-  <table>
-    <thead><tr>
-      <th data-sort="symbol">Symbol ↕</th><th>Name</th><th data-sort="price">Price ↕</th>
-      <th data-sort="dayChangePct">Day change ↕</th><th data-sort="ytdPct">YTD ↕</th>
-    </tr></thead>
-    <tbody id="screener-body"><tr><td colspan="5">Loading…</td></tr></tbody>
-  </table>
+  <div class="cards" id="screener-body"><p>Loading…</p></div>
   <p class="count" id="screener-count"></p>
   <p class="status-line" id="stocks-status">Loading status…</p>
   </section>
+
   <section class="chart-card" aria-label="Comparison chart">
     <h2>Comparison chart</h2>
     <div class="controls">
@@ -89,18 +129,8 @@
     <div class="chart-wrap"><canvas id="screener-chart"></canvas></div>
     <p class="chart-note" id="screener-chart-note"></p>
   </section>
-  <section aria-label="Market Indicators">
-  <h2>Market Indicators</h2>
-  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting above apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET).</p>
-  <table>
-    <thead><tr>
-      <th>Symbol</th><th>Name</th><th>Level</th><th>Day change</th>
-    </tr></thead>
-    <tbody id="indicators-body"><tr><td colspan="4">Loading…</td></tr></tbody>
-  </table>
-  <p class="status-line" id="indicators-status">Loading status…</p>
-  </section>
-  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. The status line under each table states whether its rows are live or showing a dated close — the indicators line names which rows are live and which are dated — and there is no per-row status column. Rows with no pipeline quote show their 28 Oct 2026 close from the data pack. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
+
+  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. The status line under each box states whether its rows are live or showing a dated close — the indicators line names which rows are live and which are dated — and there is no per-row status column. Rows with no pipeline quote show their 28 Oct 2026 close from the data pack. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
 </div>
 <script src="assets/vendor/chart.umd.min.js"></script>
 <script src="assets/js/screener.js"></script>

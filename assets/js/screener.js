@@ -267,18 +267,40 @@
     return out;
   }
 
+  // JAZZED REDESIGN (30 Oct 2026, from the mockup Sunil approved): the
+  // live data, merge, clock split, status lines, pills, search/filter/
+  // sort and chart feed are all unchanged — only the presentation
+  // changed, from tables to cards (stocks) and KPI tiles (indicators).
+  // Cards are iPhone-first (one column at 390px, no horizontal scroll);
+  // the move bar shows only the size of today's move, never history.
+  // A card gets the 'loser' highlight when its day change is -5% or
+  // worse (the mockup's biggest-faller rule, applied to live values).
+  function unitLabel(r) {
+    if (r.symbol === 'WTI') return '$/barrel';
+    if (r.symbol === 'GOLD') return '$/troy oz';
+    if (r.symbol === 'US10Y') return '%';
+    if (r.symbol === 'VIX') return 'points';
+    return '';
+  }
   function render() {
-    var tbody = document.getElementById('screener-body');
-    if (tbody) {
+    var body = document.getElementById('screener-body');
+    if (body) {
       var list = visible();
       noteBySymbol = {};
-      tbody.innerHTML = list.map(function (r) {
+      var maxAbs = 0;
+      list.forEach(function (r) { if (r.dayChangePct !== null && r.dayChangePct !== undefined) maxAbs = Math.max(maxAbs, Math.abs(r.dayChangePct)); });
+      body.innerHTML = list.map(function (r) {
         if (r.note) noteBySymbol[r.symbol] = r.note;
         var noteBtn = r.note ? ' <button type="button" class="note-btn" data-symbol="' + escapeHtml(r.symbol) + '" aria-label="More about ' + escapeHtml(r.symbol) + '">+</button>' : '';
-        return '<tr><td><strong>' + escapeHtml(r.symbol) + '</strong></td><td class="name-cell">' + escapeHtml(r.name) + noteBtn + '</td>'
-          + '<td>' + money(r.price) + '</td>'
-          + '<td class="' + signCls(r.dayChangePct) + '">' + dayText(r) + '</td>'
-          + '<td class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + (r.ytdBasis === 'listing' ? '<div class="row-note">Since listing 12 Jun 2026</div>' : '') + '</td></tr>';
+        var cls = signCls(r.dayChangePct);
+        var barW = maxAbs ? Math.round(Math.abs(r.dayChangePct || 0) / maxAbs * 100) : 0;
+        var barCol = cls === 'up' ? '#22c55e' : (cls === 'down' ? '#ef4444' : '#94a3b8');
+        return '<article class="card' + ((r.dayChangePct !== null && r.dayChangePct !== undefined && r.dayChangePct <= -5) ? ' loser' : '') + '" data-symbol="' + escapeHtml(r.symbol) + '">'
+          + '<div class="top"><div><div class="sym">' + escapeHtml(r.symbol) + '</div><div class="nm">' + escapeHtml(r.name) + noteBtn + '</div></div>'
+          + '<div><div class="price">' + money(r.price) + '</div><span class="day-pill ' + cls + '">' + dayText(r) + '</span></div></div>'
+          + '<div class="meta"><span class="ytd">' + (r.ytdBasis === 'listing' ? 'Since listing' : 'YTD') + ' <b class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + '</b>'
+          + (r.ytdBasis === 'listing' ? '<div class="row-note">Since listing 12 Jun 2026</div>' : '') + '</span>'
+          + '<span class="move">Day move only <span class="bar"><i style="width:' + barW + '%;background:' + barCol + '"></i></span></span></div></article>';
       }).join('');
       var count = document.getElementById('screener-count');
       if (count) count.textContent = list.length + ' of ' + rows.length + ' shown';
@@ -288,9 +310,10 @@
       itbody.innerHTML = indRows.map(function (r) {
         if (r.note) noteBySymbol[r.symbol] = r.note;
         var noteBtn = r.note ? ' <button type="button" class="note-btn" data-symbol="' + escapeHtml(r.symbol) + '" aria-label="More about ' + escapeHtml(r.symbol) + '">+</button>' : '';
-        return '<tr><td><strong>' + escapeHtml(r.symbol) + '</strong></td><td class="name-cell">' + escapeHtml(r.name) + noteBtn + '</td>'
-          + '<td>' + formatValue(r) + '</td>'
-          + '<td class="' + signCls(r.dayChangePct) + '">' + dayText(r) + '</td></tr>';
+        var cls = signCls(r.dayChangePct);
+        return '<div class="tile" data-symbol="' + escapeHtml(r.symbol) + '"><div class="k">' + escapeHtml(r.name) + ' · ' + unitLabel(r) + '</div>'
+          + '<div class="v">' + formatValue(r) + '</div><div class="d ' + cls + '">' + dayText(r) + '</div>'
+          + '<div class="u">' + unitLabel(r) + ' ' + noteBtn + '</div></div>';
       }).join('');
     }
     updatePills();
@@ -365,7 +388,10 @@
       });
     });
     document.querySelectorAll('[data-sort]').forEach(function (th) {
-      th.addEventListener('click', function () { sortBy(th.getAttribute('data-sort')); });
+      th.addEventListener('click', function () {
+        document.querySelectorAll('[data-sort]').forEach(function (b) { b.classList.toggle('active', b === th); });
+        sortBy(th.getAttribute('data-sort'));
+      });
     });
   });
 })();

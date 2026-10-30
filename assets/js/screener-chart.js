@@ -20,14 +20,15 @@
     return allRows.slice();
   }
 
+  // Cards, not table rows, since the 30 Oct jazzed redesign: highlight
+  // the stock card with the matching data-symbol.
   function highlightRow(symbol) {
-    var tbody = document.getElementById('screener-body');
-    if (!tbody) return;
+    var body = document.getElementById('screener-body');
+    if (!body) return;
     var found = null;
-    tbody.querySelectorAll('tr').forEach(function (tr) {
-      tr.classList.remove('row-highlight');
-      var first = tr.querySelector('td');
-      if (first && first.textContent.trim() === symbol) found = tr;
+    body.querySelectorAll('.card').forEach(function (card) {
+      card.classList.remove('row-highlight');
+      if (card.getAttribute('data-symbol') === symbol) found = card;
     });
     if (found) {
       found.classList.add('row-highlight');
@@ -118,14 +119,16 @@
         build();
       });
     });
-    // Table row click -> highlight the matching bar (delegated, so it
-    // survives the table re-rendering on sort/filter).
-    var tbody = document.getElementById('screener-body');
-    if (tbody) tbody.addEventListener('click', function (e) {
-      var tr = e.target.closest ? e.target.closest('tr') : null;
-      if (!tr) return;
-      var first = tr.querySelector('td');
-      if (first) highlightBar(first.textContent.trim());
+    // Stock card click -> highlight the matching bar (delegated, so it
+    // survives the card re-rendering on sort/filter). A tap on a card's
+    // "+" note button is a note, not a chart highlight.
+    var body = document.getElementById('screener-body');
+    if (body) body.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('.note-btn')) return;
+      var card = e.target.closest ? e.target.closest('.card') : null;
+      if (!card) return;
+      var sym = card.getAttribute('data-symbol');
+      if (sym) highlightBar(sym);
     });
   });
 })();
