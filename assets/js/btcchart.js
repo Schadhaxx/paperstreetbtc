@@ -166,8 +166,6 @@ function drawCandles1D(candles,label,per){
   if(!prevCAND || prevCAND.length!==candles.length || prevCAND[0].t!==candles[0].t || prevCAND!==candles){ /* first draw of a new set fades in; hover redraws reuse the same array object, so they skip the fade */ if(prevCAND!==candles){c.style.transition='opacity .3s ease';c.style.opacity='0';requestAnimationFrame(function(){c.style.opacity='1';});} }
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
-  var BB1D=BBON?calcBollinger(candles.map(function(k){return k.c;}),20,2):null;
-  if(BB1D)BB1D.forEach(function(b){if(!b)return;if(b.lower<lo)lo=b.lower;if(b.upper>hi)hi=b.upper;});
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
@@ -197,14 +195,13 @@ function drawCandles1D(candles,label,per){
       ctx.fillStyle='#9aa6bc';
     }
   });
-  if(BB1D)drawBollingerBand(ctx,X,Y,BB1D);
   /* selected / hovered candle: white outline + glow + vertical guide, drawn last so it sits on top */
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
     if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
     if(layer===0){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
-  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(label+(BBON&&candles.length>=20?' · Bollinger (20 closes, 2σ)':''), L, 12);
+  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(label, L, 12);
   /* interaction listeners, attached once (shared with the range candle view) */
   bindCandListeners(c);
   return true;
@@ -280,8 +277,6 @@ function drawCandlesRange(){
   var dpr=window.devicePixelRatio||1;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
-  var BBR=BBON?calcBollinger(candles.map(function(k){return k.c;}),20,2):null;
-  if(BBR)BBR.forEach(function(b){if(!b)return;if(b.lower<lo)lo=b.lower;if(b.upper>hi)hi=b.upper;});
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
@@ -308,13 +303,12 @@ function drawCandlesRange(){
       if(lastTx==null||dx-lastTx>=56){ctx.fillStyle='#64748b';ctx.fillText(md,dx,H-24);ctx.fillStyle='#9aa6bc';lastTx=dx;}
     }
   });
-  if(BBR)drawBollingerBand(ctx,X,Y,BBR);
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
     if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
     if(layer===0){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
-  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(RGLBL+(BBON&&candles.length>=20?' · Bollinger (20 closes, 2σ)':''), L, 12);
+  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(RGLBL, L, 12);
   bindCandListeners(c);
   return true;
 }
@@ -370,42 +364,6 @@ function syncCg(){
   var granAllowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:[];
   var gl=$('bcCgGranLab');if(gl)gl.style.display=candlesOn&&granAllowed.length?'':'none';
   [].forEach.call(cg.querySelectorAll('[data-cggran]'),function(b){var show=candlesOn&&granAllowed.indexOf(b.dataset.cggran)>=0;b.style.display=show?'':'none';b.classList.toggle('on',b.dataset.cggran===RGGRAN);b.setAttribute('aria-pressed',b.dataset.cggran===RGGRAN);});
-}
-/* Bollinger Bands ONLY, live 30 Oct 2026 (one overlay at a time, Sunil's
-   decision): 20 displayed candle closes, 2 population standard deviations,
-   middle = SMA 20 of those closes. No SMA/EMA lines are added here.
-   BBON is on by default in candle view; the toggle in the popover turns
-   it off/on for the session. Views with fewer than 20 candles draw no
-   band at all — no shorter window is silently substituted. */
-var BBON=true;
-function calcBollinger(closes,n,mult){
-  n=n||20;mult=mult||2;var out=[],i,j;
-  for(i=0;i<closes.length;i++){
-    if(i<n-1){out.push(null);continue;}
-    var sum=0;for(j=i-n+1;j<=i;j++)sum+=closes[j];var m=sum/n;
-    var sq=0;for(j=i-n+1;j<=i;j++)sq+=(closes[j]-m)*(closes[j]-m);
-    var sd=Math.sqrt(sq/n);
-    out.push({mid:m,upper:m+mult*sd,lower:m-mult*sd});
-  }
-  return out;
-}
-function drawBollingerBand(ctx,X,Y,bb){
-  if(!bb||bb.every(function(b){return !b;}))return;
-  var drawLine=function(arr,col){ctx.strokeStyle=col;ctx.lineWidth=1.6;ctx.beginPath();var started=false;
-    arr.forEach(function(v,i){if(v==null)return;if(!started){ctx.moveTo(X(i),Y(v));started=true;}else ctx.lineTo(X(i),Y(v));});ctx.stroke();ctx.lineWidth=1;};
-  ctx.beginPath();var bs=false;
-  bb.forEach(function(b,i){if(!b)return;if(!bs){ctx.moveTo(X(i),Y(b.upper));bs=true;}else ctx.lineTo(X(i),Y(b.upper));});
-  for(var bi=bb.length-1;bi>=0;bi--){if(bb[bi])ctx.lineTo(X(bi),Y(bb[bi].lower));}
-  ctx.closePath();ctx.fillStyle='rgba(248,113,113,0.10)';ctx.fill();
-  drawLine(bb.map(function(b){return b?b.upper:null;}),'rgba(248,113,113,0.8)');
-  drawLine(bb.map(function(b){return b?b.lower:null;}),'rgba(248,113,113,0.8)');
-  drawLine(bb.map(function(b){return b?b.mid:null;}),'rgba(248,113,113,0.45)');
-}
-function syncBb(){
-  var bb=$('bcBb');if(!bb)return;
-  var on=candViewActive();
-  bb.style.display=on?'':'none';
-  var btn=bb.querySelector('[data-bb]');if(btn){btn.classList.toggle('on',BBON);btn.setAttribute('aria-pressed',BBON?'true':'false');}
 }
 function drawRange(){
   head();
@@ -468,7 +426,7 @@ function drawRange(){
   var a0=cand[0].o,b0=cand[cand.length-1].c,pc0=(b0/a0-1)*100;
   $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')';
   var aggTxt=RGGRAN==='monthly'?'by calendar month (UTC)':(RGGRAN==='weekly'?'by Monday-start UTC week':'by day');
-  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.'+(BBON?' Bollinger Bands (20 closes, 2σ) are drawn on the candles shown; the first 19 candles have no band.':'');
+  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
   if(ch){ch.destroy();ch=null;}
   CANDSEL=-1;CANDHOV=-1;drawCandlesRange();
 }
@@ -494,7 +452,7 @@ function draw1D(){
     if(cand.length>=2 && cand[0].o!=null){
       var a0=cand[0].o, b0=cand[cand.length-1].c, pc0=(b0/a0-1)*100;
       $('bcRr').textContent='1D: BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · last 24 hours, '+CT+' candles, from '+etTime(cand[0].t)+' ET ('+fmt(a0)+')';
-      $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its O/H/L/C. S&P 500, Gold and MSTR toggles are off for 1D only.'+(BBON?' Bollinger Bands (20 closes, 2σ) are drawn on the candles shown; views with fewer than 20 candles have no band.':'');
+      $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its O/H/L/C. S&P 500, Gold and MSTR toggles are off for 1D only.';
       if(ch){ch.destroy();ch=null;}
       CANDSEL=-1;CANDHOV=-1;drawCandles1D(cand, CT==='1h'?'1-hour candles':'4-hour candles', per);
       return;
@@ -521,7 +479,7 @@ function draw1D(){
 
 /* Range-row scroll hint, 29 Oct 2026: tabs run shortest (1D) to longest (Max) left to right, so on a phone the longer ranges sit off-screen to the right and are reached by swiping left. The hint shows only while there is still more to the right. */
 function syncRgHint(){var rs=$('bcRgs'),h=$('bcRgHint');if(!rs||!h)return;var moreRight=rs.scrollWidth-rs.clientWidth-rs.scrollLeft>8;h.style.display=moreRight?'':'none';}
-function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}syncBb();syncRgHint();}
+function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}syncRgHint();}
 
 function onK(K,M,d){var lo=0,hi=K.length-1,a=-1;while(lo<=hi){var mid=(lo+hi)>>1;if(K[mid]<=d){a=mid;lo=mid+1;}else hi=mid-1;}return a<0?null:M[K[a]];}
 function spxOn(d){return onK(SPXK,SPX,d);}function gldOn(d){return onK(GOLDK,GOLD,d);}function mstrOn(d){return onK(MSTRK,MSTR,d);}
@@ -570,13 +528,11 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-rg-hint" id="bcRgHint" aria-hidden="true">\u2190 Swipe for longer ranges</span><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
    +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
    +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
-   +'<div class="bc-ct" id="bcBb" role="group" aria-label="Bollinger Bands" style="display:none"><span class="bc-ct-lab">Overlays</span><button type="button" data-bb="on">Bollinger (20 closes, 2σ)</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../compare/index.html')+'">See full Compare →</a>';
   document.body.appendChild(dim);document.body.appendChild(dlg);
   dim.addEventListener('click',close);
   $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
-  $('bcBb').addEventListener('click',function(){BBON=!BBON;syncBb();draw();});
   $('bcX').addEventListener('click',close);
   $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
