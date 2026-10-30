@@ -21,7 +21,8 @@
 // blurb's text word for word. The x-axis shows only one label per
 // month (3-letter month, first candle of that month by Thursday).
 // A dashed current-price line spans the chart at the latest weekly
-// close, labelled "Current $..." at its right end. The shipped
+// close, labelled "Current $..." at its LEFT end, by the y-axis
+// (Sunil, 30 Oct ~2:06 p.m. ET). The shipped
 // gold-weekly.json data itself is unchanged by these adjustments.
 (function () {
   var YTD_START = 1767225600; // 2026-01-01 00:00 UTC
@@ -252,7 +253,10 @@
     // Current-price line (30 Oct 2026): a horizontal dashed line
     // across the full chart width at the LATEST weekly close, read
     // from the shipped data (never a hardcoded price), labelled with
-    // that price at the line's right end. Cyan stands out against
+    // that price at the line's LEFT end, by the y-axis (Sunil, 30 Oct
+    // ~2:06 p.m. ET). The label sits 6px inside the plot's left edge
+    // so it is never clipped, on a dark background so it stays
+    // readable where it crosses candles. Cyan stands out against
     // the green/red candles without obscuring them.
     var current = state.weeks[n - 1].close;
     var cy = y(current);
@@ -263,7 +267,7 @@
     var curLab = 'Current ' + fmtMoney(current);
     ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
     var tw = ctx.measureText(curLab).width;
-    var lx = cssW - padR - tw - 12;
+    var lx = padL + 6;
     var ly = cy - 8;
     if (ly < 14) ly = cy + 16;
     ctx.fillStyle = '#22d3ee';
