@@ -296,7 +296,10 @@
         var cls = signCls(r.dayChangePct);
         var barW = maxAbs ? Math.round(Math.abs(r.dayChangePct || 0) / maxAbs * 100) : 0;
         var barCol = cls === 'up' ? '#22c55e' : (cls === 'down' ? '#ef4444' : '#94a3b8');
-        return '<article class="card' + ((r.dayChangePct !== null && r.dayChangePct !== undefined && r.dayChangePct <= -5) ? ' loser' : '') + '" data-symbol="' + escapeHtml(r.symbol) + '">'
+        var chartLabel = (r.ytdBasis === 'listing')
+          ? ('Open ' + r.symbol + ' chart since listing')
+          : ('Open ' + r.symbol + ' YTD chart');
+        return '<article class="card' + ((r.dayChangePct !== null && r.dayChangePct !== undefined && r.dayChangePct <= -5) ? ' loser' : '') + '" data-symbol="' + escapeHtml(r.symbol) + '" tabindex="0" aria-label="' + escapeHtml(chartLabel) + '">'
           + '<div class="top"><div><div class="sym">' + escapeHtml(r.symbol) + '</div><div class="nm">' + escapeHtml(r.name) + noteBtn + '</div></div>'
           + '<div><div class="price">' + money(r.price) + '</div><span class="day-pill ' + cls + '">' + dayText(r) + '</span></div></div>'
           + '<div class="meta"><span class="ytd">' + (r.ytdBasis === 'listing' ? 'Since listing' : 'YTD') + ' <b class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + '</b>'

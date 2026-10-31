@@ -3,6 +3,9 @@
 // ONE generic module for every Market Indicator candle chart. Do NOT
 // copy this file per indicator: add a config entry in CONFIGS below
 // and a shipped weekly JSON file, and wire the tile in screener.html.
+// Stock cards use the same modal: add an entry to STOCKS (not a copy
+// of this file) plus assets/data/stock-weekly-<SYM>.json. Indicator
+// configs, colours, month axis and current-line placement are unchanged.
 // This module replaces assets/js/screener-gold.js (deleted on this
 // branch): gold now runs through this module with the same data,
 // values, "+" behaviour, month x-axis and left current line as before.
@@ -92,7 +95,44 @@
     }
   };
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0 };
+  // Stock cards (not indicator tiles). The dashed line is the shipped
+  // weekly close ("Close $…"), never the live card price. "Current $…
+  // YTD …" is drawn from the card's own merged row. Cache-bust STOCK_V
+  // whenever the JSON is regenerated.
+  var STOCK_V = '20261030r';
+  function stockCfg(sym, basis) {
+    var listing = basis === 'listing';
+    return {
+      symbol: sym,
+      stock: true,
+      basis: basis,
+      title: listing ? (sym + ' — since listing') : (sym + ' — YTD weekly candles'),
+      dataUrl: 'assets/data/stock-weekly-' + sym + '.json?v=' + STOCK_V,
+      format: fmtMoney,
+      currentPrefix: 'Close ',
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
+      lastInProgress: null
+    };
+  }
+  var STOCKS = {
+    TSLA: stockCfg('TSLA', 'ytd'),
+    PLTR: stockCfg('PLTR', 'ytd'),
+    MSTR: stockCfg('MSTR', 'ytd'),
+    IBIT: stockCfg('IBIT', 'ytd'),
+    MU: stockCfg('MU', 'ytd'),
+    META: stockCfg('META', 'ytd'),
+    SPCX: stockCfg('SPCX', 'listing')
+  };
+  function cardMoney(v) {
+    if (typeof v !== 'number' || !isFinite(v)) return '—';
+    return (v < 0 ? '-$' : '$') + Math.abs(v).toFixed(2);
+  }
+  function cardPct(v) {
+    if (typeof v !== 'number' || !isFinite(v)) return '—';
+    return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+  }
+
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], base: null, progressNote: null, resolvedSub: '' };
 
   // Reset EVERYTHING the previous symbol left on screen, before the
   // new symbol's title is shown. This is the stale-state fix (Grok
@@ -111,6 +151,8 @@
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
       delete canvas._plot;
     }
+    var cardLine = el('ind-cardline');
+    if (cardLine) { cardLine.style.display = 'none'; cardLine.textContent = ''; }
   }
 
   function showInfo(text) {
@@ -140,6 +182,44 @@
     });
   }
 
+  function renderCardLine() {
+    var node = el('ind-cardline');
+    if (!node) return;
+    if (!state.cfg || !state.cfg.stock) { node.style.display = 'none'; node.textContent = ''; return; }
+    var row = null;
+    (state.rows || []).forEach(function (r) { if (r.symbol === state.cfg.symbol) row = r; });
+    if (!row || typeof row.price !== 'number' || !isFinite(row.price)) { node.style.display = 'none'; node.textContent = ''; return; }
+    var ytdLabel = row.ytdBasis === 'listing' ? 'Since listing' : 'YTD';
+    var ytd = cardPct(row.ytdPct);
+    node.textContent = '';
+    node.appendChild(document.createTextNode('Current ' + cardMoney(row.price) + '  ' + ytdLabel + ' '));
+    var b = document.createElement('b');
+    b.className = (typeof row.ytdPct === 'number' && row.ytdPct > 0) ? 'up' : ((typeof row.ytdPct === 'number' && row.ytdPct < 0) ? 'down' : 'flat');
+    b.textContent = ytd;
+    node.appendChild(b);
+    node.style.display = 'block';
+  }
+  function applyStockMeta(cfg, data) {
+    var node = el('ind-cardline');
+    if (!cfg.stock) {
+      state.base = null; state.progressNote = null; state.resolvedSub = '';
+      if (node) { node.style.display = 'none'; node.textContent = ''; }
+      return;
+    }
+    state.base = (typeof data.baseClose === 'number' && isFinite(data.baseClose))
+      ? { value: data.baseClose, label: data.baseLabel || 'Baseline' } : null;
+    state.progressNote = data.inProgress || null;
+    var asOf = data.asOfLabel || data.asOf || '';
+    var line = cfg.basis === 'listing'
+      ? 'Since listing 12 Jun 2026, not 31 Dec 2025. Data to ' + asOf + '. Tap a candle for its week.'
+      : 'Weekly candles, data to ' + asOf + '. Tap a candle for its week.';
+    if (state.progressNote) line = line.replace('Tap a candle for its week.', 'Latest week in progress. Tap a candle for its week.');
+    state.resolvedSub = line;
+    var sub = el('ind-sub');
+    if (sub) sub.textContent = line;
+    renderCardLine();
+  }
+
   function openModal(cfg) {
     var m = el('ind-modal');
     if (!m) return;
@@ -148,7 +228,12 @@
     var t = el('ind-title');
     if (t) t.textContent = cfg.title;
     var sub = el('ind-sub');
-    if (sub) sub.textContent = cfg.subBlurb;
+    if (sub) sub.textContent = (!switched && state.resolvedSub) ? state.resolvedSub : cfg.subBlurb;
+    m.setAttribute('aria-label', cfg.stock
+      ? (cfg.basis === 'listing' ? cfg.symbol + ' since listing weekly candles' : cfg.symbol + ' YTD weekly candles')
+      : 'Indicator YTD weekly candle chart');
+    var canvas = el('ind-canvas');
+    if (canvas) canvas.setAttribute('aria-label', cfg.stock ? (cfg.symbol + ' weekly candle chart') : 'Indicator weekly candle chart, year to date');
     m.classList.add('open');
     m.setAttribute('aria-hidden', 'false');
     // A different symbol always starts blank: clear the old pill,
@@ -158,12 +243,16 @@
     // the old candle selection/pill so it cannot linger either.
     resetModalVisuals();
     if (switched) {
+      state.resolvedSub = '';
+      state.base = null;
+      state.progressNote = null;
       state.loadToken++;
       state.weeks = [];
       state.loadedSymbol = '';
       loadData();
     } else if (state.weeks.length && state.loadedSymbol === cfg.symbol) {
       draw();
+      if (cfg.stock) renderCardLine();
     } else {
       state.weeks = [];
       loadData();
@@ -194,6 +283,7 @@
         if (token !== state.loadToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale response: ignore
         state.weeks = weeksFromStatic(data);
         state.loadedSymbol = cfg.symbol;
+        applyStockMeta(cfg, data);
         var last = state.weeks[state.weeks.length - 1];
         setStatus('Tap a candle for its week.');
         state.loading = false;
@@ -205,6 +295,9 @@
         // chart, not leave it drawn under the new title.
         state.weeks = [];
         state.loadedSymbol = '';
+        state.base = null;
+        state.progressNote = null;
+        state.resolvedSub = '';
         resetModalVisuals();
         state.loading = false;
         setStatus(cfg.symbol + ' weekly candles could not be loaded. Check your connection and tap Retry — no chart is shown until real data arrives.', true);
@@ -232,10 +325,19 @@
     var plotW = cssW - padL - padR, plotH = cssH - padT - padB;
     var lo = Infinity, hi = -Infinity;
     state.weeks.forEach(function (w) { lo = Math.min(lo, w.low); hi = Math.max(hi, w.high); });
+    if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
+      lo = Math.min(lo, state.base.value); hi = Math.max(hi, state.base.value);
+    }
     var span = hi - lo || 1;
     lo -= span * 0.05; hi += span * 0.05;
-    function y(v) { return padT + (hi - v) / (hi - lo) * plotH; }
     var fmt = state.cfg.format;
+    if (state.cfg && state.cfg.stock) {
+      ctx.font = '11px -apple-system, system-ui, sans-serif';
+      var axisW = Math.max(ctx.measureText(fmt(lo)).width, ctx.measureText(fmt(hi)).width);
+      padL = Math.max(62, Math.ceil(axisW) + 8);
+      plotW = cssW - padL - padR;
+    }
+    function y(v) { return padT + (hi - v) / (hi - lo) * plotH; }
     ctx.font = '11px -apple-system, system-ui, sans-serif';
     ctx.fillStyle = '#94a3b8';
     ctx.strokeStyle = 'rgba(255,255,255,0.08)';
@@ -283,7 +385,7 @@
     ctx.beginPath(); ctx.moveTo(padL, cy); ctx.lineTo(cssW - padR, cy); ctx.stroke();
     ctx.setLineDash([]);
     var curLab = state.cfg.currentPrefix + fmt(current);
-    if (state.cfg.lastInProgress) curLab += ' (in progress)';
+    if (state.cfg.lastInProgress || state.progressNote) curLab += ' (in progress)';
     ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
     var tw = ctx.measureText(curLab).width;
     var lx = padL + 6;
@@ -294,6 +396,27 @@
     ctx.fillStyle = '#0b1226';
     ctx.fillText(curLab, lx, ly);
     ctx.restore();
+    if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
+      var by = y(state.base.value);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148,163,184,0.9)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.moveTo(padL, by); ctx.lineTo(cssW - padR, by); ctx.stroke();
+      ctx.setLineDash([]);
+      var blab = state.base.label + ' ' + fmt(state.base.value);
+      ctx.font = '10px -apple-system, system-ui, sans-serif';
+      var btw = ctx.measureText(blab).width;
+      var bx = Math.max(padL + 4, cssW - padR - btw - 6);
+      var bly = by - 8;
+      if (bly < 14) bly = by + 14;
+      if (Math.abs(bly - ly) < 16 && bx < lx + tw + 10) bly = (bly < ly) ? Math.min(by + 14, cssH - padB - 4) : bly;
+      ctx.fillStyle = 'rgba(15,23,42,0.88)';
+      ctx.fillRect(bx - 3, bly - 10, Math.min(btw + 6, cssW - padR - bx + 3), 14);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(blab, bx, bly);
+      ctx.restore();
+    }
     canvas._plot = { padL: padL, slot: slot, n: n };
   }
 
@@ -331,7 +454,14 @@
       } else {
         html += '<br>Week change ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
       }
+      if (state.cfg.basis === 'listing' && idx === 0 && state.base) {
+        var sameOpen = Math.abs(w.open - state.base.value) <= 0.009;
+        html += sameOpen
+          ? '<br>This open equals the listing close. The baseline is that first-trading close.'
+          : '<br>Open is the first trade, not the ' + state.cfg.format(state.base.value) + ' listing close used as the baseline.';
+      }
       if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
+      else if (isLast && state.progressNote) html += '<br><i>Latest week is ' + state.progressNote + '.</i>';
       pill.style.display = 'block';
       pill.innerHTML = html;
     }
@@ -355,6 +485,13 @@
       }
       return;
     }
+    var stockCard = e.target.closest ? e.target.closest('.card[data-symbol]') : null;
+    if (stockCard && STOCKS[stockCard.getAttribute('data-symbol')]) {
+      var scfg = STOCKS[stockCard.getAttribute('data-symbol')];
+      if (state.cfg && state.cfg.symbol === scfg.symbol && state.weeks.length) openModal(scfg);
+      else { state.weeks = []; openModal(scfg); }
+      return;
+    }
     if (e.target.closest && e.target.closest('#ind-close')) { closeModal(); return; }
     if (e.target.closest && e.target.closest('#ind-retry')) {
       var r = el('ind-retry'); if (r) r.style.display = 'none';
@@ -369,11 +506,26 @@
     if (e.key === 'Escape') {
       if (state.infoOpen) { hideInfo(); return; }
       closeModal();
+      return;
     }
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var t = e.target;
+    if (!t || !t.getAttribute || t.getAttribute('data-symbol') == null) return;
+    if (!t.classList || !t.classList.contains('card')) return;
+    var kcfg = STOCKS[t.getAttribute('data-symbol')];
+    if (!kcfg) return;
+    e.preventDefault();
+    if (state.cfg && state.cfg.symbol === kcfg.symbol && state.weeks.length) openModal(kcfg);
+    else { state.weeks = []; openModal(kcfg); }
   });
   window.addEventListener('resize', function () {
     var modal = el('ind-modal');
     if (modal && modal.classList.contains('open')) draw();
+  });
+  window.addEventListener('screener-rows', function (e) {
+    state.rows = (e && e.detail) || [];
+    var modal = el('ind-modal');
+    if (modal && modal.classList.contains('open') && state.cfg && state.cfg.stock) renderCardLine();
   });
   document.addEventListener('DOMContentLoaded', function () {
     var canvas = el('ind-canvas');
@@ -390,5 +542,5 @@
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS };
 })();
