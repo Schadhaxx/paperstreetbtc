@@ -104,7 +104,7 @@
     MU: '#facc15', META: '#fb7185', SPCX: '#2dd4bf',
     BTC: '#94a3b8', SPY: '#64748b', QQQ: '#cbd5e1'
   };
-  var CMP_V = '20261030b';
+  var CMP_V = '20261031a';
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   var MN = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
 
@@ -119,7 +119,7 @@
   var hi = null;
   var chart = null;
   var tipIndex = null;
-  STOCKS.forEach(function (s) { on[s] = true; });
+  STOCKS.forEach(function (s) { on[s] = (s === 'IBIT' || s === 'MSTR'); });
 
   function motionOK() {
     return !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
