@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script>try{var q=new URLSearchParams(location.search).get("theme");if(q==="light"||q==="dark")localStorage.setItem("ps-theme",q);var t=q||localStorage.getItem("ps-theme");if(t==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stock Screener — Maple Leaf Pack</title>
@@ -172,6 +172,8 @@
   details.more:not([open]) > summary .more-btn::before { content:"+"; }
   details.more > p { margin-top:8px; }
 </style>
+<link rel="stylesheet" href="light.css">
+<script src="chart-theme.js"></script>
 </head>
 <body>
 <div class="wrap">

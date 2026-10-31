@@ -339,8 +339,8 @@
     }
     function y(v) { return padT + (hi - v) / (hi - lo) * plotH; }
     ctx.font = '11px -apple-system, system-ui, sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillStyle = psC('#94a3b8','#475569');
+    ctx.strokeStyle = psC('rgba(255,255,255,0.08)','rgba(15,23,42,.10)');
     for (var g = 0; g <= 4; g++) {
       var v = lo + (hi - lo) * g / 4;
       var yy = y(v);
@@ -360,14 +360,14 @@
       var top = y(Math.max(w.open, w.close)), bot = y(Math.min(w.open, w.close));
       ctx.fillRect(cx - bw / 2, top, bw, Math.max(1, bot - top));
       if (i === state.selected) {
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = psC('#ffffff','#0f172a'); ctx.lineWidth = 1.5;
         ctx.strokeRect(cx - bw / 2 - 3, y(w.high) - 3, bw + 6, y(w.low) - y(w.high) + 6);
       }
       var thu = new Date(w.monday.getTime() + 3 * 86400000);
       var mkey = thu.getUTCFullYear() + '-' + thu.getUTCMonth();
       if (!seenMonths[mkey]) {
         seenMonths[mkey] = true;
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = psC('#94a3b8','#475569');
         ctx.font = '10px -apple-system, system-ui, sans-serif';
         var lab = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][thu.getUTCMonth()];
         ctx.fillText(lab, Math.max(padL, Math.min(cx - 9, cssW - padR - 22)), cssH - 10);
@@ -411,9 +411,9 @@
       var bly = by - 8;
       if (bly < 14) bly = by + 14;
       if (Math.abs(bly - ly) < 16 && bx < lx + tw + 10) bly = (bly < ly) ? Math.min(by + 14, cssH - padB - 4) : bly;
-      ctx.fillStyle = 'rgba(15,23,42,0.88)';
+      ctx.fillStyle = psC('rgba(15,23,42,0.88)','#f1f5f9');
       ctx.fillRect(bx - 3, bly - 10, Math.min(btw + 6, cssW - padR - bx + 3), 14);
-      ctx.fillStyle = '#cbd5e1';
+      ctx.fillStyle = psC('#cbd5e1','#0f172a');
       ctx.fillText(blab, bx, bly);
       ctx.restore();
     }
