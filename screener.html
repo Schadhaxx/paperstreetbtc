@@ -95,10 +95,60 @@
   .status-line b { color:var(--txt); }
   .live-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--green); box-shadow:0 0 0 4px rgba(34,197,94,.2); margin-right:6px; }
   .count { color:var(--mut); margin-top:12px; font-size:14px; }
-  .chart-card { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:22px; padding:16px; margin-top:26px; }
-  .chart-card h2 { font-size:18px; margin:0 0 12px; }
+  .chart-card { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:22px; padding:16px; margin-top:26px; position:relative; box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 18px 48px rgba(0,0,0,.28); }
+  .chart-card h2 { font-size:18px; margin:0; }
   .chart-wrap { position:relative; height:320px; }
   .chart-note { color:var(--mut); font-size:13px; margin:12px 0 0; line-height:1.5; }
+  .cmp-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+  .cmp-tabs { display:flex; gap:6px; }
+  .cmp-tab, .cmp-chip { height:44px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:#0b1226; color:var(--txt); font-size:13px; font-weight:700; cursor:pointer; }
+  .cmp-tab { padding:0 14px; }
+  .cmp-tab.is-on { background:var(--cyan); color:#05070f; border-color:var(--cyan); }
+  .cmp-tab:focus-visible, .cmp-chip:focus-visible, .cmp-row button:focus-visible, .cmp-tile:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  .cmp-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .cmp-stat { background:rgba(5,7,15,.38); border:1px solid var(--line); border-radius:14px; padding:8px 10px; min-height:54px; }
+  .cmp-stat span { display:block; color:var(--mut); font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
+  .cmp-stat b { display:block; margin-top:3px; font-size:15px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+  .cmp-chips { display:flex; gap:8px; overflow-x:auto; max-width:100%; padding:2px 0 8px; scrollbar-width:none; }
+  .cmp-chips::-webkit-scrollbar { display:none; }
+  .cmp-chip { display:inline-flex; align-items:center; gap:6px; padding:0 12px; }
+  .cmp-chip.is-on { border-color:var(--cyan); box-shadow:inset 0 0 0 1px var(--cyan); color:var(--txt); }
+  .cmp-chip[aria-pressed="false"] { color:var(--mut); }
+  .cmp-dot, .cmp-swatch { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .cmp-note { color:var(--mut); font-size:13px; line-height:1.45; margin:0 0 10px; }
+  .cmp-stage { display:block; min-width:0; }
+  .cmp-plot { min-width:0; }
+  .cmp-canvas-wrap { height:280px; }
+  .cmp-tip { margin-top:8px; background:#0b1226; border:1px solid var(--line); border-radius:14px; padding:8px 10px; font-size:12px; line-height:1.5; font-variant-numeric:tabular-nums; }
+  .cmp-tip-row { display:flex; justify-content:space-between; gap:10px; align-items:center; }
+  .cmp-heat { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .cmp-tile { min-height:92px; border-radius:16px; border:1px solid rgba(255,255,255,.08); padding:12px; text-align:left; color:var(--txt); cursor:pointer; }
+  .cmp-tile .cmp-sym { font-weight:850; font-size:16px; display:block; }
+  .cmp-tile .cmp-px { color:var(--mut); font-size:12px; display:block; }
+  .cmp-tile .cmp-ret { display:block; font-weight:850; font-size:18px; margin-top:4px; font-variant-numeric:tabular-nums; letter-spacing:-.02em; color:var(--txt); }
+  .cmp-tile .cmp-ret.up, .cmp-tile .cmp-ret.down { color:#eef2fb; }
+  .cmp-tile .cmp-ret.flat { color:#000000; }
+  .cmp-tile.is-hi { box-shadow:0 0 0 2px var(--cyan); }
+  .cmp-fail { color:var(--mut); font-size:14px; line-height:1.5; }
+  .cmp-board { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .cmp-row button { width:100%; min-height:44px; display:grid; grid-template-columns:10px 48px minmax(0,1fr) auto auto; gap:8px; align-items:center; background:rgba(5,7,15,.35); border:1px solid transparent; border-radius:14px; color:inherit; padding:6px 8px; cursor:pointer; font:inherit; font-variant-numeric:tabular-nums; text-align:left; }
+  .cmp-row.is-hi button { border-color:var(--cyan); box-shadow:0 0 0 1px rgba(34,211,238,.35); }
+  .cmp-spark { width:72px; height:28px; display:block; }
+  .cmp-ret, .cmp-day { font-weight:800; font-size:13px; white-space:nowrap; }
+  .cmp-sr { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  @media (min-width:700px) {
+    .cmp-stats { grid-template-columns:repeat(4,1fr); }
+    .cmp-heat { grid-template-columns:repeat(4,1fr); }
+    .cmp-canvas-wrap { height:340px; }
+  }
+  @media (min-width:1000px) {
+    .cmp-stage { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(220px,.72fr); gap:14px; align-items:start; }
+    .cmp-board { margin-top:0; }
+    .cmp-canvas-wrap { height:380px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cmp-row button, .cmp-tile, .cmp-chip, .cmp-tab { transition:none; }
+  }
   .disclaimer { color:var(--mut); font-size:13px; margin-top:26px; line-height:1.6; }
   a { color:var(--cyan); }
   @media (min-width:700px) {
@@ -156,13 +206,51 @@
   </section>
 
   <section class="chart-card" aria-label="Comparison chart">
-    <h2>Comparison chart</h2>
-    <div class="controls">
-      <button class="btn active" data-chart-metric="day">Day change %</button>
-      <button class="btn" data-chart-metric="ytd">YTD %</button>
+    <div class="cmp-head">
+      <h2>Comparison chart</h2>
+      <div class="cmp-tabs" role="tablist" aria-label="Comparison view">
+        <button type="button" class="cmp-tab is-on" role="tab" id="cmp-tab-lines" aria-selected="true" data-cmp-view="lines">Lines</button>
+        <button type="button" class="cmp-tab" role="tab" id="cmp-tab-bars" aria-selected="false" data-cmp-view="bars">Bars</button>
+        <button type="button" class="cmp-tab" role="tab" id="cmp-tab-heat" aria-selected="false" data-cmp-view="heat">Heat</button>
+      </div>
     </div>
-    <div class="chart-wrap"><canvas id="screener-chart"></canvas></div>
-    <p class="chart-note" id="screener-chart-note"></p>
+    <div class="cmp-stats" id="cmp-stats"></div>
+    <div class="cmp-chips" id="cmp-ranges" role="group" aria-label="Range">
+      <button type="button" class="cmp-chip" data-cmp-range="1M" aria-pressed="false">1M</button>
+      <button type="button" class="cmp-chip" data-cmp-range="3M" aria-pressed="false">3M</button>
+      <button type="button" class="cmp-chip" data-cmp-range="6M" aria-pressed="false">6M</button>
+      <button type="button" class="cmp-chip is-on" data-cmp-range="ytd" aria-pressed="true">YTD</button>
+      <button type="button" class="cmp-chip" data-cmp-range="listing" aria-pressed="false">Since listing</button>
+    </div>
+    <div class="cmp-chips" id="cmp-symbols" role="group" aria-label="Stocks">
+      <button type="button" class="cmp-chip is-on" data-cmp-symbol="TSLA" aria-pressed="true"><i class="cmp-dot"></i>TSLA</button>
+      <button type="button" class="cmp-chip is-on" data-cmp-symbol="PLTR" aria-pressed="true"><i class="cmp-dot"></i>PLTR</button>
+      <button type="button" class="cmp-chip is-on" data-cmp-symbol="MSTR" aria-pressed="true"><i class="cmp-dot"></i>MSTR</button>
+      <button type="button" class="cmp-chip is-on" data-cmp-symbol="IBIT" aria-pressed="true"><i class="cmp-dot"></i>IBIT</button>
+      <button type="button" class="cmp-chip is-on" data-cmp-symbol="MU" aria-pressed="true"><i class="cmp-dot"></i>MU</button>
+      <button type="button" class="cmp-chip is-on" data-cmp-symbol="META" aria-pressed="true"><i class="cmp-dot"></i>META</button>
+      <button type="button" class="cmp-chip is-on" data-cmp-symbol="SPCX" aria-pressed="true"><i class="cmp-dot"></i>SPCX</button>
+    </div>
+    <div class="cmp-chips" id="cmp-bench" role="group" aria-label="Benchmarks">
+      <button type="button" class="cmp-chip" data-cmp-bench="BTC" aria-pressed="false">BTC</button>
+      <button type="button" class="cmp-chip" data-cmp-bench="SPY" aria-pressed="false">SPY</button>
+      <button type="button" class="cmp-chip" data-cmp-bench="QQQ" aria-pressed="false">QQQ</button>
+    </div>
+    <div class="cmp-chips" id="cmp-metric" role="group" aria-label="Bar metric" hidden>
+      <button type="button" class="cmp-chip is-on" data-cmp-metric="day" aria-pressed="true">Day change</button>
+      <button type="button" class="cmp-chip" data-cmp-metric="ytd" aria-pressed="false">YTD</button>
+    </div>
+    <p class="cmp-note" id="cmp-note"></p>
+    <div class="cmp-stage">
+      <div class="cmp-plot" id="cmp-plot">
+        <div class="chart-wrap cmp-canvas-wrap" id="cmp-canvas-wrap"><canvas id="screener-chart" aria-label="Rebased performance comparison"></canvas></div>
+        <div class="cmp-tip" id="cmp-tip" hidden></div>
+        <div class="cmp-heat" id="cmp-heat" hidden></div>
+        <p class="cmp-fail" id="cmp-fail" hidden>Daily history did not load. <button type="button" class="btn" id="cmp-retry">Retry</button></p>
+      </div>
+      <ol class="cmp-board" id="cmp-board"></ol>
+    </div>
+    <p class="cmp-sr" id="cmp-summary">Comparison chart.</p>
   </section>
 
   <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
@@ -182,7 +270,7 @@
 </div>
 <script src="assets/js/screener.js"></script>
 <script src="assets/js/screener-indicator-chart.js?v=stocks2"></script>
-<script src="assets/js/screener-chart.js"></script>
+<script src="assets/js/screener-chart.js?v=cmp1"></script>
 <script src="assets/js/btcchart.js?v=et4"></script>
 </body>
 </html>
