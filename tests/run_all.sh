@@ -43,6 +43,8 @@ run mutation python3 tests/mutate.py --history "$WORK/history.json"     # v9+: e
 run opens python3 tests/test_opens.py --history "$WORK/history.json"   # CR-005: opens validation, DST, coverage, golden values, page fallback
 run tiingo python3 tests/test_tiingo.py                                   # TG: Tiingo cross-check (mocked, no key)
 run tiingo_mutation python3 tests/mutate_tiingo.py                          # TG: mutants of the new Tiingo code only
+run vehicle node tests/test_vehicle.js "$WORK/history.json"                 # ETF toggle: fresh / 1 stale / 2+ stale / missing / bad value
+run vehicle_daily python3 tests/test_vehicle_daily.py                       # ETF toggle: nightly IBIT/FBTC updater (offline fixtures)
 TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"
 run test_freeze_liveURL python3 tests/test_freeze.py                       # F8: against the live data-branch URL (read-only)
 run et_expiry_guard_2027-11-15 bash -c 'if ET_TEST_NOW=2027-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9

@@ -13,13 +13,15 @@
      and the ETF buttons stay disabled with an explanatory label. It
      never silently shows spot values while claiming ETF mode. */
 (function(){
-  var KEY='psVehicle', vehicle='SPOT', loaded=false, failed=false;
+  var KEY='psVehicle', vehicle='SPOT', loaded=false, failed=false, staleEnd=null, asOf=null, lag=0;
+  function fmt(d){try{return (window.ET&&ET.day)?ET.day(d):d;}catch(e){return d;}}
   try{var s=sessionStorage.getItem(KEY);if(s==='IBIT'||s==='FBTC')vehicle=s;}catch(e){}
   function dispatch(){try{window.dispatchEvent(new CustomEvent('psvehicle',{detail:{vehicle:vehicle,loaded:loaded,failed:failed}}));}catch(e){}}
   function modeText(){
+    if(failed&&staleEnd)return 'IBIT/FBTC data is out of date (last close '+fmt(staleEnd)+') — showing Spot BTC';
     if(failed)return 'Vehicle data unavailable — showing Spot BTC';
     if(vehicle==='SPOT')return 'Spot BTC — the hurdle';
-    return 'You are in '+vehicle+' mode · ETF priced at its latest close (live ETF quotes arrive with the prices.yml change)';
+    return 'You are in '+vehicle+' mode · ETF prices as of the '+fmt(asOf)+' close'+(lag?' (latest session uses that close until tonight\'s update)':'');
   }
   function updateLabel(){var el=document.getElementById('vehicleMode');if(el)el.textContent=modeText();}
   function syncButtons(){
@@ -27,7 +29,7 @@
       var on=b.dataset.veh===vehicle;
       b.classList.toggle('on',on);b.classList.toggle('active',on);
       b.setAttribute('aria-pressed',on?'true':'false');
-      if(b.dataset.veh!=='SPOT'){b.disabled=!loaded;if(!loaded)b.title=failed?'Vehicle data unavailable':'Loading vehicle data…';else b.title='';}
+      if(b.dataset.veh!=='SPOT'){b.disabled=!loaded;if(!loaded)b.title=failed?(staleEnd?'Vehicle data out of date':'Vehicle data unavailable'):'Loading vehicle data…';else b.title='';}
     });
     updateLabel();
   }
@@ -57,8 +59,11 @@
   if(window.PSBook){
     PSBook.ready.then(function(BK){
       return BK.loadVehicle().then(function(){
+        var st=BK.vehicleStatus||{};asOf=st.end;lag=st.lag||0;
         loaded=true;failed=false;syncButtons();dispatch();
-      }).catch(function(){
+      }).catch(function(err){
+        /* Stale (2+ sessions behind Spot) or bad file: Spot, and say why. */
+        staleEnd=(err&&err.stale)?err.end:null;
         /* Vehicle file unavailable: stay in Spot, ETF buttons disabled. */
         failed=true;loaded=false;vehicle='SPOT';
         try{sessionStorage.setItem(KEY,'SPOT');}catch(e){}

@@ -41,28 +41,41 @@
     B.tlV={SPOT:B.tl}; B.vehicleMaps={}; B.vehicleDates={};
   }
   /* Load vehicle-daily.json (parsed object) and build one timeline per vehicle.
-     A session missing from a vehicle series is filled with that vehicle's
-     latest on-or-before close — the same flat rule vehiclePriceOnOrBefore
-     already uses for weekends/holidays, and the "ETF priced at its latest
-     close" label — so the toggle never disables just because the latest
-     session has not been appended yet. It still throws only if a vehicle
-     has NO prior close at all for a session (before its series starts),
-     so a genuinely empty/broken series still fails loudly instead of
-     silently valuing a session at zero. */
+     Staleness rule (documented limit = 1 session): a session missing from a
+     vehicle series may be filled with that vehicle's prior close ONLY if the
+     prior close is at most 1 session older (e.g. today's session before the
+     nightly ETF close is appended). The fill is reported in B.vehicleStatus
+     so the page labels it ("as of <date>"). If any vehicle is 2+ sessions
+     behind the latest Spot session, or a non-positive/non-finite value or an
+     interior gap of 2+ sessions exists, this throws (err.stale=true for the
+     tail case) and vehicle.js falls back to Spot and says why. */
+  B.VEHICLE_MAX_LAG=1;
   B.loadVehicleData=function(vd){
     if(!B.H)throw new Error('history not loaded');
+    var status={end:null,lag:0,ends:{}};
     ['IBIT','FBTC'].forEach(function(v){
-      var raw={};(vd.vehicles[v]||[]).forEach(function(p){raw[p[0]]=p[1];});
+      var raw={};(vd.vehicles[v]||[]).forEach(function(p){
+        var x=p[1];if(typeof x!=='number'||!isFinite(x)||!(x>0))throw new Error('vehicle '+v+' bad value on '+p[0]);
+        raw[p[0]]=x;});
       var rawDates=Object.keys(raw).sort(), m={};
+      if(!rawDates.length)throw new Error('vehicle '+v+' empty');
+      var vEnd=rawDates[rawDates.length-1]; status.ends[v]=vEnd;
+      var tailLag=B.dates.filter(function(d){return d>vEnd;}).length;
+      if(tailLag>B.VEHICLE_MAX_LAG){var e=new Error('vehicle '+v+' stale: last close '+vEnd+', '+tailLag+' sessions behind Spot');e.stale=true;e.end=vEnd;e.lag=tailLag;throw e;}
+      if(!status.end||vEnd<status.end)status.end=vEnd;
+      if(tailLag>status.lag)status.lag=tailLag;
+      var j=-1, gap=0;
       B.dates.forEach(function(d){
-        var prior=null;
-        for(var i=0;i<rawDates.length;i++){if(rawDates[i]<=d)prior=raw[rawDates[i]];else break;}
-        if(!(prior>0))throw new Error('vehicle '+v+' missing session '+d+' (no prior close)');
-        m[d]=prior;
+        while(j+1<rawDates.length&&rawDates[j+1]<=d)j++;
+        if(j<0)throw new Error('vehicle '+v+' missing session '+d+' (no prior close)');
+        gap=(rawDates[j]===d)?0:gap+1;
+        if(gap>B.VEHICLE_MAX_LAG)throw new Error('vehicle '+v+' missing '+gap+' sessions up to '+d);
+        m[d]=raw[rawDates[j]];
       });
       B.vehicleMaps[v]=m; B.vehicleDates[v]=Object.keys(m).sort();
       B.tlV[v]=buildTimeline(function(a,d){return a==='BTC'?m[d]:B.H.closes[d][a];});
     });
+    B.vehicleStatus=status;
     B.vehicleData=vd; return B.tlV;
   };
   /* Browser load of the static vehicle file (main-branch asset, same origin).
