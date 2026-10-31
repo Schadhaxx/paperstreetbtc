@@ -47,7 +47,7 @@ jobs:
         run: |
           cd work
           python3 - <<'PY'
-          import json, os, urllib.request, datetime
+          import json, os, urllib.request, datetime, math
           def get(u, tries=3):
               import time as _t, urllib.error as _ue
               for i in range(tries):
@@ -80,8 +80,14 @@ jobs:
           # Do not map spot into GOLD.
           for key, sym in [('WTI', 'CL%3DF'), ('US10Y', '%5ETNX'), ('VIX', '%5EVIX'), ('GOLD', 'GC%3DF')]:
               try:
-                  m = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d')['chart']['result'][0]['meta']
-                  c_, pc_ = m.get('regularMarketPrice'), m.get('chartPreviousClose')
+                  r_ = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d')['chart']['result'][0]
+                  m = r_['meta']
+                  c_ = m.get('regularMarketPrice')
+                  # prior session close = 2nd-to-last daily bar's close (NOT chartPreviousClose = close before the 5d window)
+                  cl_ = ((r_.get('indicators') or {}).get('quote') or [{}])[0].get('close') or []
+                  pc_ = cl_[-2] if len(cl_) >= 2 else None
+                  if not (isinstance(pc_, (int, float)) and not isinstance(pc_, bool) and math.isfinite(pc_)): pc_ = None
+                  if not (isinstance(c_, (int, float)) and not isinstance(c_, bool) and math.isfinite(c_)): c_ = None
                   if isinstance(c_, (int, float)) and c_ > 0 and isinstance(pc_, (int, float)) and pc_ > 0:
                       out['stocks'][key] = {'c': c_, 'pc': pc_, 't': m.get('regularMarketTime')}; ok += 1
                   else: print(key, 'bad Yahoo meta, keeping previous')
@@ -579,14 +585,23 @@ jobs:
           cp assets/data/opens.json /tmp/opens.json 2>/dev/null || true
           python3 tools/opens.py /tmp/opens.json --history /tmp/history.json && python3 tools/opens.py /tmp/opens.json --history /tmp/history.json --check-only || { echo "::warning::opens update skipped; lump sums use the close for missing days"; exit 0; }
           if ! cmp -s /tmp/opens.json assets/data/opens.json; then cp /tmp/opens.json assets/data/opens.json.tmp && mv assets/data/opens.json.tmp assets/data/opens.json; echo "changed=1" >> $GITHUB_OUTPUT; fi
+      - name: IBIT/FBTC vehicle closes (validated; never blocks the recap or prices)
+        id: vehicle
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          cp assets/data/vehicle-daily.json /tmp/vehicle.json
+          python3 tools/vehicle_daily.py /tmp/vehicle.json --history /tmp/history.json && python3 tools/vehicle_daily.py /tmp/vehicle.json --history /tmp/history.json --check-only || { echo "::warning::vehicle update skipped; the toggle labels its as-of date and falls back to Spot once 2+ sessions behind"; exit 0; }
+          if ! cmp -s /tmp/vehicle.json assets/data/vehicle-daily.json; then cp /tmp/vehicle.json assets/data/vehicle-daily.json.tmp && mv assets/data/vehicle-daily.json.tmp assets/data/vehicle-daily.json; echo "changed=1" >> $GITHUB_OUTPUT; fi
       - name: Commit and push (fast-forward only, retries)
         id: push
-        if: steps.gen.outputs.changed == '1' || steps.opens.outputs.changed == '1'
+        if: steps.gen.outputs.changed == '1' || steps.opens.outputs.changed == '1' || steps.vehicle.outputs.changed == '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- recap/ assets/data/btc-daily.json assets/data/opens.json
+          git add -- recap/ assets/data/btc-daily.json assets/data/opens.json assets/data/vehicle-daily.json
           msg=""; [ "${{ steps.gen.outputs.changed }}" = 1 ] && msg="recap/btc-daily"; [ "${{ steps.opens.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }opens"
+          [ "${{ steps.vehicle.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }vehicle"
           git commit -q -m "$msg: refresh from final closes $(date -u +%FT%TZ)"
           for wait in 0 5 15 30; do
             sleep $wait
