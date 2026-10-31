@@ -615,11 +615,11 @@
     var stocks = model ? model.models.filter(function (m) { return m.kind !== 'benchmark' && CmpMath.isNum(m.pct); }) : [];
     var ranked = CmpMath.rankDesc(stocks);
     if (!ranked.length) {
-      el.textContent = 'Comparison chart, as of ' + asOfLabel() + '.';
+      el.textContent = 'Beta. Comparison chart, as of ' + asOfLabel() + '.';
       return;
     }
     var best = ranked[0], worst = ranked[ranked.length - 1];
-    el.textContent = 'Best: ' + best.sym + ' ' + CmpMath.fmtPct(best.pct) + ', worst: ' + worst.sym + ' ' + CmpMath.fmtPct(worst.pct) + ', as of ' + asOfLabel() + '.';
+    el.textContent = 'Beta. Best: ' + best.sym + ' ' + CmpMath.fmtPct(best.pct) + ', worst: ' + worst.sym + ' ' + CmpMath.fmtPct(worst.pct) + ', as of ' + asOfLabel() + '.';
   }
 
   function renderFail() {

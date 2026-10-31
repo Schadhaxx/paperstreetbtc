@@ -100,6 +100,8 @@
   .chart-wrap { position:relative; height:320px; }
   .chart-note { color:var(--mut); font-size:13px; margin:12px 0 0; line-height:1.5; }
   .cmp-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+  .cmp-title { display:flex; align-items:center; gap:8px; min-width:0; }
+  .cmp-beta { flex:0 0 auto; height:22px; padding:0 8px; border-radius:999px; border:1px solid rgba(34,211,238,.5); color:var(--cyan); background:rgba(34,211,238,.08); font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; display:inline-flex; align-items:center; }
   .cmp-tabs { display:flex; gap:6px; }
   .cmp-tab, .cmp-chip { height:44px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:#0b1226; color:var(--txt); font-size:13px; font-weight:700; cursor:pointer; }
   .cmp-tab { padding:0 14px; }
@@ -205,9 +207,12 @@
   <p class="status-line" id="stocks-status">Loading status…</p>
   </section>
 
-  <section class="chart-card" aria-label="Comparison chart">
+  <section class="chart-card" aria-label="Comparison chart, beta">
     <div class="cmp-head">
-      <h2>Comparison chart</h2>
+      <div class="cmp-title">
+        <h2>Comparison chart</h2>
+        <span class="cmp-beta">Beta</span>
+      </div>
       <div class="cmp-tabs" role="tablist" aria-label="Comparison view">
         <button type="button" class="cmp-tab is-on" role="tab" id="cmp-tab-lines" aria-selected="true" data-cmp-view="lines">Lines</button>
         <button type="button" class="cmp-tab" role="tab" id="cmp-tab-bars" aria-selected="false" data-cmp-view="bars">Bars</button>
@@ -250,7 +255,7 @@
       </div>
       <ol class="cmp-board" id="cmp-board"></ol>
     </div>
-    <p class="cmp-sr" id="cmp-summary">Comparison chart.</p>
+    <p class="cmp-sr" id="cmp-summary">Beta. Comparison chart.</p>
   </section>
 
   <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
@@ -270,7 +275,7 @@
 </div>
 <script src="assets/js/screener.js"></script>
 <script src="assets/js/screener-indicator-chart.js?v=stocks2"></script>
-<script src="assets/js/screener-chart.js?v=cmp1"></script>
+<script src="assets/js/screener-chart.js?v=cmp2"></script>
 <script src="assets/js/btcchart.js?v=et4"></script>
 </body>
 </html>
