@@ -58,7 +58,7 @@
       dataUrl: 'assets/data/gold-weekly.json?v=2',
       format: fmtMoney,
       currentPrefix: 'Current ',
-      subBlurb: 'COMEX gold futures (GC=F), $/troy oz. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. Tap a candle for its week and open / high / low / close.',
+      subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
       lastInProgress: null
     },
     WTI: {
@@ -67,7 +67,7 @@
       dataUrl: 'assets/data/wti-weekly.json?v=1',
       format: fmtMoney,
       currentPrefix: 'Current ',
-      subBlurb: 'NYMEX front-month WTI futures (CL=F), $/barrel. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. WTI is a continuous front-month series — there are gaps where contracts roll over. Candles are shipped with this page, data as of 30 Oct 2026, 3:42 p.m. ET — a dated snapshot, not a live quote. The latest week is in progress, not a final close. Tap a candle for its week and open / high / low / close.',
+      subBlurb: 'Weekly candles, data to 30 Oct 2026. Latest week in progress. Tap a candle for its week.',
       lastInProgress: 'in progress, as of 30 Oct 2026, 3:42 p.m. ET'
     },
     US10Y: {
@@ -76,10 +76,9 @@
       dataUrl: 'assets/data/us10y-weekly.json?v=1',
       format: fmtYield,
       currentPrefix: 'Current ',
-      subBlurb: '10-Year Treasury Yield, Yahoo ^TNX (CBOE Interest Rate 10 Year T Note), in %. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. The latest week is a final close, not in progress. Tap a candle for its week and open / high / low / close in %.',
+      subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
       lastInProgress: null,
       ppChange: true,
-      footNote: ' Source is Yahoo ^TNX (CBOE Interest Rate 10 Year T Note), not Treasury par yield. Latest week is a final close (30 Oct 2026 yield 4.929%), not in progress. Manual refresh only, when Sunil asks.'
     },
     VIX: {
       symbol: 'VIX',
@@ -87,10 +86,9 @@
       dataUrl: 'assets/data/vix-weekly.json?v=1',
       format: fmtPoints,
       currentPrefix: 'Current ',
-      subBlurb: 'CBOE Volatility Index, Yahoo ^VIX, in points — an index level. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. The latest week is a final close, not in progress. No VIX ETF is substituted. Tap a candle for its week and open / high / low / close in points.',
+      subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
       lastInProgress: null,
       ptsChange: true,
-      footNote: ' Source is Yahoo ^VIX (CBOE Volatility Index), in points — an index level, and no VIX ETF is substituted. Latest week is a final close (30 Oct 2026 level 19.42 points), not in progress. VIX counts 215 trading days YTD (other indicators 209) because closes are published on 25 May and 7 Sep 2026, and Cboe also calculated VIX on 19 Jan, 16 Feb, 19 Jun and 3 Jul 2026. Manual refresh only, when Sunil asks.'
     }
   };
 
@@ -107,8 +105,6 @@
     if (pill) pill.style.display = 'none';
     hideInfo();
     state.footerText = '';
-    var footBtn = el('ind-info-foot');
-    if (footBtn) footBtn.style.display = 'none';
     var canvas = el('ind-canvas');
     if (canvas) {
       var ctx = canvas.getContext('2d');
@@ -132,13 +128,6 @@
   function toggleInfo(text) {
     if (state.infoOpen && state.infoText === text) hideInfo();
     else showInfo(text);
-  }
-  function showFooterInfo(text) {
-    state.footerText = text;
-    var s = el('ind-status');
-    if (s) s.style.display = 'none';
-    var btn = el('ind-info-foot');
-    if (btn) btn.style.display = 'inline-flex';
   }
   function setStatus(text, isError) {
     var s = el('ind-status');
@@ -206,11 +195,8 @@
         state.weeks = weeksFromStatic(data);
         state.loadedSymbol = cfg.symbol;
         var last = state.weeks[state.weeks.length - 1];
-        var foot = 'Source: ' + (data.source || cfg.symbol) + ', weekly candles shipped with the screener, data as of ' + (data.asOf || '30 Oct 2026') + ' · latest week ends ' + fmtDateUTC(last.sunday) + ' · ' + state.weeks.length + ' weekly candles, YTD — a dated snapshot, not a live quote. First week is partial: 1 trading day (2 Jan 2026), week starting 29 Dec 2025.';
-        if (cfg.symbol === 'WTI') foot += ' WTI is a continuous front-month series — there are gaps where contracts roll over. Latest week in progress, as of 30 Oct 2026, 3:42 p.m. ET — its close is an intraday snapshot, not a daily close. Manual refresh only, when Sunil asks.';
-        if (cfg.footNote) foot += cfg.footNote;
+        setStatus('Tap a candle for its week.');
         state.loading = false;
-        showFooterInfo(foot);
         draw();
       })
       .catch(function () {
@@ -399,8 +385,6 @@
       var sub = el('ind-sub');
       toggleInfo(sub ? sub.textContent : '');
     });
-    var footBtn = el('ind-info-foot');
-    if (footBtn) footBtn.addEventListener('click', function () { if (state.footerText) toggleInfo(state.footerText); });
     var infoPill = el('ind-info-pill');
     if (infoPill) infoPill.addEventListener('click', function () { hideInfo(); });
   });
