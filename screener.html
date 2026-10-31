@@ -105,27 +105,37 @@
     .cards { grid-template-columns:1fr 1fr; } .tile .v { font-size:30px; }
   }
   @media (min-width:1000px) { .cards { grid-template-columns:1fr 1fr 1fr; } }
+  /* Collapsible explanatory text (30 Oct 2026): default closed behind a
+     "+" pill styled like .ind-info-btn; native <details>, no JS. */
+  details.more { margin:0 2px 12px; }
+  details.more > summary { list-style:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--mut); font-size:13px; }
+  details.more > summary::-webkit-details-marker { display:none; }
+  details.more > summary .more-btn { width:32px; height:32px; min-width:32px; border-radius:50%; border:1px solid #475569; background:#1e293b; color:#fff; font-size:18px; line-height:1; display:inline-flex; align-items:center; justify-content:center; }
+  details.more > summary:focus-visible .more-btn { outline:2px solid var(--cyan); outline-offset:2px; }
+  details.more[open] > summary .more-btn::before { content:"\2212"; }
+  details.more:not([open]) > summary .more-btn::before { content:"+"; }
+  details.more > p { margin-top:8px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Your watchlist,<br>at a glance.</h1>
-    <p class="sub">Seven stocks, four market indicators, one honest status line each. Tap a card's <b>+</b> for its note. Trend bars show only the size of today's move — they are not price history.</p>
+    <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Seven stocks, four market indicators, one honest status line each. Tap a card's <b>+</b> for its note. Trend bars show only the size of today's move — they are not price history.</p></details>
     <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
   </header>
-  <p class="asof">Stocks in the second box, Market Indicators in the first box below. Each box has one status line below it: stocks follow US stock hours, while Market Indicators split by instrument — WTI and gold follow futures hours, the 10-year yield and VIX follow stock hours — and the indicators line names which rows are live and which are on a dated close.</p>
+  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>How the boxes work</summary><p class="asof">Stocks in the second box, Market Indicators in the first box below. Each box has one status line below it: stocks follow US stock hours, while Market Indicators split by instrument — WTI and gold follow futures hours, the 10-year yield and VIX follow stock hours — and the indicators line names which rows are live and which are on a dated close.</p></details>
 
   <section aria-label="Market Indicators">
   <h2>Market Indicators</h2>
-  <p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting below apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET). Tap the gold, WTI, 10-year or VIX tile for its YTD weekly candle chart; tap its + for its note.</p>
+  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About the indicators</summary><p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting below apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET). Tap the gold, WTI, 10-year or VIX tile for its YTD weekly candle chart; tap its + for its note.</p></details>
   <div class="kpis" id="indicators-body"><p>Loading…</p></div>
   <p class="status-line" id="indicators-status">Loading status…</p>
   </section>
 
   <section aria-label="Stocks">
   <h2>Stocks</h2>
-  <p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX: its YTD figure shows return since its 12 Jun 2026 first trading close ($160.95), labelled "Since listing 12 Jun 2026" — SPCX was not public on 31 Dec 2025, so a true Dec 31 YTD does not exist for it.</p>
+  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About YTD</summary><p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX: its YTD figure shows return since its 12 Jun 2026 first trading close ($160.95), labelled "Since listing 12 Jun 2026" — SPCX was not public on 31 Dec 2025, so a true Dec 31 YTD does not exist for it.</p></details>
   <div class="pills">
     <span class="pill">Biggest gainer: <b id="pill-gainer-val" class="up">—</b></span>
     <span class="pill">Biggest loser: <b id="pill-loser-val" class="down">—</b></span>
