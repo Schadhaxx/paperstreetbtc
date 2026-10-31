@@ -21,7 +21,8 @@
   .sub { color:var(--mut); font-size:15px; line-height:1.5; margin:8px 0 0; }
   .asof { color:var(--mut); font-size:14px; line-height:1.6; margin:0 0 4px; }
   .btc-pill-row { display:flex; margin:18px 0 0; }
-  .btc-pill-row .hdr-tick { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:56px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 18px; box-shadow:0 14px 40px rgba(0,0,0,.45); color:var(--txt); font-size:19px; font-weight:800; cursor:pointer; }
+  .btc-pill-row .hdr-tick { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:56px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 18px; box-shadow:0 14px 40px rgba(0,0,0,.45); color:var(--txt); font-size:27px; font-weight:850; letter-spacing:-.02em; line-height:1.1; cursor:pointer; }
+  .btc-pill-row .hdr-chg { font-size:14px; font-weight:800; }
   .pills { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 4px; }
   .pill { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:8px 16px; font-size:14px; }
   .pill b { color:var(--orange); }
@@ -44,7 +45,6 @@
      description blurb and the bottom source blurb behind a tap. */
   .ind-info-btn { width:40px; height:40px; min-width:40px; border-radius:50%; border:1px solid #475569; background:#1e293b; color:#fff; font-size:20px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
   .ind-info-btn:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
-  #ind-info-foot { display:none; margin-left:auto; }
   #ind-info-pill { display:none; margin:0 0 12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:13px; line-height:1.55; text-align:center; color:var(--mut); cursor:pointer; position:relative; }
   #ind-info-x { position:absolute; top:6px; right:10px; background:none; border:none; color:var(--mut); font-size:14px; cursor:pointer; padding:4px; }
   .ind-footrow { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
@@ -102,7 +102,7 @@
   @media (min-width:700px) {
     .wrap { padding:26px 22px 56px; } h1 { font-size:42px; }
     .kpis { grid-template-columns:repeat(4,1fr); }
-    .cards { grid-template-columns:1fr 1fr; } .tile .v { font-size:30px; }
+    .cards { grid-template-columns:1fr 1fr; } .tile .v { font-size:30px; } .btc-pill-row .hdr-tick { font-size:30px; }
   }
   @media (min-width:1000px) { .cards { grid-template-columns:1fr 1fr 1fr; } }
   /* Collapsible explanatory text (30 Oct 2026): default closed behind a
@@ -121,21 +121,21 @@
 <div class="wrap">
   <header>
     <h1>Your watchlist,<br>at a glance.</h1>
-    <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Seven stocks, four market indicators, one honest status line each. Tap a card's <b>+</b> for its note. Trend bars show only the size of today's move — they are not price history.</p></details>
+    <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Seven stocks, four market indicators. Trend bars show only the size of today's move — they are not price history.</p></details>
     <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
   </header>
-  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>How the boxes work</summary><p class="asof">Stocks in the second box, Market Indicators in the first box below. Each box has one status line below it: stocks follow US stock hours, while Market Indicators split by instrument — WTI and gold follow futures hours, the 10-year yield and VIX follow stock hours — and the indicators line names which rows are live and which are on a dated close.</p></details>
+  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>How the boxes work</summary><p class="asof">Each box has one status line below it, saying which rows are live and which are on a dated close.</p></details>
 
   <section aria-label="Market Indicators">
   <h2>Market Indicators</h2>
-  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About the indicators</summary><p class="box-note">WTI in $/barrel (NYMEX front-month futures — the usual WTI quote) · Gold (COMEX futures) in $/troy ounce · 10-Year Treasury Yield in % (day change shown in percentage points) · VIX in points — an index level, not a price. Search, filters and sorting below apply to the Stocks box only; this box always shows all four indicators. WTI and gold (COMEX futures) follow futures hours — Sunday 6 p.m. ET through Friday 5 p.m. ET, except the daily 5–6 p.m. ET break — while the 10-year yield and VIX follow stock hours (Mon–Fri 9:30 a.m.–4 p.m. ET). Tap the gold, WTI, 10-year or VIX tile for its YTD weekly candle chart; tap its + for its note.</p></details>
+  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About the indicators</summary><p class="box-note">WTI $/barrel · Gold (COMEX futures) $/troy oz · 10-Year % (day change in percentage points) · VIX points, not a price. Tap a tile for its YTD weekly candle chart.</p></details>
   <div class="kpis" id="indicators-body"><p>Loading…</p></div>
   <p class="status-line" id="indicators-status">Loading status…</p>
   </section>
 
   <section aria-label="Stocks">
   <h2>Stocks</h2>
-  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About YTD</summary><p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX: its YTD figure shows return since its 12 Jun 2026 first trading close ($160.95), labelled "Since listing 12 Jun 2026" — SPCX was not public on 31 Dec 2025, so a true Dec 31 YTD does not exist for it.</p></details>
+  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About YTD</summary><p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX (since listing 12 Jun 2026).</p></details>
   <div class="pills">
     <span class="pill">Biggest gainer: <b id="pill-gainer-val" class="up">—</b></span>
     <span class="pill">Biggest loser: <b id="pill-loser-val" class="down">—</b></span>
@@ -163,7 +163,7 @@
     <p class="chart-note" id="screener-chart-note"></p>
   </section>
 
-  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. The status line under each box states whether its rows are live or showing a dated close — the indicators line names which rows are live and which are dated — and there is no per-row status column. Rows with no pipeline quote show their 28 Oct 2026 close from the data pack. SpaceX trades publicly as SPCX since its 12 June 2026 IPO. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
+  <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
 </div>
 <script src="assets/vendor/chart.umd.min.js"></script>
 <div class="ind-modal" id="ind-modal" aria-hidden="true" role="dialog" aria-label="Indicator YTD weekly candle chart">
@@ -173,12 +173,12 @@
     <div id="ind-info-pill" role="note" tabindex="0"><button type="button" id="ind-info-x" aria-label="Dismiss">✕</button><span id="ind-info-text"></span></div>
     <canvas id="ind-canvas" width="320" height="280" aria-label="Indicator weekly candle chart, year to date"></canvas>
     <div id="ind-pill" role="button" tabindex="0"></div>
-    <div class="ind-footrow"><p id="ind-status">Tap a candle for its week.</p><button type="button" class="ind-info-btn" id="ind-info-foot" aria-label="About this chart's source">+</button></div>
+    <div class="ind-footrow"><p id="ind-status">Tap a candle for its week.</p></div>
     <button type="button" class="btn" id="ind-retry">Retry</button>
   </div>
 </div>
 <script src="assets/js/screener.js"></script>
-<script src="assets/js/screener-indicator-chart.js?v=vix1"></script>
+<script src="assets/js/screener-indicator-chart.js?v=clean1"></script>
 <script src="assets/js/screener-chart.js"></script>
 <script src="assets/js/btcchart.js?v=et4"></script>
 </body>
