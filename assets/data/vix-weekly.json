@@ -1,7 +1,7 @@
 {
   "source": "Yahoo ^VIX (CBOE Volatility Index), index points",
   "asOf": "30 Oct 2026",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Index levels in points, shown to 2 decimals \u2014 never a dollar value, and no VIX ETF is substituted. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Latest week (26 Oct 2026) is a FINAL close: 30 Oct 2026 level 19.42 points \u2014 it is NOT in progress. Day count is 211 trading days, not 209: Yahoo ^VIX / Cboe VIXCLS publishes closes on Mon 25 May 2026 (16.59) and Mon 7 Sep 2026 (15.30), days on which the stock, futures and yield series are closed, so those two weeks count 5 days for VIX and 4 for the other indicators. Dated snapshot shipped with the screener \u2014 not a live quote. Manual refresh only, when Sunil asks.",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Index levels in points, shown to 2 decimals \u2014 never a dollar value, and no VIX ETF is substituted. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Latest week (26 Oct 2026) is a FINAL close: 30 Oct 2026 level 19.42 points \u2014 it is NOT in progress. Day count is 215 trading days, not 209: Cboe calculated VIX on Mon 25 May 2026 (16.59) and Mon 7 Sep 2026 (15.30), and also on Mon 19 Jan, Mon 16 Feb, Fri 19 Jun and Fri 3 Jul 2026, days on which the stock, futures and yield series are closed, so those six weeks count 5 days for VIX and 4 for the other indicators (211 days in Yahoo's data plus the 4 Cboe-only days). Dated snapshot shipped with the screener \u2014 not a live quote. Manual refresh only, when Sunil asks.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -37,8 +37,8 @@
       "monday": "2026-01-19",
       "sunday": "2026-01-25",
       "label": "19 Jan 2026 \u2013 25 Jan 2026",
-      "days": 4,
-      "open": 19.94,
+      "days": 5,
+      "open": 18.63,
       "high": 20.99,
       "low": 15.27,
       "close": 16.09
@@ -77,8 +77,8 @@
       "monday": "2026-02-16",
       "sunday": "2026-02-22",
       "label": "16 Feb 2026 \u2013 22 Feb 2026",
-      "days": 4,
-      "open": 21.74,
+      "days": 5,
+      "open": 20.73,
       "high": 22.96,
       "low": 18.48,
       "close": 19.09
@@ -247,11 +247,11 @@
       "monday": "2026-06-15",
       "sunday": "2026-06-21",
       "label": "15 Jun 2026 \u2013 21 Jun 2026",
-      "days": 4,
+      "days": 5,
       "open": 16.78,
       "high": 18.84,
       "low": 15.77,
-      "close": 16.4
+      "close": 16.78
     },
     {
       "monday": "2026-06-22",
@@ -267,11 +267,11 @@
       "monday": "2026-06-29",
       "sunday": "2026-07-05",
       "label": "29 Jun 2026 \u2013 5 Jul 2026",
-      "days": 4,
+      "days": 5,
       "open": 18.6,
       "high": 19.45,
-      "low": 15.79,
-      "close": 16.15
+      "low": 15.75,
+      "close": 15.81
     },
     {
       "monday": "2026-07-06",

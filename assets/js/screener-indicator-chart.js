@@ -89,7 +89,7 @@
       subBlurb: 'CBOE Volatility Index, Yahoo ^VIX, in points — an index level. Weekly candles, UTC Monday–Sunday weeks, 1 Jan 2026 to the latest week. Candles are shipped with this page, data as of 30 Oct 2026 — a dated snapshot, not a live quote. The latest week is a final close, not in progress. No VIX ETF is substituted. Tap a candle for its week and open / high / low / close in points.',
       lastInProgress: null,
       ptsChange: true,
-      footNote: ' Source is Yahoo ^VIX (CBOE Volatility Index), in points — an index level, and no VIX ETF is substituted. Latest week is a final close (30 Oct 2026 level 19.42 points), not in progress. VIX counts 211 trading days YTD (other indicators 209) because closes are published on 25 May and 7 Sep 2026. Manual refresh only, when Sunil asks.'
+      footNote: ' Source is Yahoo ^VIX (CBOE Volatility Index), in points — an index level, and no VIX ETF is substituted. Latest week is a final close (30 Oct 2026 level 19.42 points), not in progress. VIX counts 215 trading days YTD (other indicators 209) because closes are published on 25 May and 7 Sep 2026, and Cboe also calculated VIX on 19 Jan, 16 Feb, 19 Jun and 3 Jul 2026. Manual refresh only, when Sunil asks.'
     }
   };
 
