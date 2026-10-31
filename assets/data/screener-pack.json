@@ -18,7 +18,7 @@
       "dayChange": -23.0,
       "dayChangePct": -0.56,
       "name": "Gold (COMEX futures)",
-      "note": "COMEX gold futures (GC=F), $/troy oz. Pack close only until the pipeline writes GOLD.",
+      "note": "COMEX gold futures (GC=F), $/troy oz. Pipeline writes GOLD live in futures hours.",
       "prevClose": 4074.6,
       "price": 4051.6,
       "symbol": "GOLD",
