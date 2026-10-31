@@ -16,6 +16,11 @@ chk('fmtMoney(1234567.89) grouped', fmtMoney(1234567.89) === '$1,234,567.89');
 chk('fmtMoney(0) = $0.00', fmtMoney(0) === '$0.00');
 chk('fmtMoney(NaN) = em dash', fmtMoney(NaN) === '—');
 chk('fmtMoney("x") = em dash (non-number)', fmtMoney('x') === '—');
+const cardMoney = fn(src('assets/js/screener-indicator-chart.js'), 'cardMoney');
+chk('cardMoney(-153.50) = -$153.50', cardMoney(-153.50) === '-$153.50', cardMoney(-153.50));
+chk('cardMoney(153.5) = $153.50', cardMoney(153.5) === '$153.50');
+chk('cardMoney(NaN) = em dash', cardMoney(NaN) === '—');
+chk('cardMoney(Infinity) = em dash', cardMoney(Infinity) === '—');
 // screener.js: money + dayText (dayText needs pct from the same file)
 const scr = src('assets/js/screener.js');
 const money = fn(scr, 'money');

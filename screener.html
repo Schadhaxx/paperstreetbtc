@@ -49,6 +49,7 @@
   #ind-info-x { position:absolute; top:6px; right:10px; background:none; border:none; color:var(--mut); font-size:14px; cursor:pointer; padding:4px; }
   .ind-footrow { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   #ind-canvas { width:100%; display:block; background:#0b1226; border-radius:14px; }
+  #ind-cardline { display:none; margin:2px 0 8px; font-size:15px; font-weight:800; letter-spacing:-.01em; line-height:1.35; }
   #ind-pill { display:none; margin-top:12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:14px; line-height:1.55; text-align:center; cursor:pointer; }
   #ind-status { color:var(--mut); font-size:13px; line-height:1.55; margin-top:12px; }
   #ind-retry { display:none; margin-top:10px; }
@@ -70,6 +71,7 @@
   .cards { display:grid; gap:12px; }
   .card { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:22px; padding:16px; position:relative; cursor:pointer; }
   .card:hover { border-color:#3b82f6; }
+  .card:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
   .card.loser { border-color:rgba(239,68,68,.45); }
   .card.row-highlight { border-color:var(--cyan); box-shadow:0 0 0 2px rgba(34,211,238,.35); }
   .card .top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
@@ -135,7 +137,7 @@
 
   <section aria-label="Stocks">
   <h2>Stocks</h2>
-  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About YTD</summary><p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX (since listing 12 Jun 2026).</p></details>
+  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About YTD</summary><p class="box-note">YTD is vs the 31 Dec 2025 close, except SPCX (since listing 12 Jun 2026). Tap a card for weekly candles.</p></details>
   <div class="pills">
     <span class="pill">Biggest gainer: <b id="pill-gainer-val" class="up">—</b></span>
     <span class="pill">Biggest loser: <b id="pill-loser-val" class="down">—</b></span>
@@ -171,6 +173,7 @@
     <div class="ind-head"><h3 id="ind-title">Gold — YTD weekly candles</h3><span style="display:flex;gap:8px;"><button type="button" class="ind-info-btn" id="ind-info-top" aria-label="About this chart">+</button><button type="button" class="btn" id="ind-close" aria-label="Close indicator chart">✕</button></span></div>
     <p class="ind-sub" id="ind-sub" hidden></p>
     <div id="ind-info-pill" role="note" tabindex="0"><button type="button" id="ind-info-x" aria-label="Dismiss">✕</button><span id="ind-info-text"></span></div>
+    <p id="ind-cardline"></p>
     <canvas id="ind-canvas" width="320" height="280" aria-label="Indicator weekly candle chart, year to date"></canvas>
     <div id="ind-pill" role="button" tabindex="0"></div>
     <div class="ind-footrow"><p id="ind-status">Tap a candle for its week.</p></div>
@@ -178,7 +181,7 @@
   </div>
 </div>
 <script src="assets/js/screener.js"></script>
-<script src="assets/js/screener-indicator-chart.js?v=clean1"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks1"></script>
 <script src="assets/js/screener-chart.js"></script>
 <script src="assets/js/btcchart.js?v=et4"></script>
 </body>

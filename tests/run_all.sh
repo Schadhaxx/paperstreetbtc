@@ -45,6 +45,9 @@ run tiingo python3 tests/test_tiingo.py                                   # TG: 
 run tiingo_mutation python3 tests/mutate_tiingo.py                          # TG: mutants of the new Tiingo code only
 run vehicle node tests/test_vehicle.js "$WORK/history.json"                 # ETF toggle: fresh / 1 stale / 2+ stale / missing / bad value
 run vehicle_daily python3 tests/test_vehicle_daily.py                       # ETF toggle: nightly IBIT/FBTC updater (offline fixtures)
+run stock_weekly_py python3 tests/test_stock_weekly.py                       # screener stock candles: generator fixtures + shipped invariants
+run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
+run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
 TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"
 run test_freeze_liveURL python3 tests/test_freeze.py                       # F8: against the live data-branch URL (read-only)
 run et_expiry_guard_2028-11-15 bash -c 'if ET_TEST_NOW=2028-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9 (moved with the 2028 list extension)

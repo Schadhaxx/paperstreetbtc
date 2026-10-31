@@ -1,0 +1,7 @@
+{
+  "asOf": "2026-01-02",
+  "rows": [
+    {"symbol": "TSLA", "baseClose": 449.72, "price": 452.0, "ytdBasis": null},
+    {"symbol": "SPCX", "baseClose": 160.95, "price": 170.0, "ytdBasis": "listing"}
+  ]
+}
