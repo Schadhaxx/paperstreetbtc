@@ -1,5 +1,5 @@
 {
-  "source": "Yahoo ^VIX (CBOE Volatility Index), index points",
+  "source": "Cboe daily history, verified against Yahoo ^VIX (CBOE Volatility Index), index points",
   "asOf": "30 Oct 2026",
   "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Index levels in points, shown to 2 decimals \u2014 never a dollar value, and no VIX ETF is substituted. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Latest week (26 Oct 2026) is a FINAL close: 30 Oct 2026 level 19.42 points \u2014 it is NOT in progress. Day count is 215 trading days, not 209: Cboe calculated VIX on Mon 25 May 2026 (16.59) and Mon 7 Sep 2026 (15.30), and also on Mon 19 Jan, Mon 16 Feb, Fri 19 Jun and Fri 3 Jul 2026, days on which the stock, futures and yield series are closed, so those six weeks count 5 days for VIX and 4 for the other indicators (211 days in Yahoo's data plus the 4 Cboe-only days). Dated snapshot shipped with the screener \u2014 not a live quote. Manual refresh only, when Sunil asks.",
   "weeks": [

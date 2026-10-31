@@ -18,6 +18,12 @@ chk('Sat not a session',!E.session('2026-10-24'));chk('Fri Oct 23 is a session',
 chk('early close Nov 27 2026 closeMin 780',E.closeMin('2026-11-27')===780);chk('early close Dec 24 2026',E.closeMin('2026-12-24')===780);
 chk('early close Nov 26 2027',E.closeMin('2027-11-26')===780);chk('normal day closeMin 960',E.closeMin('2026-10-23')===960);chk('holiday closeMin 0',E.closeMin('2026-11-26')===0);
 chk('day() no TZ shift',E.day('2026-10-22')==='Oct 22, 2026');
+chk('2028 MLK holiday, not a session',E.holiday('2028-01-17')&&!E.session('2028-01-17'));
+chk('2028 Good Friday holiday',E.holiday('2028-04-14')&&!E.session('2028-04-14'));
+chk('2028 Independence Day holiday',E.holiday('2028-07-04')&&!E.session('2028-07-04'));
+chk('2028 early close Jul 3',E.closeMin('2028-07-03')===780);
+chk('2028 early close Nov 24',E.closeMin('2028-11-24')===780);
+chk('2028 New Year not observed (Jan 1 is Saturday)',!E.holiday('2028-01-01')&&E.session('2028-01-03'));
 /* the three holiday lists must agree */
 const y=fs.readFileSync(path.join(R,'.github/workflows/prices.yml'),'utf8'),g=fs.readFileSync(path.join(R,'tools/recap_gen.py'),'utf8'),e=fs.readFileSync(path.join(R,'assets/js/et.js'),'utf8');
 const P=(y.match(/NYSE_HOLIDAYS = \{([^}]*)\}/)[1].match(/\d{4}-\d\d-\d\d/g)||[]).sort().join(),G=(g.match(/HOL = \{([^}]*)\}/)[1].match(/\d{4}-\d\d-\d\d/g)||[]).sort().join(),J=(e.match(/var HOL=\{([^}]*)\}/)[1].match(/\d{4}-\d\d-\d\d/g)||[]).sort().join();

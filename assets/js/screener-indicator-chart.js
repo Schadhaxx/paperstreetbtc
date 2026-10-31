@@ -26,7 +26,8 @@
 // first, the modal second). iPhone-first: one-column modal.
 (function () {
   function fmtMoney(v) {
-    return '$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (typeof v !== 'number' || !isFinite(v)) return '—';
+    return (v < 0 ? '-$' : '$') + Math.abs(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
   // Yields are in percent, never dollars: 3 decimals, so displayed
   // values match the shipped JSON exactly (the screener tile rounds

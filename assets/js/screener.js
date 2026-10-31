@@ -76,7 +76,8 @@
   }
 
   function money(v) {
-    return v === null || v === undefined ? '—' : '$' + v.toFixed(2);
+    if (v === null || v === undefined || typeof v !== 'number' || !isFinite(v)) return '—';
+    return (v < 0 ? '-$' : '$') + Math.abs(v).toFixed(2);
   }
   function formatValue(r) {
     var v = r.price;
@@ -100,7 +101,7 @@
     var sign = r.dayChange > 0 ? '+' : '';
     if (r.unit === 'pct') return sign + r.dayChange.toFixed(2) + ' pp (' + pct(r.dayChangePct) + ')';
     if (r.unit === 'points') return sign + r.dayChange.toFixed(2) + ' pts (' + pct(r.dayChangePct) + ')';
-    return sign + '$' + r.dayChange.toFixed(2) + ' (' + pct(r.dayChangePct) + ')';
+    return (r.dayChange < 0 ? '-$' : sign + '$') + Math.abs(r.dayChange).toFixed(2) + ' (' + pct(r.dayChangePct) + ')';
   }
   function fmtIso(iso) {
     var p = (iso || '').split('-');
@@ -346,7 +347,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=7')
+    fetch('assets/data/screener-pack.json?v=8')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];

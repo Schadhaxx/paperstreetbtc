@@ -20,7 +20,7 @@ function tr(t){let sh=1;const o={};for(const d of D){if(!BX[d])continue;const dv
 SER.SPY={n:'S&P 500 (SPY, total return)',v:tr('SPY')};SER.QQQ={n:'QQQ (total return)',v:tr('QQQ')};
 /* BRK-B pays no dividend, so its price is its total return */
 SER['BRK-B']={n:'Berkshire (BRK-B)',v:Object.fromEntries(D.filter(d=>BX[d]&&BX[d]['BRK.B']!=null).map(d=>[d,BX[d]['BRK.B']]))};
-const pct=(a,b)=>(b/a-1)*100,fp=x=>(x>=0?'+':'')+x.toFixed(2)+'%',cls=x=>x>=0?'pos':'neg',usd=(x,m=0)=>'$'+x.toLocaleString('en-US',{minimumFractionDigits:m,maximumFractionDigits:m});
+const pct=(a,b)=>(b/a-1)*100,fp=x=>(x>=0?'+':'')+x.toFixed(2)+'%',cls=x=>x>=0?'pos':'neg',usd=(x,m=0)=>(typeof x!=='number'||!isFinite(x))?'—':(x<0?'-$':'$')+Math.abs(x).toLocaleString('en-US',{minimumFractionDigits:m,maximumFractionDigits:m});
 
 if(document.getElementById('pvChart')){
 // chart

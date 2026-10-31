@@ -47,7 +47,7 @@ run vehicle node tests/test_vehicle.js "$WORK/history.json"                 # ET
 run vehicle_daily python3 tests/test_vehicle_daily.py                       # ETF toggle: nightly IBIT/FBTC updater (offline fixtures)
 TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"
 run test_freeze_liveURL python3 tests/test_freeze.py                       # F8: against the live data-branch URL (read-only)
-run et_expiry_guard_2027-11-15 bash -c 'if ET_TEST_NOW=2027-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9
+run et_expiry_guard_2028-11-15 bash -c 'if ET_TEST_NOW=2028-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9 (moved with the 2028 list extension)
 # recap: exactly what the nightly job does: regenerate in a staging copy, then test (strict 1e-6 embedded closes)
 STAGE="$WORK/stage"; case "$STAGE" in "$TROOT"/psrun.*/stage) ;; *) echo "REFUSING to stage outside the temp dir: $STAGE"; exit 2;; esac
 rm -rf "$STAGE"; mkdir "$STAGE"; git -C "$REPO" archive --format=tar HEAD | tar -x -C "$STAGE"   # tracked files of HEAD only
