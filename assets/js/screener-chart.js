@@ -242,7 +242,7 @@
       (y.ticks || []).forEach(function (t) {
         var py = y.getPixelForValue(t.value);
         if (py < area.top - 1 || py > area.bottom + 1) return;
-        g.strokeStyle = t.value === 0 ? 'rgba(238,242,251,.42)' : 'rgba(148,163,184,.16)';
+        g.strokeStyle = t.value === 0 ? psC('rgba(238,242,251,.42)','rgba(15,23,42,.35)') : psC('rgba(148,163,184,.16)','rgba(15,23,42,.10)');
         g.beginPath();
         g.moveTo(area.left, py);
         g.lineTo(area.right, py);
@@ -318,7 +318,7 @@
       if (!meta || !meta.data || !meta.data[tipIndex]) return;
       var x = meta.data[tipIndex].x, area = c.chartArea, g = c.ctx;
       g.save();
-      g.strokeStyle = 'rgba(148,163,184,.55)';
+      g.strokeStyle = psC('rgba(148,163,184,.55)','rgba(15,23,42,.35)');
       g.setLineDash([3, 3]);
       g.beginPath();
       g.moveTo(x, area.top);
@@ -507,11 +507,11 @@
   }
 
   function heatColor(v, mode) {
-    if (!CmpMath.isNum(v)) return 'rgba(255,255,255,.06)';
+    if (!CmpMath.isNum(v)) return psC('rgba(255,255,255,.06)','rgba(15,23,42,.06)');
     var t = Math.tanh(v / (mode === 'ytd' ? 25 : 2.5));
     if (t > 0) return 'rgba(34,197,94,' + (0.16 + t * 0.74).toFixed(3) + ')';
     if (t < 0) return 'rgba(239,68,68,' + (0.16 + (-t) * 0.74).toFixed(3) + ')';
-    return 'rgba(255,255,255,.06)';
+    return psC('rgba(255,255,255,.06)','rgba(15,23,42,.06)');
   }
   function renderHeat() {
     var box = document.getElementById('cmp-heat');

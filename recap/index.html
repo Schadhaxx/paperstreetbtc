@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html><html lang="en"><head><script>try{var q=new URLSearchParams(location.search).get("theme");if(q==="light"||q==="dark")localStorage.setItem("ps-theme",q);var t=q||localStorage.getItem("ps-theme");if(t==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="assets/owl-220.png"><title>Monthly recaps · Paperstreet BTC</title>
 <style>
 @font-face{font-family:Inter;font-weight:400 700;src:url(assets/fonts/inter-normal-latin.woff2) format('woff2')}
@@ -12,6 +12,8 @@
 #list a:hover{border-color:var(--accent)}#list p{color:var(--muted);font-size:14px}
 </style>
 <link rel="stylesheet" href="../assets/css/header.css"><link rel="stylesheet" href="../assets/css/nav.css?v=cr012"><link rel="stylesheet" href="../assets/css/xfollow.css">
+<link rel="stylesheet" href="../light.css">
+<script src="../chart-theme.js"></script>
 </head><body>
 <header class="header">
   <div class="container header-inner">
@@ -47,7 +49,7 @@
 </main>
 <script src="../assets/js/et.js?v=et2"></script><script src="months.js"></script>
 <script>(function(){var u=function(x){return '$'+x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});},f=function(x){return (x>=0?'+':'')+x.toFixed(2)+'%';},
-c=function(x){return x>=0?'#34d399':'#f87171';},dd=function(d){return new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});};
+c=function(x){return x>=0?psC('#34d399','#15803d'):psC('#f87171','#b91c1c');},dd=function(d){return new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});};
 document.getElementById('list').innerHTML=RECAP_MONTHS.slice().sort(function(a,b){return b.slug.localeCompare(a.slug);}).map(function(m){var b=m.btc;
  return '<a class="rc" href="'+m.slug+'/index.html"><h2>'+m.title+'</h2><p>'+m.blurb+'</p>'+(b?'<div class="rc-b"><span>BTC <b>'+u(b.open)+' → '+u(b.close)+'</b> <b style="color:'+c(b.chg)+'">'+f(b.chg)+'</b></span><span>High close '+u(b.hi)+' ('+dd(b.hid)+') · Low close '+u(b.lo)+' ('+dd(b.lod)+')</span></div>':'')
   +(m.sl?'<div class="rc-s">'+m.sl.map(function(s){return '<span>'+s.n+' <b style="color:'+c(s.m)+'">'+f(s.m)+'</b></span>';}).join('')+'</div>':'')+'<span class="rc-go">Full recap →</span></a>';}).join('');})();</script>
