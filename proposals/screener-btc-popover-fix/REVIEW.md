@@ -42,10 +42,15 @@ and Chief want an MSTR header value, that is a separate decision.
 ## Verification done before filing
 - `node --check assets/js/btcchart.js` passes.
 - Diff reviewed: only the 3 changes above (plus this note).
-- NOT yet verified in a browser on this branch — that check belongs in Saturday review:
-  open the test-branch screener, open the BTC pill, switch to 1M Line, tap + S&P 500, + Gold,
-  + MSTR, and confirm each line appears and the note changes; tap them off and confirm the
-  lines disappear. Also confirm the homepage pill still works the same way.
+- Browser-verified on this test branch 2 Nov 2026 ~4:45 p.m. (test copy at the exact commit
+  SHA, live site untouched): screener BTC pill opened on 1D Line; switching to 1M Line redrew
+  the chart (dates 10-02 to 11-01, ~$76k–$88k) and the note changed to daily-closes text with
+  "provisional until 7 PM ET"; + S&P 500 drew the purple line and added -2.3% to the header;
+  + Gold drew the yellow line and added -4.4%; + MSTR drew the orange line (~-18% to -19%)
+  but, as noted below, added no header percentage; tapping all three off removed each line
+  and restored the single BTC line. The original crash is fixed.
+- Homepage pill re-check on Saturday review is still worthwhile (it was already working
+  before this fix, and its pin moved et5 → et6 in this branch).
 
 ## Rollback
 Revert this single commit (screener.html, index.html, btcchart.js). No data or pipeline rollback.
