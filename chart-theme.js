@@ -74,12 +74,18 @@
       return new C(item, themeConfig(config));
     }
     Wrapped.prototype = C.prototype;
+    /* Inherit static members (Chart.register, Chart.defaults, getChart...),
+       which are non-enumerable on the Chart.js class. */
+    try { Object.setPrototypeOf(Wrapped, C); } catch (e) {}
     Object.keys(C).forEach(function (k) {
       try { Wrapped[k] = C[k]; } catch (e) {}
     });
     Wrapped.__psWrapped = true;
     return Wrapped;
   }
+
+  /* Dark (default): do nothing at all. window.Chart is left untouched. */
+  if (document.documentElement.getAttribute("data-theme") !== "light") return;
 
   var current = window.Chart;
   try {
