@@ -1,3 +1,4 @@
+window.psC=window.psC||function(d,l){return document.documentElement.getAttribute('data-theme')==='light'?l:d;};
 // Shared indicator candle chart — Maple Leaf Screener (test branch
 // pepper-indicator-charts-wti, 30 Oct 2026).
 // ONE generic module for every Market Indicator candle chart. Do NOT

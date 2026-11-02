@@ -1,3 +1,4 @@
+window.psC=window.psC||function(d,l){return document.documentElement.getAttribute('data-theme')==='light'?l:d;};
 /* Live BTC pill (header + phone menu panel) and the BTC chart popover/bottom sheet.
    Data: assets/data/btc-daily.json (2010-08-18..2014-09-16 blockchain.info, then Yahoo BTC-USD UTC-day closes),
    extended with newer BTC closes from the data branch history.json and Coinbase daily candles (weekends included),

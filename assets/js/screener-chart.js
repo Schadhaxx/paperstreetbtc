@@ -1,3 +1,4 @@
+window.psC=window.psC||function(d,l){return document.documentElement.getAttribute('data-theme')==='light'?l:d;};
 // Comparison chart for the Maple Leaf screener.
 // Lines are rebased daily closes (assets/data/cmp-daily.json). The last
 // point of a stock uses the merged row from screener.js when that row is
