@@ -354,7 +354,16 @@ jobs:
               if h.get('btc_provisional') and now_utc.minute % 30 < 5: return True                         # refresh provisional BTC every ~30 min
               for d in h.get('btc_provisional') or []:                                                     # its UTC day has ended: re-fetch until final
                   if now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): return True
-              return False
+            # Fallback healing (Nov 2026): a final close still on a fallback source must trigger
+            # a rebuild, or a Yahoo final bar that arrives later never replaces it (Oct 30 BTC stall).
+            for d, s in (h.get('fallback_sources') or {}).items():
+                for k, t in s.items():
+                        if is_primary(t): continue
+                                if k == 'BTC':
+                                            if now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): return True
+                                                    else:
+                                                                if now_utc >= _dt.datetime.fromisoformat(d).replace(hour=20, tzinfo=ET_): return True
+                                                                return False
           # --- tiingo begin ---
           # TG (Tiingo): REFERENCE ONLY on the site. It never writes, replaces or freezes a close: it only cross-checks closes that just became FINAL
           # (stocks after 8 PM ET of the session, BTC 20 min after its UTC day) and flags a difference > 0.05% (stocks) / 0.3% (BTC) as a ::warning::.
