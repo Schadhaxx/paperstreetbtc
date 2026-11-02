@@ -51,6 +51,7 @@ def shoot(b, url, w, path, hide_link=False, storage=None):
     pg.goto(url, wait_until='networkidle')
     pg.add_style_tag(content='*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}' +
                      ('.ps-theme-link{display:none!important}' if hide_link else ''))
+    pg.evaluate('document.fonts.ready.then(function(){return 1})')
     pg.wait_for_timeout(800)
     pg.screenshot(path=path, full_page=True, animations='disabled')
     theme = pg.evaluate('document.documentElement.getAttribute("data-theme")')
@@ -72,6 +73,9 @@ def main():
     rows, fail = [], 0
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=exe) if exe else p.chromium.launch()
+        # warm-up (first cold load in a fresh browser can paint before web fonts settle)
+        for w in WIDTHS:
+            shoot(b, u1 + PAGES[0], w, out + '/_warmup.png'); shoot(b, u2 + PAGES[0], w, out + '/_warmup.png')
         for pg in PAGES:
             for w in WIDTHS:
                 n = pg.replace('/', '_').replace('.html', '') + '_%d' % w
