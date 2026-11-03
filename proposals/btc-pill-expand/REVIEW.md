@@ -62,9 +62,21 @@ Two changes, from the 2 Nov mockup + spec (`btc-pill-expand-mockup.html`,
   (index, screener, compare, custom, recap index) — without this, cached
   copies of nav.css would lack the `.bc-morph` transition and the dialog
   would jump to full size with no animation.
-- Browser check 2 (re-check of the morph, on the current head) is pending
-  at the time this note was written; do not treat the morph as verified
-  until that check reports the grow and shrink actually seen.
+- Browser check 2 (re-check of the morph, on commit 06e42e39, githack,
+  exact SHA, read-only, 12:56–1:00 p.m. EST 3 Nov): SHRINK VERIFIED — two
+  captured frames show the dialog shrinking back toward the pill on close
+  (a mid-shrink oval, smaller and shifted up-left toward the pill, then a
+  pill-sized blob at the pill's own position, before the dialog vanished).
+  GROW STILL NOT CAPTURED — across four earliest-frame captures after
+  tapping the pill, the dialog was already at full size every time, so the
+  grow-out-of-the-pill on open is not evidenced by this check, even after
+  the double-animation-frame fix. It may be that the checker's capture
+  latency exceeds the 450ms animation, or that the open morph still is
+  not painting its start state; that distinction is unresolved here.
+  Chip and 1D Line chart re-confirmed in this check. Sunil said on 3 Nov
+  this is good enough to pass to Grok Bot on Saturday regardless — Grok's
+  own Saturday checks (including a phone-width check, still open) are the
+  deploy gate, and the grow should be confirmed there or fixed before live.
 
 ## Checks still for Grok Bot (before deploy)
 1. Read the diff, not just this note.
