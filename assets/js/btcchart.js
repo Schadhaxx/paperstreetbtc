@@ -14,7 +14,7 @@ var fmt=function(n){return n.toLocaleString('en-US',{style:'currency',currency:'
 /* pill markup */
 function decorate(el,full){if(el.querySelector('.lp-cv'))return;
   el.insertAdjacentHTML('afterbegin','<span class="lp-lab"><span class="lp-dot" aria-hidden="true"></span>Live BTC</span>');
-  el.insertAdjacentHTML('beforeend','<span class="lp-cv" aria-hidden="true">▾</span>');}
+  el.insertAdjacentHTML('beforeend','<span class="lp-cv" aria-hidden="true">↗ Chart ▾</span>');}
 decorate(pill);
 pill.setAttribute('aria-haspopup','dialog');pill.setAttribute('aria-expanded','false');
 if(!pill.getAttribute('aria-label'))pill.setAttribute('aria-label','Live BTC price. Open BTC chart');
@@ -539,7 +539,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
   dlg.addEventListener('touchend',function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>80)close();y0=null;},{passive:true});
-  window.addEventListener('resize',function(){if(!dlg.hidden){place();syncRgHint();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
+  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
 function place(){var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
   if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),w=Math.min(640,window.innerWidth-32);dlg.style.top=(r.bottom+10)+'px';dlg.style.left=Math.max(16,Math.min(r.left-20,window.innerWidth-w-16))+'px';}}
 function head(){$('bcPx').textContent=live.usd!=null?fmt(live.usd):'—';var c=$('bcChg');c.textContent=typeof live.chg==='number'?(live.chg>=0?'+':'')+live.chg.toFixed(1)+'% 24h':'';c.className='hdr-chg '+(live.chg>=0?'up':'down');}
@@ -581,12 +581,46 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
       y:{type:LOG?'logarithmic':'linear',grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:yTick}}}};
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});}
 function needChart(){return window.Chart?Promise.resolve():new Promise(function(ok,no){var s=document.createElement('script');s.src=U('../vendor/chart.umd.min.js');s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
+/* Pill-expand morph, 3 Nov 2026: the dialog grows out of the pill that opened it (FLIP:
+   measure the pill rect and the dialog's final rect, start the dialog scaled/translated
+   to the pill rect, then animate transform + border-radius to the final rect). Reduced
+   motion skips the animation entirely and the dialog appears at final size, as before.
+   Chart content is drawn at final size throughout; the transform only scales it visually,
+   and the chart is resized once the grow finishes. */
+function reducedMotion(){try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}}
+function morphToPill(el){
+  var pr=el.getBoundingClientRect(),fr=dlg.getBoundingClientRect();
+  if(!pr.width||!pr.height||!fr.width||!fr.height)return null;
+  return {dx:pr.left-fr.left,dy:pr.top-fr.top,sx:pr.width/fr.width,sy:pr.height/fr.height};}
 function open(from){if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
-  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;place();head();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
+  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;
+  var morph=null;
+  if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
+    dlg.style.visibility='hidden';place();morph=morphToPill(opener);
+    if(morph){dlg.classList.add('bc-morph');dlg.style.transformOrigin='top left';
+      dlg.style.transform='translate('+morph.dx+'px,'+morph.dy+'px) scale('+morph.sx+','+morph.sy+')';
+      dlg.style.borderRadius='999px';dlg.style.visibility='';
+      void dlg.offsetWidth;
+      requestAnimationFrame(function(){dlg.style.transform='';dlg.style.borderRadius='';});
+      var done=function(){dlg.removeEventListener('transitionend',done);dlg.classList.remove('bc-morph');if(ch&&ch.resize)ch.resize();};
+      dlg.addEventListener('transitionend',done);}
+    else{dlg.style.visibility='';place();}
+  } else {place();}
+  head();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
   $('bcRr').textContent='Loading…';$('bcX').focus();
   Promise.all([getData(),needChart()]).then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
-function close(){if(!dlg||dlg.hidden)return;dlg.hidden=true;dim.hidden=true;[pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
-  var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();}
+function close(){if(!dlg||dlg.hidden)return;
+  var finish=function(){dlg.hidden=true;dim.hidden=true;dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
+    [pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
+    var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();};
+  if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
+    var m=morphToPill(opener);
+    if(m){dlg.classList.add('bc-morph');dlg.style.transformOrigin='top left';
+      dlg.style.transform='translate('+m.dx+'px,'+m.dy+'px) scale('+m.sx+','+m.sy+')';
+      dlg.style.borderRadius='999px';
+      var done=false,fin=function(){if(done)return;done=true;dlg.removeEventListener('transitionend',fin);finish();};
+      dlg.addEventListener('transitionend',fin);setTimeout(fin,550);return;}}
+  finish();}
 pill.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();dlg&&!dlg.hidden?close():open(pill);});
 if(mp)mp.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();open(pill);});
 var bc=document.getElementById('btcLive');if(bc){var bo=function(e){e.preventDefault();e.stopPropagation();dlg&&!dlg.hidden?close():(open(bc),bc.setAttribute('aria-expanded','true'));};bc.addEventListener('click',bo);bc.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar')bo(e);});}
