@@ -601,7 +601,10 @@ function open(from){if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var
       dlg.style.transform='translate('+morph.dx+'px,'+morph.dy+'px) scale('+morph.sx+','+morph.sy+')';
       dlg.style.borderRadius='999px';dlg.style.visibility='';
       void dlg.offsetWidth;
-      requestAnimationFrame(function(){dlg.style.transform='';dlg.style.borderRadius='';});
+      /* Double rAF: the scaled start state must actually paint before the
+         transform is cleared, otherwise the browser coalesces the two
+         states into one frame and the grow is never seen. */
+      requestAnimationFrame(function(){requestAnimationFrame(function(){dlg.style.transform='';dlg.style.borderRadius='';});});
       var done=function(){dlg.removeEventListener('transitionend',done);dlg.classList.remove('bc-morph');if(ch&&ch.resize)ch.resize();};
       dlg.addEventListener('transitionend',done);}
     else{dlg.style.visibility='';place();}

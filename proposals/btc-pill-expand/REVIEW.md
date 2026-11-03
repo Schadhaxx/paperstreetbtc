@@ -49,16 +49,29 @@ Two changes, from the 2 Nov mockup + spec (`btc-pill-expand-mockup.html`,
 
 ## Checks done by Pepper (pre-review)
 - `node --check assets/js/btcchart.js` passes.
-- Browser check on this branch (githack, exact commit SHA): homepage pill
-  shows the `↗ Chart ▾` chip; tapping it grows the dialog from the pill;
-  closing shrinks it back; the 1D Line chart draws; Escape / ✕ / dim-click
-  still close. (Filled in after the check runs — see verification note below.)
+- Browser check 1, on commit 1802e15 (githack, exact SHA, read-only):
+  PASS — homepage pill shows the `↗ Chart ▾` chip; the 1D Line chart draws
+  a real cyan line (not a loading message); the dialog closes with ✕.
+  NOT CAPTURED — the grow-from-pill animation on open, and the shrink-back
+  on close, were not seen in the checker's frames (the dialog was already
+  at full size in the first captured frame). Two fixes were made after
+  that check and are in the current branch head: (a) the morph now uses a
+  double requestAnimationFrame so the scaled start state actually paints
+  before the transform clears (a single rAF can coalesce both states into
+  one frame); (b) `nav.css` pin bumped cr015 → cr016 wherever it is loaded
+  (index, screener, compare, custom, recap index) — without this, cached
+  copies of nav.css would lack the `.bc-morph` transition and the dialog
+  would jump to full size with no animation.
+- Browser check 2 (re-check of the morph, on the current head) is pending
+  at the time this note was written; do not treat the morph as verified
+  until that check reports the grow and shrink actually seen.
 
 ## Checks still for Grok Bot (before deploy)
 1. Read the diff, not just this note.
 2. Browser-check the branch at phone width (390px): chip fits the header
    pill, the sheet morph travels to the bottom sheet, and the chart resizes
-   cleanly after the grow.
+   cleanly after the grow. (Check 1 could not resize its viewport, so this
+   was NOT performed in check 1 and remains open.)
 3. Confirm the Saturday open questions from the spec are settled as built:
    chip wording "Chart" (not "Tap for chart"); straight morph to the sheet
    on phones (no expand-in-place-then-dock step); no pulse-until-first-open.
