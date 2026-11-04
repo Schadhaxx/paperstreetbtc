@@ -92,6 +92,20 @@ last. `/custom/` becomes a redirect stub. Homepage
 Revert the branch. Old /compare/ and /custom/ pages
 are untouched on main; the stub only exists here.
 
+## Fix after first browser check (4 Nov, same branch)
+First browser check on 8242755 FAILED on the chart and
+calculator: empty grid, results stuck at "–". Cause was
+Pepper's: the custom-note fragment was appended AFTER
+draw()'s closing brace, so the chart block threw during
+setup and the calculator block never ran. Fixed by moving
+the fragment inside the note template (before draw()'s
+closing brace). Node harness after the fix: 5 datasets
+incl. Your sleeve (203 points, embedded closes), sleeve
+today $9,860 vs spot BTC $9,600 for the default Hodler /
+$10,000 / 1 Jan 2026 inputs, custom line's final % equal
+to the Hodler line's (-1.40%) as it must be for those
+defaults. Browser re-check of the fix still owed.
+
 ## Checks owed (Saturday / browser)
 - Chart draws with the white "Your sleeve" line by
   default; toggling it off/on works.
