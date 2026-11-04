@@ -62,12 +62,17 @@ way in, besides typing the address, is the secret trigger:
 
 ## Checks done by Pepper (pre-review)
 - `node --check assets/js/btcchart.js` passes.
-- Browser check on this branch (githack, exact commit SHA): the clock page
-  loads with live price / block height / sats figures (or last-good values
-  with a feed-failure note, never invented numbers); opening the homepage
-  pill popover and double-clicking the price opens `/clock/` in a new tab;
-  a single click on the price does nothing new. (Filled in after the check
-  runs — see verification note below.)
+- Browser check, commit a7bafae (githack, exact SHA, read-only,
+  11:26–11:28 a.m. EST 4 Nov, live site untouched): PASSED both checks.
+  Clock page loaded "Bitcoin Block Clock — PaperStreet" with live data:
+  $80,388, +3.9% 24h, ticker 1,243 sats/$, block #974,546, sats per $10/$100
+  12,430 / 124,300, 24h sparkline. No "Moscow" anywhere on the page.
+  Popover check: no visible hint or link to the clock; a single click on
+  the price did nothing new; a double-click on the price opened /clock/
+  in a new tab at the same test-branch address. Not observed in this
+  check: the last-good-value behaviour on a feed failure (no feed failed
+  during the session, so only the footer policy wording was seen) and a
+  phone-width (390px) pass — both remain for Grok's Saturday checks.
 
 ## Checks still for Grok Bot (before deploy)
 1. Read the diff, not just this note.
