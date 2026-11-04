@@ -21,6 +21,10 @@
   .sub { color:var(--mut); font-size:15px; line-height:1.5; margin:8px 0 0; }
   .asof { color:var(--mut); font-size:14px; line-height:1.6; margin:0 0 4px; }
   .btc-pill-row { display:flex; margin:18px 0 0; }
+  /* Block clock: the one non-hidden link (4 Nov 2026). Floating pill at
+     the bottom of the screener only — nowhere else on the site. */
+  .clock-float{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:55;background:linear-gradient(180deg,#1e293b,#0f172a);border:1px solid rgba(34,211,238,.55);border-radius:999px;padding:11px 20px;color:#eef2fb;font-weight:800;font-size:15px;text-decoration:none;white-space:nowrap;box-shadow:0 14px 40px rgba(0,0,0,.45)}
+  .clock-float:hover,.clock-float:focus-visible{border-color:#22d3ee;outline:none}
   .btc-pill-row .hdr-tick { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:56px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 18px; box-shadow:0 14px 40px rgba(0,0,0,.45); color:var(--txt); font-size:27px; font-weight:850; letter-spacing:-.02em; line-height:1.1; cursor:pointer; }
   .btc-pill-row .hdr-chg { font-size:19px; font-weight:800; }
   .btc-pill-row .lp-lab { font-size:.85rem; letter-spacing:.1em; }
@@ -278,5 +282,6 @@
 <script src="assets/js/screener-indicator-chart.js?v=stocks2"></script>
 <script src="assets/js/screener-chart.js?v=cmp4"></script>
 <script src="assets/js/btcchart.js?v=et6"></script>
+<a class="clock-float" href="clock/index.html">PaperstreetBTC clock</a>
 </body>
 </html>

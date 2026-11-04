@@ -83,3 +83,13 @@ way in, besides typing the address, is the secret trigger:
 4. Merge order with `pepper-btc-pill-expand` and `pepper-screener-btc-fix`
    (see above), then one live check after deploy, with a rollback line
    (remove `clock/` and revert the btcchart listener + pin bumps).
+
+## Update — one non-hidden link (Sunil, 4 Nov 2026)
+In addition to the secret double-click on the popover price, there is
+exactly one visible link to the clock: a floating pill at the bottom of
+the screener (maple-leaf tracker) page only, reading "PaperstreetBTC
+clock" and linking to `clock/index.html`. It appears on no other page,
+and the homepage, Compare, recap, and custom pages still have no link
+to the clock at all. The pill is fixed at the bottom centre of the
+viewport (with safe-area padding on phones) and sits below the candle
+modal's z-index, so it never covers an open chart.
