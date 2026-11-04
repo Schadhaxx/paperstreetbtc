@@ -64,3 +64,24 @@ harness-checked (Compare: 4 datasets, 203 labels, "Data as
 of … close" note, picker present, tap note correct).
 Browser smoke check of this combined copy was started
 separately; its result is not recorded here until it lands.
+
+## Browser smoke check — ALL SIX PASSED (3:34–3:36 p.m. EST 4 Nov, commit fcaa4c1, githack, read-only, live site untouched)
+- Screener: floating "PaperstreetBTC clock" pill at bottom
+  centre; Gold tile $4,075.30 (+3.42%) opened "Gold — YTD
+  weekly candles" with all eight toggles; Volume on showed
+  the red/green volume pane with note "Volume: latest week
+  566K · average 798K" (566K = the current-week gold volume
+  fetched for this preview — consistent).
+- Compare: main line chart drew with lines (data as of
+  3 Nov 2026 close); sleeve picker with all four sleeves
+  (Hodler default) and red/green weekly bars; tapping a
+  candle updated the note to "Week 2026-01-12 (2026-01-12 →
+  2026-01-16, 5 sessions) · Open $104,429 · High $111,266 ·
+  Low $104,429 · Close $109,492 · Week change +4.85%."
+- This also browser-verifies the sleeve-candle tap fix: the
+  tap code in this combined copy is the same as in
+  `pepper-candle-enhancements` 80a7762 (only Compare-refresh
+  additions differ). The enhancements branch in isolation
+  has not had a separate browser re-check, but its tap code
+  is what just passed here.
+- Nothing failed in this smoke check.
