@@ -53,8 +53,52 @@ const ch=new Chart(document.getElementById('pvChart'),{type:'line',data:{labels:
 function draw(){const ds=dates();ch.data.labels=ds;ch.data.datasets=[...on].map(k=>{const v=ds.map(d=>SER[k].v[d]);const isB=k==='BTC';
  return{label:isB&&prov()?'Spot BTC (close provisional until '+ET.btcCloseLabel(LAST)+')':SER[k].n,raw:v,data:v.map(x=>pct(v[0],x)),borderColor:COL[k],backgroundColor:COL[k],borderWidth:isB?2.5:2,pointRadius:ds.length<10?3:0,tension:.2}});ch.update();
  sp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',on.has(b.dataset.k)));rp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r===rng));
- document.getElementById('pvChartNote').innerHTML=`% change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`)+(VEHFAIL?` Vehicle data unavailable — showing Spot BTC.`:'')+(VEH!=='SPOT'?` You are in ${VEH} mode — BTC sleeve priced in ${VEH} at its latest close. Spot BTC remains the hurdle.`:'')}
-sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;on.has(k)?(on.size>1&&on.delete(k)):on.add(k);draw()};rp.onclick=e=>{if(e.target.dataset.r){rng=e.target.dataset.r;draw()}};draw();
+ document.getElementById('pvChartNote').innerHTML=`% change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`)+(VEHFAIL?` Vehicle data unavailable — showing Spot BTC.`:'')+(VEH!=='SPOT'?` You are in ${VEH} mode — BTC sleeve priced in ${VEH} at its latest close. Spot BTC remains the hurdle.`:'')};if(document.getElementById('pvCandles'))drawCandles();
+sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;on.has(k)?(on.size>1&&on.delete(k)):on.add(k);draw()};rp.onclick=e=>{if(e.target.dataset.r){rng=e.target.dataset.r;draw()}};
+// Sleeve candles (mockup 11, test branch 4 Nov 2026): weekly candles of
+// ONE sleeve's value, built from the same daily SER values as the line
+// chart above (Spot or vehicle mode, whichever draw() used). Weeks are
+// Monday-Sunday on session dates; a one-session week is partial. Tap a
+// candle for its week O/H/L/C. Nothing new is computed here beyond
+// aggregating the daily sleeve values the line chart already shows.
+let candKey='hodlr',candSel=-1,candWeeks=[];
+const cs=document.getElementById('pvCandS');
+if(cs){cs.innerHTML=Object.keys(L.sleeves).map(k=>`<button class="bench-btn" data-k="${k}">${L.sleeves[k].n}</button>`).join('');
+cs.onclick=e=>{const k=e.target.dataset.k;if(!k||!L.sleeves[k])return;candKey=k;candSel=-1;drawCandles();};}
+function weekKey(d){const t=new Date(d+'T00:00:00Z');const day=(t.getUTCDay()+6)%7;t.setUTCDate(t.getUTCDate()-day);return t.toISOString().slice(0,10);}
+function drawCandles(){
+ const cv=document.getElementById('pvCandles'),note=document.getElementById('pvCandNote');
+ if(!cv)return;
+ const ds=dates(),v=SER[candKey].v,map={};
+ ds.forEach(d=>{if(typeof v[d]!=='number'||!isFinite(v[d]))return;const wk=weekKey(d);if(!map[wk])map[wk]={first:d,last:d,days:0,open:v[d],high:v[d],low:v[d],close:v[d]};const w=map[wk];w.last=d;w.days++;w.high=Math.max(w.high,v[d]);w.low=Math.min(w.low,v[d]);w.close=v[d];});
+ candWeeks=Object.keys(map).sort().map(k=>Object.assign({week:k},map[k]));
+ const dpr=window.devicePixelRatio||1,cssW=cv.clientWidth||560,cssH=280;
+ cv.width=Math.round(cssW*dpr);cv.height=Math.round(cssH*dpr);cv.style.height=cssH+'px';
+ const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,cssW,cssH);
+ if(!candWeeks.length){if(note)note.textContent='No sleeve values in this range.';return;}
+ let lo=Infinity,hi=-Infinity;candWeeks.forEach(w=>{lo=Math.min(lo,w.low);hi=Math.max(hi,w.high);});
+ const span=hi-lo||1;lo-=span*0.05;hi+=span*0.05;
+ const padL=70,padR=8,padT=10,padB=30,plotW=cssW-padL-padR,plotH=cssH-padT-padB;
+ const Y=x=>padT+(hi-x)/(hi-lo)*plotH;
+ ctx.font='11px -apple-system, system-ui, sans-serif';ctx.fillStyle='#9aa6bc';ctx.strokeStyle='rgba(255,255,255,.08)';
+ for(let g=0;g<=4;g++){const val=lo+(hi-lo)*g/4,yy=Y(val);ctx.beginPath();ctx.moveTo(padL,yy);ctx.lineTo(cssW-padR,yy);ctx.stroke();ctx.fillText('$'+Math.round(val).toLocaleString('en-US'),4,yy+4);}
+ const slot=plotW/candWeeks.length,bw=Math.max(2,Math.min(14,slot*0.6));
+ candWeeks.forEach((w,i)=>{const cx=padL+slot*i+slot/2,up=w.close>=w.open,col=up?'#22c55e':'#ef4444';
+  ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx,Y(w.high));ctx.lineTo(cx,Y(w.low));ctx.stroke();
+  const top=Y(Math.max(w.open,w.close)),bot=Y(Math.min(w.open,w.close));ctx.fillRect(cx-bw/2,top,bw,Math.max(1,bot-top));
+  if(i===candSel){ctx.strokeStyle='#ffffff';ctx.strokeRect(cx-bw/2-3,Y(w.high)-3,bw+6,Y(w.low)-Y(w.high)+6);}});
+ cv._plot={padL:padL,slot:slot,n:candWeeks.length};
+ if(cs)cs.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===candKey));
+ if(note)note.textContent='Weekly candles · '+L.sleeves[candKey].n+' · '+rng+' · '+candWeeks[0].first+' → '+candWeeks[candWeeks.length-1].last+' · '+candWeeks.length+' weeks. Sleeve value in USD, same basis as the line chart ($100,000 at 31 Dec 2025). Tap a candle for its week.';
+}
+const cvEl=document.getElementById('pvCandles');
+if(cvEl)cvEl.addEventListener('click',e=>{
+ const cv=cvEl;if(!cv._plot)return;const rect=cv.getBoundingClientRect(),x=(e.clientX-rect.left)-cv._plot.padL,idx=Math.floor(x/cv._plot.slot);
+ if(idx<0||idx>=candWeeks.length)return;candSel=idx;const w=candWeeks[idx],chg=(w.close/w.open-1)*100;
+ const note=document.getElementById('pvCandNote');
+ if(note)note.textContent='Week '+w.week+' ('+w.first+(w.last!==w.first?' → '+w.last:'')+', '+w.days+' session'+(w.days===1?'':'s')+') · Open $'+w.open.toLocaleString('en-US',{maximumFractionDigits:0})+' · High $'+w.high.toLocaleString('en-US',{maximumFractionDigits:0})+' · Low $'+w.low.toLocaleString('en-US',{maximumFractionDigits:0})+' · Close $'+w.close.toLocaleString('en-US',{maximumFractionDigits:0})+' · Week change '+(chg>=0?'+':'')+chg.toFixed(2)+'%';
+ drawCandles();});
+draw();
 function vehApply(m){VEH=m;if(m==='SPOT'){for(const k in L.sleeves)SER[k].v=VAL[k];draw();return;}
  if(VEHD){const VV=vehicleVals(VEHD,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();return;}
  fetch('../assets/data/vehicle-daily.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{VEHD=j;VEHFAIL=false;const VV=vehicleVals(j,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();}).catch(e=>{console.warn('vehicle data unavailable, Compare stays Spot',e);VEH='SPOT';VEHFAIL=true;try{sessionStorage.setItem('psVehicle','SPOT');}catch(_){}for(const k in L.sleeves)SER[k].v=VAL[k];draw();});}

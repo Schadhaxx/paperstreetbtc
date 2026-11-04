@@ -134,6 +134,59 @@
 
   var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], base: null, progressNote: null, resolvedSub: '' };
 
+  // Candle enhancements (test branch, 4 Nov 2026): Bollinger (mockup 3),
+  // high/low lines (5), drawdown shading (7), pattern hints (9). All
+  // OFF by default; the modal's toggle row flips them. Nothing here
+  // invents a value: everything is computed from the shipped weekly
+  // candles only. High/low lines use SHOWN weeks only — the shipped
+  // file is YTD, so they are not a lifetime ATH or a full 52-week
+  // history; the note under the chart says so plainly.
+  var ENH = { boll: false, lines: false, drawdown: false, patterns: false };
+  function enhBoll(weeks) {
+    var sma = [], up = [], lo = [], i, j, w, m, sd, sum;
+    for (i = 0; i < weeks.length; i++) {
+      if (i < 19) { sma.push(null); up.push(null); lo.push(null); continue; }
+      sum = 0; for (j = i - 19; j <= i; j++) sum += weeks[j].close;
+      m = sum / 20; sd = 0;
+      for (j = i - 19; j <= i; j++) sd += (weeks[j].close - m) * (weeks[j].close - m);
+      sd = Math.sqrt(sd / 19);
+      sma.push(m); up.push(m + 2 * sd); lo.push(m - 2 * sd);
+    }
+    return { sma: sma, up: up, lo: lo };
+  }
+  function enhDrawdown(weeks) {
+    var peak = -Infinity, peakIdx = 0, best = 0, bestPeak = 0, bestTrough = 0, i, dd;
+    for (i = 0; i < weeks.length; i++) {
+      if (weeks[i].close > peak) { peak = weeks[i].close; peakIdx = i; }
+      dd = peak > 0 ? (peak - weeks[i].close) / peak : 0;
+      if (dd > best) { best = dd; bestPeak = peakIdx; bestTrough = i; }
+    }
+    return { pct: best, peak: bestPeak, trough: bestTrough };
+  }
+  function enhPattern(weeks, i) {
+    if (i <= 0) return null;
+    var w = weeks[i], p = weeks[i - 1];
+    var body = Math.abs(w.close - w.open), range = w.high - w.low;
+    if (!(range > 0)) return null;
+    var upSh = w.high - Math.max(w.open, w.close), loSh = Math.min(w.open, w.close) - w.low;
+    var prevBodyUp = p.close >= p.open;
+    var eps = 1e-9;
+    if (!prevBodyUp && w.close >= w.open && w.open <= p.close + eps && w.close >= p.open - eps) return 'Bullish engulfing';
+    if (prevBodyUp && w.close < w.open && w.open >= p.close - eps && w.close <= p.open + eps) return 'Bearish engulfing';
+    if (loSh >= 2 * body - eps && upSh <= 0.5 * body + eps) return 'Hammer';
+    if (body <= 0.10 * range + eps) return 'Doji';
+    return null;
+  }
+  function enhHLine(ctx, yv, padL, cssW, padR, color, dash, label, labelColor) {
+    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash(dash);
+    ctx.beginPath(); ctx.moveTo(padL, yv); ctx.lineTo(cssW - padR, yv); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+    var tw = ctx.measureText(label).width, bx = cssW - padR - tw - 10, by = yv - 8;
+    if (by < 14) by = yv + 16;
+    ctx.fillStyle = '#0b1226'; ctx.fillRect(bx - 4, by - 11, tw + 8, 16);
+    ctx.fillStyle = labelColor; ctx.fillText(label, bx, by); ctx.restore();
+  }
+
   // Reset EVERYTHING the previous symbol left on screen, before the
   // new symbol's title is shown. This is the stale-state fix (Grok
   // Bot review, 30 Oct 2026): a candle pill, info popup, source "+",
@@ -328,6 +381,11 @@
     if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
       lo = Math.min(lo, state.base.value); hi = Math.max(hi, state.base.value);
     }
+    var bands = ENH.boll ? enhBoll(state.weeks) : null;
+    if (bands) {
+      bands.up.forEach(function (v) { if (v != null) hi = Math.max(hi, v); });
+      bands.lo.forEach(function (v) { if (v != null) lo = Math.min(lo, v); });
+    }
     var span = hi - lo || 1;
     lo -= span * 0.05; hi += span * 0.05;
     var fmt = state.cfg.format;
@@ -350,6 +408,15 @@
     var n = state.weeks.length;
     var slot = plotW / n;
     var bw = Math.max(2, Math.min(14, slot * 0.6));
+    var ddInfo = ENH.drawdown ? enhDrawdown(state.weeks) : null;
+    if (ddInfo) {
+      var runPeak = -Infinity;
+      ctx.fillStyle = 'rgba(239,68,68,0.10)';
+      state.weeks.forEach(function (w, i) {
+        if (w.close > runPeak) runPeak = w.close;
+        if (w.close < runPeak) ctx.fillRect(padL + slot * i, y(runPeak), slot, Math.max(0, y(w.close) - y(runPeak)));
+      });
+    }
     var seenMonths = {};
     state.weeks.forEach(function (w, i) {
       var cx = padL + slot * i + slot / 2;
@@ -374,6 +441,32 @@
         ctx.font = '11px -apple-system, system-ui, sans-serif';
       }
     });
+    // Enhancements, drawn over the candles: Bollinger bands (mockup 3)
+    // and high/low lines (mockup 5). High/low use shown weeks only.
+    if (bands && bands.up[n - 1] != null) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(196,181,253,0.10)';
+      ctx.beginPath();
+      state.weeks.forEach(function (w, i) {
+        if (bands.up[i] == null) return;
+        var x = padL + slot * i + slot / 2;
+        if (i === 19) ctx.moveTo(x, y(bands.up[i])); else ctx.lineTo(x, y(bands.up[i]));
+      });
+      for (var bi = n - 1; bi >= 19; bi--) { var bx2 = padL + slot * bi + slot / 2; ctx.lineTo(bx2, y(bands.lo[bi])); }
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); state.weeks.forEach(function (w, i) { if (bands.up[i] == null) return; var x = padL + slot * i + slot / 2; if (i === 19) ctx.moveTo(x, y(bands.up[i])); else ctx.lineTo(x, y(bands.up[i])); }); ctx.stroke();
+      ctx.beginPath(); state.weeks.forEach(function (w, i) { if (bands.lo[i] == null) return; var x = padL + slot * i + slot / 2; if (i === 19) ctx.moveTo(x, y(bands.lo[i])); else ctx.lineTo(x, y(bands.lo[i])); }); ctx.stroke();
+      ctx.strokeStyle = '#facc15'; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); state.weeks.forEach(function (w, i) { if (bands.sma[i] == null) return; var x = padL + slot * i + slot / 2; if (i === 19) ctx.moveTo(x, y(bands.sma[i])); else ctx.lineTo(x, y(bands.sma[i])); }); ctx.stroke();
+      ctx.restore();
+    }
+    var shownHi = -Infinity, shownLo = Infinity;
+    state.weeks.forEach(function (w) { shownHi = Math.max(shownHi, w.high); shownLo = Math.min(shownLo, w.low); });
+    if (ENH.lines) {
+      enhHLine(ctx, y(shownHi), padL, cssW, padR, '#f97316', [6, 4], 'Highest shown ' + fmt(shownHi), '#f97316');
+      enhHLine(ctx, y(shownLo), padL, cssW, padR, '#94a3b8', [6, 4], 'Lowest shown ' + fmt(shownLo), '#cbd5e1');
+    }
     // Current line: horizontal dashed cyan at the latest weekly
     // close, read from the shipped data (never hardcoded), labelled
     // at the LEFT end, by the y-axis. For WTI the latest week is in
@@ -416,6 +509,32 @@
       ctx.fillStyle = '#cbd5e1';
       ctx.fillText(blab, bx, bly);
       ctx.restore();
+    }
+    // Pattern hints (mockup 9): a small gold dot on a candle whose
+    // shape matches a named pattern. The pill names it and says
+    // plainly it is not a prediction.
+    var patCount = 0;
+    if (ENH.patterns) {
+      state.weeks.forEach(function (w, i) {
+        var pat = enhPattern(state.weeks, i);
+        if (!pat) return;
+        patCount++;
+        var cx = padL + slot * i + slot / 2;
+        var bullish = pat === 'Bullish engulfing' || pat === 'Hammer';
+        var dy = bullish ? y(w.low) + 9 : y(w.high) - 9;
+        ctx.save(); ctx.fillStyle = '#facc15';
+        ctx.beginPath(); ctx.arc(cx, dy, 3.5, 0, 2 * Math.PI); ctx.fill(); ctx.restore();
+      });
+    }
+    var note = el('ind-enh-note');
+    if (note) {
+      var lines = [];
+      if (ENH.boll) lines.push(bands && bands.up[n - 1] != null ? 'Bollinger (20, 2σ): SMA ' + fmt(bands.sma[n - 1]) + ' · upper ' + fmt(bands.up[n - 1]) + ' · lower ' + fmt(bands.lo[n - 1]) : 'Bollinger needs 20 weeks; this chart has ' + n + '.');
+      if (ENH.lines) lines.push('Highest shown ' + fmt(shownHi) + ' · lowest shown ' + fmt(shownLo) + ' — shown weeks only, not a lifetime high/low.');
+      if (ENH.drawdown && ddInfo) lines.push('Max drawdown ' + (ddInfo.pct * 100).toFixed(1) + '% · ' + state.weeks[ddInfo.peak].label + ' → ' + state.weeks[ddInfo.trough].label + '.');
+      if (ENH.patterns) lines.push(patCount ? patCount + ' pattern hint' + (patCount === 1 ? '' : 's') + ' marked (gold dots). Tap a candle to see its pattern.' : 'No pattern hints on these weeks.');
+      if (lines.length) { note.textContent = lines.join(' '); note.style.display = 'block'; }
+      else { note.style.display = 'none'; note.textContent = ''; }
     }
     canvas._plot = { padL: padL, slot: slot, n: n };
   }
@@ -460,6 +579,7 @@
           ? '<br>This open equals the listing close. The baseline is that first-trading close.'
           : '<br>Open is the first trade, not the ' + state.cfg.format(state.base.value) + ' listing close used as the baseline.';
       }
+      if (ENH.patterns) { var pat = enhPattern(state.weeks, idx); if (pat) html += '<br>Pattern hint: ' + pat + ' — a shape, not a prediction.'; }
       if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
       else if (isLast && state.progressNote) html += '<br><i>Latest week is ' + state.progressNote + '.</i>';
       pill.style.display = 'block';
@@ -539,8 +659,18 @@
     });
     var infoPill = el('ind-info-pill');
     if (infoPill) infoPill.addEventListener('click', function () { hideInfo(); });
+    document.querySelectorAll('#ind-enh button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-enh');
+        if (!(k in ENH)) return;
+        ENH[k] = !ENH[k];
+        b.setAttribute('aria-pressed', ENH[k] ? 'true' : 'false');
+        b.classList.toggle('active', ENH[k]);
+        draw();
+      });
+    });
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern };
 })();
