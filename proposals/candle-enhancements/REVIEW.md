@@ -185,3 +185,29 @@ Volume · Event dots · Zoom: last 12 wks · Range stats.
 - RE-CHECK REQUIRED: Compare sleeve candles + main line chart
   on the fixed commit, in a real browser, before Saturday.
   Do not treat the harness pass as a browser pass.
+
+## Browser check 2 — new toggles PASSED (3:20–3:21 p.m. EST 4 Nov, commit fc69496, githack, read-only, live site untouched)
+Screener module, page, and weekly data are unchanged between
+fc69496 and the current head, so this check stands for the
+current head too.
+- Gold tile $4,074.30 (−2.41% at check time) opened "Gold — YTD
+  weekly candles". All eight toggles present, all off by
+  default; default note "Tap a candle for its week."
+- Volume PASS: on → "Vol" pane under the price chart with
+  green/red volume bars and a dashed average line; note
+  "Volume: latest week 796K · average 804K." Off → pane
+  removed, default note restored. (796K matches the harness
+  value for gold's last shipped week.)
+- Zoom PASS: on → Aug–Oct axis, 12 candles, price scale
+  $3,857–$4,797, versus full YTD Jan–Oct $3,815.90–$5,670.50.
+- Range stats PASS: note "Range stats (44 weeks): best 7.47%
+  (19 Jan 2026 – 25 Jan 2026) · worst −8.68% (16 Mar 2026 –
+  22 Mar 2026) · up weeks 48% · weekly volatility 3.18%."
+- Event dots: presence + off-by-default confirmed only; its
+  visual effect was not separately tested in this check
+  (expected: no dots, since the events list is empty — the
+  toggle note is the only visible change until a real event
+  source is decided Saturday).
+- Nothing failed in this check. Scrub drag was built but not
+  separately browser-tested; Compare re-check on the fixed
+  commit is still outstanding.
