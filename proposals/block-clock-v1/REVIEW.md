@@ -93,3 +93,15 @@ and the homepage, Compare, recap, and custom pages still have no link
 to the clock at all. The pill is fixed at the bottom centre of the
 viewport (with safe-area padding on phones) and sits below the candle
 modal's z-index, so it never covers an open chart.
+
+## Check — floating pill (2:37–2:38 p.m. EST 4 Nov, commit d13f8fb, githack, read-only)
+PASSED: the "PaperstreetBTC clock" pill is visible fixed at the bottom
+centre of the screener on load and after scrolling; clicking it opens
+/clock/ ("Bitcoin Block Clock — PaperStreet"); headings, indicators,
+stock cards, search/filter, and the comparison chart stay visible and
+scrollable above it, and the bottom disclaimer + "Back to the main
+page" link sit fully above the pill, not covered by it. Caveat: the
+capture taken immediately after navigation showed the clock still on
+"Connecting…" with dashes — the page opening was verified, but live
+values loading in that exact instant was not (an earlier check on this
+branch did confirm live price/block/sats loading).
