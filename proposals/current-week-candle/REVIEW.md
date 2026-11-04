@@ -99,3 +99,19 @@ not built twice.
 Revert the 11 weekly JSONs + the module pin bumps to main. The new
 tool file is additive only and can stay or be removed; no live data
 depends on it until the pipeline patch lands.
+
+## Browser check — PASSED (3:11–3:12 p.m. EST 4 Nov, commit e66780a, githack, read-only, live site untouched)
+- WTI: tile $88.49 (−$7.60, −7.91%). Modal Current $87.85.
+  Rightmost candle: week 2–8 Nov 2026 (UTC, 3 trading days),
+  O $102.39 / H $102.75 / L $87.13 / C $87.85, week change
+  −14.20% — in the expected $87–88 range, NOT the old $104.24.
+  Nuance, recorded exactly: the in-progress marking appeared
+  as the chart label "Close $87.85 (in progress)"; the detail
+  panel itself did not repeat an in-progress sentence.
+- TSLA: card $387.19 (−$11.31, −2.84%, YTD −13.90%). Rightmost
+  candle: week 2–8 Nov 2026 (UTC, 2 trading days), O $404.66 /
+  H $414.23 / L $396.53 / C $398.50, week change −1.52%.
+  Modal stated explicitly: "Latest week is in progress,
+  through last completed session 3 Nov 2026 — week not
+  finished."
+- No requested verification step failed.
