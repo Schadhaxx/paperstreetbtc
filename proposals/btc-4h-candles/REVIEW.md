@@ -56,3 +56,19 @@ option"). Test branch only, NOT live.
   Grok merges, as with the other Saturday items. It is NOT
   the combined preview — that play copy carries the same
   4H code on top of everything else.
+
+## Fix 4 Nov (same day): Coinbase has no 4h granularity
+First browser check FAILED on the fetch: Coinbase returns
+HTTP 400 "Unsupported granularity" for granularity=14400.
+Its valid values are only 60/300/900/3600/21600/86400.
+Fix: fetch 1h bars (8 days, 192 bars, under the 300-bar
+limit) and aggregate them in code into UTC-aligned 4h
+buckets (`agg4hFromHourly`, harness-verified: 50 hourly
+bars → 12 complete buckets, partial bucket dropped,
+O/H/L/C correct), keeping only complete buckets, last 42
+(= 7 days). Size order also changed per Sunil: 4H first,
+then Daily (finest first, matching Daily/Weekly/Monthly).
+Failure hygiene: a failed 4h fetch now resets the size
+to Daily and clears candle state before falling back, so
+the toggle/pill can never claim 4h while showing something
+else.
