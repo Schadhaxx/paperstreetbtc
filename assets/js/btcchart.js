@@ -144,7 +144,7 @@ function showCandInfo(i,geomX,geomTop){
      looked like no October candle existed. The bucket was never dropped;
      it was mislabelled. 1D intraday pills below keep ET, which is right
      for intraday times. */
-  if(CANDRANGE){if(CANDGRAN==='monthly'){tm.textContent='Monthly candle · '+new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',year:'numeric'})+' UTC';}else{var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' UTC';}}
+  if(CANDRANGE){if(CANDGRAN==='4h'){var d4=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}),t4s=new Date(k.t).toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit'}),t4e=new Date(k.end).toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit'});tm.textContent='4-hour candle · '+d4+' '+t4s+' – '+t4e+' UTC';}else if(CANDGRAN==='monthly'){tm.textContent='Monthly candle · '+new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',year:'numeric'})+' UTC';}else{var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' UTC';}}
   else tm.textContent=(CANDPER===4?'1-hour':'4-hour')+' · '+etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET';
   el.appendChild(tm);
   var hl=document.createElement('div');hl.style.cssText='font-size:14px;font-weight:600;color:#e8eef7;font-variant-numeric:tabular-nums;margin:2px 0;';hl.textContent='High '+fmt(k.h)+'  ·  Low '+fmt(k.l);el.appendChild(hl);
@@ -359,11 +359,27 @@ function loadExtendedDaily(days){
   },function(e){CBEXT_P=null;CBEXT_P_DAYS=0;CBEXT_ERR=true;throw e;});
   return CBEXT_P;
 }
+/* 4-hour candles for 1W (4 Nov 2026): Coinbase 4h bars, last 7 days
+   (42 bars, under Coinbase's 300-bar request limit). Same candle array
+   shape as the daily fetch: [time, low, high, open, close, volume].
+   Cache is 5 minutes; a failed fetch is sticky for the session (CB4H_ERR)
+   so a dead feed falls back once to the line instead of being hammered
+   on every redraw — same pattern as the YTD extended fetch. */
+var CB4H=null,CB4H_AT=0,CB4H_ERR=false;
+function load4h(){
+  var now=Date.now(),start=new Date(now-7*864e5).toISOString(),end=new Date(now).toISOString();
+  return fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=14400&start='+start+'&end='+end,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+    if(!Array.isArray(j))throw new Error('bad candles');
+    var bars=j.map(function(c){return {t:c[0]*1000,end:c[0]*1000+14400000,o:c[3],h:c[2],l:c[1],c:c[4]};}).filter(function(p){return isFinite(p.c)&&p.c>0&&isFinite(p.o)&&isFinite(p.h)&&isFinite(p.l);}).sort(function(a,b){return a.t-b.t;});
+    if(bars.length<2)throw new Error('too few candles');
+    CB4H=bars;CB4H_AT=Date.now();return bars;
+  }).catch(function(e){CB4H_ERR=true;throw e;});
+}
 function syncCg(){
   var cg=$('bcCg');if(!cg)return;
   var candlesOn=CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles';
   [].forEach.call(cg.querySelectorAll('[data-cg]'),function(b){b.classList.toggle('on',b.dataset.cg===RGCT);b.setAttribute('aria-pressed',b.dataset.cg===RGCT);});
-  var granAllowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:[];
+  var granAllowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily','4h']:[]);
   var gl=$('bcCgGranLab');if(gl)gl.style.display=candlesOn&&granAllowed.length?'':'none';
   [].forEach.call(cg.querySelectorAll('[data-cggran]'),function(b){var show=candlesOn&&granAllowed.indexOf(b.dataset.cggran)>=0;b.style.display=show?'':'none';b.classList.toggle('on',b.dataset.cggran===RGGRAN);b.setAttribute('aria-pressed',b.dataset.cggran===RGGRAN);});
 }
@@ -388,11 +404,27 @@ function drawRange(){
      was before. After that first draw RGSEEN[rng] is set, so a
      user-picked valid size is preserved across Line<->Candles switches;
      range-tab clicks reset to the default independently. */
-  var allowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily']:[]);
+  var allowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily','4h']:[]);
   if(!RGSEEN[rng]){RGGRAN=defaultGran(rng);RGSEEN[rng]=true;}
   if(allowed.length&&allowed.indexOf(RGGRAN)<0)RGGRAN=defaultGran(rng);
   syncCg();
   var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;if(cg)cg.style.display='';syncCg();};
+  if(rng==='1W'&&RGGRAN==='4h'){
+    if(!CB4H||Date.now()-CB4H_AT>5*60*1000){
+      if(CB4H_ERR){fallback('Coinbase 4-hour candles unavailable — showing daily closes.');return;}
+      $('bcRr').textContent='Loading 4-hour candles…';
+      load4h().then(function(){if(dlg&&!dlg.hidden&&rng==='1W'&&RGCT==='candles')draw();}).catch(function(){if(dlg&&!dlg.hidden)draw();});
+      return;
+    }
+    var cut4=Date.now()-7*864e5,cand4=CB4H.filter(function(p){return p.t>=cut4;});
+    if(cand4.length<2){fallback('Not enough 4-hour candles — showing daily closes.');return;}
+    RGCAND=cand4;RGLBL='1W · 4-hour candles';
+    var a04=cand4[0].o,b04=cand4[cand4.length-1].c,pc04=(b04/a04-1)*100;
+    $('bcRr').textContent='1W: BTC '+((pc04>=0?'+':'')+pc04.toFixed(2)+'%')+' · '+cand4.length+' 4-hour candles, from '+new Date(cand4[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a04)+')';
+    $('bcNt').textContent='Coinbase 4-hour candles (UTC), in 4-hour blocks. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete 4-hour block; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view.';
+    if(ch){ch.destroy();ch=null;}
+    CANDSEL=-1;CANDHOV=-1;drawCandlesRange();return;
+  }
   var win,cut;
   if(rng==='YTD'||rng==='1Y'){
     /* Day 2: these two ranges need MORE than Coinbase's ~300-candle default
@@ -529,7 +561,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
   dlg.innerHTML='<div class="bc-grab" aria-hidden="true"></div><div class="bc-h"><div><span class="lp-lab" id="bcTitle"><span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/USD</span><div class="bc-px"><span id="bcPx">—</span><span id="bcChg" class="hdr-chg"></span></div><div class="bc-rr" id="bcRr"></div></div><button type="button" class="bc-x" id="bcX" aria-label="Close BTC chart">✕</button></div>'
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-rg-hint" id="bcRgHint" aria-hidden="true">\u2190 Swipe for longer ranges</span><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
    +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
-   +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
+   +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="4h" style="display:none">4H</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../compare/index.html')+'">See full Compare →</a>';
   document.body.appendChild(dim);document.body.appendChild(dlg);
   dim.addEventListener('click',close);

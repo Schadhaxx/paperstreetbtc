@@ -85,3 +85,13 @@ separately; its result is not recorded here until it lands.
   has not had a separate browser re-check, but its tap code
   is what just passed here.
 - Nothing failed in this smoke check.
+
+## Update — BTC 4-hour candles on 1W added (4 Nov, Sunil's screenshot request)
+Same 4H code as `pepper-btc-4h-candles` 94f4877, on top of
+everything else in this preview: 1W Candles gains a 4H size
+button (Daily stays default), Coinbase 4h bars, last 7 days
+(~42 candles), pill shows the 4-hour UTC window. btcchart
+pins bumped et6→et7 / et2→et3 so the new code is not served
+from cache. Browser verification of 4H on this preview was
+started separately; its result is not recorded here until
+it lands.
