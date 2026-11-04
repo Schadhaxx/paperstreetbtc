@@ -1,7 +1,7 @@
 {
   "source": "Yahoo CL=F (NYMEX front-month WTI futures, continuous series), $/barrel",
-  "asOf": "30 Oct 2026, 3:42 p.m. ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Latest week (26 Oct 2026) is IN PROGRESS as of 30 Oct 2026, 3:42 p.m. ET: its close $104.24 is an intraday snapshot, NOT a final daily close. WTI is a continuous front-month series; there are gaps where contracts roll over. Dated snapshot shipped with the screener \u2014 not a live quote. Manual refresh only, when Sunil asks.",
+  "asOf": "4 Nov 2026, 2:36 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Latest week (26 Oct 2026) is IN PROGRESS as of 30 Oct 2026, 3:42 p.m. ET: its close $104.24 is an intraday snapshot, NOT a final daily close. WTI is a continuous front-month series; there are gaps where contracts roll over. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Preserved shipped weeks (not overwritten): week of 2026-10-26 shipped close 104.24 differs from Yahoo recomputed 104.12 \u2014 preserved as shipped, pending review. Latest week (2 Nov 2026 \u2013 8 Nov 2026) is in progress as of 4 Nov 2026, 2:36 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -442,6 +442,17 @@
       "high": 104.99,
       "low": 99.44,
       "close": 104.24
+    },
+    {
+      "monday": "2026-11-02",
+      "sunday": "2026-11-08",
+      "label": "2 Nov 2026 \u2013 8 Nov 2026",
+      "days": 3,
+      "open": 102.39,
+      "high": 102.75,
+      "low": 87.13,
+      "close": 87.85
     }
-  ]
+  ],
+  "inProgress": "in progress, as of 4 Nov 2026, 2:36 PM ET"
 }

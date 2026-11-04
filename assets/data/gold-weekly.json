@@ -1,7 +1,7 @@
 {
   "source": "Yahoo GC=F (COMEX gold futures), $/troy oz",
-  "asOf": "2026-10-30",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Final week's close uses the 30 Oct 2026 daily close $3,901.20 from the same Yahoo pull (weekly list reported $3,901.10, a $0.10 rounding difference). Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "asOf": "4 Nov 2026, 2:36 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Final week's close uses the 30 Oct 2026 daily close $3,901.20 from the same Yahoo pull (weekly list reported $3,901.10, a $0.10 rounding difference). Weekly snapshot \u2014 the latest week is in progress until it closes. Preserved shipped weeks (not overwritten): week of 2026-10-26 shipped close 3901.2 differs from Yahoo recomputed 3898.9 \u2014 preserved as shipped, pending review. Latest week (2 Nov 2026 \u2013 8 Nov 2026) is in progress as of 4 Nov 2026, 2:36 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -442,6 +442,17 @@
       "high": 4097.2,
       "low": 3900.2,
       "close": 3901.2
+    },
+    {
+      "monday": "2026-11-02",
+      "sunday": "2026-11-08",
+      "label": "2 Nov 2026 \u2013 8 Nov 2026",
+      "days": 3,
+      "open": 3890.0,
+      "high": 4080.8,
+      "low": 3889.0,
+      "close": 4071.6
     }
-  ]
+  ],
+  "inProgress": "in progress, as of 4 Nov 2026, 2:36 PM ET"
 }

@@ -58,38 +58,38 @@
     GOLD: {
       symbol: 'GOLD',
       title: 'Gold — YTD weekly candles',
-      dataUrl: 'assets/data/gold-weekly.json?v=2',
+      dataUrl: 'assets/data/gold-weekly.json?v=3',
       format: fmtMoney,
       currentPrefix: 'Current ',
-      subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
       lastInProgress: null
     },
     WTI: {
       symbol: 'WTI',
       title: 'WTI — YTD weekly candles',
-      dataUrl: 'assets/data/wti-weekly.json?v=1',
+      dataUrl: 'assets/data/wti-weekly.json?v=2',
       format: fmtMoney,
       currentPrefix: 'Current ',
-      subBlurb: 'Weekly candles, data to 30 Oct 2026. Latest week in progress. Tap a candle for its week.',
-      lastInProgress: 'in progress, as of 30 Oct 2026, 3:42 p.m. ET'
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
+      lastInProgress: null
     },
     US10Y: {
       symbol: 'US10Y',
       title: '10-Year — YTD weekly candles',
-      dataUrl: 'assets/data/us10y-weekly.json?v=1',
+      dataUrl: 'assets/data/us10y-weekly.json?v=2',
       format: fmtYield,
       currentPrefix: 'Current ',
-      subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
       lastInProgress: null,
       ppChange: true,
     },
     VIX: {
       symbol: 'VIX',
       title: 'VIX — YTD weekly candles',
-      dataUrl: 'assets/data/vix-weekly.json?v=1',
+      dataUrl: 'assets/data/vix-weekly.json?v=2',
       format: fmtPoints,
       currentPrefix: 'Current ',
-      subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
       lastInProgress: null,
       ptsChange: true,
     }
@@ -99,7 +99,7 @@
   // weekly close ("Close $…"), never the live card price. "Current $…
   // YTD …" is drawn from the card's own merged row. Cache-bust STOCK_V
   // whenever the JSON is regenerated.
-  var STOCK_V = '20261030r';
+  var STOCK_V = '20261104';
   function stockCfg(sym, basis) {
     var listing = basis === 'listing';
     return {
