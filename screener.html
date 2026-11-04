@@ -49,7 +49,7 @@
   #ind-info-pill { display:none; margin:0 0 12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:13px; line-height:1.55; text-align:center; color:var(--mut); cursor:pointer; position:relative; }
   #ind-info-x { position:absolute; top:6px; right:10px; background:none; border:none; color:var(--mut); font-size:14px; cursor:pointer; padding:4px; }
   .ind-footrow { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
-  #ind-canvas { width:100%; display:block; background:#0b1226; border-radius:14px; }
+  #ind-canvas { width:100%; display:block; background:#0b1226; border-radius:14px; touch-action:pan-y; }
   #ind-cardline { display:none; margin:2px 0 8px; font-size:15px; font-weight:800; letter-spacing:-.01em; line-height:1.35; }
   #ind-pill { display:none; margin-top:12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:14px; line-height:1.55; text-align:center; cursor:pointer; }
   #ind-status { color:var(--mut); font-size:13px; line-height:1.55; margin-top:12px; }
@@ -276,6 +276,10 @@
       <button type="button" class="btn ind-enh-btn" data-enh="lines" aria-pressed="false">High / low lines</button>
       <button type="button" class="btn ind-enh-btn" data-enh="drawdown" aria-pressed="false">Drawdown shading</button>
       <button type="button" class="btn ind-enh-btn" data-enh="patterns" aria-pressed="false">Pattern hints</button>
+      <button type="button" class="btn ind-enh-btn" data-enh="volume" aria-pressed="false">Volume</button>
+      <button type="button" class="btn ind-enh-btn" data-enh="events" aria-pressed="false">Event dots</button>
+      <button type="button" class="btn ind-enh-btn" data-enh="zoom" aria-pressed="false">Zoom: last 12 wks</button>
+      <button type="button" class="btn ind-enh-btn" data-enh="stats" aria-pressed="false">Range stats</button>
     </div>
     <p id="ind-enh-note" style="display:none;color:var(--mut);font-size:13px;line-height:1.55;margin-top:10px;"></p>
     <div id="ind-pill" role="button" tabindex="0"></div>
@@ -284,7 +288,7 @@
   </div>
 </div>
 <script src="assets/js/screener.js"></script>
-<script src="assets/js/screener-indicator-chart.js?v=stocks3"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks4"></script>
 <script src="assets/js/screener-chart.js?v=cmp4"></script>
 <script src="assets/js/btcchart.js?v=et5"></script>
 </body>

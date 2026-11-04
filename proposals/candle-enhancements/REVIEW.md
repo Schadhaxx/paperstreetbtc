@@ -93,3 +93,62 @@ no live change to roll back.
   wording, sleeve candles on Compare in Spot mode.
 - Phone-width pass and the ATH/52-week full-history decision are
   open for Grok Saturday.
+
+## Update — mockups 1 and 2 added (Sunil, 4 Nov 2026: "1,2. Add those.")
+Same branch, same off-by-default rule. New toggles in the modal:
+Volume · Event dots · Zoom: last 12 wks · Range stats.
+
+- **Volume (mockup 1, part 1):** a volume pane under the price
+  plot (same x slots, candle-coloured bars at 55% opacity, dashed
+  average line, "Vol" label). Tapping a candle appends its volume
+  to the pill (83.1M / 237K style). Weekly volume = sum of Yahoo
+  daily volumes for that week, added to the shipped weekly files
+  in this branch only: full coverage for all 7 stocks, gold, and
+  WTI (gold last week 796K in the trial data); US10Y and VIX
+  report zero volume on Yahoo (indices have no volume), so the
+  module shows "no volume data in the shipped file" for those
+  two instead of drawing empty bars. OHLC values untouched —
+  the diff on the weekly files is volume lines only (plus the
+  commas they require). PIPELINE FLAG: the pipeline tools
+  (`stock_weekly.py` on main, `indicator_weekly.py` on the
+  current-week branch) do not yet output a volume field, so a
+  future regen without a volume update would drop these fields
+  and the pane would hide gracefully — Grok must add volume to
+  both tools before this goes live, or volume will be a
+  test-branch-only feature.
+- **Event dots (mockup 1, part 2):** mechanism built, NO events
+  loaded. Orange dots above a candle's high + an "Event: …"
+  pill line, driven by an `EVENTS` list that is deliberately
+  EMPTY. No STRC dividend, Fed, or earnings date has been
+  invented, and none exists in the repo for these price candles.
+  Saturday decision (from the full analysis, D2): supply a real
+  event source, or ship volume without event dots. Until then
+  the toggle shows "No events loaded for this symbol yet."
+- **Zoom + scrub + range stats (mockup 2):** Zoom shows only the
+  last 12 weeks (Bollinger still computed on the full series,
+  then sliced to the window; drawdown/stats recompute on the
+  shown window, by design — that is the point of range stats).
+  Scrub: drag across the canvas and the pill follows candle by
+  candle; a tap works exactly as before. Range stats in the note:
+  best/worst week, up-week %, and weekly-change volatility
+  (sample SD). Harness on gold last 12 weeks: best +5.42%,
+  worst −4.23%, up weeks 33%, volatility 2.69%.
+- **Clash fixes from the full analysis (applied here, not just
+  suggested):** pattern dots gold → white with dark outline
+  (they clashed with the gold SMA line); Bollinger + drawdown
+  fills drop to 7% when both are on (they muddied together at
+  10%); base-line label now shifts away from high/low labels
+  too, not just the current label; Bollinger/drawdown note says
+  when the values include an in-progress latest week.
+- **Merge notes, updated:** this branch now also touches the 9
+  weekly JSONs with volume (gold, WTI, 7 stocks). It does NOT
+  touch their OHLC values or their week counts, and it does NOT
+  include the current-week candles — those stay on
+  `pepper-current-week-candle`. Grok merges volume fields into
+  whichever weekly files go live; do not take one branch's weekly
+  files as a wholesale replacement for the other's.
+- **Still to verify (Saturday checks, updated):** browser check
+  on the githack copy for the four new toggles (volume pane +
+  average line, event toggle note, zoom 12-week view, scrub
+  drag, range stats), plus the earlier toggles + Compare sleeve
+  candles, at phone width.
