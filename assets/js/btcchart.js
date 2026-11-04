@@ -530,6 +530,12 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
    +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../compare/index.html')+'">See full Compare →</a>';
   document.body.appendChild(dim);document.body.appendChild(dlg);
+  /* Secret link, 4 Nov 2026: double-clicking anywhere on the Bitcoin price
+     in this popover opens the block clock page in a new tab. No visible
+     link or hint anywhere on the site points to it; the clock page itself
+     is not linked from any header, footer, or nav. */
+  var pxEl=dlg.querySelector('.bc-px');
+  if(pxEl)pxEl.addEventListener('dblclick',function(e){e.preventDefault();window.open(U('../../clock/index.html'),'_blank','noopener');});
   dim.addEventListener('click',close);
   $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
