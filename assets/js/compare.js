@@ -72,6 +72,7 @@ function drawCandles(){
  const ds=dates(),v=SER[candKey].v,map={};
  ds.forEach(d=>{if(typeof v[d]!=='number'||!isFinite(v[d]))return;const wk=weekKey(d);if(!map[wk])map[wk]={first:d,last:d,days:0,open:v[d],high:v[d],low:v[d],close:v[d]};const w=map[wk];w.last=d;w.days++;w.high=Math.max(w.high,v[d]);w.low=Math.min(w.low,v[d]);w.close=v[d];});
  candWeeks=Object.keys(map).sort().map(k=>Object.assign({week:k},map[k]));
+ cv.style.width='100%';
  const dpr=window.devicePixelRatio||1,cssW=cv.clientWidth||560,cssH=280;
  cv.width=Math.round(cssW*dpr);cv.height=Math.round(cssH*dpr);cv.style.height=cssH+'px';
  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,cssW,cssH);
@@ -90,13 +91,19 @@ function drawCandles(){
  cv._plot={padL:padL,slot:slot,n:candWeeks.length};
  if(cs)cs.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===candKey));
  if(note)note.textContent='Weekly candles · '+L.sleeves[candKey].n+' · '+rng+' · '+candWeeks[0].first+' → '+candWeeks[candWeeks.length-1].last+' · '+candWeeks.length+' weeks. Sleeve value in USD, same basis as the line chart ($100,000 at 31 Dec 2025). Tap a candle for its week.';
+ // X-axis: first and last week, so the bars are never an undated strip.
+ ctx.fillStyle='#9aa6bc';ctx.font='11px -apple-system, system-ui, sans-serif';
+ ctx.fillText(candWeeks[0].week,padL,cssH-8);
+ var lastLbl=candWeeks[candWeeks.length-1].week;ctx.fillText(lastLbl,cssW-padR-ctx.measureText(lastLbl).width,cssH-8);
+ // A selected candle keeps its week detail even though drawCandles
+ // redraws the whole chart (this was the tap bug: the old click
+ // handler set the note, then redrew and wiped it back to summary).
+ if(candSel>=0&&candWeeks[candSel]&&note){var sw=candWeeks[candSel],schg=(sw.close/sw.open-1)*100;note.textContent='Week '+sw.week+' ('+sw.first+(sw.last!==sw.first?' → '+sw.last:'')+', '+sw.days+' session'+(sw.days===1?'':'s')+') · Open $'+sw.open.toLocaleString('en-US',{maximumFractionDigits:0})+' · High $'+sw.high.toLocaleString('en-US',{maximumFractionDigits:0})+' · Low $'+sw.low.toLocaleString('en-US',{maximumFractionDigits:0})+' · Close $'+sw.close.toLocaleString('en-US',{maximumFractionDigits:0})+' · Week change '+(schg>=0?'+':'')+schg.toFixed(2)+'%';}
 }
 const cvEl=document.getElementById('pvCandles');
 if(cvEl)cvEl.addEventListener('click',e=>{
  const cv=cvEl;if(!cv._plot)return;const rect=cv.getBoundingClientRect(),x=(e.clientX-rect.left)-cv._plot.padL,idx=Math.floor(x/cv._plot.slot);
- if(idx<0||idx>=candWeeks.length)return;candSel=idx;const w=candWeeks[idx],chg=(w.close/w.open-1)*100;
- const note=document.getElementById('pvCandNote');
- if(note)note.textContent='Week '+w.week+' ('+w.first+(w.last!==w.first?' → '+w.last:'')+', '+w.days+' session'+(w.days===1?'':'s')+') · Open $'+w.open.toLocaleString('en-US',{maximumFractionDigits:0})+' · High $'+w.high.toLocaleString('en-US',{maximumFractionDigits:0})+' · Low $'+w.low.toLocaleString('en-US',{maximumFractionDigits:0})+' · Close $'+w.close.toLocaleString('en-US',{maximumFractionDigits:0})+' · Week change '+(chg>=0?'+':'')+chg.toFixed(2)+'%';
+ if(idx<0||idx>=candWeeks.length)return;candSel=idx;
  drawCandles();});
 draw();
 function vehApply(m){VEH=m;if(m==='SPOT'){for(const k in L.sleeves)SER[k].v=VAL[k];draw();return;}

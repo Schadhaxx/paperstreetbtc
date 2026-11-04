@@ -211,3 +211,39 @@ current head too.
 - Nothing failed in this check. Scrub drag was built but not
   separately browser-tested; Compare re-check on the fixed
   commit is still outstanding.
+
+## Browser re-check — main chart + picker PASS, candles PARTIAL, tap FAILED, all fixed (3:22–3:25 p.m. EST 4 Nov, commit e69b8fe)
+- Main line chart PASS: YTD 2025-12-31 → 2026-11-03, lines
+  for Hodler Jam Sandwich, Spot BTC, Gold (GLD), MSTR all
+  tracing (the earlier TDZ bug is gone).
+- Sleeve picker PASS: all four sleeves; caption "Weekly
+  candles · Hodler Jam Sandwich · YTD · 2025-12-31 → 2026-11-03
+  · 45 weeks" ($100,000 at 31 Dec 2025 basis).
+- Candle bars PARTIAL: green/red bars draw and redraw on
+  sleeve switch (Hodler roughly $76,870–$119,589, Saylor Moon
+  roughly $73,000–$137,000), but compressed into the left
+  quarter-to-third of the plot with empty dark to the right,
+  and no date axis labels in that section.
+- Tap FAILED as observed: tapping a candle put a white
+  outline on it (selection worked) but no week O/H/L/C
+  appeared anywhere; caption stayed "Tap a candle for its
+  week."
+- Causes, both Pepper's: (1) TAP — the click handler set the
+  week note, then called drawCandles(), which overwrote the
+  note back to the summary line. Same class of bug as the
+  brace bug: note ownership was split. FIX: drawCandles()
+  now owns the note — if a candle is selected it writes the
+  week O/H/L/C line, otherwise the summary; the click handler
+  only selects and redraws. (2) COMPRESSION/AXES — the canvas
+  never got a CSS width, so its displayed width could differ
+  from the width the bars were laid out for, and no x-axis
+  labels were drawn at all. FIX: canvas style width 100%
+  before measuring, first/last week labels on the x-axis,
+  and the sleeve chartbox height auto (the 380px box left a
+  dark slab under the 280px canvas).
+- Harness re-verification of the tap fix (embedded closes):
+  tapping the third candle now leaves the note as "Week
+  2026-01-12 (2026-01-12 → 2026-01-16, 5 sessions) · Open
+  $104,429 · High $111,266 · Low $104,429 · Close $109,492 ·
+  Week change +4.85%." Browser re-check of the tap + width
+  fixes is still owed — harness is not a browser pass.
