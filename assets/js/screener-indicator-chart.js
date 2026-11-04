@@ -58,7 +58,7 @@
     GOLD: {
       symbol: 'GOLD',
       title: 'Gold — YTD weekly candles',
-      dataUrl: 'assets/data/gold-weekly.json?v=2',
+      dataUrl: 'assets/data/gold-weekly.json?v=3',
       format: fmtMoney,
       currentPrefix: 'Current ',
       subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
@@ -67,16 +67,16 @@
     WTI: {
       symbol: 'WTI',
       title: 'WTI — YTD weekly candles',
-      dataUrl: 'assets/data/wti-weekly.json?v=1',
+      dataUrl: 'assets/data/wti-weekly.json?v=2',
       format: fmtMoney,
       currentPrefix: 'Current ',
       subBlurb: 'Weekly candles, data to 30 Oct 2026. Latest week in progress. Tap a candle for its week.',
-      lastInProgress: 'in progress, as of 30 Oct 2026, 3:42 p.m. ET'
+      lastInProgress: null
     },
     US10Y: {
       symbol: 'US10Y',
       title: '10-Year — YTD weekly candles',
-      dataUrl: 'assets/data/us10y-weekly.json?v=1',
+      dataUrl: 'assets/data/us10y-weekly.json?v=2',
       format: fmtYield,
       currentPrefix: 'Current ',
       subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
@@ -86,7 +86,7 @@
     VIX: {
       symbol: 'VIX',
       title: 'VIX — YTD weekly candles',
-      dataUrl: 'assets/data/vix-weekly.json?v=1',
+      dataUrl: 'assets/data/vix-weekly.json?v=2',
       format: fmtPoints,
       currentPrefix: 'Current ',
       subBlurb: 'Weekly candles, data to 30 Oct 2026. Tap a candle for its week.',
@@ -99,7 +99,7 @@
   // weekly close ("Close $…"), never the live card price. "Current $…
   // YTD …" is drawn from the card's own merged row. Cache-bust STOCK_V
   // whenever the JSON is regenerated.
-  var STOCK_V = '20261030r';
+  var STOCK_V = '20261104';
   function stockCfg(sym, basis) {
     var listing = basis === 'listing';
     return {
@@ -133,6 +133,86 @@
   }
 
   var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], base: null, progressNote: null, resolvedSub: '' };
+
+  // Candle enhancements (test branch, 4 Nov 2026): Bollinger (mockup 3),
+  // high/low lines (5), drawdown shading (7), pattern hints (9). All
+  // OFF by default; the modal's toggle row flips them. Nothing here
+  // invents a value: everything is computed from the shipped weekly
+  // candles only. High/low lines use SHOWN weeks only — the shipped
+  // file is YTD, so they are not a lifetime ATH or a full 52-week
+  // history; the note under the chart says so plainly.
+  var ENH = { boll: false, lines: false, drawdown: false, patterns: false, volume: false, events: false, zoom: false, stats: false };
+  // Event dots (mockup 1): dates are NOT invented. This list is empty
+  // until Saturday supplies a real event source (STRC dividend
+  // calendar from the ledger is the only in-repo candidate, and it
+  // applies to sleeves, not to these price candles). Format:
+  // EVENTS[symbol] = [{ monday: 'YYYY-MM-DD', text: '...' }].
+  var EVENTS = {};
+  function fmtVol(v) {
+    if (typeof v !== 'number' || !isFinite(v)) return '—';
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return Math.round(v / 1e3) + 'K';
+    return String(Math.round(v));
+  }
+  function enhStats(weeks) {
+    var chgs = [], best = null, worst = null, wins = 0, i, c, m, sd;
+    for (i = 0; i < weeks.length; i++) {
+      if (!(weeks[i].open > 0)) continue;
+      c = weeks[i].close / weeks[i].open - 1; chgs.push(c);
+      if (c >= 0) wins++;
+      if (best === null || c > best.c) best = { c: c, label: weeks[i].label };
+      if (worst === null || c < worst.c) worst = { c: c, label: weeks[i].label };
+    }
+    if (!chgs.length) return null;
+    m = 0; chgs.forEach(function (x) { m += x; }); m /= chgs.length;
+    sd = 0; chgs.forEach(function (x) { sd += (x - m) * (x - m); });
+    sd = chgs.length > 1 ? Math.sqrt(sd / (chgs.length - 1)) : 0;
+    return { best: best, worst: worst, win: wins / chgs.length * 100, vol: sd * 100, n: chgs.length };
+  }
+  function enhBoll(weeks) {
+    var sma = [], up = [], lo = [], i, j, w, m, sd, sum;
+    for (i = 0; i < weeks.length; i++) {
+      if (i < 19) { sma.push(null); up.push(null); lo.push(null); continue; }
+      sum = 0; for (j = i - 19; j <= i; j++) sum += weeks[j].close;
+      m = sum / 20; sd = 0;
+      for (j = i - 19; j <= i; j++) sd += (weeks[j].close - m) * (weeks[j].close - m);
+      sd = Math.sqrt(sd / 19);
+      sma.push(m); up.push(m + 2 * sd); lo.push(m - 2 * sd);
+    }
+    return { sma: sma, up: up, lo: lo };
+  }
+  function enhDrawdown(weeks) {
+    var peak = -Infinity, peakIdx = 0, best = 0, bestPeak = 0, bestTrough = 0, i, dd;
+    for (i = 0; i < weeks.length; i++) {
+      if (weeks[i].close > peak) { peak = weeks[i].close; peakIdx = i; }
+      dd = peak > 0 ? (peak - weeks[i].close) / peak : 0;
+      if (dd > best) { best = dd; bestPeak = peakIdx; bestTrough = i; }
+    }
+    return { pct: best, peak: bestPeak, trough: bestTrough };
+  }
+  function enhPattern(weeks, i) {
+    if (i <= 0) return null;
+    var w = weeks[i], p = weeks[i - 1];
+    var body = Math.abs(w.close - w.open), range = w.high - w.low;
+    if (!(range > 0)) return null;
+    var upSh = w.high - Math.max(w.open, w.close), loSh = Math.min(w.open, w.close) - w.low;
+    var prevBodyUp = p.close >= p.open;
+    var eps = 1e-9;
+    if (!prevBodyUp && w.close >= w.open && w.open <= p.close + eps && w.close >= p.open - eps) return 'Bullish engulfing';
+    if (prevBodyUp && w.close < w.open && w.open >= p.close - eps && w.close <= p.open + eps) return 'Bearish engulfing';
+    if (loSh >= 2 * body - eps && upSh <= 0.5 * body + eps) return 'Hammer';
+    if (body <= 0.10 * range + eps) return 'Doji';
+    return null;
+  }
+  function enhHLine(ctx, yv, padL, cssW, padR, color, dash, label, labelColor) {
+    ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash(dash);
+    ctx.beginPath(); ctx.moveTo(padL, yv); ctx.lineTo(cssW - padR, yv); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+    var tw = ctx.measureText(label).width, bx = cssW - padR - tw - 10, by = yv - 8;
+    if (by < 14) by = yv + 16;
+    ctx.fillStyle = '#0b1226'; ctx.fillRect(bx - 4, by - 11, tw + 8, 16);
+    ctx.fillStyle = labelColor; ctx.fillText(label, bx, by); ctx.restore();
+  }
 
   // Reset EVERYTHING the previous symbol left on screen, before the
   // new symbol's title is shown. This is the stale-state fix (Grok
@@ -178,7 +258,7 @@
   function weeksFromStatic(data) {
     if (!data || !data.weeks || !data.weeks.length) throw new Error('no static weeks');
     return data.weeks.map(function (w) {
-      return { monday: new Date(w.monday), sunday: new Date(w.sunday), label: w.label, days: w.days, open: w.open, high: w.high, low: w.low, close: w.close };
+      return { monday: new Date(w.monday), sunday: new Date(w.sunday), label: w.label, days: w.days, open: w.open, high: w.high, low: w.low, close: w.close, volume: (typeof w.volume === 'number' ? w.volume : null) };
     });
   }
 
@@ -321,12 +401,28 @@
     var ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, cssW, cssH);
+    // Mockup 2 zoom: when on, only the last 12 weeks are drawn.
+    // Computations that need history (Bollinger) still use the full
+    // series, then are sliced to the shown window; range stats and
+    // drawdown are recomputed on the shown window, by design.
+    var viewStart = 0, viewWeeks = state.weeks;
+    if (ENH.zoom && state.weeks.length > 12) { viewStart = state.weeks.length - 12; viewWeeks = state.weeks.slice(viewStart); }
+    var hasVol = ENH.volume && viewWeeks.some(function (w) { return typeof w.volume === 'number' && w.volume > 0; });
+    var volH = hasVol ? 56 : 0;
+    var enhLabelYs = [];
     var padL = 62, padR = 8, padT = 10, padB = 30;
-    var plotW = cssW - padL - padR, plotH = cssH - padT - padB;
+    var plotW = cssW - padL - padR, plotH = cssH - padT - padB - (volH ? volH + 8 : 0);
+    var volTop = padT + plotH + 8;
     var lo = Infinity, hi = -Infinity;
-    state.weeks.forEach(function (w) { lo = Math.min(lo, w.low); hi = Math.max(hi, w.high); });
+    viewWeeks.forEach(function (w) { lo = Math.min(lo, w.low); hi = Math.max(hi, w.high); });
     if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
       lo = Math.min(lo, state.base.value); hi = Math.max(hi, state.base.value);
+    }
+    var fullBands = ENH.boll ? enhBoll(state.weeks) : null;
+    var bands = fullBands ? { sma: fullBands.sma.slice(viewStart), up: fullBands.up.slice(viewStart), lo: fullBands.lo.slice(viewStart) } : null;
+    if (bands) {
+      bands.up.forEach(function (v) { if (v != null) hi = Math.max(hi, v); });
+      bands.lo.forEach(function (v) { if (v != null) lo = Math.min(lo, v); });
     }
     var span = hi - lo || 1;
     lo -= span * 0.05; hi += span * 0.05;
@@ -347,11 +443,20 @@
       ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(cssW - padR, yy); ctx.stroke();
       ctx.fillText(fmt(v), 4, yy + 4);
     }
-    var n = state.weeks.length;
+    var n = viewWeeks.length;
     var slot = plotW / n;
     var bw = Math.max(2, Math.min(14, slot * 0.6));
+    var ddInfo = ENH.drawdown ? enhDrawdown(viewWeeks) : null;
+    if (ddInfo) {
+      var runPeak = -Infinity;
+      ctx.fillStyle = ENH.boll ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.10)';
+      viewWeeks.forEach(function (w, i) {
+        if (w.close > runPeak) runPeak = w.close;
+        if (w.close < runPeak) ctx.fillRect(padL + slot * i, y(runPeak), slot, Math.max(0, y(w.close) - y(runPeak)));
+      });
+    }
     var seenMonths = {};
-    state.weeks.forEach(function (w, i) {
+    viewWeeks.forEach(function (w, i) {
       var cx = padL + slot * i + slot / 2;
       var up = w.close >= w.open;
       var col = up ? '#22c55e' : '#ef4444';
@@ -374,11 +479,66 @@
         ctx.font = '11px -apple-system, system-ui, sans-serif';
       }
     });
+    // Enhancements, drawn over the candles: Bollinger bands (mockup 3)
+    // and high/low lines (mockup 5). High/low use shown weeks only.
+    if (bands && bands.up[n - 1] != null) {
+      ctx.save();
+      ctx.fillStyle = ENH.drawdown ? 'rgba(196,181,253,0.07)' : 'rgba(196,181,253,0.10)';
+      ctx.beginPath();
+      var started = false;
+      viewWeeks.forEach(function (w, i) {
+        if (bands.up[i] == null) return;
+        var x = padL + slot * i + slot / 2;
+        if (!started) { ctx.moveTo(x, y(bands.up[i])); started = true; } else ctx.lineTo(x, y(bands.up[i]));
+      });
+      for (var bi = n - 1; bi >= 0; bi--) { if (bands.lo[bi] == null) continue; ctx.lineTo(padL + slot * bi + slot / 2, y(bands.lo[bi])); }
+      ctx.closePath(); ctx.fill();
+      function bandLine(arr) {
+        ctx.beginPath(); var st = false;
+        viewWeeks.forEach(function (w, i) {
+          if (arr[i] == null) return;
+          var x = padL + slot * i + slot / 2;
+          if (!st) { ctx.moveTo(x, y(arr[i])); st = true; } else ctx.lineTo(x, y(arr[i]));
+        });
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#c4b5fd'; ctx.lineWidth = 1.4;
+      bandLine(bands.up); bandLine(bands.lo);
+      ctx.strokeStyle = '#facc15'; ctx.setLineDash([5, 4]);
+      bandLine(bands.sma);
+      ctx.restore();
+    }
+    var shownHi = -Infinity, shownLo = Infinity;
+    viewWeeks.forEach(function (w) { shownHi = Math.max(shownHi, w.high); shownLo = Math.min(shownLo, w.low); });
+    if (ENH.lines) {
+      enhHLine(ctx, y(shownHi), padL, cssW, padR, '#f97316', [6, 4], 'Highest shown ' + fmt(shownHi), '#f97316');
+      enhHLine(ctx, y(shownLo), padL, cssW, padR, '#94a3b8', [6, 4], 'Lowest shown ' + fmt(shownLo), '#cbd5e1');
+      enhLabelYs = [(y(shownHi) - 8 < 14 ? y(shownHi) + 16 : y(shownHi) - 8), (y(shownLo) - 8 < 14 ? y(shownLo) + 16 : y(shownLo) - 8)];
+    }
+    // Mockup 1 volume pane (under the price plot, same x slots).
+    if (hasVol) {
+      var maxVol = 0, volSum = 0, volCnt = 0;
+      viewWeeks.forEach(function (w) { if (typeof w.volume === 'number' && w.volume > 0) { maxVol = Math.max(maxVol, w.volume); volSum += w.volume; volCnt++; } });
+      var avgVol = volCnt ? volSum / volCnt : 0;
+      viewWeeks.forEach(function (w, i) {
+        if (!(typeof w.volume === 'number' && w.volume > 0)) return;
+        var cx = padL + slot * i + slot / 2;
+        var bh = maxVol > 0 ? w.volume / maxVol * volH : 0;
+        ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = w.close >= w.open ? '#22c55e' : '#ef4444';
+        ctx.fillRect(cx - bw / 2, volTop + volH - bh, bw, bh); ctx.restore();
+      });
+      if (avgVol > 0 && maxVol > 0) {
+        ctx.save(); ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(padL, volTop + volH - avgVol / maxVol * volH); ctx.lineTo(cssW - padR, volTop + volH - avgVol / maxVol * volH); ctx.stroke(); ctx.restore();
+      }
+      ctx.fillStyle = '#94a3b8'; ctx.font = '10px -apple-system, system-ui, sans-serif';
+      ctx.fillText('Vol', 4, volTop + 10);
+    }
     // Current line: horizontal dashed cyan at the latest weekly
     // close, read from the shipped data (never hardcoded), labelled
     // at the LEFT end, by the y-axis. For WTI the latest week is in
     // progress, so the label says so — its close is not a daily close.
-    var current = state.weeks[n - 1].close;
+    var current = viewWeeks[n - 1].close;
     var cy = y(current);
     ctx.save();
     ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
@@ -410,6 +570,7 @@
       var bx = Math.max(padL + 4, cssW - padR - btw - 6);
       var bly = by - 8;
       if (bly < 14) bly = by + 14;
+      enhLabelYs.forEach(function (ey) { if (Math.abs(bly - ey) < 16) bly = (bly < ey) ? Math.max(14, bly - 16) : Math.min(by + 14, cssH - padB - 4); });
       if (Math.abs(bly - ly) < 16 && bx < lx + tw + 10) bly = (bly < ly) ? Math.min(by + 14, cssH - padB - 4) : bly;
       ctx.fillStyle = 'rgba(15,23,42,0.88)';
       ctx.fillRect(bx - 3, bly - 10, Math.min(btw + 6, cssW - padR - bx + 3), 14);
@@ -417,6 +578,56 @@
       ctx.fillText(blab, bx, bly);
       ctx.restore();
     }
+    // Pattern hints (mockup 9): a small gold dot on a candle whose
+    // shape matches a named pattern. The pill names it and says
+    // plainly it is not a prediction.
+    var patCount = 0;
+    if (ENH.patterns) {
+      viewWeeks.forEach(function (w, i) {
+        var pat = enhPattern(state.weeks, viewStart + i);
+        if (!pat) return;
+        patCount++;
+        var cx = padL + slot * i + slot / 2;
+        var bullish = pat === 'Bullish engulfing' || pat === 'Hammer';
+        var dy = bullish ? y(w.low) + 9 : y(w.high) - 9;
+        ctx.save(); ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#0b1226'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(cx, dy, 3.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.restore();
+      });
+    }
+    // Event dots (mockup 1): drawn only for weeks listed in EVENTS.
+    // EVENTS is empty until Saturday supplies a real event source;
+    // no event is invented, so no dots appear until then.
+    if (ENH.events) {
+      var evList = EVENTS[state.cfg.symbol] || [];
+      evList.forEach(function (ev) {
+        viewWeeks.forEach(function (w, i) {
+          if (w.monday.toISOString().slice(0, 10) !== ev.monday) return;
+          var cx = padL + slot * i + slot / 2;
+          ctx.save(); ctx.fillStyle = '#f97316'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(cx, y(w.high) - 18, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.restore();
+        });
+      });
+    }
+    var note = el('ind-enh-note');
+    if (note) {
+      var lines = [];
+      if (ENH.boll) lines.push(bands && bands.up[n - 1] != null ? 'Bollinger (20, 2σ): SMA ' + fmt(bands.sma[n - 1]) + ' · upper ' + fmt(bands.up[n - 1]) + ' · lower ' + fmt(bands.lo[n - 1]) : 'Bollinger needs 20 weeks; this chart has ' + n + '.');
+      if (ENH.lines) lines.push('Highest shown ' + fmt(shownHi) + ' · lowest shown ' + fmt(shownLo) + ' — shown weeks only, not a lifetime high/low.');
+      if (ENH.drawdown && ddInfo) lines.push('Max drawdown ' + (ddInfo.pct * 100).toFixed(1) + '% · ' + viewWeeks[ddInfo.peak].label + ' → ' + viewWeeks[ddInfo.trough].label + '.');
+      if (ENH.patterns) lines.push(patCount ? patCount + ' pattern hint' + (patCount === 1 ? '' : 's') + ' marked (white dots). Tap a candle to see its pattern.' : 'No pattern hints on these weeks.');
+      if (ENH.stats) { var st = enhStats(viewWeeks); if (st) lines.push('Range stats (' + st.n + ' weeks): best ' + (st.best.c * 100).toFixed(2) + '% (' + st.best.label + ') · worst ' + (st.worst.c * 100).toFixed(2) + '% (' + st.worst.label + ') · up weeks ' + st.win.toFixed(0) + '% · weekly volatility ' + st.vol.toFixed(2) + '%.'); }
+      if (ENH.volume) {
+        if (hasVol) {
+          var vs = 0, vc = 0; viewWeeks.forEach(function (w) { if (typeof w.volume === 'number' && w.volume > 0) { vs += w.volume; vc++; } });
+          lines.push('Volume: latest week ' + fmtVol(viewWeeks[n - 1].volume) + ' · average ' + fmtVol(vc ? vs / vc : 0) + '.');
+        } else lines.push('Volume: no volume data in the shipped file for this symbol.');
+      }
+      if (ENH.events) { var evs = EVENTS[state.cfg.symbol] || []; lines.push(evs.length ? evs.length + ' event(s) marked (orange dots). Tap a candle to see its event.' : 'No events loaded for this symbol yet — event dates are a Saturday decision.'); }
+      if ((ENH.boll || ENH.drawdown) && (state.cfg.lastInProgress || state.progressNote)) lines.push('Bollinger/drawdown include the in-progress latest week.');
+      if (lines.length) { note.textContent = lines.join(' '); note.style.display = 'block'; }
+      else { note.style.display = 'none'; note.textContent = ''; }
+    }
+    state.viewWeeks = viewWeeks; state.viewStart = viewStart;
     canvas._plot = { padL: padL, slot: slot, n: n };
   }
 
@@ -427,11 +638,12 @@
     var rect = canvas.getBoundingClientRect();
     var x = (e.clientX - rect.left) - canvas._plot.padL;
     var idx = Math.floor(x / canvas._plot.slot);
-    if (idx < 0 || idx >= state.weeks.length) return;
+    var vw = state.viewWeeks || state.weeks;
+    if (idx < 0 || idx >= vw.length) return;
     state.selected = idx;
-    var w = state.weeks[idx];
+    var w = vw[idx];
     var chg = (w.close / w.open - 1) * 100;
-    var isLast = idx === state.weeks.length - 1;
+    var isLast = idx === vw.length - 1;
     var pill = el('ind-pill');
     if (pill) {
       var html = '<b>Week ' + w.label + ' (UTC, ' + w.days + ' trading day' + (w.days === 1 ? ' — partial week' : 's') + ')</b><br>'
@@ -460,6 +672,9 @@
           ? '<br>This open equals the listing close. The baseline is that first-trading close.'
           : '<br>Open is the first trade, not the ' + state.cfg.format(state.base.value) + ' listing close used as the baseline.';
       }
+      if (ENH.patterns) { var pat = enhPattern(state.weeks, (state.viewStart || 0) + idx); if (pat) html += '<br>Pattern hint: ' + pat + ' — a shape, not a prediction.'; }
+      if (typeof w.volume === 'number' && w.volume > 0) html += '<br>Volume ' + fmtVol(w.volume) + '.';
+      (EVENTS[state.cfg.symbol] || []).forEach(function (ev) { if (w.monday.toISOString().slice(0, 10) === ev.monday) html += '<br>Event: ' + ev.text + '.'; });
       if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
       else if (isLast && state.progressNote) html += '<br><i>Latest week is ' + state.progressNote + '.</i>';
       pill.style.display = 'block';
@@ -529,7 +744,16 @@
   });
   document.addEventListener('DOMContentLoaded', function () {
     var canvas = el('ind-canvas');
-    if (canvas) canvas.addEventListener('click', onCanvasTap);
+    if (canvas) {
+      canvas.addEventListener('click', onCanvasTap);
+      // Mockup 2 scrub: drag across the chart and the pill follows
+      // candle by candle. A tap still works exactly as before.
+      var scrubbing = false;
+      canvas.addEventListener('pointerdown', function () { scrubbing = true; });
+      canvas.addEventListener('pointerup', function () { scrubbing = false; });
+      canvas.addEventListener('pointercancel', function () { scrubbing = false; });
+      canvas.addEventListener('pointermove', function (e) { if (scrubbing) onCanvasTap({ clientX: e.clientX }); });
+    }
     var pill = el('ind-pill');
     if (pill) pill.addEventListener('click', function () { pill.style.display = 'none'; });
     var topBtn = el('ind-info-top');
@@ -539,8 +763,19 @@
     });
     var infoPill = el('ind-info-pill');
     if (infoPill) infoPill.addEventListener('click', function () { hideInfo(); });
+    document.querySelectorAll('#ind-enh button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-enh');
+        if (!(k in ENH)) return;
+        ENH[k] = !ENH[k];
+        if (k === 'zoom') state.selected = -1;
+        b.setAttribute('aria-pressed', ENH[k] ? 'true' : 'false');
+        b.classList.toggle('active', ENH[k]);
+        draw();
+      });
+    });
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern, enhStats: enhStats, fmtVol: fmtVol };
 })();
