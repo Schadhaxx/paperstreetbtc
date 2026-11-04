@@ -95,3 +95,10 @@ pins bumped et6→et7 / et2→et3 so the new code is not served
 from cache. Browser verification of 4H on this preview was
 started separately; its result is not recorded here until
 it lands.
+
+## Update — BTC 4H fix (4 Nov, same day)
+First check failed: Coinbase rejects granularity=14400.
+Fixed by aggregating 1h bars into UTC-aligned 4h buckets
+(last 42 complete blocks), harness-verified; size order
+now 4H then Daily. Browser re-check of 4H on this preview
+was started separately.
