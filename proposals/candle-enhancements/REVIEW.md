@@ -152,3 +152,36 @@ Volume · Event dots · Zoom: last 12 wks · Range stats.
   average line, event toggle note, zoom 12-week view, scrub
   drag, range stats), plus the earlier toggles + Compare sleeve
   candles, at phone width.
+
+## Browser check 1 — screener PASSED, Compare FAILED, bug found and fixed (4 Nov, 3:10–3:12 p.m. EST, commit baac7e5c)
+- Screener PASSED in full: Gold tile $4,070.40 (+3.30%) opened
+  "Gold — YTD weekly candles"; all four toggles off by default;
+  chart drew ending at $3,901.20; Bollinger on drew bands/SMA
+  with note SMA $4,246.31 · upper $4,654.32 · lower $3,838.29;
+  Bollinger off restored the normal note with no bands visible.
+  (Note: this check ran on baac7e5c, before the volume/zoom/
+  stats toggles and the white-dot clash fix landed in fc69496 —
+  those still need their own browser check.)
+- Compare PARTIALLY FAILED on the same commit: the "Sleeve
+  candles" section and its description appeared, but no sleeve
+  picker and no candle chart drew, and the main line chart also
+  showed only an empty grid. Cause found by Pepper in code
+  review + a Node harness, NOT a checker-environment quirk: the
+  call that redraws sleeve candles was placed AFTER draw()'s
+  closing brace, so it ran in run()'s scope before the sleeve
+  variables were initialised, threw a "cannot access before
+  initialisation" error, and aborted run() before the initial
+  line-chart draw and before the picker was built. That one
+  misplaced brace explains all three symptoms at once (empty
+  line chart, no picker, no candles).
+- FIX: the sleeve-candle redraw call moved inside draw(), after
+  the note assignment and before draw()'s closing brace.
+  Harness re-run (embedded closes, network stubbed off): 4 line
+  datasets, 203 labels, picker buttons for all four sleeves,
+  sleeve note "Weekly candles · Hodler Jam Sandwich · YTD ·
+  2025-12-31 → 2026-10-21 · 43 weeks", canvas 560×280. (43
+  weeks, not 44, because the harness used embedded closes
+  ending 21 Oct, not live history — expected in the harness.)
+- RE-CHECK REQUIRED: Compare sleeve candles + main line chart
+  on the fixed commit, in a real browser, before Saturday.
+  Do not treat the harness pass as a browser pass.
