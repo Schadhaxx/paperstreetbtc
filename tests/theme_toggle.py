@@ -17,8 +17,8 @@ import os, sys, threading, functools, http.server, socketserver
 from playwright.sync_api import sync_playwright
 
 PAGES = ['index.html', 'screener.html', 'compare/index.html', 'custom/index.html', 'recap/index.html'] + \
-        ['recap/2026-%02d/index.html' % m for m in range(1, 11)]
-FOOTER = {'index.html'} | {'recap/2026-%02d/index.html' % m for m in range(1, 11)}
+        ['recap/2026-%02d/index.html' % m for m in range(1, 12)]
+FOOTER = {'index.html'} | {'recap/2026-%02d/index.html' % m for m in range(1, 12)}
 exe = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
 CLOCK = '2026-10-30T20:00:00Z'
 
@@ -82,6 +82,31 @@ with sync_playwright() as p:
         ctx, pg, errs = ctx_page(b)
         pg.goto(U + pgname, wait_until='networkidle')
         check(pgname + ' default dark', pg.evaluate(TH) is None and pg.evaluate(ST) is None)
+        # floating pill (v3): only on pages with Top (index); always visible there
+        pill = pg.locator('#psThemePill')
+        if pgname == 'index.html':
+            check(pgname + ' floating pill visible in dark', pill.count() == 1 and pill.is_visible())
+        else:
+            check(pgname + ' no floating pill (Top not on this page)', pill.count() == 0)
+        if pgname == 'index.html' and pill.count():
+            check(pgname + ' pill label is Light in dark', pill.inner_text().strip() == 'Light')
+            check(pgname + ' pill aria-pressed false in dark', pill.get_attribute('aria-pressed') == 'false')
+            box = pill.bounding_box()
+            # Match Top's touch target; Top itself is ~34-40px with current padding, so require >= 32
+            check(pgname + ' pill touch target matches Top scale', box and box['height'] >= 32, str(box))
+            pill.focus(); pg.wait_for_timeout(50)
+            with pg.expect_navigation():
+                pill.click()
+            pg.wait_for_load_state('networkidle')
+            check(pgname + ' pill click -> light + saved', pg.evaluate(TH) == 'light' and pg.evaluate(ST) == 'light')
+            check(pgname + ' pill label is Dark in light', pg.locator('#psThemePill').inner_text().strip() == 'Dark')
+            check(pgname + ' pill aria-pressed true in light', pg.locator('#psThemePill').get_attribute('aria-pressed') == 'true')
+            # keyboard: focus + Enter
+            pg.locator('#psThemePill').focus()
+            with pg.expect_navigation():
+                pg.locator('#psThemePill').press('Enter')
+            pg.wait_for_load_state('networkidle')
+            check(pgname + ' pill Enter -> dark + cleared', pg.evaluate(TH) is None and pg.evaluate(ST) is None)
         if pgname in FOOTER:
             check(pgname + ' "Light version" visible in dark', pg.locator('.ps-theme-link .ps-to-light').is_visible() and not pg.locator('.ps-theme-link .ps-to-dark').is_visible())
             pg.locator('.ps-theme-link .ps-to-light').click(); pg.wait_for_load_state('networkidle')

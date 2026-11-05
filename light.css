@@ -412,3 +412,53 @@ html[data-theme="light"] .logo,
 html[data-theme="light"] .footer-logo { background: #06162d; box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.18); }
 html[data-theme="light"] .top-owl,
 html[data-theme="light"] .xf-owl { background: #0d1220; }
+
+/* ---- floating theme pill (always visible; sits beside Top when Top exists) ----
+   Matches .back-to-top (cyan pill, same padding/radius/font/shadow/z-index).
+   Top was moved to bottom-left by xfollow.css; the pill takes that left slot
+   and Top is shifted right by --ps-theme-pill-slot (set in theme-pill.js).
+   The pill is always visible. Top still appears only after scrollY > 400
+   (s3.js), fading in beside the pill so the slot does not jump. */
+.ps-theme-pill {
+  position: fixed;
+  left: calc(1.5rem + env(safe-area-inset-left, 0px));
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  background: #22d3ee;
+  color: #070b18;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+}
+.ps-theme-pill:hover { background: #67e8f9; }
+.ps-theme-pill:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .ps-theme-pill {
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+}
+/* Shift Top right of the always-visible theme pill (index only has Top). */
+.back-to-top {
+  left: calc(1.5rem + env(safe-area-inset-left, 0px) + var(--ps-theme-pill-slot, 5rem)) !important;
+}
+@media (max-width: 760px) {
+  .back-to-top {
+    left: calc(8px + env(safe-area-inset-left, 0px) + var(--ps-theme-pill-slot, 5rem)) !important;
+  }
+}
+html[data-theme="light"] .ps-theme-pill {
+  background: #22d3ee;
+  color: #041016;
+}
+html[data-theme="light"] .ps-theme-pill:hover { background: #67e8f9; }
