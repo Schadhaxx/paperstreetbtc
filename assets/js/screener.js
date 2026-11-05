@@ -195,6 +195,10 @@
     }
     if (typeof CustomEvent !== 'undefined') {
       window.dispatchEvent(new CustomEvent('screener-rows', { detail: rows }));
+      // Live-feel (experimental branch): the candle modal also needs the
+      // indicator rows (their _src live/close verdicts), which the stock
+      // event above does not carry.
+      window.dispatchEvent(new CustomEvent('screener-ind-rows', { detail: indRows }));
     }
   }
 
