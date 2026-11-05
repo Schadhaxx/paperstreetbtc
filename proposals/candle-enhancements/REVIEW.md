@@ -247,3 +247,16 @@ current head too.
   $104,429 · High $111,266 · Low $104,429 · Close $109,492 ·
   Week change +4.85%." Browser re-check of the tap + width
   fixes is still owed — harness is not a browser pass.
+
+## Event dots REMOVED (Sunil, 4 Nov evening)
+Sunil: "get rid of event dots." Removed in this push:
+the Event dots toggle button (screener.html), the
+`EVENTS` list, the dot-drawing block, the note line,
+and the tap detail line in
+`assets/js/screener-indicator-chart.js`, plus the
+`events` key in `ENH`. Mockup 1 is now volume only.
+No event dates were ever shipped (the list was empty),
+so nothing visible changes except the toggle itself
+disappearing; volume, zoom, stats, and the other
+toggles are untouched. Saturday decision D2 (event-dot
+source) is now MOOT — do not re-add without Sunil.
