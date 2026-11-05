@@ -141,13 +141,7 @@
   // candles only. High/low lines use SHOWN weeks only — the shipped
   // file is YTD, so they are not a lifetime ATH or a full 52-week
   // history; the note under the chart says so plainly.
-  var ENH = { boll: false, lines: false, drawdown: false, patterns: false, volume: false, events: false, zoom: false, stats: false };
-  // Event dots (mockup 1): dates are NOT invented. This list is empty
-  // until Saturday supplies a real event source (STRC dividend
-  // calendar from the ledger is the only in-repo candidate, and it
-  // applies to sleeves, not to these price candles). Format:
-  // EVENTS[symbol] = [{ monday: 'YYYY-MM-DD', text: '...' }].
-  var EVENTS = {};
+  var ENH = { boll: false, lines: false, drawdown: false, patterns: false, volume: false, zoom: false, stats: false };
   function fmtVol(v) {
     if (typeof v !== 'number' || !isFinite(v)) return '—';
     if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
@@ -594,20 +588,6 @@
         ctx.beginPath(); ctx.arc(cx, dy, 3.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.restore();
       });
     }
-    // Event dots (mockup 1): drawn only for weeks listed in EVENTS.
-    // EVENTS is empty until Saturday supplies a real event source;
-    // no event is invented, so no dots appear until then.
-    if (ENH.events) {
-      var evList = EVENTS[state.cfg.symbol] || [];
-      evList.forEach(function (ev) {
-        viewWeeks.forEach(function (w, i) {
-          if (w.monday.toISOString().slice(0, 10) !== ev.monday) return;
-          var cx = padL + slot * i + slot / 2;
-          ctx.save(); ctx.fillStyle = '#f97316'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.arc(cx, y(w.high) - 18, 4, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.restore();
-        });
-      });
-    }
     var note = el('ind-enh-note');
     if (note) {
       var lines = [];
@@ -622,7 +602,6 @@
           lines.push('Volume: latest week ' + fmtVol(viewWeeks[n - 1].volume) + ' · average ' + fmtVol(vc ? vs / vc : 0) + '.');
         } else lines.push('Volume: no volume data in the shipped file for this symbol.');
       }
-      if (ENH.events) { var evs = EVENTS[state.cfg.symbol] || []; lines.push(evs.length ? evs.length + ' event(s) marked (orange dots). Tap a candle to see its event.' : 'No events loaded for this symbol yet — event dates are a Saturday decision.'); }
       if ((ENH.boll || ENH.drawdown) && (state.cfg.lastInProgress || state.progressNote)) lines.push('Bollinger/drawdown include the in-progress latest week.');
       if (lines.length) { note.textContent = lines.join(' '); note.style.display = 'block'; }
       else { note.style.display = 'none'; note.textContent = ''; }
@@ -674,7 +653,6 @@
       }
       if (ENH.patterns) { var pat = enhPattern(state.weeks, (state.viewStart || 0) + idx); if (pat) html += '<br>Pattern hint: ' + pat + ' — a shape, not a prediction.'; }
       if (typeof w.volume === 'number' && w.volume > 0) html += '<br>Volume ' + fmtVol(w.volume) + '.';
-      (EVENTS[state.cfg.symbol] || []).forEach(function (ev) { if (w.monday.toISOString().slice(0, 10) === ev.monday) html += '<br>Event: ' + ev.text + '.'; });
       if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
       else if (isLast && state.progressNote) html += '<br><i>Latest week is ' + state.progressNote + '.</i>';
       pill.style.display = 'block';
