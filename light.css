@@ -431,8 +431,6 @@ html[data-theme="light"] .xf-owl { background: #0d1220; }
   border-radius: 999px;
   font-weight: 600;
   font-size: 0.85rem;
-  font-family: inherit;
-  line-height: 1.2;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   box-sizing: border-box;
