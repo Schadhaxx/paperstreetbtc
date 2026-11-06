@@ -52,7 +52,7 @@ function applyLive(st){
       const p = st.meDate.split('-'); meView = { n: labels.length, extra: { label: (+p[2]) + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+p[1]-1], sleeves: st.sleeves, bench } }; }
     liveNow = null;
     const asof = document.getElementById('ytdAsOf'); if (asof) asof.textContent = st.label;
-    if (chart) render();
+    if (chartReady) render();
     return;
   }
   const anyLive = st.btc || st.stocksLive || st.spy || st.qqq || st.brk || st.gold || st.mstr;
@@ -65,7 +65,7 @@ function applyLive(st){
   }
   const asof = document.getElementById('ytdAsOf');
   if (asof) asof.textContent = (st.label || asof.textContent) + (liveNow ? ' · Live value now. Chart reference points: month-end closes through ' + st.meLabel + '.' : '') + (BTCPROV ? PROVNOTE() : '');
-  if (chart) render();
+  if (chartReady) render();
 }
 window.addEventListener('pslive', e => applyLive(e.detail));
 window.addEventListener('psvehicle', e => {
@@ -81,7 +81,175 @@ function ytdLbl(){ const l = document.getElementById('ytdLbl'); if (l) l.textCon
 
 let selected = new Set(['berkshire']);
 let currentBench = 'btc';
-let chart;
+let chartReady = false;
+let _series = null; // {labels, datasets} last drawn — for hover + parity export
+let _hover = -1;
+
+/* Native canvas YTD line (Option 2): same series math as before; no Chart.js. */
+function niceTicks(min, max, n){
+  if (!(max > min)) { max = min + 1; }
+  const span = max - min;
+  const step0 = span / Math.max(1, n);
+  const pow = Math.pow(10, Math.floor(Math.log10(step0)));
+  const err = step0 / pow;
+  const step = pow * (err >= 5 ? 5 : err >= 2 ? 2 : 1);
+  const t0 = Math.floor(min / step) * step;
+  const out = [];
+  for (let v = t0; v <= max + step * 0.01; v += step) out.push(Math.round(v * 1000) / 1000);
+  return out;
+}
+function drawNative(){
+  const canvas = document.getElementById('ytdChart');
+  if (!canvas || !_series) return;
+  const wrap = canvas.parentElement || canvas;
+  const cssW = Math.max(280, wrap.clientWidth || canvas.clientWidth || 600);
+  const cssH = Math.max(180, +(canvas.getAttribute('height') || 220));
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = cssW, H = cssH;
+  const pad = { l: 44, r: 12, t: 28, b: 28 };
+  const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+  const lbls = _series.labels, datasets = _series.datasets;
+  let lo = Infinity, hi = -Infinity;
+  datasets.forEach(ds => ds.data.forEach(v => { if (typeof v === 'number' && isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }));
+  if (!isFinite(lo)) { lo = 90; hi = 110; }
+  const padY = (hi - lo) * 0.08 || 1;
+  lo -= padY; hi += padY;
+  const yTicks = niceTicks(lo, hi, 4);
+  lo = Math.min(lo, yTicks[0]); hi = Math.max(hi, yTicks[yTicks.length - 1]);
+  const n = Math.max(1, lbls.length - 1);
+  const xAt = i => pad.l + (n === 0 ? plotW / 2 : (i / n) * plotW);
+  const yAt = v => pad.t + (1 - (v - lo) / (hi - lo)) * plotH;
+
+  ctx.clearRect(0, 0, W, H);
+  // grid + y labels
+  ctx.strokeStyle = '#1e293b'; ctx.fillStyle = '#9aa6bc'; ctx.lineWidth = 1;
+  ctx.font = '11px system-ui,Segoe UI,sans-serif';
+  yTicks.forEach(v => {
+    const y = yAt(v);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + plotW, y); ctx.stroke();
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(v), pad.l - 6, y);
+  });
+  // x labels (first, mids, last)
+  const xIdx = [];
+  if (lbls.length <= 8) { for (let i = 0; i < lbls.length; i++) xIdx.push(i); }
+  else {
+    xIdx.push(0);
+    const mid = Math.max(1, Math.floor((lbls.length - 1) / 4));
+    for (let i = mid; i < lbls.length - 1; i += mid) xIdx.push(i);
+    xIdx.push(lbls.length - 1);
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  xIdx.forEach(i => { ctx.fillText(lbls[i], xAt(i), pad.t + plotH + 6); });
+
+  // series: fill first (single sleeve), then lines
+  datasets.forEach(ds => {
+    if (!ds.fill || ds.data.length < 2) return;
+    ctx.beginPath();
+    ds.data.forEach((v, i) => { const x = xAt(i), y = yAt(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.lineTo(xAt(ds.data.length - 1), pad.t + plotH);
+    ctx.lineTo(xAt(0), pad.t + plotH);
+    ctx.closePath();
+    ctx.fillStyle = ds.backgroundColor || (ds.borderColor + '18');
+    ctx.fill();
+  });
+  datasets.forEach(ds => {
+    ctx.beginPath();
+    ds.data.forEach((v, i) => { const x = xAt(i), y = yAt(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.strokeStyle = ds.borderColor;
+    ctx.lineWidth = ds.borderWidth || 2;
+    if (ds.borderDash) ctx.setLineDash(ds.borderDash); else ctx.setLineDash([]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (ds.pointRadius) {
+      ds.data.forEach((v, i) => {
+        ctx.beginPath();
+        ctx.arc(xAt(i), yAt(v), ds.pointRadius, 0, Math.PI * 2);
+        ctx.fillStyle = ds.borderColor;
+        ctx.fill();
+      });
+    }
+  });
+
+  // legend (top)
+  let lx = pad.l, ly = 8;
+  ctx.font = '11px system-ui,Segoe UI,sans-serif';
+  ctx.textBaseline = 'middle';
+  datasets.forEach(ds => {
+    ctx.fillStyle = ds.borderColor;
+    ctx.fillRect(lx, ly - 4, 12, 8);
+    if (ds.borderDash) {
+      ctx.strokeStyle = ds.borderColor; ctx.lineWidth = 1.5; ctx.setLineDash([3, 2]);
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 12, ly); ctx.stroke(); ctx.setLineDash([]);
+    }
+    ctx.fillStyle = '#9aa6bc';
+    ctx.textAlign = 'left';
+    const lab = ds.label.length > 42 ? ds.label.slice(0, 40) + '…' : ds.label;
+    ctx.fillText(lab, lx + 16, ly);
+    lx += 16 + ctx.measureText(lab).width + 14;
+  });
+
+  // hover crosshair + tooltip
+  if (_hover >= 0 && _hover < lbls.length) {
+    const x = xAt(_hover);
+    ctx.strokeStyle = 'rgba(148,163,184,.45)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + plotH); ctx.stroke(); ctx.setLineDash([]);
+    const tip = [lbls[_hover]].concat(datasets.map(ds => {
+      const v = ds.data[_hover];
+      return ds.label + ': ' + (typeof v === 'number' ? v.toFixed(2) : '—');
+    }));
+    ctx.font = '11px system-ui,Segoe UI,sans-serif';
+    const tw = Math.max(...tip.map(t => ctx.measureText(t).width)) + 16;
+    const th = tip.length * 14 + 10;
+    let tx = x + 10, ty = pad.t + 8;
+    if (tx + tw > W - 4) tx = x - tw - 10;
+    if (tx < 4) tx = 4;
+    ctx.fillStyle = 'rgba(15,23,42,.92)';
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.rect(tx, ty, tw, th);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e2e8f0'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    tip.forEach((t, i) => ctx.fillText(t, tx + 8, ty + 6 + i * 14));
+    datasets.forEach(ds => {
+      const v = ds.data[_hover];
+      if (typeof v !== 'number') return;
+      ctx.beginPath();
+      ctx.arc(x, yAt(v), 4, 0, Math.PI * 2);
+      ctx.fillStyle = ds.borderColor;
+      ctx.fill();
+    });
+  }
+
+  // expose geometry for hit-testing
+  canvas._ytdHit = { pad, plotW, n: lbls.length, xAt };
+}
+function bindHover(){
+  const canvas = document.getElementById('ytdChart');
+  if (!canvas || canvas._ytdBound) return;
+  canvas._ytdBound = true;
+  const hit = ev => {
+    const h = canvas._ytdHit; if (!h || h.n < 1) return -1;
+    const r = canvas.getBoundingClientRect();
+    const x = (ev.clientX - r.left);
+    if (x < h.pad.l || x > h.pad.l + h.plotW) return -1;
+    const t = (x - h.pad.l) / h.plotW;
+    return Math.max(0, Math.min(h.n - 1, Math.round(t * Math.max(1, h.n - 1))));
+  };
+  canvas.addEventListener('mousemove', ev => {
+    const i = hit(ev);
+    if (i !== _hover) { _hover = i; drawNative(); }
+  });
+  canvas.addEventListener('mouseleave', () => { if (_hover !== -1) { _hover = -1; drawNative(); } });
+  window.addEventListener('resize', () => { if (_series) drawNative(); });
+}
 
 function render() {
   if (!ISO.length) return;
@@ -120,10 +288,8 @@ function render() {
       borderColor: sleeves[key].color,
       backgroundColor: sleeves[key].color + '18',
       borderWidth: 2.5,
-      tension: 0.3,
       fill: selected.size === 1,
-      pointRadius: 3,
-      pointHoverRadius: 5
+      pointRadius: 3
     });
   });
   datasets.push({
@@ -132,30 +298,19 @@ function render() {
     borderColor: benchColors[currentBench],
     borderWidth: 1.5,
     borderDash: [5, 4],
-    tension: 0.25,
     fill: false,
     pointRadius: 0
   });
 
   const lbls = meView ? (meView.extra ? labels.concat([meView.extra.label]) : labels.slice(0, meView.n)) : (liveNow ? labels.concat(['Now']) : labels.slice());
   ytdLbl();
-  if (chart) { chart.data.labels = lbls; chart.data.datasets = datasets; chart.update('none'); return; }
-  if (typeof Chart === 'undefined') return;
-  const ctx = document.getElementById('ytdChart').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: { labels: lbls, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: true, labels: { color: '#9aa6bc', boxWidth: 12 } } },
-      scales: {
-        x: { grid: { color: '#1e293b' }, ticks: { color: '#9aa6bc' } },
-        y: { grid: { color: '#1e293b' }, ticks: { color: '#9aa6bc', callback: v => v } }
-      },
-      interaction: { mode: 'index', intersect: false }
-    }
-  });
+  _series = { labels: lbls, datasets };
+  // Parity/debug hook (same numbers Chart.js used to plot)
+  window.__YTD_SERIES = { labels: lbls.slice(), datasets: datasets.map(d => ({ label: d.label, data: d.data.slice() })) };
+  window.__YTD_STATS = { now: s.now, ytd: s.ytd, vs: vs, sleeve: first, bench: currentBench };
+  chartReady = true;
+  bindHover();
+  drawNative();
 }
 
 document.querySelectorAll('.sleeve-btn').forEach(btn => {
