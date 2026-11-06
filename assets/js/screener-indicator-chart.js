@@ -10,6 +10,14 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
 // This module replaces assets/js/screener-gold.js (deleted on this
 // branch): gold now runs through this module with the same data,
 // values, "+" behaviour, month x-axis and left current line as before.
+// EXPERIMENTAL LIVE FEEL (branch pepper-live-feel-exp, Nov 2026, NOT live):
+// when a tile row's _src is 'live' (fresh quote + market hours, as judged
+// by screener.js), the modal's dashed line moves to that live price and,
+// ONLY when the shipped file marks its last week in progress, that last
+// candle's close/high/low follow the live price for display. The shipped
+// weeks are never mutated and no price is ever invented: a stale or
+// out-of-hours quote keeps the shipped close line and a "Market closed"
+// status. See proposals/live-feel-experimental/REVIEW.md.
 // Data is SHIPPED WITH the screener only. There is NO Yahoo browser
 // fetch fallback in this module: that fallback failed live for gold
 // on 30 Oct 2026 (load error, Retry failed), so it was dropped. If
@@ -133,7 +141,105 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   }
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], base: null, progressNote: null, resolvedSub: '' };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null };
+
+
+  // --- Experimental live feel: pure helpers (also exposed for harness) ---
+  // Display copy of the last week with the live price applied, or the
+  // week unchanged. Never mutates the shipped week object.
+  function applyLiveWeek(w, price) {
+    if (!w || typeof price !== 'number' || !isFinite(price)) return w;
+    return { monday: w.monday, sunday: w.sunday, label: w.label, days: w.days,
+      open: w.open, high: Math.max(w.high, price), low: Math.min(w.low, price), close: price };
+  }
+  function displayWeeks() {
+    if (!state.weeks.length) return [];
+    if (!state.liveOn || !state.progressNote && !(state.cfg && state.cfg.lastInProgress)) return state.weeks;
+    if (!state.liveOn) return state.weeks;
+    var out = state.weeks.slice();
+    out[out.length - 1] = applyLiveWeek(out[out.length - 1], state.livePrice);
+    return out;
+  }
+  function isInProgress() {
+    return !!(state.progressNote || (state.cfg && state.cfg.lastInProgress));
+  }
+  // Next week close: indicators use UTC Monday 00:00; stocks use Friday
+  // 16:00 ET (21:00 UTC in EST, which covers Nov-Mar; the label says ET).
+  function nextWeekClose(isStock) {
+    var now = new Date(), target;
+    if (isStock) {
+      var d = (5 - now.getUTCDay() + 7) % 7;
+      target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, 21, 0, 0));
+      if (target <= now) target = new Date(target.getTime() + 7 * 86400000);
+      return { t: target, label: 'Friday 4 p.m. ET' };
+    }
+    var d2 = (8 - now.getUTCDay()) % 7;
+    target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d2, 0, 0, 0));
+    if (target <= now) target = new Date(target.getTime() + 7 * 86400000);
+    return { t: target, label: 'Sunday midnight UTC' };
+  }
+  function countdownText() {
+    var nc = nextWeekClose(!!(state.cfg && state.cfg.stock));
+    var ms = Math.max(0, nc.t - Date.now());
+    var dd = Math.floor(ms / 86400000), hh = Math.floor(ms / 3600000) % 24, mm = Math.floor(ms / 60000) % 60;
+    return 'Week closes in ' + dd + 'd ' + hh + 'h ' + mm + 'm (' + nc.label + ')';
+  }
+  function refreshLiveStatus() {
+    var modal = el('ind-modal');
+    if (!modal || !modal.classList.contains('open') || !state.weeks.length || state.loading) return;
+    var liveEl = el('ind-liveprice');
+    if (state.liveOn) {
+      var f = state.cfg.format(state.livePrice);
+      if (liveEl) {
+        liveEl.textContent = 'Live ' + f;
+        liveEl.style.display = 'inline-block';
+        if (state.livePrev !== null && state.livePrice !== state.livePrev) {
+          liveEl.style.color = state.livePrice >= state.livePrev ? '#22c55e' : '#ef4444';
+          setTimeout(function () { if (liveEl) liveEl.style.color = ''; }, 700);
+        }
+      }
+      setStatus('Experimental live feel — LIVE · ' + countdownText() + ' · Tap a candle for its week.');
+    } else {
+      if (liveEl) liveEl.style.display = 'none';
+      var last = state.weeks[state.weeks.length - 1];
+      setStatus('Experimental live feel — Market closed · Last close ' + state.cfg.format(last.close) + ' · ' + countdownText() + ' · Tap a candle for its week.');
+    }
+  }
+  function refreshLive() {
+    if (!state.cfg) return;
+    var list = state.cfg.stock ? state.rows : state.indRows, row = null;
+    (list || []).forEach(function (r) { if (r.symbol === state.cfg.symbol) row = r; });
+    var wasOn = state.liveOn, wasPrice = state.livePrice;
+    state.liveOn = !!(row && row._src === 'live' && typeof row.price === 'number' && isFinite(row.price));
+    state.livePrice = state.liveOn ? row.price : null;
+    if (state.liveOn) state.livePrev = wasPrice;
+    var modal = el('ind-modal');
+    var open = !!(modal && modal.classList.contains('open'));
+    if (open && state.weeks.length) {
+      if (state.liveOn && !wasOn) state.drawStart = performance.now();
+      draw();
+      refreshLiveStatus();
+    }
+    // Pulse: redraw on a slow tick only while the modal is open, live,
+    // and the user has not asked for reduced motion. Stopped on close.
+    // The status line (with its week-close countdown) refreshes on the
+    // same tick, throttled to every 30s, so the countdown counts down
+    // between 5-minute feed refreshes instead of freezing.
+    var reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (open && state.liveOn && !reduced && !state.pulseTimer) {
+      state.pulseTimer = setInterval(function () {
+        var m = el('ind-modal');
+        if (!m || !m.classList.contains('open') || !state.liveOn) { stopPulse(); return; }
+        draw();
+        var now = Date.now();
+        if (!state.lastStatusAt || now - state.lastStatusAt >= 30000) {
+          state.lastStatusAt = now;
+          refreshLiveStatus();
+        }
+      }, 700);
+    } else if ((!open || !state.liveOn) && state.pulseTimer) stopPulse();
+  }
+  function stopPulse() { if (state.pulseTimer) { clearInterval(state.pulseTimer); state.pulseTimer = null; } }
 
   // Candle enhancements (test branch, 4 Nov 2026): Bollinger (mockup 3),
   // high/low lines (5), drawdown shading (7), pattern hints (9). All
@@ -228,6 +334,8 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     }
     var cardLine = el('ind-cardline');
     if (cardLine) { cardLine.style.display = 'none'; cardLine.textContent = ''; }
+    var liveEl = el('ind-liveprice');
+    if (liveEl) liveEl.style.display = 'none';
   }
 
   function showInfo(text) {
@@ -326,7 +434,9 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       state.loadedSymbol = '';
       loadData();
     } else if (state.weeks.length && state.loadedSymbol === cfg.symbol) {
+      state.drawStart = performance.now();
       draw();
+      refreshLiveStatus();
       if (cfg.stock) renderCardLine();
     } else {
       state.weeks = [];
@@ -336,6 +446,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   function closeModal() {
     var m = el('ind-modal');
     if (!m) return;
+    stopPulse();
     m.classList.remove('open');
     m.setAttribute('aria-hidden', 'true');
   }
@@ -358,10 +469,21 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         if (token !== state.loadToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale response: ignore
         state.weeks = weeksFromStatic(data);
         state.loadedSymbol = cfg.symbol;
+        // In-progress marking is not stock-only: indicator files carry
+        // inProgress too when their last week is partial (see the
+        // current-week-candle branch). applyStockMeta only sets it for
+        // stocks, so capture it here for every symbol.
+        if (typeof data.inProgress === 'string' && data.inProgress) state.progressNote = data.inProgress;
         applyStockMeta(cfg, data);
-        var last = state.weeks[state.weeks.length - 1];
-        setStatus('Tap a candle for its week.');
+        state.drawStart = performance.now();
+        // Loading is done: clear the flag BEFORE refreshLive() so
+        // refreshLiveStatus() actually runs (it returns early while
+        // loading) and the status line shows the LIVE / Market-closed
+        // state with its week-close countdown on first open — instead
+        // of the old code, which set the status here and then clobbered
+        // it with a plain "Tap a candle" line below.
         state.loading = false;
+        refreshLive();
         draw();
       })
       .catch(function () {
@@ -405,11 +527,23 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var hasVol = ENH.volume && viewWeeks.some(function (w) { return typeof w.volume === 'number' && w.volume > 0; });
     var volH = hasVol ? 56 : 0;
     var enhLabelYs = [];
-    var padL = 62, padR = 8, padT = 10, padB = 30;
+    // Right margin 24, not 8: the in-progress last candle sits at the
+    // far right of the plot, and its live dashed outline extends 5px
+    // past the body on each side. With an 8px margin the outline ran
+    // to the canvas edge and read as clipped; 24px leaves it (and the
+    // LIVE tag) visibly clear of the edge.
+    var padL = 62, padR = 24, padT = 10, padB = 30;
     var plotW = cssW - padL - padR, plotH = cssH - padT - padB - (volH ? volH + 8 : 0);
     var volTop = padT + plotH + 8;
+    // Display copy: the shown weeks with the in-progress last week
+    // extended to the live price (display only — the shipped week is
+    // never mutated). When not live, dw is exactly viewWeeks.
+    var dw = viewWeeks.slice();
+    if (state.liveOn && isInProgress() && typeof state.livePrice === 'number' && isFinite(state.livePrice) && dw.length) {
+      dw[dw.length - 1] = applyLiveWeek(dw[dw.length - 1], state.livePrice);
+    }
     var lo = Infinity, hi = -Infinity;
-    viewWeeks.forEach(function (w) { lo = Math.min(lo, w.low); hi = Math.max(hi, w.high); });
+    dw.forEach(function (w) { lo = Math.min(lo, w.low); hi = Math.max(hi, w.high); });
     if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
       lo = Math.min(lo, state.base.value); hi = Math.max(hi, state.base.value);
     }
@@ -438,7 +572,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(cssW - padR, yy); ctx.stroke();
       ctx.fillText(fmt(v), 4, yy + 4);
     }
-    var n = viewWeeks.length;
+    var n = dw.length;
     var slot = plotW / n;
     var bw = Math.max(2, Math.min(14, slot * 0.6));
     var ddInfo = ENH.drawdown ? enhDrawdown(viewWeeks) : null;
@@ -451,14 +585,43 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       });
     }
     var seenMonths = {};
-    viewWeeks.forEach(function (w, i) {
+    // Draw-in: candles grow body-first over ~450ms from drawStart
+    // (open, fresh load, or the moment the chart goes live). Reduced
+    // motion draws instantly. The live candle never grows: it is
+    // already moving with the price.
+    var reducedM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var prog = reducedM || !state.drawStart ? 1 : Math.min(1, (performance.now() - state.drawStart) / 450);
+    dw.forEach(function (w, i) {
       var cx = padL + slot * i + slot / 2;
       var up = w.close >= w.open;
       var col = up ? '#22c55e' : '#ef4444';
       ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(cx, y(w.high)); ctx.lineTo(cx, y(w.low)); ctx.stroke();
       var top = y(Math.max(w.open, w.close)), bot = y(Math.min(w.open, w.close));
-      ctx.fillRect(cx - bw / 2, top, bw, Math.max(1, bot - top));
+      var isLiveCandle = state.liveOn && isInProgress() && i === n - 1;
+      var grow = (reducedM || isLiveCandle) ? 1 : Math.max(0, Math.min(1, prog * n - i));
+      var mid = (top + bot) / 2, half = (bot - top) / 2 * grow;
+      ctx.fillRect(cx - bw / 2, mid - half, bw, Math.max(1, half * 2));
+      if (isLiveCandle) {
+        // Dashed outline + LIVE tag on the live candle only. The
+        // pulsing dot sits to the LEFT of the LIVE text (dot, gap,
+        // text — centred on the candle), not on top of it: the old
+        // code drew the dot at the candle centre, where it covered
+        // the V in LIVE.
+        ctx.save();
+        ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+        ctx.strokeRect(cx - bw / 2 - 5, y(w.high) - 8, bw + 10, y(w.low) - y(w.high) + 16);
+        ctx.setLineDash([]);
+        var pulse = reducedM ? 0 : (0.5 + 0.5 * Math.sin(Date.now() / 300));
+        ctx.globalAlpha = 0.35 + 0.65 * pulse;
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath(); ctx.arc(cx - 17, y(w.high) - 24, 5, 0, 2 * Math.PI); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+        ctx.fillStyle = '#22c55e';
+        ctx.fillText('LIVE', cx - 8, y(w.high) - 20);
+        ctx.restore();
+      }
       if (i === state.selected) {
         ctx.strokeStyle = psC('#ffffff','#0f172a'); ctx.lineWidth = 1.5;
         ctx.strokeRect(cx - bw / 2 - 3, y(w.high) - 3, bw + 6, y(w.low) - y(w.high) + 6);
@@ -529,18 +692,20 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       ctx.fillStyle = psC('#94a3b8','#475569'); ctx.font = '10px -apple-system, system-ui, sans-serif';
       ctx.fillText('Vol', 4, volTop + 10);
     }
-    // Current line: horizontal dashed cyan at the latest weekly
-    // close, read from the shipped data (never hardcoded), labelled
-    // at the LEFT end, by the y-axis. For WTI the latest week is in
-    // progress, so the label says so — its close is not a daily close.
-    var current = viewWeeks[n - 1].close;
+    // Current line: horizontal dashed cyan, labelled at the LEFT end,
+    // by the y-axis. EXPERIMENTAL LIVE FEEL: when the tile row is live,
+    // this line moves to the live price and carries a LIVE tag at the
+    // RIGHT end; otherwise it is exactly the old shipped-close line.
+    // For WTI the latest week is in progress, so the label says so —
+    // its close is not a daily close.
+    var current = state.liveOn ? state.livePrice : dw[n - 1].close;
     var cy = y(current);
     ctx.save();
     ctx.strokeStyle = psC('#22d3ee','#0891b2'); ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
     ctx.beginPath(); ctx.moveTo(padL, cy); ctx.lineTo(cssW - padR, cy); ctx.stroke();
     ctx.setLineDash([]);
-    var curLab = state.cfg.currentPrefix + fmt(current);
-    if (state.cfg.lastInProgress || state.progressNote) curLab += ' (in progress)';
+    var curLab = state.liveOn ? ('Live ' + fmt(current)) : (state.cfg.currentPrefix + fmt(current));
+    if (!state.liveOn && (state.cfg.lastInProgress || state.progressNote)) curLab += ' (in progress)';
     ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
     var tw = ctx.measureText(curLab).width;
     var lx = padL + 6;
@@ -550,6 +715,15 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     ctx.fillRect(lx - 4, ly - 11, tw + 8, 16);
     ctx.fillStyle = psC('#0b1226','#f1f5f9');
     ctx.fillText(curLab, lx, ly);
+    if (state.liveOn) {
+      ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+      var liveTag = 'LIVE ' + fmt(current);
+      var ltw = ctx.measureText(liveTag).width;
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(cssW - padR - ltw - 10, cy - 19, ltw + 8, 16);
+      ctx.fillStyle = '#0b1226';
+      ctx.fillText(liveTag, cssW - padR - ltw - 6, cy - 7);
+    }
     ctx.restore();
     if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
       var by = y(state.base.value);
@@ -609,6 +783,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     }
     state.viewWeeks = viewWeeks; state.viewStart = viewStart;
     canvas._plot = { padL: padL, slot: slot, n: n };
+    if (prog < 1 && !reducedM) requestAnimationFrame(function () { draw(); });
   }
 
   function onCanvasTap(e) {
@@ -616,12 +791,29 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (!canvas || !canvas._plot) return;
     if (state.infoOpen) { hideInfo(); return; }
     var rect = canvas.getBoundingClientRect();
-    var x = (e.clientX - rect.left) - canvas._plot.padL;
+    var tapX = e.clientX - rect.left;
+    var x = tapX - canvas._plot.padL;
     var idx = Math.floor(x / canvas._plot.slot);
     var vw = state.viewWeeks || state.weeks;
+    // Forgiving right edge: the in-progress last candle's live outline
+    // extends past its slot, and a finger tap on it (or in the right
+    // margin) lands just past the last slot — idx == vw.length, which
+    // the old code dropped silently. If the tap is still inside the
+    // canvas, it meant the last candle. The left (y-axis) edge is not
+    // clamped: tapping the axis labels selects nothing.
+    if (idx >= vw.length) {
+      if (tapX >= 0 && tapX <= canvas.clientWidth) idx = vw.length - 1;
+      else return;
+    }
     if (idx < 0 || idx >= vw.length) return;
     state.selected = idx;
     var w = vw[idx];
+    // Live display: if the tapped candle is the in-progress last
+    // candle and the modal is live, show the live-extended values
+    // (display only — the shipped week is never mutated).
+    if (idx === vw.length - 1 && state.liveOn && isInProgress() && typeof state.livePrice === 'number' && isFinite(state.livePrice)) {
+      w = applyLiveWeek(w, state.livePrice);
+    }
     var chg = (w.close / w.open - 1) * 100;
     var isLast = idx === vw.length - 1;
     var pill = el('ind-pill');
@@ -654,7 +846,8 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       }
       if (ENH.patterns) { var pat = enhPattern(state.weeks, (state.viewStart || 0) + idx); if (pat) html += '<br>Pattern hint: ' + pat + ' — a shape, not a prediction.'; }
       if (typeof w.volume === 'number' && w.volume > 0) html += '<br>Volume ' + fmtVol(w.volume) + '.';
-      if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
+      if (isLast && state.liveOn && isInProgress()) html += '<br><i>Latest week is live — its close follows the live price and is not a final close.</i>';
+      else if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
       else if (isLast && state.progressNote) html += '<br><i>Latest week is ' + state.progressNote + '.</i>';
       pill.style.display = 'block';
       pill.innerHTML = html;
@@ -720,6 +913,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     state.rows = (e && e.detail) || [];
     var modal = el('ind-modal');
     if (modal && modal.classList.contains('open') && state.cfg && state.cfg.stock) renderCardLine();
+    refreshLive();
+  });
+  window.addEventListener('screener-ind-rows', function (e) {
+    state.indRows = (e && e.detail) || [];
+    refreshLive();
   });
   document.addEventListener('DOMContentLoaded', function () {
     var canvas = el('ind-canvas');
@@ -756,5 +954,5 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern, enhStats: enhStats, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, nextWeekClose: nextWeekClose, countdownText: countdownText, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern, enhStats: enhStats, fmtVol: fmtVol };
 })();
