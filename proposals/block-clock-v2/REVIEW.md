@@ -43,6 +43,10 @@ approximate — the page says so. Choice is remembered (localStorage).
   range summaries gain a `· CAD` marker. The series stays USD internally,
   so the shape never changes. **The popover never sets BC_CUR, so USD
   output is identical to before.**
+- `assets/js/btcchart.js` — candle detail pill now shows Open and Close as
+  well as High/Low and Change (four lines instead of three); the note text
+  under the chart says so. The pill is shared by the popover and the clock
+  page, so both gain it.
 - `clock/index.html` — loads `nav.css` (the popover's own styles) +
   `et.js?v=et2` + `btcchart.js?v=et8`; the `#bcInline` host now sits inside
   the hero (merged card) with `.hero.merged` overrides (chart card chrome
@@ -79,8 +83,10 @@ approximate — the page says so. Choice is remembered (localStorage).
   ~1/4 of the time. A third tile in the grid now shows them always: fastest
   fee in sat/vB (big) + the unconfirmed transaction count (small), same
   mempool.space feed as the Network screen, updated on the same 60s cycle.
-  No new fetch — it reuses the existing fees + mempool calls.
-- Pins: `btcchart.js` et7→et8 on index/screener/clock, et3→et4 on
+  No new fetch — it reuses the existing fees + mempool calls. The small
+  line also shows the economy fee (same feed), and the footer shows the
+  live rate (1 USD = 1.41 CAD) next to the CAD note.
+- Pins: `btcchart.js` et8→et9 on index/screener/clock, et4→et5 on
   compare/custom/recap. OI-001 pins preserved (s2.js p4, compare.js et2).
 
 ## Deliberately NOT done
@@ -98,11 +104,11 @@ approximate — the page says so. Choice is remembered (localStorage).
 
 ## Merge notes (for Grok Bot)
 
-- Apply the `btcchart.js` inline patch **and the CAD hook** on top of the
-  **final merged** `btcchart.js` after items 1/4/5/8 land today — both are
-  small and apply to any `btcchart.js` that still has `build()`/`open()`/
-  `close()`/`place()` and a single `fmt`. Do not merge the V1-era copy
-  over a newer one.
+- Apply the `btcchart.js` inline patch **and the CAD hook and the
+  candle-pill Open/Close** on top of the **final merged** `btcchart.js`
+  after items 1/4/5/8 land today — all three are small and apply to any
+  `btcchart.js` that still has `build()`/`open()`/`close()`/`place()` and
+  a single `fmt`. Do not merge the V1-era copy over a newer one.
 - The clock page's merged hero, hash chart, and CAD toggle are
   self-contained in `clock/index.html`; they do not touch any other page.
 

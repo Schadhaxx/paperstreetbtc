@@ -124,12 +124,12 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 <p style="color:#64748b;font-size:12px;margin:10px 0 0" id="hashNote">Daily averages · refreshes every 60s</p>
 </div>
 
-<div class="foot"><span>Price: CoinGecko (USD + CAD), Coinbase fallback (USD only) · CAD chart values converted at the live USD→CAD rate · Blocks, fees, difficulty: mempool.space · <button class="refresh" id="refreshBtn" type="button">Refresh now</button></span><span id="status"></span></div>
+<div class="foot"><span>Price: CoinGecko (USD + CAD), Coinbase fallback (USD only) · CAD chart values converted at the live USD→CAD rate<span id="fxRate"></span> · Blocks, fees, difficulty: mempool.space · <button class="refresh" id="refreshBtn" type="button">Refresh now</button></span><span id="status"></span></div>
 <p class="note">Live data when online; if a feed fails it holds the last good value and says so — it never invents a number. Switch to CAD to see the price in Canadian dollars: the chart converts at the live USD→CAD rate, so historical CAD values use today's rate and are approximate. This page is not linked from the rest of the site. <a href="../index.html" style="color:#22d3ee">← Back to PaperStreet</a> · Not financial advice.</p>
 </div>
 <script>
 var $=function(i){return document.getElementById(i);};
-var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,lastCadChg=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;var cur='USD';try{var sc=localStorage.getItem('ps-clock-cur');if(sc==='CAD'||sc==='USD')cur=sc;}catch(e){}var fxRate=1;/* The chart always starts in USD, even for a returning CAD user:
+var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,lastCadChg=null,lastEcon=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;var cur='USD';try{var sc=localStorage.getItem('ps-clock-cur');if(sc==='CAD'||sc==='USD')cur=sc;}catch(e){}var fxRate=1;/* The chart always starts in USD, even for a returning CAD user:
    the CAD rate is not known until the first fetch lands, and starting the
    chart in CAD with rate 1 would label USD values as C$ for the first
    minute while the hero (correctly) stays USD. applyCurrency() flips
@@ -152,6 +152,7 @@ setInterval(function(){if(!paused)showPane((pi+1)%panes.length);},12000);
 function render(){
 var ec=effCur(),pv=ec==='CAD'?lastCad:lastPrice;
 $('curLab').textContent='Bitcoin · '+ec+' · live price';
+$('fxRate').textContent=(lastCad&&lastPrice)?' (1 USD = '+(lastCad/lastPrice).toFixed(2)+' CAD)':'';
 document.querySelectorAll('.cur-toggle button').forEach(function(b){b.classList.toggle('on',b.dataset.cur===cur);b.disabled=b.dataset.cur==='CAD'&&lastCad==null;if(b.dataset.cur==='CAD')b.title=lastCad==null?'CAD price loading — waiting on CoinGecko…':'Show price in Canadian dollars';});
 if(pv!=null){var sym=ec==='CAD'?'C$':'$';$('price').innerHTML=fmtPrice(pv,ec).replace(sym,'<span>'+sym+'</span>');
 var s=Math.floor(100000000/pv);$('sats').textContent=s.toLocaleString('en-US');
@@ -186,8 +187,8 @@ if(lastPrice&&lastCad)fxRate=lastCad/lastPrice;
 if(effCur()==='CAD')applyCurrency();
 ok=true;}
 if(r[1].status==='fulfilled'){lastBlock=r[1].value.height;lastBlockTs=r[1].value.ts;ok=true;}
-if(r[2].status==='fulfilled'&&r[2].value){$('fees').textContent=r[2].value.fastestFee;$('feesTile').textContent=r[2].value.fastestFee+' sat/vB';}
-if(r[3].status==='fulfilled'&&r[3].value){$('mempool').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting in the mempool.';$('feesDetail').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting · mempool.space';}
+if(r[2].status==='fulfilled'&&r[2].value){$('fees').textContent=r[2].value.fastestFee;$('feesTile').textContent=r[2].value.fastestFee+' sat/vB';if(typeof r[2].value.economyFee==='number')lastEcon=r[2].value.economyFee;}
+if(r[3].status==='fulfilled'&&r[3].value){$('mempool').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting in the mempool.';$('feesDetail').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting'+(lastEcon!=null?' · economy '+lastEcon+' sat/vB':'')+' · mempool.space';}
 if(r[4].status==='fulfilled'&&r[4].value){var d=r[4].value;$('diffPct').textContent=d.progressPercent.toFixed(1)+'%';$('diffDetail').textContent='Through the current difficulty epoch · estimated change '+(d.difficultyChange>=0?'+':'')+d.difficultyChange.toFixed(1)+'%';$('diff').textContent='Difficulty epoch '+d.progressPercent.toFixed(1)+'% complete · estimated change '+(d.difficultyChange>=0?'+':'')+d.difficultyChange.toFixed(1)+'%.';}
 if(ok){lastFetch=Date.now();failed=false;}else{failed=true;}
 nextAt=Date.now()+60000;render();});}
@@ -195,7 +196,7 @@ $('refreshBtn').addEventListener('click',update);
 update();tick();setInterval(tick,1000);setInterval(update,60000);
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
-<script src="../assets/js/btcchart.js?v=et8" defer></script>
+<script src="../assets/js/btcchart.js?v=et9" defer></script>
 <script>
 /* Hash rate chart, V2 6 Nov 2026: mempool.space daily hashrate, live fetch,
    last-good values on failure — same rule as the rest of this page. */

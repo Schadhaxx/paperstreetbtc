@@ -145,8 +145,8 @@ function showCandInfo(i,geomX,geomTop){
   var k=CAND[i],dur=CANDPER===4?3600000:14400000,chg=k.c-k.o,pct=k.o?(chg/k.o*100):0;
   var col=k.c>=k.o?'#22c55e':'#ef4444';
   el.innerHTML='';
-  /* pill content, centred, three short lines — no table rows, no arrow, no bottom line:
-     line 1: when (small grey) · line 2: High / Low · line 3: Change in green/red.
+  /* pill content, centred, four short lines — no table rows, no arrow, no bottom line:
+     line 1: when (small grey) · line 2: High / Low · line 3: Open / Close · line 4: Change in green/red.
      Small ✕ sits inside the pill at the top-right; tapping the pill itself also closes it. */
   var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
   cl.style.cssText='position:absolute;top:10px;right:16px;background:none;border:none;color:#9aa6bc;font-size:14px;line-height:1;cursor:pointer;padding:8px;';
@@ -165,6 +165,7 @@ function showCandInfo(i,geomX,geomTop){
   else tm.textContent=(CANDPER===4?'1-hour':'4-hour')+' · '+etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET';
   el.appendChild(tm);
   var hl=document.createElement('div');hl.style.cssText='font-size:14px;font-weight:600;color:#e8eef7;font-variant-numeric:tabular-nums;margin:2px 0;';hl.textContent='High '+fmt(k.h)+'  ·  Low '+fmt(k.l);el.appendChild(hl);
+  var oc=document.createElement('div');oc.style.cssText='font-size:14px;font-weight:600;color:#e8eef7;font-variant-numeric:tabular-nums;margin:2px 0;';oc.textContent='Open '+fmt(k.o)+'  ·  Close '+fmt(k.c);el.appendChild(oc);
   var ch=document.createElement('div');ch.style.cssText='font-size:14px;font-weight:600;color:'+col+';font-variant-numeric:tabular-nums;';ch.textContent=(chg>=0?'▲ +':'▼ -')+curSym()+Math.abs(curVal(chg)).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';el.appendChild(ch);
   /* position: floating pill over the chart, centred horizontally, never at the bottom, never off-screen */
   el.style.display='block';
@@ -445,7 +446,7 @@ function drawRange(){
   var a0=cand[0].o,b0=cand[cand.length-1].c,pc0=(b0/a0-1)*100;
   $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')'+cadTag();
   var aggTxt=RGGRAN==='monthly'?'by calendar month (UTC)':(RGGRAN==='weekly'?'by Monday-start UTC week':'by day');
-  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
+  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
   if(ch){ch.destroy();ch=null;}
   CANDSEL=-1;CANDHOV=-1;drawCandlesRange();
 }
@@ -471,7 +472,7 @@ function draw1D(){
     if(cand.length>=2 && cand[0].o!=null){
       var a0=cand[0].o, b0=cand[cand.length-1].c, pc0=(b0/a0-1)*100;
       $('bcRr').textContent='1D: BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · last 24 hours, '+CT+' candles, from '+etTime(cand[0].t)+' ET ('+fmt(a0)+')'+cadTag();
-      $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its High, Low and Change. S&P 500, Gold and MSTR toggles are off for 1D only.';
+      $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. S&P 500, Gold and MSTR toggles are off for 1D only.';
       if(ch){ch.destroy();ch=null;}
       CANDSEL=-1;CANDHOV=-1;drawCandles1D(cand, CT==='1h'?'1-hour candles':'4-hour candles', per);
       return;
