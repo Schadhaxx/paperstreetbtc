@@ -86,7 +86,7 @@ chk('compare.js helpers before function run', (() => {
 const idx = fs.readFileSync(path.join(R, 'index.html'), 'utf8');
 const cmpHtml = fs.readFileSync(path.join(R, 'compare/index.html'), 'utf8');
 const customHtml = fs.readFileSync(path.join(R, 'custom/index.html'), 'utf8');
-chk('index.html s2.js cache-buster >= p4', /s2\.js\?v=p[4-9]/.test(idx));
+chk('index.html s2.js cache-buster >= p4', /s2\.js\?v=p4/.test(idx));
 chk('compare/index.html compare.js cache-buster >= et2', /compare\.js\?v=et2/.test(cmpHtml));
 chk('custom/index.html compare.js cache-buster >= et2', /compare\.js\?v=et2/.test(customHtml));
 
