@@ -68,10 +68,14 @@ try:
     if len(sys.argv) > 2:
         try:
             H = json.load(open(sys.argv[2])); pv = set(H.get('btc_provisional') or [])
+            tf = set((H.get('tiingo_final') or {}).keys())   # S2: Tiingo-final (Yahoo pending) dates — confirmed, not stalled
             for d_, r_ in H['closes'].items():
                 if d_ > last and d_ not in pv and final(dt.date.fromisoformat(d_)) and r_.get('BTC'): bars[d_] = round(float(r_['BTC']), 2)
+            for d_ in sorted(tf):   # S2: a Tiingo-final date takes history.json's frozen value, so btc-daily.json and history.json agree (one canonical value) — unless Yahoo's own bar is present, which wins; the date stays provisional (waiting for Yahoo)
+                if d_ > last and d_ not in YB and d_ in H['closes'] and H['closes'][d_].get('BTC'):
+                    bars[d_] = round(float(H['closes'][d_]['BTC']), 2); PROV.add(d_)
             fsrc = H.get('fallback_sources') or {}
-            fb = sorted(d_ for d_, s_ in fsrc.items() if s_.get('BTC', 'yahoo').split('-')[0] not in ('yahoo', 'ffill'))   # fallback value not yet replaced by Yahoo
+            fb = sorted(d_ for d_, s_ in fsrc.items() if d_ not in tf and s_.get('BTC', 'yahoo').split('-')[0] not in ('yahoo', 'ffill'))   # fallback value not yet replaced by Yahoo (Tiingo-final excluded: confirmed)
             hold_from = fb
             for d_ in fb:   # a fallback Yahoo never replaces must not stall silently
                 if d_ > last and now - (dt.datetime.fromisoformat(d_).replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1)) > dt.timedelta(hours=STALL_H): STALL.append(d_)
@@ -83,7 +87,7 @@ try:
                     PROV.discard(d_); t_ = round(float(r_['BTC']), 2)
                     if Bd[d_] != t_: HEAL[d_] = t_
                 elif base_ != 'ffill': PROV.add(d_)                                  # fallback in history.json: not final here either
-            for d_ in sorted(PROV):
+            for d_ in sorted(PROV - tf):   # S2: a Tiingo-final date is still provisional (waiting for Yahoo) but is confirmed, so it does not stall
                 if d_ <= last and now - (dt.datetime.fromisoformat(d_).replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1)) > dt.timedelta(hours=STALL_H): STALL.append(d_)
             HC = {d_: r_.get('BTC') for d_, r_ in H['closes'].items()}
             for r_ in (H.get('revisions_ignored') or []):   # R-s (1b): a log entry counts only if it is a fallback replacement of THIS date+symbol to TODAY's history value
@@ -94,6 +98,7 @@ try:
             if hold_from:
                 for d_ in [x for x in bars if x >= hold_from[0]]: del bars[d_]
                 print(f'::warning::btc-daily paused at {hold_from[0]} (BTC value pending: fallback source); later days wait so the file stays gap-free')
+            if tf: print('Tiingo-final (Yahoo pending, confirmed value kept, no stall):', sorted(tf))
         except Exception as e: print('history.json not used:', type(e).__name__, e); HEAL.clear()
     else:                                                    # no history.json: provisional dates heal from Yahoo's own final bar
         for d_ in sorted(PROV):

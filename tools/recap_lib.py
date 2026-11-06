@@ -29,9 +29,14 @@ def ledger(C, D, strc):
             rec = keep; v[d] = sum(e['cash'] for e in rec) + sum(h[a] * C[d][a] for a in h)
         VAL[k] = v
     return VAL, EV
-def expected_months(C, prov):
-    """Months Jan 2026 .. month of the newest FINAL close."""
-    last = max(d for d in C if d not in set(prov or []))
+def expected_months(C, prov, tf=None):
+    """Months Jan 2026 .. month of the newest FINAL close.
+
+    A Tiingo-final date (Yahoo pending, see tools/tiingo_unstall.py) counts
+    as final here, same as in recap_gen.py; `tf` is the tiingo_final key set.
+    """
+    tf = set(tf or [])
+    last = max(d for d in C if d not in set(prov or []) or d in tf)
     y, m = 2026, 1; out = []
     while f'{y}-{m:02d}' <= last[:7]:
         out.append(f'{y}-{m:02d}'); m += 1

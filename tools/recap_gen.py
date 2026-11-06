@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Refresh the current month's recap page (recap/YYYY-MM/index.html) and its card in recap/months.js
-from history.json, using FINAL closes only (dates listed in btc_provisional are ignored).
+from history.json, using FINAL closes only (dates listed in btc_provisional are ignored — except
+Tiingo-final dates, see tools/tiingo_unstall.py, which count as final: Tiingo confirmed the
+published fallback value, Yahoo's final bar is still pending, and the date is still listed as
+provisional in the recap note / btc-daily.json so it is never presented as Yahoo-final).
 
 - Only the month of the newest final close is written. Completed months are never rewritten
   (the one exception: when a new month starts, the previous page's "All recaps ->" link becomes "<Month> 2026 ->").
@@ -46,7 +49,8 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--history', default=URL); ap.add_argument('--repo', default='.'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); os.chdir(a.repo)
     H = load(a.history); prov = set(H.get('btc_provisional') or [])
-    C = {d: v for d, v in H['closes'].items() if d not in prov}; D = sorted(C); LASTF = D[-1]
+    tf = set(H.get('tiingo_final') or {})   # Tiingo-final (Yahoo pending): final for the recap, still provisional in the note
+    C = {d: v for d, v in H['closes'].items() if d not in prov or d in tf}; D = sorted(C); LASTF = D[-1]
     m = LASTF[:7]; y, mo = map(int, m.split('-')); full = calendar.month_name[mo]
     pfile = f'recap/{m}/index.html'
     final = next_trading(dt.date.fromisoformat(LASTF)).month != mo
@@ -88,9 +92,10 @@ def main():
             '<tr><td>$%s</td><td>$%s</td><td class="%s">%+.2f%%</td><td>$%s · %s</td><td>$%s · %s</td></tr></table></div>'
             '<p class="note">BTC-USD daily closes (UTC day, %s) from the site\'s BTC history (Yahoo Finance). High/low are the highest and lowest daily closes, not intraday extremes.%s</p></div></section>\n') % (
         full + ('' if final else ' (to date)'), nicey(bopen) if mo == 1 else nice(bopen), nice(bdays[-1]), full, full, f'{bo:,.2f}', f'{bc:,.2f}', 'pos' if chg >= 0 else 'neg', chg,
-        f'{B[hi]:,.2f}', nice(hi) + (' (provisional)' if hi in BPROV else ''), f'{B[lo]:,.2f}', nice(lo) + (' (provisional)' if lo in BPROV else ''), days_txt,
+        f'{B[hi]:,.2f}', nice(hi) + (' (provisional)' if hi in BPROV or hi in tf else ''), f'{B[lo]:,.2f}', nice(lo) + (' (provisional)' if lo in BPROV or lo in tf else ''), days_txt,
         ('' if final else f' Static snapshot through {nicey(bdays[-1])}; the month is not complete.') +
-        ((' Provisional (fallback source until Yahoo\'s final bar arrives): ' + ', '.join(nice(x) for x in sorted(BPROV) if x in bdays) + '.') if any(x in bdays for x in BPROV) else ''))
+        ((' Provisional (fallback source until Yahoo\'s final bar arrives): ' + ', '.join(nice(x) for x in sorted(BPROV) if x in bdays and x not in tf) + '.') if any(x in bdays and x not in tf for x in BPROV) else '') +
+        ((' Tiingo-final (confirmed by Tiingo, Yahoo\'s final bar pending): ' + ', '.join(nice(x) for x in sorted(tf) if x in bdays) + '.') if any(x in bdays for x in tf) else ''))
     s = sub1(s, r'<section><h2>Bitcoin in .*?</section>\n(?=<section><h2>Sleeves vs spot BTC</h2>)', card, re.S)
     s = sub1(s, r'<p class="note" style="margin-bottom:12px">Month = [^<]*',
              f'<p class="note" style="margin-bottom:12px">Month = {nicey(PM) if PM < "2026-01-01" else nice(PM)} → {nice(ME)} close. YTD = Dec 31, 2025 → {nice(ME)} close.')
