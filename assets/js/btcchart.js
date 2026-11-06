@@ -1,3 +1,4 @@
+window.psC=window.psC||function(d,l){return document.documentElement.getAttribute('data-theme')==='light'?l:d;};
 /* Live BTC pill (header + phone menu panel) and the BTC chart popover/bottom sheet.
    Data: assets/data/btc-daily.json (2010-08-18..2014-09-16 blockchain.info, then Yahoo BTC-USD UTC-day closes),
    extended with newer BTC closes from the data branch history.json and Coinbase daily candles (weekends included),
@@ -8,16 +9,35 @@ var SRC=(document.currentScript&&document.currentScript.src)||location.href;
 var U=function(p){return new URL(p,SRC).href;};
 var RAW='https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/history.json';
 var $=function(i){return document.getElementById(i);};
-var pill=$('hdrTick'),menu=$('mnavMenu');if(!pill)return;
+/* V2 6 Nov 2026: inline mode. On /clock/ there is no header pill (#hdrTick),
+   so the script mounts the whole popover chart into #bcInline instead of
+   opening it as a dialog. Nothing else changes: same data, same ranges,
+   same candles, same compare toggles. */
+var pill=$('hdrTick'),menu=$('mnavMenu');
+var INLINEHOST=document.getElementById('bcInline');
+if(!pill&&!INLINEHOST)return;
+var INLINE=!!INLINEHOST;
 var live={usd:null,chg:null};
-var fmt=function(n){return n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:n<1?2:0});};
+/* CAD display, 6 Nov 2026 (clock page only): the clock page sets
+   window.BC_CUR={code:'CAD',rate:<CAD per USD>} before this script loads
+   and calls window.BC_setCurrency(code,rate) on toggle. Every displayed
+   $ value is converted at that live rate; the series stays USD internally,
+   so the shape never changes and historical CAD values use today's rate
+   (approximate — the clock page says so). The popover never sets BC_CUR,
+   so USD output is identical to before. */
+var CUR=window.BC_CUR||{code:'USD',rate:1};
+var curSym=function(){return CUR.code==='CAD'?'C$':'$';};
+var curVal=function(v){return v*(CUR.rate||1);};
+var cadTag=function(){return CUR.code==='CAD'?' · CAD':'';};
+var fmt=function(n){var v=curVal(n);return curSym()+(v<1?v.toLocaleString('en-US',{maximumFractionDigits:2}):Math.round(v).toLocaleString('en-US'));};
+window.BC_setCurrency=function(code,rate){CUR.code=code;CUR.rate=rate||1;var t=$('bcTitle');if(t)t.innerHTML='<span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+code;if(dlg&&!dlg.hidden)draw();};
 /* pill markup */
 function decorate(el,full){if(el.querySelector('.lp-cv'))return;
   el.insertAdjacentHTML('afterbegin','<span class="lp-lab"><span class="lp-dot" aria-hidden="true"></span>Live BTC</span>');
-  el.insertAdjacentHTML('beforeend','<span class="lp-cv" aria-hidden="true">▾</span>');}
-decorate(pill);
+  el.insertAdjacentHTML('beforeend','<span class="lp-cv" aria-hidden="true">↗ Chart ▾</span>');}
+if(pill){decorate(pill);
 pill.setAttribute('aria-haspopup','dialog');pill.setAttribute('aria-expanded','false');
-if(!pill.getAttribute('aria-label'))pill.setAttribute('aria-label','Live BTC price. Open BTC chart');
+if(!pill.getAttribute('aria-label'))pill.setAttribute('aria-label','Live BTC price. Open BTC chart');}
 var mp=null;
 /* phone menu panel has no price (the header pill is the only price) */
 function chgTxt(c){return typeof c==='number'?(c>=0?'▲':'▼')+Math.abs(c).toFixed(1)+'%':'';}
@@ -43,6 +63,11 @@ var CT='line';
 var INTRA=null,INTRA_AT=0,intraP=null;
 function etTime(ms){try{return new Date(ms).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return new Date(ms).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}}
 function etDateTime(ms){try{return new Date(ms).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return new Date(ms).toLocaleString('en-US');}}
+/* Screener fix, 2 Nov 2026: drawDaily used to call ET.btcCloseLabel() unguarded, so on any page
+   without et.js (screener.html was the only one) a provisional BTC close threw here, after the
+   header was set but before the chart was created — labels/header updated, chart never redrew.
+   Use ET when present, otherwise compute the same 00:00 UTC close in ET directly. */
+function provCloseLabel(){if(window.ET&&ET.btcCloseLabel)return ET.btcCloseLabel();try{return new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth(),new Date().getUTCDate()+1)).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric'})+' ET';}catch(e){return '7 PM ET';}}
 function getIntraday(){
   if(intraP)return intraP;
   var now=Date.now();
@@ -115,7 +140,7 @@ function candInfoEl(){
   var el=$('bcSel');if(el)return el;
   var box=$('bcC')&&$('bcC').parentNode;if(!box)return null;
   el=document.createElement('div');el.id='bcSel';
-  el.style.cssText='display:none;position:absolute;z-index:5;width:280px;max-width:calc(100% - 24px);background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.30);border-radius:999px;padding:16px 24px;color:#e8eef7;font:13px/1.5 Inter, sans-serif;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.6);pointer-events:auto;cursor:pointer;';
+  el.style.cssText='display:none;position:absolute;z-index:5;width:280px;max-width:calc(100% - 24px);background:'+psC('linear-gradient(180deg,#0e1730,#0a1122)','#ffffff')+';border:1px solid '+psC('rgba(34,211,238,.30)','#e2e8f0')+';border-radius:999px;padding:16px 24px;color:'+psC('#e8eef7','#0f172a')+';font:13px/1.5 Inter, sans-serif;text-align:center;box-shadow:'+psC('0 20px 50px rgba(0,0,0,.6)','0 12px 32px rgba(15,23,42,.12)')+';pointer-events:auto;cursor:pointer;';
   box.style.position='relative';box.appendChild(el);
   el.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   return el;
@@ -124,16 +149,16 @@ function showCandInfo(i,geomX,geomTop){
   var el=candInfoEl();if(!el)return;
   if(!CAND||i<0||i>=CAND.length){el.style.display='none';return;}
   var k=CAND[i],dur=CANDPER===4?3600000:14400000,chg=k.c-k.o,pct=k.o?(chg/k.o*100):0;
-  var col=k.c>=k.o?'#22c55e':'#ef4444';
+  var col=k.c>=k.o?psC('#22c55e','#15803d'):psC('#ef4444','#b91c1c');
   el.innerHTML='';
-  /* pill content, centred, three short lines — no table rows, no arrow, no bottom line:
-     line 1: when (small grey) · line 2: High / Low · line 3: Change in green/red.
+  /* pill content, centred, four short lines — no table rows, no arrow, no bottom line:
+     line 1: when (small grey) · line 2: High / Low · line 3: Open / Close · line 4: Change in green/red.
      Small ✕ sits inside the pill at the top-right; tapping the pill itself also closes it. */
   var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
-  cl.style.cssText='position:absolute;top:10px;right:16px;background:none;border:none;color:#9aa6bc;font-size:14px;line-height:1;cursor:pointer;padding:8px;';
+  cl.style.cssText='position:absolute;top:10px;right:16px;background:none;border:none;color:'+psC('#9aa6bc','#475569')+';font-size:14px;line-height:1;cursor:pointer;padding:8px;';
   cl.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   el.appendChild(cl);
-  var tm=document.createElement('div');tm.style.cssText='color:#9aa6bc;font-size:12px;';
+  var tm=document.createElement('div');tm.style.cssText='color:'+psC('#9aa6bc','#475569')+';font-size:12px;';
   /* Fix 29 Oct 2026 (browser test, Day 2): range candles are UTC days /
      weeks / months, so their labels must be UTC too. ET formatting shifted
      every UTC-midnight timestamp back a day — and a month-boundary candle
@@ -142,11 +167,12 @@ function showCandInfo(i,geomX,geomTop){
      looked like no October candle existed. The bucket was never dropped;
      it was mislabelled. 1D intraday pills below keep ET, which is right
      for intraday times. */
-  if(CANDRANGE){if(CANDGRAN==='monthly'){tm.textContent='Monthly candle · '+new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',year:'numeric'})+' UTC';}else{var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' UTC';}}
+  if(CANDRANGE){if(CANDGRAN==='4h'){var d4=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}),t4s=new Date(k.t).toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit'}),t4e=new Date(k.end).toLocaleTimeString('en-US',{timeZone:'UTC',hour:'numeric',minute:'2-digit'});tm.textContent='4-hour candle · '+d4+' '+t4s+' – '+t4e+' UTC';}else if(CANDGRAN==='monthly'){tm.textContent='Monthly candle · '+new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'long',year:'numeric'})+' UTC';}else{var sd=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}),ed=new Date(k.end).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});tm.textContent=(CANDGRAN==='weekly'?'Weekly':'Daily')+' candle · '+sd+(ed!==sd?' – '+ed:'')+' UTC';}}
   else tm.textContent=(CANDPER===4?'1-hour':'4-hour')+' · '+etDateTime(k.t)+' – '+etTime(k.t+dur)+' ET';
   el.appendChild(tm);
-  var hl=document.createElement('div');hl.style.cssText='font-size:14px;font-weight:600;color:#e8eef7;font-variant-numeric:tabular-nums;margin:2px 0;';hl.textContent='High '+fmt(k.h)+'  ·  Low '+fmt(k.l);el.appendChild(hl);
-  var ch=document.createElement('div');ch.style.cssText='font-size:14px;font-weight:600;color:'+col+';font-variant-numeric:tabular-nums;';ch.textContent=(chg>=0?'▲ +$':'▼ -$')+Math.abs(chg).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';el.appendChild(ch);
+  var hl=document.createElement('div');hl.style.cssText='font-size:14px;font-weight:600;color:'+psC('#e8eef7','#0f172a')+';font-variant-numeric:tabular-nums;margin:2px 0;';hl.textContent='High '+fmt(k.h)+'  ·  Low '+fmt(k.l);el.appendChild(hl);
+  var oc=document.createElement('div');oc.style.cssText='font-size:14px;font-weight:600;color:'+psC('#e8eef7','#0f172a')+';font-variant-numeric:tabular-nums;margin:2px 0;';oc.textContent='Open '+fmt(k.o)+'  ·  Close '+fmt(k.c);el.appendChild(oc);
+  var ch=document.createElement('div');ch.style.cssText='font-size:14px;font-weight:600;color:'+col+';font-variant-numeric:tabular-nums;';ch.textContent=(chg>=0?'▲ +':'▼ -')+curSym()+Math.abs(curVal(chg)).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';el.appendChild(ch);
   /* position: floating pill over the chart, centred horizontally, never at the bottom, never off-screen */
   el.style.display='block';
   var box=$('bcC').parentNode,bw=box.clientWidth||640,bh=box.clientHeight||300;
@@ -170,8 +196,8 @@ function drawCandles1D(candles,label,per){
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
-  ctx.strokeStyle='rgba(255,255,255,.08)';ctx.fillStyle='#9aa6bc';ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
-  [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText('$'+Math.round(v).toLocaleString('en-US'),L-6,y+4);});
+  ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
+  [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];drawCandles1D._lastTx=null;
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
@@ -191,17 +217,17 @@ function drawCandles1D(candles,label,per){
     var prev=candles[i-1],dayChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
     if(dayChange){
       var dx=Math.max(L+30,Math.min(W-R-30,x));
-      ctx.fillStyle='#64748b';ctx.fillText(new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),dx,H-24);
-      ctx.fillStyle='#9aa6bc';
+      ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),dx,H-24);
+      ctx.fillStyle=psC('#9aa6bc','#475569');
     }
   });
   /* selected / hovered candle: white outline + glow + vertical guide, drawn last so it sits on top */
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
     if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
-    if(layer===0){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
-    else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
+    if(layer===0){ctx.strokeStyle=psC('rgba(255,255,255,.25)','rgba(15,23,42,.35)');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
+    else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle=psC('#ffffff','#0f172a');ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
-  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(label, L, 12);
+  ctx.fillStyle=psC('#9aa6bc','#475569');ctx.textAlign='left';ctx.fillText(label, L, 12);
   /* interaction listeners, attached once (shared with the range candle view) */
   bindCandListeners(c);
   return true;
@@ -281,8 +307,8 @@ function drawCandlesRange(){
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
-  ctx.strokeStyle='rgba(255,255,255,.08)';ctx.fillStyle='#9aa6bc';ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
-  [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText('$'+Math.round(v).toLocaleString('en-US'),L-6,y+4);});
+  ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
+  [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];
   var lastTx=null,labIdx=rangeLabelIndices(candles.length,iw);
   candles.forEach(function(k,i){
@@ -300,15 +326,15 @@ function drawCandlesRange(){
     if(labIdx.indexOf(i)>=0){
       var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});
       var dx=Math.max(24,Math.min(W-24,x));
-      if(lastTx==null||dx-lastTx>=56){ctx.fillStyle='#64748b';ctx.fillText(md,dx,H-24);ctx.fillStyle='#9aa6bc';lastTx=dx;}
+      if(lastTx==null||dx-lastTx>=56){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastTx=dx;}
     }
   });
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
     if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
-    if(layer===0){ctx.strokeStyle='rgba(255,255,255,.25)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
-    else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
+    if(layer===0){ctx.strokeStyle=psC('rgba(255,255,255,.25)','rgba(15,23,42,.35)');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
+    else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle=psC('#ffffff','#0f172a');ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
-  ctx.fillStyle='#9aa6bc';ctx.textAlign='left';ctx.fillText(RGLBL, L, 12);
+  ctx.fillStyle=psC('#9aa6bc','#475569');ctx.textAlign='left';ctx.fillText(RGLBL, L, 12);
   bindCandListeners(c);
   return true;
 }
@@ -357,11 +383,46 @@ function loadExtendedDaily(days){
   },function(e){CBEXT_P=null;CBEXT_P_DAYS=0;CBEXT_ERR=true;throw e;});
   return CBEXT_P;
 }
+/* 4-hour candles for 1W (4 Nov 2026): Coinbase does NOT offer a 4h
+   granularity (it rejects 14400 as unsupported — verified 4 Nov),
+   so this fetches 1h bars (8 days, 192 bars, under the 300-bar
+   limit) and aggregates them into UTC-aligned 4h buckets, keeping
+   only complete buckets, last 42 (= 7 days). Same candle array
+   shape as the daily fetch: [time, low, high, open, close, volume].
+   Cache is 5 minutes; a failed fetch is sticky for the session (CB4H_ERR)
+   so a dead feed falls back once to the line instead of being hammered
+   on every redraw — same pattern as the YTD extended fetch. */
+var CB4H=null,CB4H_AT=0,CB4H_ERR=false;
+function agg4hFromHourly(hourly){
+  var buckets={},order=[];
+  hourly.forEach(function(b){
+    var key=Math.floor(b.t/14400000)*14400000;
+    if(!buckets[key]){buckets[key]=[];order.push(key);}
+    buckets[key].push(b);
+  });
+  var out=[];
+  order.sort(function(a,b){return a-b;}).forEach(function(key){
+    var seg=buckets[key];
+    if(seg.length<4)return;
+    out.push({t:key,end:key+14400000,o:seg[0].o,h:Math.max.apply(null,seg.map(function(x){return x.h;})),l:Math.min.apply(null,seg.map(function(x){return x.l;})),c:seg[seg.length-1].c});
+  });
+  return out.slice(-42);
+}
+function load4h(){
+  var now=Date.now(),start=new Date(now-8*864e5).toISOString(),end=new Date(now).toISOString();
+  return fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=3600&start='+start+'&end='+end,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+    if(!Array.isArray(j))throw new Error('bad candles');
+    var hourly=j.map(function(c){return {t:c[0]*1000,o:c[3],h:c[2],l:c[1],c:c[4]};}).filter(function(p){return isFinite(p.c)&&p.c>0&&isFinite(p.o)&&isFinite(p.h)&&isFinite(p.l);}).sort(function(a,b){return a.t-b.t;});
+    var bars=agg4hFromHourly(hourly);
+    if(bars.length<2)throw new Error('too few candles');
+    CB4H=bars;CB4H_AT=Date.now();return bars;
+  }).catch(function(e){CB4H_ERR=true;throw e;});
+}
 function syncCg(){
   var cg=$('bcCg');if(!cg)return;
   var candlesOn=CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles';
   [].forEach.call(cg.querySelectorAll('[data-cg]'),function(b){b.classList.toggle('on',b.dataset.cg===RGCT);b.setAttribute('aria-pressed',b.dataset.cg===RGCT);});
-  var granAllowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:[];
+  var granAllowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily','4h']:[]);
   var gl=$('bcCgGranLab');if(gl)gl.style.display=candlesOn&&granAllowed.length?'':'none';
   [].forEach.call(cg.querySelectorAll('[data-cggran]'),function(b){var show=candlesOn&&granAllowed.indexOf(b.dataset.cggran)>=0;b.style.display=show?'':'none';b.classList.toggle('on',b.dataset.cggran===RGGRAN);b.setAttribute('aria-pressed',b.dataset.cggran===RGGRAN);});
 }
@@ -386,11 +447,28 @@ function drawRange(){
      was before. After that first draw RGSEEN[rng] is set, so a
      user-picked valid size is preserved across Line<->Candles switches;
      range-tab clicks reset to the default independently. */
-  var allowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily']:[]);
+  var allowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily','4h']:[]);
   if(!RGSEEN[rng]){RGGRAN=defaultGran(rng);RGSEEN[rng]=true;}
   if(allowed.length&&allowed.indexOf(RGGRAN)<0)RGGRAN=defaultGran(rng);
   syncCg();
   var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;if(cg)cg.style.display='';syncCg();};
+  if(rng==='1W'&&RGGRAN==='4h'){
+    if(!CB4H||Date.now()-CB4H_AT>5*60*1000){
+      if(CB4H_ERR){RGGRAN='daily';clearCandState();fallback('Coinbase 4-hour candles unavailable — showing daily closes.');return;}
+      $('bcRr').textContent='Loading 4-hour candles…';
+      load4h().then(function(){if(dlg&&!dlg.hidden&&rng==='1W'&&RGCT==='candles')draw();}).catch(function(){if(dlg&&!dlg.hidden)draw();});
+      return;
+    }
+    var cand4=CB4H.slice();
+    if(cand4.length<2){RGGRAN='daily';clearCandState();fallback('Not enough 4-hour candles — showing daily closes.');return;}
+    RGCAND=cand4;RGLBL='1W · 4-hour candles';
+    var a04=cand4[0].o,b04=cand4[cand4.length-1].c,pc04=(b04/a04-1)*100;
+    $('bcRr').textContent='1W: BTC '+((pc04>=0?'+':'')+pc04.toFixed(2)+'%')+' · '+cand4.length+' 4-hour candles, from '+new Date(cand4[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a04)+')';
+    $('bcNt').textContent='Coinbase 4-hour candles (UTC), in 4-hour blocks. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete 4-hour block; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view.';
+    if(ch){ch.destroy();ch=null;}
+    CANDSEL=-1;CANDHOV=-1;drawCandlesRange();return;
+  }
+
   var win,cut;
   if(rng==='YTD'||rng==='1Y'){
     /* Day 2: these two ranges need MORE than Coinbase's ~300-candle default
@@ -424,9 +502,9 @@ function drawRange(){
   if(cand.length<2){fallback('Not enough daily candles — showing daily closes.');return;}
   RGCAND=cand;RGLBL=rng+' · '+RGGRAN+' candles';
   var a0=cand[0].o,b0=cand[cand.length-1].c,pc0=(b0/a0-1)*100;
-  $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')';
+  $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')'+cadTag();
   var aggTxt=RGGRAN==='monthly'?'by calendar month (UTC)':(RGGRAN==='weekly'?'by Monday-start UTC week':'by day');
-  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
+  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
   if(ch){ch.destroy();ch=null;}
   CANDSEL=-1;CANDHOV=-1;drawCandlesRange();
 }
@@ -451,8 +529,8 @@ function draw1D(){
     var per=CT==='1h'?4:16, cand=aggCandles(pts,per);
     if(cand.length>=2 && cand[0].o!=null){
       var a0=cand[0].o, b0=cand[cand.length-1].c, pc0=(b0/a0-1)*100;
-      $('bcRr').textContent='1D: BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · last 24 hours, '+CT+' candles, from '+etTime(cand[0].t)+' ET ('+fmt(a0)+')';
-      $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its High, Low and Change. S&P 500, Gold and MSTR toggles are off for 1D only.';
+      $('bcRr').textContent='1D: BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · last 24 hours, '+CT+' candles, from '+etTime(cand[0].t)+' ET ('+fmt(a0)+')'+cadTag();
+      $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. S&P 500, Gold and MSTR toggles are off for 1D only.';
       if(ch){ch.destroy();ch=null;}
       CANDSEL=-1;CANDHOV=-1;drawCandles1D(cand, CT==='1h'?'1-hour candles':'4-hour candles', per);
       return;
@@ -464,7 +542,7 @@ function draw1D(){
   if(hasLive&&pts.length&&Date.now()>pts[pts.length-1].t)pts.push({t:Date.now(),v:live.usd,live:true});
   var n=pts.length,a=pts[0].v,b=pts[n-1].v,pc=(b/a-1)*100;
   var fp=function(x){return (x>=0?'+':'')+(Math.abs(x)>=1e4?Math.round(x).toLocaleString('en-US'):x.toFixed(1))+'%';};
-  $('bcRr').textContent='1D: BTC '+fp(pc)+' · last 24 hours, from '+etTime(pts[0].t)+' ET ('+fmt(a)+')';
+  $('bcRr').textContent='1D: BTC '+fp(pc)+' · last 24 hours, from '+etTime(pts[0].t)+' ET ('+fmt(a)+')'+cadTag();
   $('bcNt').textContent='Intraday '+(INTRA.src==='coingecko'?'CoinGecko 1-day chart (Coinbase unavailable)':'Coinbase 15-minute candles')+', last 24 hours (ET); last point is the live price. S&P 500 and Gold toggles are off for 1D only (daily closes only).';
   var c=$('bcC').getContext('2d'),H=$('bcC').parentNode.clientHeight||300,g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(34,211,238,.28)');g.addColorStop(1,'rgba(34,211,238,0)');
   var lab=pts.map(function(p){return p.live?'Now (live)':etTime(p.t);});
@@ -473,7 +551,7 @@ function draw1D(){
     tooltip:{displayColors:false,callbacks:{title:function(i){var k=i[0].dataIndex,p=pts[k];return p.live?'Now (live)':etDateTime(p.t);},
       label:function(i){return 'BTC '+fmt(i.parsed.y);}}}},
     scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0}},
-      y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:function(v){return v>=1000?'$'+(v/1000).toLocaleString('en-US')+'k':'$'+v;}}}}};
+      y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:function(v){var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);}}}}};
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});
 }
 
@@ -523,24 +601,32 @@ function isPhone(){return window.innerWidth<=640;}
    BITCOIN VEHICLE toggle (vehicle.js, under the BTC live pill) remains
    the sole vehicle control; it is not touched here. */
 function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hidden=true;
-  dlg=document.createElement('div');dlg.className='bc-w';dlg.hidden=true;dlg.setAttribute('role','dialog');dlg.setAttribute('aria-modal','true');dlg.setAttribute('aria-labelledby','bcTitle');
-  dlg.innerHTML='<div class="bc-grab" aria-hidden="true"></div><div class="bc-h"><div><span class="lp-lab" id="bcTitle"><span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/USD</span><div class="bc-px"><span id="bcPx">—</span><span id="bcChg" class="hdr-chg"></span></div><div class="bc-rr" id="bcRr"></div></div><button type="button" class="bc-x" id="bcX" aria-label="Close BTC chart">✕</button></div>'
+  dlg=document.createElement('div');dlg.className=INLINE?'bc-w bc-inline':'bc-w';dlg.hidden=true;dlg.setAttribute('role','dialog');if(!INLINE)dlg.setAttribute('aria-modal','true');dlg.setAttribute('aria-labelledby','bcTitle');
+  dlg.innerHTML='<div class="bc-grab" aria-hidden="true"></div><div class="bc-h"><div><span class="lp-lab" id="bcTitle"><span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+CUR.code+'</span><div class="bc-px"><span id="bcPx">—</span><span id="bcChg" class="hdr-chg"></span></div><div class="bc-rr" id="bcRr"></div></div><button type="button" class="bc-x" id="bcX" aria-label="Close BTC chart">✕</button></div>'
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-rg-hint" id="bcRgHint" aria-hidden="true">\u2190 Swipe for longer ranges</span><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
    +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
-   +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
+   +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="4h" style="display:none">4H</button><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../compare/index.html')+'">See full Compare →</a>';
-  document.body.appendChild(dim);document.body.appendChild(dlg);
+  if(INLINE)INLINEHOST.appendChild(dlg);else{document.body.appendChild(dim);document.body.appendChild(dlg);}
+  /* Secret link, 4 Nov 2026: double-clicking anywhere on the Bitcoin price
+     in this popover opens the block clock page in a new tab. No visible
+     link or hint anywhere on the site points to it; the clock page itself
+     is not linked from any header, footer, or nav. */
+  var pxEl=dlg.querySelector('.bc-px');
+  /* V2: on the clock page itself the double-click would open the clock from
+     the clock, so it is skipped in inline mode. */
+  if(pxEl&&!INLINE)pxEl.addEventListener('dblclick',function(e){e.preventDefault();window.open(U('../../clock/index.html'),'_blank','noopener');});
   dim.addEventListener('click',close);
   $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
   $('bcX').addEventListener('click',close);
   $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
-  document.addEventListener('keydown',function(e){if(dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
+  document.addEventListener('keydown',function(e){if(INLINE||dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
   dlg.addEventListener('touchend',function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>80)close();y0=null;},{passive:true});
-  window.addEventListener('resize',function(){if(!dlg.hidden){place();syncRgHint();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
-function place(){var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
+  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
+function place(){if(INLINE)return;var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
   if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),w=Math.min(640,window.innerWidth-32);dlg.style.top=(r.bottom+10)+'px';dlg.style.left=Math.max(16,Math.min(r.left-20,window.innerWidth-w-16))+'px';}}
 function head(){$('bcPx').textContent=live.usd!=null?fmt(live.usd):'—';var c=$('bcChg');c.textContent=typeof live.chg==='number'?(live.chg>=0?'+':'')+live.chg.toFixed(1)+'% 24h':'';c.className='hdr-chg '+(live.chg>=0?'up':'down');}
 function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
@@ -556,13 +642,13 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   var mb=$('bcMstr');if(mb){var mxo2=SHOWMSTR&&MSTRK.length>0;mb.setAttribute('aria-pressed',mxo2?'true':'false');mb.classList.toggle('off',!mxo2);$('bcMstrT').textContent=mxo2?'MSTR ✕':'+ MSTR';mb.setAttribute('aria-label',mxo2?'Hide MSTR':'Show MSTR');}
   var sb=$('bcSpx');sb.setAttribute('aria-pressed',sxo?'true':'false');sb.classList.toggle('off',!sxo);$('bcSpxT').textContent=sxo?'S&P 500 ✕':'+ S&P 500';sb.setAttribute('aria-label',sxo?'Hide S&P 500':'Show S&P 500');
   var gb=$('bcGld');gb.setAttribute('aria-pressed',gxo?'true':'false');gb.classList.toggle('off',!gxo);$('bcGldT').textContent=gxo?'Gold ✕':'+ Gold';gb.setAttribute('aria-label',gxo?'Hide Gold':'Show Gold');
-  var n=d.length,a=d[0][1],b=d[n-1][1],pc=(b/a-1)*100,pa=a<1?'$'+a.toFixed(2):fmt(a),fp=function(x){return (x>=0?'+':'')+(Math.abs(x)>=1e4?Math.round(x).toLocaleString('en-US'):x.toFixed(1))+'%';};
+  var n=d.length,a=d[0][1],b=d[n-1][1],pc=(b/a-1)*100,pa=a<1?curSym()+curVal(a).toFixed(2):fmt(a),fp=function(x){return (x>=0?'+':'')+(Math.abs(x)>=1e4?Math.round(x).toLocaleString('en-US'):x.toFixed(1))+'%';};
   var S=sxo?d.map(function(p){return spxOn(p[0]);}):null,s0=S&&S[0];if(S&&!s0){var k0=S.findIndex(function(v){return v!=null;});s0=k0>=0?S[k0]:null;}
   var spc=S&&s0?(S[n-1]/s0-1)*100:null;
   var G=gxo?d.map(function(p){return gldOn(p[0]);}):null,g0=G&&G[0],gk0=0;if(G&&!g0){gk0=G.findIndex(function(v){return v!=null;});g0=gk0>=0?G[gk0]:null;}
   var gpc=G&&g0?(G[n-1]/g0-1)*100:null,gLate=G&&g0&&gk0>0?d[gk0][0]:null;
-  $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+' · from '+d[0][0]+' ('+pa+')';
-  $('bcNt').textContent=(sx?((sxo&&gxo)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+ET.btcCloseLabel()+".":'')+(LOG?' Log scale.':'');
+  $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+' · from '+d[0][0]+' ('+pa+')'+cadTag();
+  $('bcNt').textContent=(sx?((sxo&&gxo)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(LOG?' Log scale.':'');
   var c=$('bcC').getContext('2d'),H=$('bcC').parentNode.clientHeight||300,g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(34,211,238,.28)');g.addColorStop(1,'rgba(34,211,238,0)');
   var lab=d.map(function(p){return p[0];}),pr=function(i){return i===n-1&&hasLive?4:0;},ds;
   if(sx){var bi=d.map(function(p){return 100*p[1]/a;}),si=(S||[]).map(function(v){return v!=null&&s0?100*v/s0:null;});
@@ -572,24 +658,67 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
     if(mxo){var M=d.map(function(p){return mstrOn(p[0]);}),m0=M.find(function(v){return v!=null;});ds.push({label:'MSTR',data:M.map(function(v){return v!=null&&m0?100*v/m0:null;}),raw:M,borderColor:'#f97316',backgroundColor:'#f97316',fill:false,borderWidth:1.6,tension:.15,pointRadius:0,pointHoverRadius:3,spanGaps:true});}}
   else ds=[{label:'BTC',data:d.map(function(p){return p[1];}),borderColor:'#22d3ee',backgroundColor:g,fill:!LOG,borderWidth:2,tension:.15,pointRadius:d.map(function(p,i){return pr(i);}),pointHoverRadius:3,pointBackgroundColor:'#22d3ee'}];
   var yTick=function(v){if(sx){if(LOG){var m=v/Math.pow(10,Math.floor(Math.log10(v)+1e-9));if([1,2,5].indexOf(Math.round(m*1000)/1000)<0)return null;}var q=v-100;return (q>0?'+':'')+(Math.abs(q)>=1000?Math.round(q).toLocaleString('en-US'):Math.round(q))+'%';}
-    if(LOG){var l=Math.log10(v);if(Math.abs(l-Math.round(l))>1e-6)return null;}return v>=1000?'$'+(v/1000).toLocaleString('en-US')+'k':'$'+v;};
+    if(LOG){var l=Math.log10(v);if(Math.abs(l-Math.round(l))>1e-6)return null;}var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);};
   var opts={animation:false,responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},
     tooltip:{displayColors:sx,callbacks:{title:function(i){var k=i[0].dataIndex;return k===n-1&&hasLive?'Now (live) · '+i[0].label:i[0].label;},
       label:function(i){var raw=i.dataset.raw?i.dataset.raw[i.dataIndex]:i.parsed.y;if(!sx)return fmt(raw);if(raw==null)return null;var q=i.parsed.y-100;
-        return i.dataset.label==='BTC'?'BTC '+fmt(raw)+' ('+fp(q)+')':i.dataset.label==='Gold'?'Gold $'+raw.toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')':i.dataset.label==='MSTR'?'MSTR $'+raw.toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')':'S&P 500 '+raw.toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')';}}}},
+        return i.dataset.label==='BTC'?'BTC '+fmt(raw)+' ('+fp(q)+')':i.dataset.label==='Gold'?'Gold '+curSym()+curVal(raw).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')':i.dataset.label==='MSTR'?'MSTR '+curSym()+curVal(raw).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')':'S&P 500 '+raw.toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')';}}}},
     scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0,callback:function(v){var s=this.getLabelForValue(v);return n>400?s.slice(0,4):s.slice(5);}}},
       y:{type:LOG?'logarithmic':'linear',grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:yTick}}}};
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});}
 function needChart(){return window.Chart?Promise.resolve():new Promise(function(ok,no){var s=document.createElement('script');s.src=U('../vendor/chart.umd.min.js');s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
-function open(from){if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
-  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;place();head();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
+/* Pill-expand morph, 3 Nov 2026: the dialog grows out of the pill that opened it (FLIP:
+   measure the pill rect and the dialog's final rect, start the dialog scaled/translated
+   to the pill rect, then animate transform + border-radius to the final rect). Reduced
+   motion skips the animation entirely and the dialog appears at final size, as before.
+   Chart content is drawn at final size throughout; the transform only scales it visually,
+   and the chart is resized once the grow finishes. */
+function reducedMotion(){try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}}
+function morphToPill(el){
+  var pr=el.getBoundingClientRect(),fr=dlg.getBoundingClientRect();
+  if(!pr.width||!pr.height||!fr.width||!fr.height)return null;
+  return {dx:pr.left-fr.left,dy:pr.top-fr.top,sx:pr.width/fr.width,sy:pr.height/fr.height};}
+function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
+  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;
+  var morph=null;
+  if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
+    dlg.style.visibility='hidden';place();morph=morphToPill(opener);
+    if(morph){dlg.classList.add('bc-morph');dlg.style.transformOrigin='top left';
+      dlg.style.transform='translate('+morph.dx+'px,'+morph.dy+'px) scale('+morph.sx+','+morph.sy+')';
+      dlg.style.borderRadius='999px';dlg.style.visibility='';
+      void dlg.offsetWidth;
+      /* Double rAF: the scaled start state must actually paint before the
+         transform is cleared, otherwise the browser coalesces the two
+         states into one frame and the grow is never seen. */
+      requestAnimationFrame(function(){requestAnimationFrame(function(){dlg.style.transform='';dlg.style.borderRadius='';});});
+      var done=function(){dlg.removeEventListener('transitionend',done);dlg.classList.remove('bc-morph');if(ch&&ch.resize)ch.resize();};
+      dlg.addEventListener('transitionend',done);}
+    else{dlg.style.visibility='';place();}
+  } else {place();}
+  head();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
   $('bcRr').textContent='Loading…';$('bcX').focus();
   Promise.all([getData(),needChart()]).then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
-function close(){if(!dlg||dlg.hidden)return;dlg.hidden=true;dim.hidden=true;[pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
-  var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();}
-pill.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();dlg&&!dlg.hidden?close():open(pill);});
+function close(){if(INLINE)return;if(!dlg||dlg.hidden)return;
+  var finish=function(){dlg.hidden=true;dim.hidden=true;dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
+    [pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
+    var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();};
+  if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
+    var m=morphToPill(opener);
+    if(m){dlg.classList.add('bc-morph');dlg.style.transformOrigin='top left';
+      dlg.style.transform='translate('+m.dx+'px,'+m.dy+'px) scale('+m.sx+','+m.sy+')';
+      dlg.style.borderRadius='999px';
+      var done=false,fin=function(){if(done)return;done=true;dlg.removeEventListener('transitionend',fin);finish();};
+      dlg.addEventListener('transitionend',fin);setTimeout(fin,550);return;}}
+  finish();}
+if(pill)pill.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();dlg&&!dlg.hidden?close():open(pill);});
 if(mp)mp.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();open(pill);});
 var bc=document.getElementById('btcLive');if(bc){var bo=function(e){e.preventDefault();e.stopPropagation();dlg&&!dlg.hidden?close():(open(bc),bc.setAttribute('aria-expanded','true'));};bc.addEventListener('click',bo);bc.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar')bo(e);});}
+/* V2 6 Nov 2026: inline mount. On a page with a #bcInline host, build the
+   chart once and show it there on page load — no pill, no dialog, no dim.
+   Same data, same ranges (1D..Max), same candles, same compare toggles. */
+function mountInline(){if(!INLINE)return;if(!dlg)build();dlg.hidden=false;
+  Promise.all([getData(),needChart()]).then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
+if(INLINE)mountInline();
 })();
 /* re-land on #section after async content shifts layout (e.g. /#benchmarks, /#rules from other pages) */
 window.addEventListener('load',function(){var h=location.hash.slice(1);if(!h)return;var el=document.getElementById(h);if(!el)return;

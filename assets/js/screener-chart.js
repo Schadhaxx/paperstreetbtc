@@ -1,3 +1,4 @@
+window.psC=window.psC||function(d,l){return document.documentElement.getAttribute('data-theme')==='light'?l:d;};
 // Comparison chart for the Maple Leaf screener.
 // Lines are rebased daily closes (assets/data/cmp-daily.json). The last
 // point of a stock uses the merged row from screener.js when that row is
@@ -100,9 +101,9 @@
   var STOCKS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX'];
   var BENCH = ['BTC', 'SPY', 'QQQ'];
   var COLOR = {
-    TSLA: '#22d3ee', PLTR: '#a78bfa', MSTR: '#fb923c', IBIT: '#38bdf8',
-    MU: '#facc15', META: '#fb7185', SPCX: '#2dd4bf',
-    BTC: '#94a3b8', SPY: '#64748b', QQQ: '#cbd5e1'
+    TSLA: psC('#22d3ee','#0891b2'), PLTR: psC('#a78bfa','#7c3aed'), MSTR: psC('#fb923c','#ea580c'), IBIT: psC('#38bdf8','#0284c7'),
+    MU: psC('#facc15','#ca8a04'), META: psC('#fb7185','#e11d48'), SPCX: psC('#2dd4bf','#0d9488'),
+    BTC: psC('#94a3b8','#475569'), SPY: psC('#64748b','#334155'), QQQ: psC('#cbd5e1','#64748b')
   };
   var CMP_V = '20261031a';
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -242,7 +243,7 @@
       (y.ticks || []).forEach(function (t) {
         var py = y.getPixelForValue(t.value);
         if (py < area.top - 1 || py > area.bottom + 1) return;
-        g.strokeStyle = t.value === 0 ? 'rgba(238,242,251,.42)' : 'rgba(148,163,184,.16)';
+        g.strokeStyle = t.value === 0 ? psC('rgba(238,242,251,.42)','rgba(15,23,42,.35)') : psC('rgba(148,163,184,.16)','rgba(15,23,42,.10)');
         g.beginPath();
         g.moveTo(area.left, py);
         g.lineTo(area.right, py);
@@ -318,7 +319,7 @@
       if (!meta || !meta.data || !meta.data[tipIndex]) return;
       var x = meta.data[tipIndex].x, area = c.chartArea, g = c.ctx;
       g.save();
-      g.strokeStyle = 'rgba(148,163,184,.55)';
+      g.strokeStyle = psC('rgba(148,163,184,.55)','rgba(15,23,42,.35)');
       g.setLineDash([3, 3]);
       g.beginPath();
       g.moveTo(x, area.top);
@@ -344,7 +345,7 @@
     var pretty = date.length >= 10 ? (+date.slice(8, 10) + ' ' + MONTHS[+date.slice(5, 7) - 1] + ' ' + date.slice(0, 4)) : date;
     var html = '<div class="cmp-tip-row"><b>' + pretty + '</b><span></span></div>';
     items.forEach(function (it) {
-      html += '<div class="cmp-tip-row"><span><i class="cmp-dot" style="background:' + (COLOR[it.sym] || '#94a3b8') + '"></i> ' + it.sym + '</span><b class="' + CmpMath.sign(it.pct) + '">' + CmpMath.fmtPct(it.pct) + '</b></div>';
+      html += '<div class="cmp-tip-row"><span><i class="cmp-dot" style="background:' + (COLOR[it.sym] || psC('#94a3b8','#475569')) + '"></i> ' + it.sym + '</span><b class="' + CmpMath.sign(it.pct) + '">' + CmpMath.fmtPct(it.pct) + '</b></div>';
     });
     tip.innerHTML = html;
     tip.hidden = false;
@@ -374,7 +375,7 @@
       var map = {};
       m.dates.forEach(function (d, i) { map[d] = m.pcts[i]; });
       var dim = hi && m.sym !== hi;
-      var col = COLOR[m.sym] || '#94a3b8';
+      var col = COLOR[m.sym] || psC('#94a3b8','#475569');
       return {
         label: m.sym,
         _end: m.pct,
@@ -507,11 +508,11 @@
   }
 
   function heatColor(v, mode) {
-    if (!CmpMath.isNum(v)) return 'rgba(255,255,255,.06)';
+    if (!CmpMath.isNum(v)) return psC('rgba(255,255,255,.06)','rgba(15,23,42,.06)');
     var t = Math.tanh(v / (mode === 'ytd' ? 25 : 2.5));
     if (t > 0) return 'rgba(34,197,94,' + (0.16 + t * 0.74).toFixed(3) + ')';
     if (t < 0) return 'rgba(239,68,68,' + (0.16 + (-t) * 0.74).toFixed(3) + ')';
-    return 'rgba(255,255,255,.06)';
+    return psC('rgba(255,255,255,.06)','rgba(15,23,42,.06)');
   }
   function renderHeat() {
     var box = document.getElementById('cmp-heat');
@@ -568,9 +569,9 @@
     board.innerHTML = items.map(function (it) {
       var day = dayPct(it.sym);
       return '<li class="cmp-row' + (it.sym === hi ? ' is-hi' : '') + '"><button type="button" data-cmp-hit="' + it.sym + '">' +
-        '<i class="cmp-swatch" style="background:' + (COLOR[it.sym] || '#94a3b8') + '"></i>' +
+        '<i class="cmp-swatch" style="background:' + (COLOR[it.sym] || psC('#94a3b8','#475569')) + '"></i>' +
         '<span class="cmp-sym">' + it.sym + '</span>' +
-        spark(it.pcts, COLOR[it.sym] || '#94a3b8') +
+        spark(it.pcts, COLOR[it.sym] || psC('#94a3b8','#475569')) +
         '<span class="cmp-ret ' + CmpMath.sign(it.pct) + '">' + CmpMath.fmtPct(it.pct) + '</span>' +
         (dayTwice ? '<span class="cmp-day"></span>' : '<span class="cmp-day ' + CmpMath.sign(day) + '">' + CmpMath.fmtPct(day) + '</span>') +
         '</button></li>';
@@ -708,7 +709,7 @@
       b.classList.toggle('is-on', onS);
       b.setAttribute('aria-pressed', onS ? 'true' : 'false');
       var dot = b.querySelector('.cmp-dot');
-      if (dot) dot.style.background = COLOR[sym] || '#94a3b8';
+      if (dot) dot.style.background = COLOR[sym] || psC('#94a3b8','#475569');
     });
     document.querySelectorAll('[data-cmp-bench]').forEach(function (b) {
       var sym = b.getAttribute('data-cmp-bench');
