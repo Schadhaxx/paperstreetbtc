@@ -86,6 +86,21 @@ let _series = null; // {labels, datasets} last drawn — for hover + parity expo
 let _hover = -1;
 
 /* Native canvas YTD line (Option 2): same series math as before; no Chart.js. */
+function themeColors(){
+  const cs = getComputedStyle(document.documentElement);
+  const g = (n, fb) => { const v = cs.getPropertyValue(n).trim(); return v || fb; };
+  return {
+    muted: g('--muted', '#9aa6bc'),
+    text: g('--text', '#e8eef7'),
+    surface: g('--surface', '#121a2e'),
+    border: g('--border', '#334155'),
+    bg: g('--bg', '#070b18'),
+    grid: g('--chart-grid', '#1e293b'),
+    tipBg: g('--chart-tip-bg', 'rgba(15,23,42,.92)'),
+    tipFg: g('--chart-tip-fg', '#e2e8f0'),
+    font: g('--chart-font', '11px Inter, system-ui, -apple-system, sans-serif')
+  };
+}
 function niceTicks(min, max, n){
   if (!(max > min)) { max = min + 1; }
   const span = max - min;
@@ -98,9 +113,34 @@ function niceTicks(min, max, n){
   for (let v = t0; v <= max + step * 0.01; v += step) out.push(Math.round(v * 1000) / 1000);
   return out;
 }
+/* Chart.js-like tension: cubic through points with horizontal control handles. */
+function traceLine(ctx, xs, ys, tension){
+  const n = xs.length;
+  if (n < 1) return;
+  ctx.moveTo(xs[0], ys[0]);
+  if (n === 1) return;
+  if (!tension || n === 2) { for (let i = 1; i < n; i++) ctx.lineTo(xs[i], ys[i]); return; }
+  for (let i = 0; i < n - 1; i++) {
+    const dx = (xs[i + 1] - xs[i]) * tension;
+    ctx.bezierCurveTo(xs[i] + dx, ys[i], xs[i + 1] - dx, ys[i + 1], xs[i + 1], ys[i + 1]);
+  }
+}
+function wrapWords(ctx, text, maxW){
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let cur = '';
+  words.forEach(w => {
+    const t = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = t;
+  });
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
 function drawNative(){
   const canvas = document.getElementById('ytdChart');
   if (!canvas || !_series) return;
+  const th = themeColors();
   const wrap = canvas.parentElement || canvas;
   const cssW = Math.max(280, wrap.clientWidth || canvas.clientWidth || 600);
   const cssH = Math.max(180, +(canvas.getAttribute('height') || 220));
@@ -112,9 +152,28 @@ function drawNative(){
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const W = cssW, H = cssH;
-  const pad = { l: 44, r: 12, t: 28, b: 28 };
-  const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
   const lbls = _series.labels, datasets = _series.datasets;
+  ctx.font = th.font;
+  // Measure legend (may wrap long backup label) to size top pad
+  const legMax = Math.max(120, W - 56);
+  const legBlocks = datasets.map(ds => {
+    const lines = wrapWords(ctx, ds.label, Math.min(legMax, Math.max(160, W * 0.55)));
+    return { ds, lines, w: Math.max(...lines.map(l => ctx.measureText(l).width)) + 16 };
+  });
+  let legRows = [];
+  let row = { items: [], w: 0, h: 14 };
+  legBlocks.forEach(b => {
+    const bw = b.w + 14;
+    const bh = b.lines.length * 14;
+    if (row.items.length && row.w + bw > legMax) { legRows.push(row); row = { items: [], w: 0, h: 14 }; }
+    row.items.push(b);
+    row.w += bw;
+    row.h = Math.max(row.h, bh);
+  });
+  if (row.items.length) legRows.push(row);
+  const legH = legRows.reduce((s, r) => s + r.h + 4, 0) + 4;
+  const pad = { l: 44, r: 12, t: Math.max(28, legH + 6), b: 28 };
+  const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
   let lo = Infinity, hi = -Infinity;
   datasets.forEach(ds => ds.data.forEach(v => { if (typeof v === 'number' && isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }));
   if (!isFinite(lo)) { lo = 90; hi = 110; }
@@ -127,16 +186,14 @@ function drawNative(){
   const yAt = v => pad.t + (1 - (v - lo) / (hi - lo)) * plotH;
 
   ctx.clearRect(0, 0, W, H);
-  // grid + y labels
-  ctx.strokeStyle = '#1e293b'; ctx.fillStyle = '#9aa6bc'; ctx.lineWidth = 1;
-  ctx.font = '11px system-ui,Segoe UI,sans-serif';
+  ctx.strokeStyle = th.grid; ctx.fillStyle = th.muted; ctx.lineWidth = 1;
+  ctx.font = th.font;
   yTicks.forEach(v => {
     const y = yAt(v);
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + plotW, y); ctx.stroke();
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     ctx.fillText(String(v), pad.l - 6, y);
   });
-  // x labels (first, mids, last)
   const xIdx = [];
   if (lbls.length <= 8) { for (let i = 0; i < lbls.length; i++) xIdx.push(i); }
   else {
@@ -148,20 +205,21 @@ function drawNative(){
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   xIdx.forEach(i => { ctx.fillText(lbls[i], xAt(i), pad.t + plotH + 6); });
 
-  // series: fill first (single sleeve), then lines
   datasets.forEach(ds => {
     if (!ds.fill || ds.data.length < 2) return;
+    const xs = ds.data.map((_, i) => xAt(i)), ys = ds.data.map(v => yAt(v));
     ctx.beginPath();
-    ds.data.forEach((v, i) => { const x = xAt(i), y = yAt(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
-    ctx.lineTo(xAt(ds.data.length - 1), pad.t + plotH);
-    ctx.lineTo(xAt(0), pad.t + plotH);
+    traceLine(ctx, xs, ys, ds.tension || 0);
+    ctx.lineTo(xs[xs.length - 1], pad.t + plotH);
+    ctx.lineTo(xs[0], pad.t + plotH);
     ctx.closePath();
     ctx.fillStyle = ds.backgroundColor || (ds.borderColor + '18');
     ctx.fill();
   });
   datasets.forEach(ds => {
+    const xs = ds.data.map((_, i) => xAt(i)), ys = ds.data.map(v => yAt(v));
     ctx.beginPath();
-    ds.data.forEach((v, i) => { const x = xAt(i), y = yAt(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    traceLine(ctx, xs, ys, ds.tension || 0);
     ctx.strokeStyle = ds.borderColor;
     ctx.lineWidth = ds.borderWidth || 2;
     if (ds.borderDash) ctx.setLineDash(ds.borderDash); else ctx.setLineDash([]);
@@ -177,47 +235,49 @@ function drawNative(){
     }
   });
 
-  // legend (top)
-  let lx = pad.l, ly = 8;
-  ctx.font = '11px system-ui,Segoe UI,sans-serif';
-  ctx.textBaseline = 'middle';
-  datasets.forEach(ds => {
-    ctx.fillStyle = ds.borderColor;
-    ctx.fillRect(lx, ly - 4, 12, 8);
-    if (ds.borderDash) {
-      ctx.strokeStyle = ds.borderColor; ctx.lineWidth = 1.5; ctx.setLineDash([3, 2]);
-      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 12, ly); ctx.stroke(); ctx.setLineDash([]);
-    }
-    ctx.fillStyle = '#9aa6bc';
-    ctx.textAlign = 'left';
-    const lab = ds.label.length > 42 ? ds.label.slice(0, 40) + '…' : ds.label;
-    ctx.fillText(lab, lx + 16, ly);
-    lx += 16 + ctx.measureText(lab).width + 14;
+  // legend (top), wrapping long labels fully
+  let ly = 8;
+  legRows.forEach(r => {
+    let lx = pad.l;
+    r.items.forEach(b => {
+      const ds = b.ds;
+      ctx.fillStyle = ds.borderColor;
+      ctx.fillRect(lx, ly + (r.h / 2) - 4, 12, 8);
+      if (ds.borderDash) {
+        ctx.strokeStyle = ds.borderColor; ctx.lineWidth = 1.5; ctx.setLineDash([3, 2]);
+        ctx.beginPath(); ctx.moveTo(lx, ly + r.h / 2); ctx.lineTo(lx + 12, ly + r.h / 2); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.fillStyle = th.muted;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      b.lines.forEach((line, li) => ctx.fillText(line, lx + 16, ly + li * 14));
+      lx += b.w + 14;
+    });
+    ly += r.h + 4;
   });
 
-  // hover crosshair + tooltip
   if (_hover >= 0 && _hover < lbls.length) {
     const x = xAt(_hover);
-    ctx.strokeStyle = 'rgba(148,163,184,.45)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
-    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + plotH); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = th.muted; ctx.globalAlpha = 0.45; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + plotH); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
     const tip = [lbls[_hover]].concat(datasets.map(ds => {
       const v = ds.data[_hover];
       return ds.label + ': ' + (typeof v === 'number' ? v.toFixed(2) : '—');
     }));
-    ctx.font = '11px system-ui,Segoe UI,sans-serif';
-    const tw = Math.max(...tip.map(t => ctx.measureText(t).width)) + 16;
-    const th = tip.length * 14 + 10;
+    ctx.font = th.font;
+    const tipLines = tip.flatMap(t => wrapWords(ctx, t, Math.min(280, W - 24)));
+    const tw = Math.max(...tipLines.map(t => ctx.measureText(t).width)) + 16;
+    const thh = tipLines.length * 14 + 10;
     let tx = x + 10, ty = pad.t + 8;
     if (tx + tw > W - 4) tx = x - tw - 10;
     if (tx < 4) tx = 4;
-    ctx.fillStyle = 'rgba(15,23,42,.92)';
-    ctx.strokeStyle = '#334155';
+    ctx.fillStyle = th.tipBg;
+    ctx.strokeStyle = th.border;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.rect(tx, ty, tw, th);
+    ctx.rect(tx, ty, tw, thh);
     ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#e2e8f0'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    tip.forEach((t, i) => ctx.fillText(t, tx + 8, ty + 6 + i * 14));
+    ctx.fillStyle = th.tipFg; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    tipLines.forEach((t, i) => ctx.fillText(t, tx + 8, ty + 6 + i * 14));
     datasets.forEach(ds => {
       const v = ds.data[_hover];
       if (typeof v !== 'number') return;
@@ -228,27 +288,54 @@ function drawNative(){
     });
   }
 
-  // expose geometry for hit-testing
   canvas._ytdHit = { pad, plotW, n: lbls.length, xAt };
 }
 function bindHover(){
   const canvas = document.getElementById('ytdChart');
   if (!canvas || canvas._ytdBound) return;
   canvas._ytdBound = true;
+  canvas.style.touchAction = 'none';
+  const clientX = ev => {
+    if (ev.clientX != null) return ev.clientX;
+    if (ev.touches && ev.touches[0]) return ev.touches[0].clientX;
+    if (ev.changedTouches && ev.changedTouches[0]) return ev.changedTouches[0].clientX;
+    return null;
+  };
   const hit = ev => {
     const h = canvas._ytdHit; if (!h || h.n < 1) return -1;
+    const cx = clientX(ev); if (cx == null) return -1;
     const r = canvas.getBoundingClientRect();
-    const x = (ev.clientX - r.left);
+    const x = cx - r.left;
     if (x < h.pad.l || x > h.pad.l + h.plotW) return -1;
     const t = (x - h.pad.l) / h.plotW;
     return Math.max(0, Math.min(h.n - 1, Math.round(t * Math.max(1, h.n - 1))));
   };
-  canvas.addEventListener('mousemove', ev => {
-    const i = hit(ev);
-    if (i !== _hover) { _hover = i; drawNative(); }
+  const setHover = (i) => { if (i !== _hover) { _hover = i; window.__YTD_HOVER = i; drawNative(); } };
+  canvas.addEventListener('pointerdown', ev => {
+    try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+    setHover(hit(ev));
   });
-  canvas.addEventListener('mouseleave', () => { if (_hover !== -1) { _hover = -1; drawNative(); } });
+  canvas.addEventListener('pointermove', ev => { setHover(hit(ev)); });
+  canvas.addEventListener('pointerup', ev => {
+    // Keep sticky index on touch/pen tap so tooltips remain readable on phones
+    if (ev.pointerType === 'mouse') return;
+    setHover(hit(ev));
+  });
+  canvas.addEventListener('pointerleave', ev => {
+    if (ev.pointerType === 'mouse' && _hover !== -1) { _hover = -1; window.__YTD_HOVER = -1; drawNative(); }
+  });
+  // Touch fallbacks for older WebViews without PointerEvent
+  canvas.addEventListener('touchstart', ev => { if (ev.touches[0]) setHover(hit(ev)); }, { passive: true });
+  canvas.addEventListener('touchmove', ev => { if (ev.touches[0]) setHover(hit(ev)); }, { passive: true });
   window.addEventListener('resize', () => { if (_series) drawNative(); });
+  // Redraw when theme tokens change (light mode later); do not ship light CSS here
+  const redrawTheme = () => { if (_series) drawNative(); };
+  window.addEventListener('ps-theme', redrawTheme);
+  try {
+    const mo = new MutationObserver(redrawTheme);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
+    if (document.body) mo.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
+  } catch (e) {}
 }
 
 function render() {
@@ -288,6 +375,7 @@ function render() {
       borderColor: sleeves[key].color,
       backgroundColor: sleeves[key].color + '18',
       borderWidth: 2.5,
+      tension: 0.3,
       fill: selected.size === 1,
       pointRadius: 3
     });
@@ -298,6 +386,7 @@ function render() {
     borderColor: benchColors[currentBench],
     borderWidth: 1.5,
     borderDash: [5, 4],
+    tension: 0.25,
     fill: false,
     pointRadius: 0
   });

@@ -551,8 +551,27 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
     scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0,callback:function(v){var s=this.getLabelForValue(v);return n>400?s.slice(0,4):s.slice(5);}}},
       y:{type:LOG?'logarithmic':'linear',grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:yTick}}}};
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});}
-function needChart(){return window.Chart?Promise.resolve():new Promise(function(ok,no){var s=document.createElement('script');s.src=U('../vendor/chart.umd.min.js');s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
-function open(from){if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
+var chartP=null;
+function needChart(){
+  if(window.Chart)return Promise.resolve();
+  if(chartP)return chartP;
+  chartP=new Promise(function(ok,no){
+    var existing=document.querySelector('script[src*="chart.umd.min.js"]');
+    if(existing){
+      if(window.Chart){ok();return;}
+      existing.addEventListener('load',function(){ok();});
+      existing.addEventListener('error',function(){chartP=null;no(new Error('chart'));});
+      return;
+    }
+    var s=document.createElement('script');
+    s.src=U('../vendor/chart.umd.min.js');
+    s.onload=function(){ok();};
+    s.onerror=function(){chartP=null;no(new Error('chart'));};
+    document.head.appendChild(s);
+  });
+  return chartP;
+}
+function open(from){if(dlg&&!dlg.hidden)return;if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
   rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;place();head();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
   $('bcRr').textContent='Loading…';$('bcX').focus();
   Promise.all([getData(),needChart()]).then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
