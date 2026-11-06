@@ -253,15 +253,26 @@ improvement. All three are built on this branch; nothing is on main.
    is unknown, so the wording + visible note is the honest fix (the
    alternative Grok Bot allowed — suppressing the countdown — would
    need a calendar to know when to suppress it).
-2. **Executable permissions, COMMITTED (not just the working copy).**
-   The earlier fix only set the mode in the working copy; the
-   committed tree stayed 100644 because the push-files route drops
-   file modes (proven: main `a4a0a76f` has all three files at 100755
-   with the same blob SHAs, while the live-feel branch commits
-   `97721ff`/`820a41d`/`41166b37` all show 100644 for the identical
-   blobs). The mode fix was applied via [mechanism — see the fix
-   report] and verified with `git ls-tree` against the remote head
-   (the test now checks `git ls-tree HEAD`, not `os.stat`).
+2. **Executable permissions, COMMITTED (not just the working copy) —
+   BLOCKED on the push route, fix prepared locally.** The earlier fix
+   only set the mode in the working copy; the committed tree stayed
+   100644 because the push-files route drops file modes (proven:
+   main `a4a0a76f` has all three files at 100755 with the same blob
+   SHAs, while the live-feel branch commits `97721ff`/`820a41d`/
+   `41166b37`/`2e4ed77` all show 100644 for the identical blobs).
+   The mode fix itself is ready as a local mode-only commit
+   (`fbe34c0`, same blobs, `git ls-tree` shows 100755 for all three)
+   but it could NOT be pushed: the GitHub connector's tools
+   (`push_files`, `create_or_update_file`) have no mode parameter
+   and hardcode 100644; direct `git push` fails (no credential,
+   cannot prompt); `gh` is not authenticated and no token is
+   available; the GitHub web UI cannot change file modes. To apply
+   it, use the Git Data API with a token (create a tree on the
+   branch head with the three entries at mode 100755 and the existing
+   blob SHAs, commit it, update the ref) or a local `git push` with
+   a credential. The test now checks `git ls-tree HEAD` (the
+   committed tree), not `os.stat`, so it will pass once the mode
+   fix lands on the remote.
 3. **Optional copy improvement (done).** After the week closes,
    `countdownText()` distinguishes "final weekly data pending" from
    "week not finished": if the week has closed but the data file
