@@ -367,15 +367,17 @@ function drawCandlesRange(){
   if(typeof RGLIVE!=='undefined'&&RGLIVE&&live.usd!=null&&candles.length){
     var lg=CANDGEOM[candles.length-1], ly2=Y(live.usd);
     ctx.save();
-    ctx.strokeStyle='#22d3ee';ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
+    // Live-overlay colors are theme-aware via psC (the bright dark-theme
+    // cyan/green wash out on a light chart background).
+    ctx.strokeStyle=psC('#22d3ee','#0891b2');ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
     ctx.beginPath();ctx.moveTo(L,ly2);ctx.lineTo(W-R,ly2);ctx.stroke();ctx.setLineDash([]);
-    ctx.strokeStyle='#22d3ee';ctx.setLineDash([4,4]);
+    ctx.strokeStyle=psC('#22d3ee','#0891b2');ctx.setLineDash([4,4]);
     ctx.strokeRect(lg.x-lg.bw/2-4,lg.wickTop-8,lg.bw+8,lg.wickBot-lg.wickTop+16);ctx.setLineDash([]);
     ctx.font='bold 11px Inter, sans-serif';ctx.textAlign='left';
-    ctx.fillStyle='#22c55e';ctx.fillText('LIVE',lg.x-13,lg.wickTop-14);
+    ctx.fillStyle=psC('#22c55e','#15803d');ctx.fillText('LIVE',lg.x-13,lg.wickTop-14);
     var tag='LIVE '+fmt(live.usd), tw2=ctx.measureText(tag).width;
-    ctx.fillStyle='#22d3ee';ctx.fillRect(W-R+4,ly2-8,tw2+8,16);
-    ctx.fillStyle='#0b1226';ctx.fillText(tag,W-R+8,ly2+4);
+    ctx.fillStyle=psC('#22d3ee','#0891b2');ctx.fillRect(W-R+4,ly2-8,tw2+8,16);
+    ctx.fillStyle=psC('#0b1226','#ffffff');ctx.fillText(tag,W-R+8,ly2+4);
     ctx.restore();
   }
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
@@ -549,20 +551,39 @@ function drawRange(){
   }
   var cand=aggDailyCandles(win,RGGRAN);
   if(cand.length<2){fallback('Not enough daily candles — showing daily closes.');return;}
-  // EXPERIMENTAL LIVE FEEL: when the last bucket contains today (daily:
-  // today's bar; weekly: this week; monthly: this month), its close
-  // follows the live CoinGecko price and its high/low extend to it —
-  // for display only. Buckets that do not contain today are never
-  // extended and no new candle is invented. The 1D/4H candle views
-  // (complete buckets only) are unchanged.
+  // EXPERIMENTAL LIVE FEEL: when the last bucket IS the current calendar
+  // bucket (daily: today's bar; weekly: this calendar week; monthly: this
+  // calendar month), its close follows the live CoinGecko price and its
+  // high/low extend to it — for display only. The current bucket is
+  // detected by CALENDAR boundaries, not by the last constituent bar: a
+  // stale feed whose last daily bar is Monday must still extend the
+  // current week on Wednesday, and a last bar from last week must never
+  // extend into a new week. Buckets that are not the current calendar
+  // bucket are never extended and no new candle is invented (no rollover
+  // candle). The 1D/4H candle views (complete buckets only) are unchanged.
   var disp=cand.slice(), RGLIVE2=false;
   if(live.usd!=null&&disp.length){
     var lb=disp[disp.length-1], nd=new Date();
-    var todayUTC=Date.UTC(nd.getUTCFullYear(),nd.getUTCMonth(),nd.getUTCDate());
     var contains=false;
-    if(RGGRAN==='daily')contains=(lb.t===todayUTC);
-    else if(RGGRAN==='weekly')contains=(lb.t<=todayUTC&&lb.end>=todayUTC);
-    else if(RGGRAN==='monthly')contains=(new Date(lb.t).getUTCFullYear()===nd.getUTCFullYear()&&new Date(lb.t).getUTCMonth()===nd.getUTCMonth());
+    if(RGGRAN==='daily'){
+      var todayUTC=Date.UTC(nd.getUTCFullYear(),nd.getUTCMonth(),nd.getUTCDate());
+      contains=(lb.t===todayUTC);
+    }else if(RGGRAN==='weekly'){
+      // Calendar week (Monday-start, UTC) of today vs of the bucket's
+      // first day. The bucket's first day is in the same calendar week
+      // as its last day (weekly buckets never span weeks).
+      var dow=nd.getUTCDay();
+      var todayMon=Date.UTC(nd.getUTCFullYear(),nd.getUTCMonth(),nd.getUTCDate()-(dow===0?6:dow-1));
+      var lbD=new Date(lb.t), lbDow=lbD.getUTCDay();
+      var lbMon=Date.UTC(lbD.getUTCFullYear(),lbD.getUTCMonth(),lbD.getUTCDate()-(lbDow===0?6:lbDow-1));
+      contains=(lbMon===todayMon);
+    }else if(RGGRAN==='monthly'){
+      // Calendar month of the bucket's first day vs today. Monthly
+      // buckets never span months, so the first day's month is the
+      // bucket's month.
+      var lbM=new Date(lb.t);
+      contains=(lbM.getUTCFullYear()===nd.getUTCFullYear()&&lbM.getUTCMonth()===nd.getUTCMonth());
+    }
     if(contains){
       disp[disp.length-1]={t:lb.t,end:lb.end,o:lb.o,h:Math.max(lb.h,live.usd),l:Math.min(lb.l,live.usd),c:live.usd};
       RGLIVE2=true;

@@ -150,7 +150,8 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   function applyLiveWeek(w, price) {
     if (!w || typeof price !== 'number' || !isFinite(price)) return w;
     return { monday: w.monday, sunday: w.sunday, label: w.label, days: w.days,
-      open: w.open, high: Math.max(w.high, price), low: Math.min(w.low, price), close: price };
+      open: w.open, high: Math.max(w.high, price), low: Math.min(w.low, price), close: price,
+      volume: (typeof w.volume === 'number' ? w.volume : null) };
   }
   function displayWeeks() {
     if (!state.weeks.length) return [];
@@ -163,23 +164,57 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   function isInProgress() {
     return !!(state.progressNote || (state.cfg && state.cfg.lastInProgress));
   }
-  // Next week close: indicators use UTC Monday 00:00; stocks use Friday
-  // 16:00 ET (21:00 UTC in EST, which covers Nov-Mar; the label says ET).
+  // US daylight saving time (post-2007 rules): second Sunday of March
+  // 07:00 UTC to first Sunday of November 06:00 UTC. Returns the
+  // America/New_York UTC offset in hours (-4 EDT, -5 EST) for a UTC instant.
+  function nyOffsetHours(utcMs) {
+    var d = new Date(utcMs), y = d.getUTCFullYear();
+    var mar1Dow = new Date(Date.UTC(y, 2, 1)).getUTCDay();
+    var secondSunMar = 1 + ((7 - mar1Dow) % 7) + 7;
+    var dstStart = Date.UTC(y, 2, secondSunMar, 7, 0, 0);
+    var nov1Dow = new Date(Date.UTC(y, 10, 1)).getUTCDay();
+    var firstSunNov = 1 + ((7 - nov1Dow) % 7);
+    var dstEnd = Date.UTC(y, 10, firstSunNov, 6, 0, 0);
+    return (utcMs >= dstStart && utcMs < dstEnd) ? -4 : -5;
+  }
+  // Week close, anchored to the DISPLAYED week (the last week in
+  // state.weeks), not to "next Friday". Stocks: that week's Friday at
+  // 4 p.m. New York time (DST-correct via nyOffsetHours — the old code
+  // hardcoded 21:00 UTC, which is an hour late during daylight saving
+  // time). Indicators: that week's Sunday midnight UTC. Once the target
+  // has passed the week is closed — the countdown never rolls forward
+  // to next week. Holidays and early closes are NOT adjusted: there is
+  // no holiday calendar in this file, so the target is the regular
+  // Friday close, not a guaranteed exchange close on a holiday week.
   function nextWeekClose(isStock) {
-    var now = new Date(), target;
+    var last = state.weeks && state.weeks.length ? state.weeks[state.weeks.length - 1] : null;
+    var now = Date.now(), target;
     if (isStock) {
-      var d = (5 - now.getUTCDay() + 7) % 7;
-      target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, 21, 0, 0));
-      if (target <= now) target = new Date(target.getTime() + 7 * 86400000);
-      return { t: target, label: 'Friday 4 p.m. ET' };
+      var monday = last && last.monday ? new Date(last.monday) : null;
+      if (!monday || isNaN(monday)) {
+        // No displayed week yet (harness / before load): fall back to the
+        // current week's Monday from now, DST-correct below.
+        var nd = new Date(now), dow = nd.getUTCDay();
+        monday = new Date(Date.UTC(nd.getUTCFullYear(), nd.getUTCMonth(), nd.getUTCDate() - (dow === 0 ? 6 : dow - 1)));
+      }
+      var friday = new Date(monday.getTime() + 4 * 86400000);
+      // NY offset for that Friday (noon UTC is safely past the 2 a.m. DST switch).
+      var refMs = Date.UTC(friday.getUTCFullYear(), friday.getUTCMonth(), friday.getUTCDate(), 12, 0, 0);
+      var off = nyOffsetHours(refMs);
+      target = new Date(Date.UTC(friday.getUTCFullYear(), friday.getUTCMonth(), friday.getUTCDate(), 16 - off, 0, 0));
+      return { t: target, label: 'Friday 4 p.m. ET', closed: now >= target.getTime() };
     }
-    var d2 = (8 - now.getUTCDay()) % 7;
-    target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d2, 0, 0, 0));
-    if (target <= now) target = new Date(target.getTime() + 7 * 86400000);
-    return { t: target, label: 'Sunday midnight UTC' };
+    var sunday = last && last.sunday ? new Date(last.sunday) : null;
+    if (!sunday || isNaN(sunday)) {
+      var nd2 = new Date(now), dow2 = nd2.getUTCDay();
+      sunday = new Date(Date.UTC(nd2.getUTCFullYear(), nd2.getUTCMonth(), nd2.getUTCDate() + ((7 - dow2) % 7)));
+    }
+    target = new Date(Date.UTC(sunday.getUTCFullYear(), sunday.getUTCMonth(), sunday.getUTCDate() + 1, 0, 0, 0));
+    return { t: target, label: 'Sunday midnight UTC', closed: now >= target.getTime() };
   }
   function countdownText() {
     var nc = nextWeekClose(!!(state.cfg && state.cfg.stock));
+    if (nc.closed) return 'Week closed';
     var ms = Math.max(0, nc.t - Date.now());
     var dd = Math.floor(ms / 86400000), hh = Math.floor(ms / 3600000) % 24, mm = Math.floor(ms / 60000) % 60;
     return 'Week closes in ' + dd + 'd ' + hh + 'h ' + mm + 'm (' + nc.label + ')';
@@ -954,5 +989,5 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, nextWeekClose: nextWeekClose, countdownText: countdownText, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern, enhStats: enhStats, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern, enhStats: enhStats, fmtVol: fmtVol };
 })();

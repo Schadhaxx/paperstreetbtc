@@ -27,7 +27,7 @@ SHOTS = "/home/hatch/workspace/your_files/live-feel-fix-shots"
 
 srv = subprocess.Popen(
     ["python3", "-m", "http.server", str(PORT), "--bind", "127.0.0.1"],
-    cwd="/home/hatch/workspace/ps-live-feel",
+    cwd="/home/hatch/workspace/ps-live-feel-grok",
     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
 )
 time.sleep(1.0)
@@ -66,6 +66,29 @@ def modal_state(page):
                innerW: window.innerWidth };
     }""")
 
+def countdown_expectation(page, is_stock):
+    """What the status line should say, from the page's own nextWeekClose.
+    Returns (kind, detail) where kind is 'countdown' or 'closed'.
+    The countdown is anchored to the DISPLAYED week's Friday 4 p.m. ET
+    (stocks) / Sunday midnight UTC (indicators); once that target has
+    passed the week is closed — it never rolls to next week. (Grok Bot
+    review fix, 6 Nov 2026: the old test rewarded a ~6d 22h countdown
+    on a Friday evening, which was wrong — that week had closed.)"""
+    return page.evaluate("""(isStock) => {
+      const nc = window.IndicatorChart.nextWeekClose(isStock);
+      const t = (nc.t instanceof Date) ? nc.t.getTime() : new Date(nc.t).getTime();
+      return { closed: !!nc.closed, targetMs: t, label: nc.label, nowMs: Date.now() };
+    }""", is_stock)
+
+def check_countdown(page, name, is_stock):
+    """Assert the status line matches the displayed week's close state."""
+    st = modal_state(page)
+    exp = countdown_expectation(page, is_stock)
+    if exp["closed"]:
+        check(name + " shows Week closed", "Week closed" in st["status"], st["status"][:110])
+    else:
+        check(name + " has countdown", "Week closes in" in st["status"], st["status"][:110])
+
 def tap_last(page, xoff):
     g = page.evaluate("""() => {
       const c = document.getElementById('ind-canvas');
@@ -94,26 +117,34 @@ try:
         page.goto(BASE + "/screener.html", wait_until="networkidle")
         page.wait_for_timeout(1200)
         open_modal(page, "TSLA")
-        # 1a. countdown on FIRST OPEN, no synthetic event (market-closed state
-        #     on a Fri evening: status should still carry the countdown)
-        st = modal_state(page)
-        check("TSLA 390 first-open status has countdown", "Week closes in" in st["status"], st["status"][:110])
-        # 1b. force live, countdown present in live state
+        # 1a. countdown on FIRST OPEN, no synthetic event. Corrected 6 Nov
+        #     (Grok Bot review): the status shows the DISPLAYED week's
+        #     close — "Week closes in ..." while it is open, "Week closed"
+        #     once its Friday 4 p.m. ET has passed (not a roll to next Fri).
+        check_countdown(page, "TSLA 390 first-open status", True)
+        # 1b. force live, countdown/closed present in live state
         force_live(page, "TSLA")
         page.wait_for_timeout(900)
         st = modal_state(page)
-        check("TSLA 390 live status has countdown", "LIVE" in st["status"] and "Week closes in" in st["status"], st["status"][:110])
+        check_countdown(page, "TSLA 390 live status", True)
         check("TSLA 390 live price label shows", st["liveprice"].startswith("Live "), st["liveprice"])
-        # 1c. countdown ticks (read, wait 65s, read again -> minutes drop by >=1)
-        def minutes(s):
-            import re
-            m = re.search(r"Week closes in (\d+)d (\d+)h (\d+)m", s)
-            return int(m.group(1)) * 1440 + int(m.group(2)) * 60 + int(m.group(3)) if m else None
-        m1 = minutes(st["status"])
-        page.wait_for_timeout(65000)
-        st2 = modal_state(page)
-        m2 = minutes(st2["status"])
-        check("TSLA 390 countdown ticks down", m1 is not None and m2 is not None and m2 <= m1 - 1, f"{m1} -> {m2} min")
+        # 1c. countdown ticks (only meaningful while the week is still open;
+        #     if it has closed, the status stays "Week closed" instead).
+        exp = countdown_expectation(page, True)
+        if not exp["closed"]:
+            def minutes(s):
+                import re
+                m = re.search(r"Week closes in (\d+)d (\d+)h (\d+)m", s)
+                return int(m.group(1)) * 1440 + int(m.group(2)) * 60 + int(m.group(3)) if m else None
+            m1 = minutes(st["status"])
+            page.wait_for_timeout(65000)
+            st2 = modal_state(page)
+            m2 = minutes(st2["status"])
+            check("TSLA 390 countdown ticks down", m1 is not None and m2 is not None and m2 <= m1 - 1, f"{m1} -> {m2} min")
+        else:
+            page.wait_for_timeout(5000)
+            st2 = modal_state(page)
+            check("TSLA 390 Week closed persists", "Week closed" in st2["status"], st2["status"][:110])
         # 2. last candle clear of the edge
         margin = st2["cssW"] - st2["outlineRight"]
         check("TSLA 390 last-candle outline clear of edge", margin >= 10, f"outline ends {st2['outlineRight']:.1f}/{st2['cssW']}, margin {margin:.1f}px")
@@ -137,12 +168,11 @@ try:
         page.goto(BASE + "/screener.html", wait_until="networkidle")
         page.wait_for_timeout(1200)
         open_modal(page, "GOLD")
-        st = modal_state(page)
-        check("GOLD 390 first-open status has countdown", "Week closes in" in st["status"], st["status"][:110])
+        check_countdown(page, "GOLD 390 first-open status", False)
         force_live(page, "GOLD")
         page.wait_for_timeout(900)
         st = modal_state(page)
-        check("GOLD 390 live status has countdown", "LIVE" in st["status"] and "Week closes in" in st["status"], st["status"][:110])
+        check_countdown(page, "GOLD 390 live status", False)
         margin = st["cssW"] - st["outlineRight"]
         check("GOLD 390 last-candle outline clear of edge", margin >= 10, f"margin {margin:.1f}px")
         pill = tap_last(page, lambda: st["lastCx"])
@@ -157,7 +187,7 @@ try:
         force_live(page, "TSLA")
         page.wait_for_timeout(900)
         st = modal_state(page)
-        check("TSLA 1280 live status has countdown", "LIVE" in st["status"] and "Week closes in" in st["status"], st["status"][:110])
+        check_countdown(page, "TSLA 1280 live status", True)
         margin = st["cssW"] - st["outlineRight"]
         check("TSLA 1280 last-candle outline clear of edge", margin >= 10, f"margin {margin:.1f}px")
         pill = tap_last(page, lambda: st["lastCx"] + 6)

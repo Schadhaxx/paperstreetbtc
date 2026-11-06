@@ -177,3 +177,59 @@ Coinbase, so the popover falls back to daily closes there; with a
 stubbed Coinbase feed the popover shows the live bucket text and
 countdown ("Last candle is live — its close is the live price; this
 bucket closes in 1h 11m").
+
+## Grok Bot review fixes, 6 November 2026 (evening)
+
+Grok Bot reviewed `97721ff3` (branch `pepper-live-feel-fixes`) and sent
+back two release blockers + four targeted fixes. All six are built on
+this branch; nothing is on main.
+
+1. **Indicator-feed connection restored (release blocker).**
+   The chart listened for `screener-ind-rows` but nothing dispatched
+   it. `notifyChart()` in `assets/js/screener.js` now dispatches the
+   existing `indRows` alongside `screener-rows`, retaining the
+   freshness/market-hours gate (`mergeList` + `indicatorLiveFn`).
+   `screener.js` gained its first cache pin (`?v=scr1`) so browsers
+   fetch the new file.
+2. **Countdown anchored to the displayed week (release blocker).**
+   `nextWeekClose()` in `assets/js/screener-indicator-chart.js` now
+   anchors to the displayed week's Friday at 4 p.m. New York time
+   (DST-correct via a `nyOffsetHours` helper — the old code hardcoded
+   21:00 UTC, an hour late during daylight saving time). Once the
+   target has passed the status shows "Week closed" — it never rolls
+   to next Friday. Indicators anchor to the displayed week's Sunday
+   midnight UTC the same way. Holidays/early closes are NOT adjusted:
+   there is no holiday calendar, so the target is the regular Friday
+   close, not a guaranteed exchange close on a holiday week.
+   `tests/verify_live_feel_fixes.py` was corrected: it previously
+   rewarded a ~6d 22h countdown on a Friday evening, which was wrong
+   (that week had closed). It now asserts the status matches the
+   displayed week's close state (countdown while open, "Week closed"
+   after), and only checks ticking while the countdown is active.
+3. **BTC buckets by calendar boundary.** The weekly/monthly "contains
+   today" check in `assets/js/btcchart.js` now compares calendar
+   boundaries (this week's Monday vs the bucket's Monday; this
+   month vs the bucket's month) instead of the last constituent bar's
+   range. A stale feed whose last daily bar is Monday still extends
+   the current week on Wednesday; a last bar from last week never
+   extends into a new week. Only an existing current bucket is ever
+   extended — no rollover candle is fabricated.
+4. **BTC live-overlay colors theme-aware.** The dashed live line,
+   live-candle outline, LIVE text, and LIVE tag in `drawCandlesRange`
+   now go through `psC` (darker cyan/green + white tag text in light
+   mode) instead of hardcoded dark-theme colors.
+5. **Volume metadata preserved.** `applyLiveWeek()` now copies
+   `volume` into the live-week display copy, so the volume pane and
+   tap detail still show the last week's volume when live.
+6. **Executable permissions restored.** `tests/run_all.sh`,
+   `tests/test_oi001_compare_scope.py`, `tests/test_oi001_label.js`
+   are back to mode 100755 (the merge had dropped the +x bit).
+
+Pins bumped for these fixes: `btcchart` et12 → et13 (16 callers),
+`screener-indicator-chart` stocks5 → stocks6, `screener.js` (new
+pin) `scr1`. `nav.css` stays cr019.
+
+Verified: `tests/test_grok_live_feel_fixes.py` (affected paths only,
+real-feed evidence labelled REAL, stubbed evidence labelled
+SIMULATED; real CDP touch drags at 390px and 820px starting on
+charts). See that file's output for the pass/fail split.
