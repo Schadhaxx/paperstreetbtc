@@ -284,13 +284,14 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: clip; }
 body {
   font-family: Inter, system-ui, -apple-system, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
   font-size: 16px;
+  overflow-x: clip; /* safety net: no element may ever widen the page sideways on a phone (clip, not hidden, so the sticky header still works) */
 }
 h1, h2, h3, h4, .brand-text { font-family: Outfit, Inter, sans-serif; font-weight: 600; }
 a { color: var(--accent); text-decoration: none; }
