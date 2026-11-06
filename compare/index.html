@@ -73,7 +73,7 @@
     <h2>Calculator</h2>
     <p class="section-lead">Pick a sleeve, a start date and an amount. See what it is worth today against spot BTC. Computed from the site's daily closes and dividend ledger.</p>
     <div class="pv-calc">
-      <form id="pvCalc"><label>Sleeve<select id="pvS"></select></label><label>Start date (Jan 1, 2026 or later)<input type="date" id="pvD" min="2026-01-01" value="2026-01-01"></label><label>Amount (USD)<input type="number" id="pvA" min="1" step="1" value="10000"></label><fieldset class="pvx"><legend>Extra contributions (optional)</legend><p class="note">Each one buys the sleeve at its target weights at that trading day's 9:30 AM ET open (BTC too). Weekend or holiday dates buy at the next trading day's open.</p><div id="pvX"></div><button type="button" class="bench-btn" id="pvXAdd">+ Add contribution</button></fieldset></form>
+      <form id="pvCalc"><label>Sleeve<select id="pvS"></select></label><label>Start date (Jan 1, 2026 or later)<input type="date" id="pvD" min="2026-01-01" value="2026-01-01"></label><label>Amount (USD)<input type="number" id="pvA" min="1" step="1" value="10000"></label><fieldset class="pvx"><legend>Extra contributions (optional)</legend><p class="note">Each one buys the sleeve at its target weights at that trading day's 9:30 AM ET open (BTC too). In ETF mode the BTC leg buys at the vehicle close, since no vehicle opens exist. Weekend or holiday dates buy at the next trading day's open.</p><div id="pvX"></div><button type="button" class="bench-btn" id="pvXAdd">+ Add contribution</button></fieldset></form>
       <div><div class="res"><div><div class="note">Sleeve today</div><div class="big" id="pvRS">–</div><div id="pvRSp" class="note"></div></div><div><div class="note">Spot BTC today</div><div class="big" id="pvRB">–</div><div id="pvRBp" class="note"></div></div></div><p class="note" id="pvRN" style="margin-top:8px"></p></div>
     </div>
   </div>
@@ -128,5 +128,5 @@ Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the
 <p class="xsub"><a href="https://x.com/PaperstreetBTC" target="_blank" rel="noreferrer noopener" aria-label="Follow @PaperstreetBTC on X"><span class="xsub-i"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>Follow @PaperstreetBTC on X</a></p>
 </main>
 <script src="../assets/js/et.js?v=et2"></script><script src="../assets/vendor/chart.umd.min.js"></script>
-<script src="../assets/js/compare.js?v=et4"></script><script src="../assets/js/s4.js"></script>
+<script src="../assets/js/compare.js?v=et5"></script><script src="../assets/js/s4.js"></script>
 <script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=et11"></script><p class="ps-theme-alt"><a class="ps-to-light" href="?theme=light">Light version</a><a class="ps-to-dark" href="?theme=dark">Back to dark</a></p></body></html>
