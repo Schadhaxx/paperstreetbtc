@@ -171,11 +171,15 @@
   details.more[open] > summary .more-btn::before { content:"\2212"; }
   details.more:not([open]) > summary .more-btn::before { content:"+"; }
   details.more > p { margin-top:8px; }
-  /* Branding, 6 Nov 2026: PaperStreet + owl at the top, matching the homepage header. */
-  .brand-row{display:flex;align-items:center;gap:10px;margin:0 0 14px}
-  .brand-row img{width:32px;height:32px;border-radius:8px;object-fit:cover}
-  .brand-name{font-weight:600;font-size:1.15rem;letter-spacing:-.02em}
-  .brand-btc{display:inline-block;background:#f97316;color:#05070f;font-weight:900;font-size:.72rem;border-radius:6px;padding:2px 6px;letter-spacing:.02em;vertical-align:2px;margin-left:2px}
+  /* Branding, 6 Nov 2026: PaperStreet + owl at the top, matching the
+     homepage header exactly (styles.css .brand/.logo/.brand-text):
+     owl 40px, radius 8, "Paperstreet BTC" in Outfit 600, BTC in accent
+     cyan #22d3ee — not an orange pill. Outfit is self-hosted. */
+  @font-face{font-family:'Outfit';font-style:normal;font-weight:600;font-display:swap;src:url(assets/fonts/outfit-normal-latin.woff2) format('woff2')}
+  .brand-row{display:flex;align-items:center;gap:12px;margin:0 0 14px}
+  .brand-row img{width:40px;height:40px;border-radius:8px;object-fit:cover}
+  .brand-name{font-family:Outfit,Inter,sans-serif;font-weight:600;font-size:1.15rem;letter-spacing:-.02em}
+  .brand-btc{color:#22d3ee}
 </style>
 </head>
 <body>

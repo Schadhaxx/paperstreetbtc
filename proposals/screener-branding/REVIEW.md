@@ -15,8 +15,12 @@ brand, matching the homepage header: the owl (`assets/img/owl-220.png` /
   above the h1. Its CSS lives in the page's own `<style>` block (the
   screener does not load `styles.css`, so the homepage's `.logo` /
   `.brand-text` classes were not reused — the rules are copied in
-  self-contained form). No data, JS, or behaviour change; nothing else on
-  the page moves.
+  self-contained form, plus an `@font-face` for self-hosted Outfit 600).
+  The lockup matches the homepage header exactly: owl 40px, radius 8,
+  "Paperstreet BTC" in Outfit 600, BTC in accent cyan #22d3ee. The first
+  version (32px owl, filled orange BTC pill) did not match and was
+  replaced. No data, JS, or behaviour change; nothing else on the page
+  moves.
 
 ## Merge notes (for Grok Bot)
 
@@ -28,6 +32,8 @@ brand, matching the homepage header: the owl (`assets/img/owl-220.png` /
 
 ## Check list
 
-1. The screener opens with the owl + "Paperstreet BTC" at the top.
+1. The screener opens with the homepage logo lockup exactly: owl (40px,
+   radius 8) + "Paperstreet BTC" with BTC in cyan, above the "Your
+   watchlist, at a glance." heading.
 2. The h1, About box, BTC pill, boxes, and charts are all where they were.
 3. Phone width (390px): the brand row fits on one line, no overflow.
