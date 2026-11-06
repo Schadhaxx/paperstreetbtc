@@ -113,9 +113,32 @@ with sync_playwright() as p:
             check(pgname + ' no alt theme link', pg.locator('.ps-theme-alt').count() == 0)
         elif pgname in FOOTER:
             check(pgname + ' "Light version" visible in dark', pg.locator('.ps-theme-link .ps-to-light').is_visible() and not pg.locator('.ps-theme-link .ps-to-dark').is_visible())
+            # Hit-target: scroll to footer; elementFromPoint at link center must be the link
+            # (guards against Home/All-recaps fabs covering it on mobile).
+            pg.evaluate('window.scrollTo(0, document.body.scrollHeight)'); pg.wait_for_timeout(300)
+            hit = pg.evaluate("""() => {
+              const a = document.querySelector('.ps-theme-link .ps-to-light');
+              if (!a) return {ok:false, why:'missing'};
+              const r = a.getBoundingClientRect();
+              const x = r.left + r.width/2, y = r.top + r.height/2;
+              const el = document.elementFromPoint(x, y);
+              const ok = !!(el && (el === a || a.contains(el)));
+              return {ok, x, y, tag: el && el.tagName, text: el && (el.textContent||'').slice(0,40),
+                      top: r.top, bottom: r.bottom, vh: window.innerHeight};
+            }""")
+            check(pgname + ' Light version hit-target clear of fabs', hit.get('ok'), str(hit))
             pg.locator('.ps-theme-link .ps-to-light').click(); pg.wait_for_load_state('networkidle')
             check(pgname + ' click Light version -> light + saved', pg.evaluate(TH) == 'light' and pg.evaluate(ST) == 'light')
             check(pgname + ' "Back to dark" shown in light', pg.locator('.ps-theme-link .ps-to-dark').is_visible() and not pg.locator('.ps-theme-link .ps-to-light').is_visible())
+            pg.evaluate('window.scrollTo(0, document.body.scrollHeight)'); pg.wait_for_timeout(300)
+            hit2 = pg.evaluate("""() => {
+              const a = document.querySelector('.ps-theme-link .ps-to-dark');
+              if (!a) return {ok:false, why:'missing'};
+              const r = a.getBoundingClientRect();
+              const el = document.elementFromPoint(r.left + r.width/2, r.top + r.height/2);
+              return {ok:!!(el && (el === a || a.contains(el))), tag: el && el.tagName, text: el && (el.textContent||'').slice(0,40)};
+            }""")
+            check(pgname + ' Back to dark hit-target clear of fabs', hit2.get('ok'), str(hit2))
             pg.goto(U + pgname, wait_until='networkidle')
             check(pgname + ' light remembered without query', pg.evaluate(TH) == 'light')
             pg.locator('.ps-theme-link .ps-to-dark').click(); pg.wait_for_load_state('networkidle')

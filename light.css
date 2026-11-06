@@ -398,6 +398,15 @@ html[data-theme="light"] .tile:hover {
 /* ---- theme link (footer) ----
    Unscoped rules here only touch the new theme-link elements. */
 .ps-theme-link .ps-to-dark { display: none; }
+/* Monthly recaps: Home / All-recaps fabs are position:fixed;bottom:18px (~40px tall).
+   Keep the theme link above them so it stays tappable (esp. at 390px). */
+.ps-theme-link {
+  position: relative;
+  z-index: 51;
+  margin-bottom: 4.75rem;
+  padding-bottom: 0.25rem;
+}
+
 html[data-theme="light"] .ps-theme-link .ps-to-light { display: none; }
 html[data-theme="light"] .ps-theme-link .ps-to-dark { display: inline; }
 /* pages without a footer: "Back to dark" appears only in light mode */
