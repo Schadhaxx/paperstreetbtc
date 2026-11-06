@@ -171,11 +171,17 @@
   details.more[open] > summary .more-btn::before { content:"\2212"; }
   details.more:not([open]) > summary .more-btn::before { content:"+"; }
   details.more > p { margin-top:8px; }
+  /* Branding, 6 Nov 2026: PaperStreet + owl at the top, matching the homepage header. */
+  .brand-row{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+  .brand-row img{width:32px;height:32px;border-radius:8px;object-fit:cover}
+  .brand-name{font-weight:600;font-size:1.15rem;letter-spacing:-.02em}
+  .brand-btc{display:inline-block;background:#f97316;color:#05070f;font-weight:900;font-size:.72rem;border-radius:6px;padding:2px 6px;letter-spacing:.02em;vertical-align:2px;margin-left:2px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
+    <div class="brand-row"><picture><source type="image/webp" srcset="assets/img/owl-220.webp"><img src="assets/img/owl-220.png" alt="Paperstreet BTC"></picture><span class="brand-name">Paperstreet <span class="brand-btc">BTC</span></span></div>
     <h1>Your watchlist,<br>at a glance.</h1>
     <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Seven stocks, four market indicators. Trend bars show only the size of today's move — they are not price history.</p></details>
     <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
