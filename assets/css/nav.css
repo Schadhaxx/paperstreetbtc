@@ -30,7 +30,16 @@
   .mnav-menu>a:last-child{border-bottom:0}
   .mnav-menu>a:hover,.mnav-menu>a:focus-visible,.mnav-menu>a.is-active{color:#22d3ee}
 }
-@media (max-width:420px){.header>.header-inner>.hdr-tick{padding:4px 8px;font-size:.78rem}}
+@media (max-width:420px){
+  .header>.header-inner>.hdr-tick{padding:4px 8px;font-size:.78rem}
+  /* iPhone launch fit (6 Nov 2026): once the live price fills in, the pill
+     (price + change + Chart chip) grows to ~186px and the header needs ~425px
+     on a 390px screen — the hamburger is pushed off the right edge and the
+     page can be scrolled sideways on launch. The Chart chip is 62px and the
+     pill itself is already the chart trigger, so hide the chip at phone width.
+     That leaves ~27px of margin even at a 6-digit BTC price. */
+  .header>.header-inner>.hdr-tick .lp-cv{display:none}
+}
 /* BTC chart */
 .bc-dim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60}
 .bc-w{position:fixed;z-index:61;background:#0b1224;border:1px solid rgba(34,211,238,.3);box-shadow:0 24px 60px rgba(0,0,0,.6);font-family:Inter,sans-serif;color:#e5e7eb}
