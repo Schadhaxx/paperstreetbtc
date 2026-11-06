@@ -34,7 +34,7 @@ window.BC_setCurrency=function(code,rate){CUR.code=code;CUR.rate=rate||1;var t=$
 /* pill markup */
 function decorate(el,full){if(el.querySelector('.lp-cv'))return;
   el.insertAdjacentHTML('afterbegin','<span class="lp-lab"><span class="lp-dot" aria-hidden="true"></span>Live BTC</span>');
-  el.insertAdjacentHTML('beforeend','<span class="lp-cv" aria-hidden="true">↗ Chart ▾</span>');}
+  el.insertAdjacentHTML('beforeend','<span class="lp-cv" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 10.5L5 7L8 8.5L12 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="3.5" r="1.4" fill="currentColor"/></svg>Chart</span>');}
 if(pill){decorate(pill);
 pill.setAttribute('aria-haspopup','dialog');pill.setAttribute('aria-expanded','false');
 if(!pill.getAttribute('aria-label'))pill.setAttribute('aria-label','Live BTC price. Open BTC chart');}
