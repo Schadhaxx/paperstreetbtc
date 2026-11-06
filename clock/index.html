@@ -152,7 +152,10 @@ setInterval(function(){if(!paused)showPane((pi+1)%panes.length);},12000);
 function render(){
 var ec=effCur(),pv=ec==='CAD'?lastCad:lastPrice;
 $('curLab').textContent='Bitcoin · '+ec+' · live price';
-$('fxRate').textContent=(lastCad&&lastPrice)?' (1 USD = '+(lastCad/lastPrice).toFixed(2)+' CAD)':'';
+/* The footer shows the last valid exchange rate (fxRate), not a fresh
+   lastCad/lastPrice division — after a USD-only fallback those two values
+   are from different times. Nothing shows until a CAD price has loaded. */
+$('fxRate').textContent=lastCad!=null?' (1 USD = '+fxRate.toFixed(2)+' CAD)':'';
 document.querySelectorAll('.cur-toggle button').forEach(function(b){b.classList.toggle('on',b.dataset.cur===cur);b.disabled=b.dataset.cur==='CAD'&&lastCad==null;if(b.dataset.cur==='CAD')b.title=lastCad==null?'CAD price loading — waiting on CoinGecko…':'Show price in Canadian dollars';});
 if(pv!=null){var sym=ec==='CAD'?'C$':'$';$('price').innerHTML=fmtPrice(pv,ec).replace(sym,'<span>'+sym+'</span>');
 var s=Math.floor(100000000/pv);$('sats').textContent=s.toLocaleString('en-US');
@@ -182,8 +185,12 @@ function update(){Promise.allSettled([fetchPrice(),fetchBlock(),fetchFees(),fetc
 var priceOk=false,blockOk=false,hero=$('hero');
 if(r[0].status==='fulfilled'){var np=r[0].value.usd;if(lastPrice!=null&&np!==lastPrice){hero.classList.remove('up','down');void hero.offsetWidth;hero.classList.add(np>lastPrice?'up':'down');}
 lastPrice=np;lastChg=r[0].value.chg;
-if(typeof r[0].value.cad==='number'){lastCad=r[0].value.cad;lastCadChg=r[0].value.cadChg;}
-if(lastPrice&&lastCad)fxRate=lastCad/lastPrice;
+if(typeof r[0].value.cad==='number'){lastCad=r[0].value.cad;lastCadChg=r[0].value.cadChg;
+/* Keep the last valid exchange rate unless THIS response supplies both
+   USD and CAD: a USD-only fallback (Coinbase) leaves lastCad stale, and
+   dividing that older CAD price by the new USD price would recompute the
+   rate from mismatched timestamps. (Grok live review, 6 Nov.) */
+if(lastPrice&&lastCad)fxRate=lastCad/lastPrice;}
 if(effCur()==='CAD')applyCurrency();
 priceOk=true;}
 if(r[1].status==='fulfilled'){lastBlock=r[1].value.height;lastBlockTs=r[1].value.ts;blockOk=true;}
