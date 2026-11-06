@@ -30,7 +30,17 @@ hash rate chart, and a tap on the hero price scrolls to the chart.
   daily buckets, live fetch, 60s refresh, last-good values on failure (same
   rule as the rest of the page). Current hashrate shown big (≥1000 EH/s as
   ZH/s; observed ~1.03 ZH/s on 6 Nov). 3d was tried and dropped — 3 daily
-  points is not a chart.
+  points is not a chart. Ranges: 1W/1M/3M/1Y/5Y/Max. 1y is daily buckets
+  (365 points); 5y and all both return the full history (daily, back to
+  2009-01-03), so 5Y is the same fetch sliced to the last 5 years and Max
+  is the whole thing (6,517 points). A Log toggle sits next to the ranges:
+  hashrate grew from ~0 to 1,000+ EH/s, so the Max view is a flat line on a
+  linear scale — Log (floor: smallest positive value) makes the growth
+  readable. Default is linear.
+- Branding (6 Nov): the clock is branded as the PaperStreetBtc clock — the
+  badge is now the owl (`assets/img/owl-220.png`/`.webp`, the site logo)
+  + "PAPERSTREETBTC CLOCK", and the page title is "PaperStreetBtc Clock —
+  Bitcoin Block Clock".
 - Pins: `btcchart.js` et6→et7 on index/screener, et2→et3 on
   compare/custom/recap. OI-001 pins preserved (s2.js p4, compare.js et2).
 
@@ -62,7 +72,9 @@ hash rate chart, and a tap on the hero price scrolls to the chart.
 3. Candles: switch to Candles on 1W/1M/3M/6M/YTD/1Y (Daily/Weekly/Monthly
    sizes); tap a candle — the pill shows O/H/L/C.
 4. Compare: + S&P 500, + Gold, + MSTR toggle lines on/off on a line range.
-5. Hash rate: 1W/1M/3M switch; current hashrate reads ~1 ZH/s.
+5. Hash rate: 1W/1M/3M/1Y/5Y/Max switch; current hashrate reads ~1 ZH/s;
+   Log toggle makes the Max view readable (linear Max is flat until ~2020).
+6. Branding: the badge at the top shows the owl + "PAPERSTREETBTC CLOCK".
 6. Tap the hero price — page scrolls to the chart.
 7. Regression: homepage BTC pill popover still opens, draws, and closes
    normally; screener popover unchanged.
