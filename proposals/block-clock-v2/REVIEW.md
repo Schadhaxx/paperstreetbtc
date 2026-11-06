@@ -37,10 +37,13 @@ hash rate chart, and a tap on the hero price scrolls to the chart.
   hashrate grew from ~0 to 1,000+ EH/s, so the Max view is a flat line on a
   linear scale — Log (floor: smallest positive value) makes the growth
   readable. Default is linear.
-- Branding (6 Nov): the clock is branded as the PaperStreetBtc clock — the
-  badge is now the owl (`assets/img/owl-220.png`/`.webp`, the site logo)
-  + "PAPERSTREETBTC CLOCK", and the page title is "PaperStreetBtc Clock —
-  Bitcoin Block Clock".
+- Branding (6 Nov): the clock is branded as the PaperStreetBtc clock. The
+  brand lockup matches the homepage header exactly (styles.css
+  .brand/.logo/.brand-text): owl 40px, radius 8, "Paperstreet BTC" in
+  Outfit 600 (self-hosted woff2), BTC in accent cyan #22d3ee, plus a muted
+  "· Clock" descriptor. The first version (gradient pill, circular 18px
+  owl, all-caps "PAPERSTREETBTC CLOCK") did not match the homepage and was
+  replaced. Page title: "PaperStreetBtc Clock — Bitcoin Block Clock".
 - Fees tile (6 Nov): fees were only in the rotating Network screen, visible
   ~1/4 of the time. A third tile in the grid now shows them always: fastest
   fee in sat/vB (big) + the unconfirmed transaction count (small), same
@@ -79,7 +82,8 @@ hash rate chart, and a tap on the hero price scrolls to the chart.
 4. Compare: + S&P 500, + Gold, + MSTR toggle lines on/off on a line range.
 5. Hash rate: 1W/1M/3M/1Y/5Y/Max switch; current hashrate reads ~1 ZH/s;
    Log toggle makes the Max view readable (linear Max is flat until ~2020).
-6. Branding: the badge at the top shows the owl + "PAPERSTREETBTC CLOCK".
+6. Branding: the top shows the homepage logo lockup exactly — owl (40px,
+   radius 8) + "Paperstreet BTC" with BTC in cyan + a muted "· Clock".
 6. Tap the hero price — page scrolls to the chart.
 7. Regression: homepage BTC pill popover still opens, draws, and closes
    normally; screener popover unchanged.
