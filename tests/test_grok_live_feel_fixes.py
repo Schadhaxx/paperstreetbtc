@@ -31,7 +31,9 @@ PORT = 8942
 BASE = f"http://127.0.0.1:{PORT}"
 CHROME = "/home/hatch/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome"
 SHOTS = "/home/hatch/workspace/your_files/live-feel-grok-fixes-shots"
-REPO = "/home/hatch/workspace/ps-live-feel-grok"
+# Repo checkout to serve + run `git ls-tree` in. Override with
+# LF_REPO to run against a different checkout of the same branch.
+REPO = os.environ.get("LF_REPO", "/home/hatch/workspace/ps-live-feel-grok")
 
 os.makedirs(SHOTS, exist_ok=True)
 srv = subprocess.Popen(
@@ -106,11 +108,19 @@ try:
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=CHROME)
 
-        # ===== Fix 6: executable permissions (REAL, working tree) =====
+        # ===== Fix 6: executable permissions (REAL, COMMITTED tree) =====
+        # Grok Bot's final correction, 6 Nov 2026: the earlier fix only set
+        # the mode in the WORKING COPY — the committed tree stayed 100644
+        # because push-files drops file modes. This check reads the mode
+        # from `git ls-tree HEAD` (the committed tree), not os.stat.
+        tree = subprocess.run(["git", "ls-tree", "HEAD", "tests/run_all.sh",
+                               "tests/test_oi001_compare_scope.py",
+                               "tests/test_oi001_label.js"],
+                              cwd=REPO, capture_output=True, text=True).stdout
         for f in ["tests/run_all.sh", "tests/test_oi001_compare_scope.py", "tests/test_oi001_label.js"]:
-            path = os.path.join(REPO, f)
-            mode = os.stat(path).st_mode
-            check(f"[REAL] Fix 6: {f} is executable", bool(mode & stat.S_IXUSR), oct(mode))
+            line = next((ln for ln in tree.splitlines() if ln.endswith("\t" + f)), "")
+            check(f"[REAL] Fix 6: {f} is 100755 in the COMMITTED tree",
+                  line.startswith("100755 "), line or "(missing)")
 
         # ===== Fix 1: indicator-feed connection, REAL producer path =====
         page = browser.new_page(viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True)
@@ -172,9 +182,34 @@ try:
               nc["t"].startswith("2026-11-06T21:00"), nc["t"])
         check("[REAL] Fix 2: Friday evening shows Week closed (not next Friday)",
               nc["closed"] is True, str(nc))
+        # Grok Bot final correction, 6 Nov 2026: the visible label must say
+        # "regular scheduled Friday 4 p.m. ET" (not just "Friday 4 p.m. ET").
+        check("[REAL] Fix 2: label is 'regular scheduled Friday 4 p.m. ET'",
+              nc["label"] == "regular scheduled Friday 4 p.m. ET", nc["label"])
         st = modal_status(page)
         check("[REAL] Fix 2: status line shows Week closed",
               "Week closed" in st, st[:110])
+        # Optional copy improvement (Grok Bot final correction): the week
+        # has closed but the data file still says in progress (last session
+        # Thu 5 Nov) — the status must say the final weekly data is
+        # pending, not imply the week isn't finished.
+        check("[REAL] Fix 2: closed week + in-progress data says 'final weekly data pending'",
+              "final weekly data pending" in st, st[:160])
+        # Not-closed countdown wording (stubbed clock to Wed 4 Nov 12:00 UTC
+        # so the displayed week is still open): must show the regular
+        # scheduled label AND visibly state holidays/early closes aren't
+        # covered. Restore the real clock afterwards.
+        cd = page.evaluate("""() => {
+          window.__realNow = Date.now;
+          Date.now = () => Date.UTC(2026, 10, 4, 12, 0, 0);
+          const t = window.IndicatorChart.countdownText();
+          Date.now = window.__realNow;
+          return t;
+        }""")
+        check("[REAL] Fix 2: open-week countdown shows 'regular scheduled Friday 4 p.m. ET'",
+              "regular scheduled Friday 4 p.m. ET" in cd, cd)
+        check("[REAL] Fix 2: open-week countdown visibly states holidays/early closes not covered",
+              "holidays/early closes not covered" in cd, cd)
         page.screenshot(path=f"{SHOTS}/fix2-tsla-week-closed-1280.png")
         page.close()
 

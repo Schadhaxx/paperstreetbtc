@@ -233,3 +233,42 @@ Verified: `tests/test_grok_live_feel_fixes.py` (affected paths only,
 real-feed evidence labelled REAL, stubbed evidence labelled
 SIMULATED; real CDP touch drags at 390px and 820px starting on
 charts). See that file's output for the pass/fail split.
+
+## Grok Bot final corrections, 6 November 2026 (evening)
+
+Grok Bot confirmed the six review fixes above (feed connection,
+displayed-week/DST countdown, calendar buckets, theme colors, volume,
+pill/footer). Two corrections remained, plus one optional copy
+improvement. All three are built on this branch; nothing is on main.
+
+1. **Countdown wording is now visible, not just in comments.**
+   `nextWeekClose()` labels the stock target `'regular scheduled
+   Friday 4 p.m. ET'` (was `'Friday 4 p.m. ET'`), and
+   `countdownText()` appends `'; holidays/early closes not covered'`
+   to the visible countdown for stocks — e.g. "Week closes in 6d 22h
+   15m (regular scheduled Friday 4 p.m. ET; holidays/early closes
+   not covered)". Indicators keep their Sunday-midnight UTC label
+   with no caveat (a data cutoff, not an exchange close). No holiday
+   calendar was invented: without one we cannot know when the close
+   is unknown, so the wording + visible note is the honest fix (the
+   alternative Grok Bot allowed — suppressing the countdown — would
+   need a calendar to know when to suppress it).
+2. **Executable permissions, COMMITTED (not just the working copy).**
+   The earlier fix only set the mode in the working copy; the
+   committed tree stayed 100644 because the push-files route drops
+   file modes (proven: main `a4a0a76f` has all three files at 100755
+   with the same blob SHAs, while the live-feel branch commits
+   `97721ff`/`820a41d`/`41166b37` all show 100644 for the identical
+   blobs). The mode fix was applied via [mechanism — see the fix
+   report] and verified with `git ls-tree` against the remote head
+   (the test now checks `git ls-tree HEAD`, not `os.stat`).
+3. **Optional copy improvement (done).** After the week closes,
+   `countdownText()` distinguishes "final weekly data pending" from
+   "week not finished": if the week has closed but the data file
+   still says the week is in progress (`state.progressNote` set —
+   the pipeline only clears `inProgress` once the final close
+   arrives), the status reads "Week closed — final weekly data
+   pending". Otherwise it reads "Week closed". This uses the
+   pipeline's own in-progress flag, so a holiday week (where the
+   final close is Thursday's) is handled correctly — the pipeline
+   clears `inProgress` when there are no remaining session days.

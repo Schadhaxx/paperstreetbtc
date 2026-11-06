@@ -184,8 +184,10 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // time). Indicators: that week's Sunday midnight UTC. Once the target
   // has passed the week is closed — the countdown never rolls forward
   // to next week. Holidays and early closes are NOT adjusted: there is
-  // no holiday calendar in this file, so the target is the regular
-  // Friday close, not a guaranteed exchange close on a holiday week.
+  // no holiday calendar in this file, so the target is the REGULAR
+  // scheduled Friday close, not a guaranteed exchange close on a
+  // holiday week — and the UI says so (see countdownText), not just
+  // this comment, per Grok Bot's final correction 6 Nov 2026.
   function nextWeekClose(isStock) {
     var last = state.weeks && state.weeks.length ? state.weeks[state.weeks.length - 1] : null;
     var now = Date.now(), target;
@@ -202,7 +204,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       var refMs = Date.UTC(friday.getUTCFullYear(), friday.getUTCMonth(), friday.getUTCDate(), 12, 0, 0);
       var off = nyOffsetHours(refMs);
       target = new Date(Date.UTC(friday.getUTCFullYear(), friday.getUTCMonth(), friday.getUTCDate(), 16 - off, 0, 0));
-      return { t: target, label: 'Friday 4 p.m. ET', closed: now >= target.getTime() };
+      return { t: target, label: 'regular scheduled Friday 4 p.m. ET', closed: now >= target.getTime() };
     }
     var sunday = last && last.sunday ? new Date(last.sunday) : null;
     if (!sunday || isNaN(sunday)) {
@@ -213,11 +215,28 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return { t: target, label: 'Sunday midnight UTC', closed: now >= target.getTime() };
   }
   function countdownText() {
-    var nc = nextWeekClose(!!(state.cfg && state.cfg.stock));
-    if (nc.closed) return 'Week closed';
+    var isStock = !!(state.cfg && state.cfg.stock);
+    var nc = nextWeekClose(isStock);
+    if (nc.closed) {
+      // The week has closed. If the data file still says the week is in
+      // progress (state.progressNote set — the pipeline only clears
+      // inProgress once the final close arrives), the final bar hasn't
+      // landed yet: say the final weekly data is pending, instead of
+      // implying the week isn't finished (the in-progress note) or that
+      // everything is final (a bare "Week closed"). Grok Bot's final
+      // correction, 6 Nov 2026 (optional copy improvement).
+      if (state.progressNote) return 'Week closed — final weekly data pending';
+      return 'Week closed';
+    }
     var ms = Math.max(0, nc.t - Date.now());
     var dd = Math.floor(ms / 86400000), hh = Math.floor(ms / 3600000) % 24, mm = Math.floor(ms / 60000) % 60;
-    return 'Week closes in ' + dd + 'd ' + hh + 'h ' + mm + 'm (' + nc.label + ')';
+    // Stocks: the target is the REGULAR scheduled close. There is no
+    // holiday calendar here, so the limitation is stated in the visible
+    // text (not just in a comment): on a holiday/early-close week the
+    // actual close differs. Indicators close on a Sunday-midnight UTC
+    // data cutoff, not an exchange close, so no caveat applies there.
+    var caveat = isStock ? '; holidays/early closes not covered' : '';
+    return 'Week closes in ' + dd + 'd ' + hh + 'h ' + mm + 'm (' + nc.label + caveat + ')';
   }
   function refreshLiveStatus() {
     var modal = el('ind-modal');
