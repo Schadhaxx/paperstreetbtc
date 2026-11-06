@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><script>(function(){var q=null,s=null;try{q=new URLSearchParams(location.search).get("theme")}catch(e){}try{s=localStorage.getItem("ps-theme")}catch(e){}var on=q==="light"||(q!=="dark"&&s==="light");if(on)document.documentElement.setAttribute("data-theme","light");try{if(q==="light")localStorage.setItem("ps-theme","light");else if(q==="dark"||(s!==null&&s!=="light"))localStorage.removeItem("ps-theme")}catch(e){}})();window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PaperStreetBtc Clock — Bitcoin Block Clock</title>
 <link rel="stylesheet" href="../assets/css/nav.css">
+<link rel="stylesheet" href="../light.css?v=lm4">
+<script src="../chart-theme.js?v=lm1"></script>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#05070f;color:#e8eef7;font-family:Inter,system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
 body:before{content:"";position:fixed;inset:0;background:radial-gradient(600px 300px at 15% -5%,rgba(34,211,238,.22),transparent 60%),radial-gradient(700px 350px at 90% 10%,rgba(249,115,22,.18),transparent 60%),radial-gradient(500px 400px at 50% 110%,rgba(34,197,94,.12),transparent 60%);pointer-events:none}
@@ -69,16 +71,72 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 .cur-toggle button{background:transparent;color:#94a3b8;border:0;padding:6px 12px;font-weight:900;font-size:12px;cursor:pointer;font-family:inherit}
 .cur-toggle button.on{background:#22d3ee;color:#041018}
 .cur-toggle button:disabled{opacity:.4;cursor:default}
-</style></head><body><div class="wrap">
+/* Muted text + hash card, as classes (not inline styles) so light mode can
+   recolour them. .mut = #94a3b8, .mut2 = #64748b. */
+.mut{color:#94a3b8}
+.mut2{color:#64748b}
+.hash-card{margin-top:16px;border:1px solid #1e293b;border-radius:24px;padding:22px;background:rgba(15,23,42,.85)}
+.note a{color:#22d3ee}
+/* ---- LIGHT MODE, 6 Nov 2026 (Sunil) ----
+   Same system as the rest of the site: html[data-theme="light"], set by the
+   head script from ?theme= / ps-theme (localStorage). Dark stays the
+   default; no auto-switching on device settings. Scoped to body.ps-clock
+   so nothing here touches any other page. The inline BTC chart is
+   theme-aware via psC (btcchart.js) + chart-theme.js and rebuilds on the
+   reload the toggle performs. */
+html[data-theme="light"] body.ps-clock{background:#f6f8fb;color:#0f172a}
+html[data-theme="light"] body.ps-clock:before{background:radial-gradient(600px 300px at 15% -5%,rgba(34,211,238,.12),transparent 60%),radial-gradient(700px 350px at 90% 10%,rgba(249,115,22,.08),transparent 60%),radial-gradient(500px 400px at 50% 110%,rgba(34,197,94,.06),transparent 60%)}
+html[data-theme="light"] body.ps-clock:after{background-image:linear-gradient(rgba(15,23,42,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(15,23,42,.05) 1px,transparent 1px)}
+html[data-theme="light"] body.ps-clock .brand-clock{color:#475569}
+html[data-theme="light"] body.ps-clock .lab{color:#475569}
+html[data-theme="light"] body.ps-clock .live{color:#15803d}
+html[data-theme="light"] body.ps-clock .live i{background:#15803d;box-shadow:0 0 14px rgba(21,128,61,.35)}
+html[data-theme="light"] body.ps-clock .et{color:#334155}
+html[data-theme="light"] body.ps-clock .hero.merged{background:#fff;border-color:#e2e8f0;box-shadow:0 10px 30px rgba(15,23,42,.08)}
+html[data-theme="light"] body.ps-clock .hero.merged.up{box-shadow:0 10px 30px rgba(15,23,42,.08),0 0 40px rgba(34,197,94,.15)}
+html[data-theme="light"] body.ps-clock .hero.merged.down{box-shadow:0 10px 30px rgba(15,23,42,.08),0 0 40px rgba(239,68,68,.15)}
+html[data-theme="light"] body.ps-clock .price{text-shadow:none}
+html[data-theme="light"] body.ps-clock .price span{color:#0e7490}
+html[data-theme="light"] body.ps-clock .mut{color:#475569}
+html[data-theme="light"] body.ps-clock .mut2{color:#475569}
+html[data-theme="light"] body.ps-clock .ticker{background:#fff;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .ticker div{color:#334155}
+html[data-theme="light"] body.ps-clock .ticker b{color:#0e7490}
+html[data-theme="light"] body.ps-clock .focus{background:#fff;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .focus p{color:#475569}
+html[data-theme="light"] body.ps-clock .big span{color:#b45309}
+html[data-theme="light"] body.ps-clock .dots button{background:#cbd5e1}
+html[data-theme="light"] body.ps-clock .dots button.on{background:#22d3ee}
+html[data-theme="light"] body.ps-clock .ring .bg{stroke:#e2e8f0}
+html[data-theme="light"] body.ps-clock .bar{background:#e2e8f0}
+html[data-theme="light"] body.ps-clock .tile{background:#fff;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .tile .s{color:#475569}
+html[data-theme="light"] body.ps-clock .hash-card{background:#fff;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .foot{color:#475569}
+html[data-theme="light"] body.ps-clock button.refresh{color:#0e7490;border-color:#0e7490}
+html[data-theme="light"] body.ps-clock .note{color:#475569}
+html[data-theme="light"] body.ps-clock .note a{color:#0e7490}
+html[data-theme="light"] body.ps-clock .err{color:#c2410c}
+html[data-theme="light"] body.ps-clock .cur-toggle{border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .cur-toggle button{color:#475569}
+html[data-theme="light"] body.ps-clock .cur-toggle button.on{background:#22d3ee;color:#041018}
+/* Inline BTC chart: .bc-inline forces a dark background with !important, so
+   the light override needs !important too. Chart chrome (.bc-rr, .bc-nt,
+   .bc-rg, .bc-k, .bc-w) is covered by light.css. */
+html[data-theme="light"] body.ps-clock .bc-inline{background:#fff!important;border-color:#e2e8f0!important}
+html[data-theme="light"] body.ps-clock .bc-ct-lab{color:#475569}
+html[data-theme="light"] body.ps-clock .bc-ct button{color:#475569;border-color:#e2e8f0;background:#fff}
+html[data-theme="light"] body.ps-clock .bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
+</style></head><body class="ps-clock"><div class="wrap">
 <div class="brand"><picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture><span class="brand-text">Paperstreet <span>BTC</span></span><span class="brand-clock">· Clock</span></div>
 <div class="top"><span class="lab">₿ Bitcoin Block Clock</span><span class="live"><i></i>LIVE · AUTO</span><span class="et" id="now">—</span></div>
 
 <div class="hero merged" id="hero">
 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="lab" id="curLab">Bitcoin · USD · live price</span><span class="cur-toggle" role="group" aria-label="Price currency"><button type="button" data-cur="USD" class="on" title="Show price in US dollars">USD $</button><button type="button" data-cur="CAD" title="Show price in Canadian dollars">CAD $</button></span></div>
 <div class="price" id="price">—</div>
-<div><span class="chg" id="chg">—</span> <span style="color:#94a3b8">· 24h &nbsp;·&nbsp; <span id="updated">connecting…</span></span></div>
+<div><span class="chg" id="chg">—</span> <span class="mut">· 24h &nbsp;·&nbsp; <span id="updated">connecting…</span></span></div>
 <div id="bcInline" style="margin-top:16px"></div>
-<div style="display:flex;justify-content:space-between;color:#64748b;font-size:12px;margin-top:10px"><span>Full chart · the homepage BTC popover, live here</span><span id="nextRefresh">next refresh 60s</span></div>
+<div class="mut2" style="display:flex;justify-content:space-between;font-size:12px;margin-top:10px"><span>Full chart · the homepage BTC popover, live here</span><span id="nextRefresh">next refresh 60s</span></div>
 </div>
 
 <div class="ticker"><div id="tick1"></div><div id="tick2"></div></div>
@@ -94,11 +152,11 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 <div class="pane" id="pane-halving"><div class="lab">Next halving · the clock inside the clock</div><div class="big">#<span id="halving">—</span></div>
 <p id="halvingDetail">—</p><div class="bar"><i id="halvbar" style="width:0%"></i></div><p id="halvPct">—</p></div>
 
-<div class="pane" id="pane-net"><div class="lab">Network right now</div><div class="big"><span id="fees">—</span> <span style="font-size:24px;color:#94a3b8">sat/vB fastest</span></div>
+<div class="pane" id="pane-net"><div class="lab">Network right now</div><div class="big"><span id="fees">—</span> <span class="mut" style="font-size:24px">sat/vB fastest</span></div>
 <p id="mempool">—</p><p id="diff">—</p></div>
 
 <div class="dots"><button data-pane="pane-block" class="on" aria-label="Block"></button><button data-pane="pane-sats" aria-label="Sats"></button><button data-pane="pane-halving" aria-label="Halving"></button><button data-pane="pane-net" aria-label="Network"></button></div>
-<p style="color:#64748b;font-size:12px;margin:10px 0 0">Focus screens rotate on their own every 12 seconds — tap a dot to jump. <button class="refresh" id="pauseBtn" type="button">Pause rotation</button></p>
+<p class="mut2" style="font-size:12px;margin:10px 0 0">Focus screens rotate on their own every 12 seconds — tap a dot to jump. <button class="refresh" id="pauseBtn" type="button">Pause rotation</button></p>
 </div>
 
 <div class="grid">
@@ -107,10 +165,10 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 <div class="tile"><div class="lab">Network fees · fastest</div><div class="v" id="feesTile">—</div><div class="s" id="feesDetail">—</div></div>
 </div>
 
-<div style="margin-top:16px;border:1px solid #1e293b;border-radius:24px;padding:22px;background:rgba(15,23,42,.85)">
+<div class="hash-card">
 <div class="lab">Network hash rate · mempool.space</div>
 <div class="big"><span id="hashNow">—</span></div>
-<p style="color:#94a3b8;line-height:1.55;margin:6px 0">Total computing power securing Bitcoin, right now. 1 EH/s = 10¹⁸ hashes per second.</p>
+<p class="mut" style="line-height:1.55;margin:6px 0">Total computing power securing Bitcoin, right now. 1 EH/s = 10¹⁸ hashes per second.</p>
 <canvas id="hashC" width="860" height="180" style="display:block;width:100%;height:180px"></canvas>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px" id="hashRg">
 <button class="refresh" data-h="1w" type="button">1W</button>
@@ -121,11 +179,12 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 <button class="refresh" data-h="max" type="button">Max</button>
 <button class="refresh" id="hashLog" type="button">Log</button>
 </div>
-<p style="color:#64748b;font-size:12px;margin:10px 0 0" id="hashNote">Daily averages · refreshes every 60s</p>
+<p class="mut2" style="font-size:12px;margin:10px 0 0" id="hashNote">Daily averages · refreshes every 60s</p>
 </div>
 
 <div class="foot"><span>Price: CoinGecko (USD + CAD), Coinbase fallback (USD only) · CAD chart values converted at the live USD→CAD rate<span id="fxRate"></span> · Blocks, fees, difficulty: mempool.space · <button class="refresh" id="refreshBtn" type="button">Refresh now</button></span><span id="status"></span></div>
-<p class="note">Live data when online; if a feed fails it holds the last good value and says so — it never invents a number. Switch to CAD to see the price in Canadian dollars: the chart converts at the live USD→CAD rate, so historical CAD values use today's rate and are approximate. This page is not linked from the rest of the site. <a href="../index.html" style="color:#22d3ee">← Back to PaperStreet</a> · Not financial advice.</p>
+<p class="note">Live data when online; if a feed fails it holds the last good value and says so — it never invents a number. Switch to CAD to see the price in Canadian dollars: the chart converts at the live USD→CAD rate, so historical CAD values use today's rate and are approximate. This page is not linked from the rest of the site. <a href="../index.html">← Back to PaperStreet</a> · Not financial advice.</p>
+<p class="ps-theme-alt"><a class="ps-to-light" href="?theme=light">Light version</a><a class="ps-to-dark" href="?theme=dark">Back to dark</a></p>
 </div>
 <script>
 var $=function(i){return document.getElementById(i);};
@@ -210,7 +269,7 @@ $('refreshBtn').addEventListener('click',update);
 update();tick();setInterval(tick,1000);setInterval(update,60000);
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
-<script src="../assets/js/btcchart.js?v=et11" defer></script>
+<script src="../assets/js/btcchart.js?v=et10" defer></script>
 <script>
 /* Hash rate chart, V2 6 Nov 2026: mempool.space daily hashrate, live fetch,
    last-good values on failure — same rule as the rest of this page. */
@@ -226,11 +285,13 @@ function drawHash(){
   var pos=vs.filter(function(v){return v>0;}),floor=pos.length?Math.min.apply(null,pos):1e-9;
   var val=function(v){return HASH.log?Math.log10(Math.max(v,floor)):v;};
   var lo=val(mn),hi=val(mx);
-  x.strokeStyle='rgba(255,255,255,.06)';x.lineWidth=1;[0.25,0.5,0.75].forEach(function(f){x.beginPath();x.moveTo(0,180*f);x.lineTo(860,180*f);x.stroke();});
+  /* Theme-aware grid + labels (psC, from the head script): the orange series
+     colour stays in both themes. */
+  x.strokeStyle=psC('rgba(255,255,255,.06)','rgba(15,23,42,.10)');x.lineWidth=1;[0.25,0.5,0.75].forEach(function(f){x.beginPath();x.moveTo(0,180*f);x.lineTo(860,180*f);x.stroke();});
   var g=x.createLinearGradient(0,0,0,180);g.addColorStop(0,'rgba(249,115,22,.35)');g.addColorStop(1,'rgba(249,115,22,0)');
   x.beginPath();pts.forEach(function(p,i){var px=i/(pts.length-1)*860,py=165-(val(p[1])-lo)/(hi-lo||1)*140;if(i===0)x.moveTo(px,py);else x.lineTo(px,py);});
   x.strokeStyle='#f97316';x.lineWidth=2.5;x.stroke();x.lineTo(860,180);x.lineTo(0,180);x.closePath();x.fillStyle=g;x.fill();
-  x.fillStyle='#94a3b8';x.font='12px Inter,sans-serif';x.fillText(hashDay(pts[0][0]),4,14);x.fillText(hashDay(pts[pts.length-1][0]),860-52,14);
+  x.fillStyle=psC('#94a3b8','#475569');x.font='12px Inter,sans-serif';x.fillText(hashDay(pts[0][0]),4,14);x.fillText(hashDay(pts[pts.length-1][0]),860-52,14);
   x.fillText(fmtHash(mx)+' peak',4,178);
 }
 function fetchHash(){
