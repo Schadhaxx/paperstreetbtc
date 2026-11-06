@@ -69,5 +69,26 @@ chk('compare.js BACKUP_LBL wording', /close from backup source until Yahoo\\?'s 
 chk('compare.js note names backup date', /BTC close '\+fd\+' from backup source/.test(cmp));
 chk('no price/NAV mutation in s2 OI-001 block', !/closes\[|nav\(|VAL\[/.test(s2.slice(s2.indexOf('OI-001'), s2.indexOf('OI-001') + 500)));
 
+
+/* Scope fix: BPROV/BFB must be declared in init() before function run (shared with fetch) */
+chk('compare.js declares BPROV/BFB before function run', (() => {
+  const iDecl = cmp.indexOf('let BPROV=[],BFB={}');
+  const iRun = cmp.indexOf('function run(){');
+  return iDecl >= 0 && iRun > iDecl;
+})());
+chk('compare.js has exactly one BPROV/BFB declaration', (cmp.match(/let BPROV=\[\],BFB=\{\}/g) || []).length === 1);
+chk('compare.js helpers before function run', (() => {
+  const iRun = cmp.indexOf('function run(){');
+  return cmp.indexOf('const isBtcFb=') < iRun && cmp.indexOf('const fbDate=') < iRun && cmp.indexOf('const BACKUP_LBL=') < iRun && cmp.indexOf('const prov=') < iRun;
+})());
+
+/* Cache-busters bumped with this revision */
+const idx = fs.readFileSync(path.join(R, 'index.html'), 'utf8');
+const cmpHtml = fs.readFileSync(path.join(R, 'compare/index.html'), 'utf8');
+const customHtml = fs.readFileSync(path.join(R, 'custom/index.html'), 'utf8');
+chk('index.html s2.js cache-buster >= p4', /s2\.js\?v=p4/.test(idx));
+chk('compare/index.html compare.js cache-buster >= et2', /compare\.js\?v=et2/.test(cmpHtml));
+chk('custom/index.html compare.js cache-buster >= et2', /compare\.js\?v=et2/.test(customHtml));
+
 console.log('OI-001 LABEL TESTS', n, 'FAIL', f);
 process.exit(f ? 1 : 0);
