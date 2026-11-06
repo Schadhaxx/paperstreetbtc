@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script>(function(){var q=null,s=null;try{q=new URLSearchParams(location.search).get("theme")}catch(e){}try{s=localStorage.getItem("ps-theme")}catch(e){}var on=q==="light"||(q!=="dark"&&s==="light");if(on)document.documentElement.setAttribute("data-theme","light");try{if(q==="light")localStorage.setItem("ps-theme","light");else if(q==="dark"||(s!==null&&s!=="light"))localStorage.removeItem("ps-theme")}catch(e){}})();window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Paperstreet BTC — Bitcoin made simple.</title>
@@ -23,8 +23,12 @@
 <link rel="preload" href="assets/fonts/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/outfit-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="assets/css/nav.css?v=cr015">
+<link rel="stylesheet" href="assets/css/nav.css?v=cr016">
 <link rel="stylesheet" href="assets/css/xfollow.css">
+<link rel="stylesheet" href="light.css?v=lm4">
+<script src="chart-theme.js?v=lm1"></script>
+<link rel="canonical" href="https://paperstreetbtc.com/">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Paperstreet BTC","url":"https://paperstreetbtc.com/","description":"Four sleeves for passive Bitcoin stacking. Spot BTC is the hurdle. DCA dividends into Bitcoin. Leave it alone. Not financial advice."}</script>
 </head>
 <body>
 <header class="header">
@@ -41,7 +45,7 @@
       <a href="#rules">Rules</a>
       <a href="#articles">Articles</a>
       <a href="compare/index.html">Compare</a>
-      <a href="custom/index.html">Tools</a>
+      <a href="compare/index.html#calculator">Tools</a>
       <a href="recap/index.html">Monthly recap</a>
     </nav>
     <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
@@ -53,7 +57,7 @@
     <a href="#rules">Rules</a>
     <a href="#articles">Articles</a>
     <a href="compare/index.html">Compare</a>
-    <a href="custom/index.html">Tools</a>
+    <a href="compare/index.html#calculator">Tools</a>
     <a href="recap/index.html">Monthly recap</a>
   </div>
 </header>
@@ -163,6 +167,7 @@
         </article>
       </div>
     </div>
+    <p class="note"><a href="compare/index.html#weights">Copy the weights →</a></p>
   </div>
 </section>
 
@@ -473,16 +478,17 @@
 <script src="assets/js/s2.js?v=p4" defer></script>
 
 <script src="assets/js/s3.js" defer></script>
+<script src="assets/js/theme-pill.js?v=lm2" defer></script>
 
 
-<script>if(location.hash==="#copy-weights")location.replace("custom/index.html#weights");</script>
+<script>if(location.hash==="#copy-weights")location.replace("compare/index.html#weights");</script>
 
 <script src="assets/js/s5.js?v=et1" defer></script>
 <script src="assets/js/s6.js?v=p3" defer></script>
 <script src="assets/js/vehicle.js?v=d3" defer></script>
 <script src="assets/js/s7.js" defer></script>
 <script src="assets/js/s8.js" defer></script>
-<script src="assets/js/btcchart.js?v=et5" defer></script>
+<script src="assets/js/btcchart.js?v=et10" defer></script>
 <script src="assets/js/ui5.js?v=cr015" defer></script>
 <script src="assets/js/xfollow.js" defer></script>
 <script src="assets/js/maple-screener.js" defer></script>
