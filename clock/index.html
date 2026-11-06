@@ -87,6 +87,7 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 <div class="grid">
 <div class="tile"><div class="lab">Sats per $10 / $100</div><div class="v" id="sats10100">—</div><div class="s">Stacking math, at a glance.</div></div>
 <div class="tile"><div class="lab">Difficulty adjustment</div><div class="v" id="diffPct">—</div><div class="s" id="diffDetail">—</div></div>
+<div class="tile"><div class="lab">Network fees · fastest</div><div class="v" id="feesTile">—</div><div class="s" id="feesDetail">—</div></div>
 </div>
 
 <div style="margin-top:16px">
@@ -155,8 +156,8 @@ var ok=false,hero=$('hero');
 if(r[0].status==='fulfilled'){var np=r[0].value.usd;if(lastPrice!=null&&np!==lastPrice){hero.classList.remove('up','down');void hero.offsetWidth;hero.classList.add(np>lastPrice?'up':'down');}
 lastPrice=np;lastChg=r[0].value.chg;ok=true;}
 if(r[1].status==='fulfilled'){lastBlock=r[1].value.height;lastBlockTs=r[1].value.ts;ok=true;}
-if(r[2].status==='fulfilled'&&r[2].value)$('fees').textContent=r[2].value.fastestFee;
-if(r[3].status==='fulfilled'&&r[3].value)$('mempool').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting in the mempool.';
+if(r[2].status==='fulfilled'&&r[2].value){$('fees').textContent=r[2].value.fastestFee;$('feesTile').textContent=r[2].value.fastestFee+' sat/vB';}
+if(r[3].status==='fulfilled'&&r[3].value){$('mempool').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting in the mempool.';$('feesDetail').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting · mempool.space';}
 if(r[4].status==='fulfilled'&&r[4].value){var d=r[4].value;$('diffPct').textContent=d.progressPercent.toFixed(1)+'%';$('diffDetail').textContent='Through the current difficulty epoch · estimated change '+(d.difficultyChange>=0?'+':'')+d.difficultyChange.toFixed(1)+'%';$('diff').textContent='Difficulty epoch '+d.progressPercent.toFixed(1)+'% complete · estimated change '+(d.difficultyChange>=0?'+':'')+d.difficultyChange.toFixed(1)+'%.';}
 if(r[5].status==='fulfilled')drawSpark(r[5].value);
 if(ok){lastFetch=Date.now();failed=false;}else{failed=true;}

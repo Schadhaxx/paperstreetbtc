@@ -41,6 +41,11 @@ hash rate chart, and a tap on the hero price scrolls to the chart.
   badge is now the owl (`assets/img/owl-220.png`/`.webp`, the site logo)
   + "PAPERSTREETBTC CLOCK", and the page title is "PaperStreetBtc Clock —
   Bitcoin Block Clock".
+- Fees tile (6 Nov): fees were only in the rotating Network screen, visible
+  ~1/4 of the time. A third tile in the grid now shows them always: fastest
+  fee in sat/vB (big) + the unconfirmed transaction count (small), same
+  mempool.space feed as the Network screen, updated on the same 60s cycle.
+  No new fetch — it reuses the existing fees + mempool calls.
 - Pins: `btcchart.js` et6→et7 on index/screener, et2→et3 on
   compare/custom/recap. OI-001 pins preserved (s2.js p4, compare.js et2).
 
