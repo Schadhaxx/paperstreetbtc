@@ -85,6 +85,7 @@ if [ $ok -ne 1 ] || ! kill -0 $SRV 2>/dev/null; then echo "FATAL: local server o
 echo "server: pid $SRV on 127.0.0.1:$PORT, et.js matches staged build"
 run datatest_strict env DT_HISTORY="$WORK/history.json" python3 "$WORK/stage/tools/datatest.py" "http://127.0.0.1:$PORT"
 run headless python3 tests/headless_matrix.py "http://127.0.0.1:$PORT" "$WORK/shots"
+run ytd_chart_scroll python3 tests/test_ytd_chart_scroll.py "http://127.0.0.1:$PORT"  # YTD chart must not trap phone/iPad scroll (Speed Option 2 rollback)
 kill $SRV 2>/dev/null; wait $SRV 2>/dev/null || true; SRV=""
 dfcheck end
 echo; echo "=== SUMMARY (logs + screenshots in $WORK; removed on exit unless KEEP_WORK=1)"; for k in $(printf '%s\n' "${!RES[@]}" | sort); do printf '  %-28s %s\n' "$k" "${RES[$k]}"; done
