@@ -51,7 +51,12 @@ approximate — the page says so. Choice is remembered (localStorage).
   USD/CAD toggle in the hero (CoinGecko now fetched with `usd,cad` +
   24h changes for both; Coinbase fallback is USD-only, so the CAD button
   disables while no CAD price has ever loaded; last-good CAD values are
-  kept across a failed fetch).
+  kept across a failed fetch). The chart always starts in USD, even for a
+  returning CAD user — the CAD rate is not known until the first fetch
+  lands, and starting the chart in CAD with rate 1 would label USD values
+  as C$ for the first minute while the hero (correctly) stays USD;
+  `applyCurrency()` flips chart + hero to CAD together once the rate
+  arrives.
 - Hash rate chart — `mempool.space /api/v1/mining/hashrate/{1w,1m,3m}`,
   daily buckets, live fetch, 60s refresh, last-good values on failure (same
   rule as the rest of the page). Current hashrate shown big (≥1000 EH/s as

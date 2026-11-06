@@ -129,7 +129,12 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 </div>
 <script>
 var $=function(i){return document.getElementById(i);};
-var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,lastCadChg=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;var cur='USD';try{var sc=localStorage.getItem('ps-clock-cur');if(sc==='CAD'||sc==='USD')cur=sc;}catch(e){}var fxRate=1;window.BC_CUR={code:cur,rate:1};
+var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,lastCadChg=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;var cur='USD';try{var sc=localStorage.getItem('ps-clock-cur');if(sc==='CAD'||sc==='USD')cur=sc;}catch(e){}var fxRate=1;/* The chart always starts in USD, even for a returning CAD user:
+   the CAD rate is not known until the first fetch lands, and starting the
+   chart in CAD with rate 1 would label USD values as C$ for the first
+   minute while the hero (correctly) stays USD. applyCurrency() flips
+   chart + hero to CAD together once the rate arrives. */
+window.BC_CUR={code:'USD',rate:1};
 function fmt(n){return n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});}
 function fmtPrice(n,code){if(n==null)return '—';var s=code==='CAD'?'C$':'$';return s+Math.round(n).toLocaleString('en-US');}
 function effCur(){return cur==='CAD'&&lastCad!=null?'CAD':'USD';}
