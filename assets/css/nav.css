@@ -39,7 +39,16 @@
      pill itself is already the chart trigger, so hide the chip at phone width.
      That leaves ~27px of margin even at a 6-digit BTC price. */
   .header>.header-inner>.hdr-tick .lp-cv{display:none}
+  /* Menu button move (6 Nov 2026): the header is still cramped at 390px and
+     the menu button was cut off at the right edge. Take it out of the header
+     row and float it under the Paperstreet logo (top-left, below the header).
+     Absolutely positioned against the sticky .header, so it tracks the header
+     as it sticks. The menu panel drops below the floater when open, so the
+     button stays visible and tappable to close. */
+  .header>.header-inner>.mnav-btn{position:absolute;top:calc(100% + 10px);left:14px;margin:0!important;z-index:30;background:var(--surface,#0f172a);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+  .header>.mnav-menu{top:calc(100% + 62px)}
 }
+@media (max-width:374px){.header>.header-inner>.mnav-btn{left:10px}} /* logo sits at 10px here */
 /* BTC chart */
 .bc-dim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60}
 .bc-w{position:fixed;z-index:61;background:#0b1224;border:1px solid rgba(34,211,238,.3);box-shadow:0 24px 60px rgba(0,0,0,.6);font-family:Inter,sans-serif;color:#e5e7eb}
