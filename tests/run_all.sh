@@ -51,6 +51,7 @@ run money_format node tests/test_money_format.js                             # -
 run oi001_label node tests/test_oi001_label.js                              # OI-001: backup-source BTC label keyed on fallback_sources
 run oi001_compare_scope python3 tests/test_oi001_compare_scope.py           # OI-001: Compare #pvChartNote backup label with crafted Coinbase day (scope fix)
 run speed_option2 node tests/test_speed_option2.js                         # Speed Option 2: native YTD + lazy BTC panel
+run needchart_retry python3 tests/test_needchart_retry.py                 # Speed Option 2: Chart.js inject fail then retry
 run cmp_daily_py python3 tests/test_cmp_daily.py                             # comparison chart: daily-close generator fixtures + shipped file
 run cmp_js node tests/test_cmp.js                                            # comparison chart: rebase math, ranges, SPCX rule, shipped closes
 TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"

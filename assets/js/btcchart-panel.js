@@ -556,17 +556,19 @@ function needChart(){
   if(window.Chart)return Promise.resolve();
   if(chartP)return chartP;
   chartP=new Promise(function(ok,no){
-    var existing=document.querySelector('script[src*="chart.umd.min.js"]');
-    if(existing){
-      if(window.Chart){ok();return;}
-      existing.addEventListener('load',function(){ok();});
-      existing.addEventListener('error',function(){chartP=null;no(new Error('chart'));});
-      return;
-    }
+    /* Leftover tags from a failed inject have no Chart and no second load event —
+       remove them so a retry starts a fresh script rather than hanging. */
+    document.querySelectorAll('script[src*="chart.umd.min.js"]').forEach(function(el){
+      if(!window.Chart)el.remove();
+    });
     var s=document.createElement('script');
     s.src=U('../vendor/chart.umd.min.js');
     s.onload=function(){ok();};
-    s.onerror=function(){chartP=null;no(new Error('chart'));};
+    s.onerror=function(){
+      if(s.parentNode)s.parentNode.removeChild(s);
+      chartP=null;
+      no(new Error('chart'));
+    };
     document.head.appendChild(s);
   });
   return chartP;

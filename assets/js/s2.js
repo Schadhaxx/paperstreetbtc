@@ -317,7 +317,7 @@ function bindHover(){
   });
   canvas.addEventListener('pointermove', ev => { setHover(hit(ev)); });
   canvas.addEventListener('pointerup', ev => {
-    // Keep sticky index on touch/pen tap so tooltips remain readable on phones
+    // Sticky on touch/pen tap so the tooltip stays readable until scroll/dismiss
     if (ev.pointerType === 'mouse') return;
     setHover(hit(ev));
   });
@@ -327,6 +327,16 @@ function bindHover(){
   // Touch fallbacks for older WebViews without PointerEvent
   canvas.addEventListener('touchstart', ev => { if (ev.touches[0]) setHover(hit(ev)); }, { passive: true });
   canvas.addEventListener('touchmove', ev => { if (ev.touches[0]) setHover(hit(ev)); }, { passive: true });
+  // Phone: dismiss sticky tooltip when the page scrolls
+  const dismissHover = () => {
+    if (_hover === -1) return;
+    _hover = -1; window.__YTD_HOVER = -1; drawNative();
+  };
+  window.addEventListener('scroll', dismissHover, { passive: true, capture: true });
+  document.addEventListener('touchmove', ev => {
+    // finger drag that scrolls the page (not the chart capture) — dismiss
+    if (!canvas.contains(ev.target)) dismissHover();
+  }, { passive: true });
   window.addEventListener('resize', () => { if (_series) drawNative(); });
   // Redraw when theme tokens change (light mode later); do not ship light CSS here
   const redrawTheme = () => { if (_series) drawNative(); };

@@ -27,6 +27,7 @@ function showErr(){
     el.id='btcChartErr';
     el.setAttribute('role','alert');
     el.setAttribute('aria-live','assertive');
+    el.setAttribute('tabindex','-1');
     el.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10000;max-width:min(420px,92vw);padding:12px 14px;border-radius:10px;background:#121a2e;color:#e8eef7;border:1px solid rgba(255,255,255,.16);font:14px Inter,system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.45)';
     document.body.appendChild(el);
   }
@@ -41,7 +42,7 @@ function loadPanel(){
   if(P.panelP)return P.panelP;
   P.panelP=new Promise(function(ok,no){
     var s=document.createElement('script');
-    s.src=U('btcchart-panel.js?v=et7');
+    s.src=U('btcchart-panel.js?v=et8');
     s.onload=function(){ok();};
     s.onerror=function(){P.panelP=null;no(new Error('btc panel'));};
     document.head.appendChild(s);
