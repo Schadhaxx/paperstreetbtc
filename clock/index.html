@@ -27,7 +27,6 @@ body:after{content:"";position:fixed;inset:0;background-image:linear-gradient(rg
 .price{font-size:clamp(52px,12vw,104px);font-weight:950;letter-spacing:-.04em;line-height:.95;margin:8px 0 6px;text-shadow:0 0 34px rgba(34,211,238,.25);font-variant-numeric:tabular-nums}
 .price span{color:#22d3ee}
 .chg{font-size:19px;font-weight:900}.up{color:#22c55e}.down{color:#ef4444}
-canvas.spark{display:block;width:100%;height:110px;margin-top:14px}
 .ticker{overflow:hidden;border:1px solid #1e293b;border-radius:999px;margin-top:16px;background:rgba(15,23,42,.8);white-space:nowrap}
 .ticker div{display:inline-block;padding:9px 0;animation:scroll 30s linear infinite;font-weight:700;color:#cbd5e1}
 .ticker b{color:#22d3ee}@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
@@ -58,17 +57,28 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 .bc-inline .bc-grab{display:none!important}
 .bc-inline .bc-box{height:340px}
 @media(max-width:640px){.bc-inline{padding:16px!important}.bc-inline .bc-box{height:300px}}
+/* MERGED, 6 Nov 2026: the whole popover chart lives inside the hero card —
+   the big price IS the chart header. The chart's own card chrome is
+   stripped and its duplicate price line hides. */
+.hero.merged .bc-inline{border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
+.hero.merged .bc-px{display:none}
+.hero.merged .bc-box{height:320px}
+@media(max-width:640px){.hero.merged .bc-box{height:280px}}
+/* USD / CAD toggle, 6 Nov 2026 */
+.cur-toggle{display:inline-flex;border:1px solid #1e293b;border-radius:999px;overflow:hidden}
+.cur-toggle button{background:transparent;color:#94a3b8;border:0;padding:6px 12px;font-weight:900;font-size:12px;cursor:pointer;font-family:inherit}
+.cur-toggle button.on{background:#22d3ee;color:#041018}
+.cur-toggle button:disabled{opacity:.4;cursor:default}
 </style></head><body><div class="wrap">
 <div class="brand"><picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture><span class="brand-text">Paperstreet <span>BTC</span></span><span class="brand-clock">· Clock</span></div>
 <div class="top"><span class="lab">₿ Bitcoin Block Clock</span><span class="live"><i></i>LIVE · AUTO</span><span class="et" id="now">—</span></div>
 
-<div class="hero" id="hero">
-<div class="lab">Bitcoin · USD · live price</div>
+<div class="hero merged" id="hero">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="lab" id="curLab">Bitcoin · USD · live price</span><span class="cur-toggle" role="group" aria-label="Price currency"><button type="button" data-cur="USD" class="on">USD $</button><button type="button" data-cur="CAD">CAD $</button></span></div>
 <div class="price" id="price">—</div>
 <div><span class="chg" id="chg">—</span> <span style="color:#94a3b8">· 24h &nbsp;·&nbsp; <span id="updated">connecting…</span></span></div>
-<canvas class="spark" id="spark" width="860" height="110"></canvas>
-<div style="display:flex;justify-content:space-between;color:#64748b;font-size:12px"><span>24h sparkline · CoinGecko</span><span id="nextRefresh">next refresh 60s</span></div>
-<div style="color:#64748b;font-size:12px;margin-top:6px">Tap the price to jump to the full BTC chart below ↓</div>
+<div id="bcInline" style="margin-top:16px"></div>
+<div style="display:flex;justify-content:space-between;color:#64748b;font-size:12px;margin-top:10px"><span>Full chart · the homepage BTC popover, live here</span><span id="nextRefresh">next refresh 60s</span></div>
 </div>
 
 <div class="ticker"><div id="tick1"></div><div id="tick2"></div></div>
@@ -78,8 +88,8 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 <div class="ringrow"><svg class="ring" viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" id="ringfg" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg>
 <div><div style="font-size:26px;font-weight:900" id="blockAge">—</div><p>Since the last block. The ring fills toward a 10-minute target — blocks do not arrive on a schedule, so this is a gauge, not a promise.</p></div></div></div>
 
-<div class="pane" id="pane-sats"><div class="lab">sats per dollar</div><div class="big"><span id="sats">—</span> sats</div>
-<p id="sats100">—</p><p>One dollar buys this many satoshis right now. When the price falls, this number climbs — that is the whole point of watching it.</p></div>
+<div class="pane" id="pane-sats"><div class="lab" id="satsLab">sats per dollar</div><div class="big"><span id="sats">—</span> sats</div>
+<p id="sats100">—</p><p id="satsBlurb">One dollar buys this many satoshis right now. When the price falls, this number climbs — that is the whole point of watching it.</p></div>
 
 <div class="pane" id="pane-halving"><div class="lab">Next halving · the clock inside the clock</div><div class="big">#<span id="halving">—</span></div>
 <p id="halvingDetail">—</p><div class="bar"><i id="halvbar" style="width:0%"></i></div><p id="halvPct">—</p></div>
@@ -92,15 +102,9 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 </div>
 
 <div class="grid">
-<div class="tile"><div class="lab">Sats per $10 / $100</div><div class="v" id="sats10100">—</div><div class="s">Stacking math, at a glance.</div></div>
+<div class="tile"><div class="lab" id="satsTileLab">Sats per $10 / $100</div><div class="v" id="sats10100">—</div><div class="s">Stacking math, at a glance.</div></div>
 <div class="tile"><div class="lab">Difficulty adjustment</div><div class="v" id="diffPct">—</div><div class="s" id="diffDetail">—</div></div>
 <div class="tile"><div class="lab">Network fees · fastest</div><div class="v" id="feesTile">—</div><div class="s" id="feesDetail">—</div></div>
-</div>
-
-<div style="margin-top:16px">
-<div class="lab">Bitcoin chart · the full popover chart, live here</div>
-<p style="color:#94a3b8;line-height:1.55;margin:6px 0 14px">The exact chart from the homepage BTC popover — same ranges (1D to Max), same candles, same S&amp;P 500 / Gold / MSTR compare lines. Tap a candle for its details.</p>
-<div id="bcInline"></div>
 </div>
 
 <div style="margin-top:16px;border:1px solid #1e293b;border-radius:24px;padding:22px;background:rgba(15,23,42,.85)">
@@ -120,33 +124,40 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 <p style="color:#64748b;font-size:12px;margin:10px 0 0" id="hashNote">Daily averages · refreshes every 60s</p>
 </div>
 
-<div class="foot"><span>Price: CoinGecko, Coinbase fallback · Blocks, fees, difficulty: mempool.space · <button class="refresh" id="refreshBtn" type="button">Refresh now</button></span><span id="status"></span></div>
-<p class="note">Live data when online; if a feed fails it holds the last good value and says so — it never invents a number. This page is not linked from the rest of the site. <a href="../index.html" style="color:#22d3ee">← Back to PaperStreet</a> · Not financial advice.</p>
+<div class="foot"><span>Price: CoinGecko (USD + CAD), Coinbase fallback (USD only) · CAD chart values converted at the live USD→CAD rate · Blocks, fees, difficulty: mempool.space · <button class="refresh" id="refreshBtn" type="button">Refresh now</button></span><span id="status"></span></div>
+<p class="note">Live data when online; if a feed fails it holds the last good value and says so — it never invents a number. Switch to CAD to see the price in Canadian dollars: the chart converts at the live USD→CAD rate, so historical CAD values use today's rate and are approximate. This page is not linked from the rest of the site. <a href="../index.html" style="color:#22d3ee">← Back to PaperStreet</a> · Not financial advice.</p>
 </div>
 <script>
 var $=function(i){return document.getElementById(i);};
-var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;
+var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,lastCadChg=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;var cur='USD';try{var sc=localStorage.getItem('ps-clock-cur');if(sc==='CAD'||sc==='USD')cur=sc;}catch(e){}var fxRate=1;window.BC_CUR={code:cur,rate:1};
 function fmt(n){return n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});}
+function fmtPrice(n,code){if(n==null)return '—';var s=code==='CAD'?'C$':'$';return s+Math.round(n).toLocaleString('en-US');}
+function effCur(){return cur==='CAD'&&lastCad!=null?'CAD':'USD';}
 function etNow(){try{return new Date().toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'})+' ET';}catch(e){return new Date().toLocaleString();}}
-function fetchPrice(){return fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){if(!d.bitcoin||typeof d.bitcoin.usd!=='number')throw 0;return {usd:d.bitcoin.usd,chg:d.bitcoin.usd_24h_change,src:'CoinGecko'};})
-.catch(function(){return fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,chg:null,src:'Coinbase'};});});}
+function fetchPrice(){return fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,cad&include_24hr_change=true',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){if(!d.bitcoin||typeof d.bitcoin.usd!=='number')throw 0;return {usd:d.bitcoin.usd,cad:typeof d.bitcoin.cad==='number'?d.bitcoin.cad:null,chg:d.bitcoin.usd_24h_change,cadChg:typeof d.bitcoin.cad_24h_change==='number'?d.bitcoin.cad_24h_change:null,src:'CoinGecko'};})
+.catch(function(){return fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,cad:null,chg:null,cadChg:null,src:'Coinbase'};});});}
 function fetchBlock(){return fetch('https://mempool.space/api/blocks',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(a){if(!a||!a[0])throw 0;return {height:a[0].height,ts:a[0].timestamp*1000};});}
 function fetchFees(){return fetch('https://mempool.space/api/v1/fees/recommended',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).catch(function(){return null;});}
 function fetchMempool(){return fetch('https://mempool.space/api/mempool',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).catch(function(){return null;});}
 function fetchDiff(){return fetch('https://mempool.space/api/v1/difficulty-adjustment',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).catch(function(){return null;});}
-function fetchSpark(){return fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){return d.prices||[];}).catch(function(){return [];});}
-function drawSpark(pts){var c=$('spark'),x=c.getContext('2d');x.clearRect(0,0,860,110);if(pts.length<2)return;var vs=pts.map(function(p){return p[1];}),mn=Math.min.apply(null,vs),mx=Math.max.apply(null,vs);
-var g=x.createLinearGradient(0,0,0,110);g.addColorStop(0,'rgba(34,211,238,.35)');g.addColorStop(1,'rgba(34,211,238,0)');x.beginPath();pts.forEach(function(p,i){var px=i/(pts.length-1)*860,py=100-(p[1]-mn)/(mx-mn||1)*90;if(i===0)x.moveTo(px,py);else x.lineTo(px,py);});x.strokeStyle='#22d3ee';x.lineWidth=2.5;x.stroke();x.lineTo(860,110);x.lineTo(0,110);x.closePath();x.fillStyle=g;x.fill();}
 function showPane(i){pi=i;panes.forEach(function(id,j){$(id).classList.toggle('on',j===i);});document.querySelectorAll('.dots button').forEach(function(b,j){b.classList.toggle('on',j===i);});}
 document.querySelectorAll('.dots button').forEach(function(b,j){b.addEventListener('click',function(){showPane(j);});});
 $('pauseBtn').addEventListener('click',function(){paused=!paused;this.textContent=paused?'Resume rotation':'Pause rotation';});
 setInterval(function(){if(!paused)showPane((pi+1)%panes.length);},12000);
 function render(){
-if(lastPrice!=null){var prev=lastPrice;$('price').innerHTML=fmt(lastPrice).replace('$','<span>$</span>');
-var s=Math.floor(100000000/lastPrice);$('sats').textContent=s.toLocaleString('en-US');$('sats100').textContent=(s*100).toLocaleString('en-US')+' sats per $100';
+var ec=effCur(),pv=ec==='CAD'?lastCad:lastPrice;
+$('curLab').textContent='Bitcoin · '+ec+' · live price';
+document.querySelectorAll('.cur-toggle button').forEach(function(b){b.classList.toggle('on',b.dataset.cur===cur);b.disabled=b.dataset.cur==='CAD'&&lastCad==null;});
+if(pv!=null){var sym=ec==='CAD'?'C$':'$';$('price').innerHTML=fmtPrice(pv,ec).replace(sym,'<span>'+sym+'</span>');
+var s=Math.floor(100000000/pv);$('sats').textContent=s.toLocaleString('en-US');
+$('satsLab').textContent=ec==='CAD'?'sats per Canadian dollar':'sats per dollar';
+$('sats100').textContent=(s*100).toLocaleString('en-US')+' sats per '+sym+'100';
+$('satsBlurb').textContent=ec==='CAD'?'One Canadian dollar buys this many satoshis right now. When the price falls, this number climbs — that is the whole point of watching it.':'One dollar buys this many satoshis right now. When the price falls, this number climbs — that is the whole point of watching it.';
+$('satsTileLab').textContent=ec==='CAD'?'Sats per C$10 / C$100':'Sats per $10 / $100';
 $('sats10100').textContent=(s*10).toLocaleString('en-US')+' / '+(s*100).toLocaleString('en-US');
-var t='₿ '+fmt(lastPrice)+' &nbsp;·&nbsp; '+s.toLocaleString('en-US')+' sats/$ &nbsp;·&nbsp; ';if(lastBlock)$('tick1').innerHTML=t+'Block #'+lastBlock.toLocaleString('en-US')+' &nbsp;·&nbsp; '+t+'Block #'+lastBlock.toLocaleString('en-US');$('tick2').innerHTML=$('tick1').innerHTML;}
-if(typeof lastChg==='number'){$('chg').textContent=(lastChg>=0?'▲ ':'▼ ')+Math.abs(lastChg).toFixed(1)+'% · 24h';$('chg').className='chg '+(lastChg>=0?'up':'down');}
+var t='₿ '+fmtPrice(pv,ec)+' &nbsp;·&nbsp; '+s.toLocaleString('en-US')+' sats/'+sym+' &nbsp;·&nbsp; ';if(lastBlock)$('tick1').innerHTML=t+'Block #'+lastBlock.toLocaleString('en-US')+' &nbsp;·&nbsp; '+t+'Block #'+lastBlock.toLocaleString('en-US');$('tick2').innerHTML=$('tick1').innerHTML;}
+var ac=ec==='CAD'?lastCadChg:lastChg;
+if(typeof ac==='number'){$('chg').textContent=(ac>=0?'▲ ':'▼ ')+Math.abs(ac).toFixed(1)+'% · 24h';$('chg').className='chg '+(ac>=0?'up':'down');}
 if(lastBlock!=null){$('height').textContent='#'+lastBlock.toLocaleString('en-US');
 var next=Math.ceil((lastBlock+1)/210000)*210000,rem=next-lastBlock,lastH=next-210000,pct=((lastBlock-lastH)/210000*100);
 $('halving').textContent=next.toLocaleString('en-US');$('halvingDetail').textContent=rem.toLocaleString('en-US')+' blocks to go · roughly '+(rem*10/1440).toFixed(0)+' days at 10 min per block';
@@ -154,26 +165,32 @@ $('halvbar').style.width=pct.toFixed(1)+'%';$('halvPct').textContent=pct.toFixed
 if(lastFetch){$('updated').textContent='Updated '+new Date(lastFetch).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});}
 $('status').innerHTML=failed?'<span class="err">A feed failed — showing last good values, retrying.</span>':'';
 }
+function applyCurrency(){var ec=effCur();window.BC_CUR={code:ec,rate:ec==='CAD'?fxRate:1};if(typeof window.BC_setCurrency==='function')window.BC_setCurrency(ec,ec==='CAD'?fxRate:1);}
+function setCur(code){cur=code;try{localStorage.setItem('ps-clock-cur',code);}catch(e){}applyCurrency();render();}
+document.querySelectorAll('.cur-toggle button').forEach(function(b){b.addEventListener('click',function(){if(b.disabled)return;setCur(b.dataset.cur);});});
 function tick(){var now=Date.now();$('now').textContent=etNow();
 if(lastBlockTs){var s=Math.max(0,Math.floor((now-lastBlockTs)/1000)),m=Math.floor(s/60),ss=String(s%60).padStart(2,'0');
 $('blockAge').textContent=m+'m '+ss+'s ago';$('ringfg').style.strokeDashoffset=(326.7*(1-Math.min(1,s/600))).toFixed(1);}
 var left=Math.max(0,Math.ceil((nextAt-now)/1000));$('nextRefresh').textContent='next refresh '+left+'s';}
-function update(){Promise.allSettled([fetchPrice(),fetchBlock(),fetchFees(),fetchMempool(),fetchDiff(),fetchSpark()]).then(function(r){
+function update(){Promise.allSettled([fetchPrice(),fetchBlock(),fetchFees(),fetchMempool(),fetchDiff()]).then(function(r){
 var ok=false,hero=$('hero');
 if(r[0].status==='fulfilled'){var np=r[0].value.usd;if(lastPrice!=null&&np!==lastPrice){hero.classList.remove('up','down');void hero.offsetWidth;hero.classList.add(np>lastPrice?'up':'down');}
-lastPrice=np;lastChg=r[0].value.chg;ok=true;}
+lastPrice=np;lastChg=r[0].value.chg;
+if(typeof r[0].value.cad==='number'){lastCad=r[0].value.cad;lastCadChg=r[0].value.cadChg;}
+if(lastPrice&&lastCad)fxRate=lastCad/lastPrice;
+if(effCur()==='CAD')applyCurrency();
+ok=true;}
 if(r[1].status==='fulfilled'){lastBlock=r[1].value.height;lastBlockTs=r[1].value.ts;ok=true;}
 if(r[2].status==='fulfilled'&&r[2].value){$('fees').textContent=r[2].value.fastestFee;$('feesTile').textContent=r[2].value.fastestFee+' sat/vB';}
 if(r[3].status==='fulfilled'&&r[3].value){$('mempool').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting in the mempool.';$('feesDetail').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting · mempool.space';}
 if(r[4].status==='fulfilled'&&r[4].value){var d=r[4].value;$('diffPct').textContent=d.progressPercent.toFixed(1)+'%';$('diffDetail').textContent='Through the current difficulty epoch · estimated change '+(d.difficultyChange>=0?'+':'')+d.difficultyChange.toFixed(1)+'%';$('diff').textContent='Difficulty epoch '+d.progressPercent.toFixed(1)+'% complete · estimated change '+(d.difficultyChange>=0?'+':'')+d.difficultyChange.toFixed(1)+'%.';}
-if(r[5].status==='fulfilled')drawSpark(r[5].value);
 if(ok){lastFetch=Date.now();failed=false;}else{failed=true;}
 nextAt=Date.now()+60000;render();});}
 $('refreshBtn').addEventListener('click',update);
 update();tick();setInterval(tick,1000);setInterval(update,60000);
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
-<script src="../assets/js/btcchart.js?v=et7" defer></script>
+<script src="../assets/js/btcchart.js?v=et8" defer></script>
 <script>
 /* Hash rate chart, V2 6 Nov 2026: mempool.space daily hashrate, live fetch,
    last-good values on failure — same rule as the rest of this page. */
@@ -217,7 +234,4 @@ document.querySelectorAll('#hashRg button').forEach(function(b){b.addEventListen
 document.querySelector('#hashRg button[data-h="1m"]').style.background='#22d3ee';document.querySelector('#hashRg button[data-h="1m"]').style.color='#041018';
 $('hashLog').addEventListener('click',function(){HASH.log=!HASH.log;this.style.background=HASH.log?'#22d3ee':'';this.style.color=HASH.log?'#041018':'';drawHash();});
 fetchHash();setInterval(fetchHash,60000);
-/* Tap the hero price to jump to the chart */
-$('price').style.cursor='pointer';
-$('price').addEventListener('click',function(){var el=$('bcInline');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
 </script></body></html>
