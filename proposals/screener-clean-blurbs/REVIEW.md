@@ -42,7 +42,7 @@ The pill looked small because its price was 19px while the tile values it sits a
 - Data and numbers: verified by script — pack numbers identical to main except notes removed/shortened and version 9 → 10; all four weekly files untouched (44 weeks each); no price, close, YTD, or day-count value changed.
 - Behaviour: status lines, clock split, BTC pill click/chart, vehicle toggle, search/filter/sort, comparison chart, candle-tap pills — all untouched. The row "+" mechanism itself is untouched; it simply has no note to show except SPCX.
 - Cache busters (required so the new text is actually served, not cached): pack `?v=8` → `?v=9` in `screener.js`; indicator-chart script `?v=vix1` → `?v=clean1` in `screener.html`.
-- No STRF/STRK/STRD wording introduced (grep-verified). No banner text changed. No INFO-PACKAGE change.
+- No wording about other Strategy preferred series introduced (grep-verified). No banner text changed. No INFO-PACKAGE change.
 
 ## Checks run
 - `node --check` passes on `screener.js` and `screener-indicator-chart.js`.
