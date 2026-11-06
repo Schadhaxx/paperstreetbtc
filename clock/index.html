@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bitcoin Block Clock — PaperStreet</title>
+<link rel="stylesheet" href="../assets/css/nav.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#05070f;color:#e8eef7;font-family:Inter,system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;background:radial-gradient(600px 300px at 15% -5%,rgba(34,211,238,.22),transparent 60%),radial-gradient(700px 350px at 90% 10%,rgba(249,115,22,.18),transparent 60%),radial-gradient(500px 400px at 50% 110%,rgba(34,197,94,.12),transparent 60%);pointer-events:none}
+body:after{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;mask-image:radial-gradient(ellipse at 50% 0%,black 30%,transparent 90%)}
+.wrap{max-width:920px;margin:0 auto;padding:22px 16px 50px;position:relative}
+.badge{display:inline-block;background:linear-gradient(90deg,#f97316,#22d3ee);color:#05070f;font-weight:900;font-size:12px;border-radius:999px;padding:4px 12px;letter-spacing:.05em}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 4px}
+.lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#94a3b8;font-weight:800}
+.live{display:flex;align-items:center;gap:8px;font-size:12px;color:#22c55e;font-weight:900}.live i{width:10px;height:10px;border-radius:50%;background:#22c55e;box-shadow:0 0 14px #22c55e;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.et{font-variant-numeric:tabular-nums;color:#cbd5e1;font-weight:700}
+.hero{border:1px solid rgba(34,211,238,.35);border-radius:28px;padding:26px 24px;background:linear-gradient(180deg,rgba(30,41,59,.85),rgba(7,11,24,.9));box-shadow:0 0 0 1px rgba(255,255,255,.03),0 30px 80px rgba(0,0,0,.6),0 0 60px rgba(34,211,238,.08);transition:box-shadow .6s}
+.hero.up{box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 70px rgba(34,197,94,.22)}
+.hero.down{box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 70px rgba(239,68,68,.22)}
+.price{font-size:clamp(52px,12vw,104px);font-weight:950;letter-spacing:-.04em;line-height:.95;margin:8px 0 6px;text-shadow:0 0 34px rgba(34,211,238,.25);font-variant-numeric:tabular-nums}
+.price span{color:#22d3ee}
+.chg{font-size:19px;font-weight:900}.up{color:#22c55e}.down{color:#ef4444}
+canvas.spark{display:block;width:100%;height:110px;margin-top:14px}
+.ticker{overflow:hidden;border:1px solid #1e293b;border-radius:999px;margin-top:16px;background:rgba(15,23,42,.8);white-space:nowrap}
+.ticker div{display:inline-block;padding:9px 0;animation:scroll 30s linear infinite;font-weight:700;color:#cbd5e1}
+.ticker b{color:#22d3ee}@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.focus{margin-top:18px;border:1px solid #1e293b;border-radius:24px;padding:22px;background:rgba(15,23,42,.85);min-height:230px;position:relative;overflow:hidden}
+.focus h2{margin:0 0 4px;font-size:22px}.focus p{color:#94a3b8;line-height:1.55;margin:6px 0}
+.big{font-size:clamp(38px,9vw,64px);font-weight:950;letter-spacing:-.03em;margin:8px 0;font-variant-numeric:tabular-nums}
+.big span{color:#facc15}
+.pane{display:none;animation:fade .6s}.pane.on{display:block}@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.dots{display:flex;gap:8px;margin-top:14px}.dots button{width:34px;height:8px;border-radius:999px;border:0;background:#1e293b;cursor:pointer;padding:0}.dots button.on{background:#22d3ee;box-shadow:0 0 12px #22d3ee}
+.ringrow{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.ring{width:132px;height:132px;flex:0 0 auto;transform:rotate(-90deg)}.ring circle{fill:none;stroke-width:10}.ring .bg{stroke:#1e293b}.ring .fg{stroke:#22d3ee;stroke-linecap:round;filter:drop-shadow(0 0 8px #22d3ee);transition:stroke-dashoffset 1s}
+.bar{height:12px;background:#1e293b;border-radius:999px;overflow:hidden;margin:12px 0}.bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#f97316,#facc15,#22c55e);background-size:200% 100%;animation:shimmer 3s linear infinite}
+@keyframes shimmer{from{background-position:0 0}to{background-position:200% 0}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+.tile{border:1px solid #1e293b;border-radius:18px;padding:16px;background:rgba(15,23,42,.8)}
+.tile .v{font-size:28px;font-weight:900;margin-top:6px;font-variant-numeric:tabular-nums}.tile .s{color:#94a3b8;font-size:13px;margin-top:4px;line-height:1.5}
+.foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;color:#94a3b8;font-size:13px}
+button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211,238,.5);border-radius:999px;padding:7px 14px;font-weight:900;cursor:pointer}
+.err{color:#f97316;font-weight:800}
+.note{color:#94a3b8;font-size:13px;line-height:1.6;margin-top:20px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* V2 6 Nov 2026: the whole BTC popover chart lives here, inline.
+   The popover's own styles come from nav.css; these overrides turn the
+   fixed dialog into a normal section of the page. */
+.bc-inline{position:static!important;width:100%!important;max-width:none!important;border:1px solid #1e293b!important;border-radius:24px!important;padding:22px!important;box-shadow:none!important;background:rgba(15,23,42,.85)!important;z-index:auto!important}
+.bc-inline .bc-x{display:none}
+.bc-inline .bc-grab{display:none!important}
+.bc-inline .bc-box{height:340px}
+@media(max-width:640px){.bc-inline{padding:16px!important}.bc-inline .bc-box{height:300px}}
+</style></head><body><div class="wrap">
+<span class="badge">₿ BITCOIN BLOCK CLOCK</span>
+<div class="top"><span class="lab">₿ Bitcoin Block Clock</span><span class="live"><i></i>LIVE · AUTO</span><span class="et" id="now">—</span></div>
+
+<div class="hero" id="hero">
+<div class="lab">Bitcoin · USD · live price</div>
+<div class="price" id="price">—</div>
+<div><span class="chg" id="chg">—</span> <span style="color:#94a3b8">· 24h &nbsp;·&nbsp; <span id="updated">connecting…</span></span></div>
+<canvas class="spark" id="spark" width="860" height="110"></canvas>
+<div style="display:flex;justify-content:space-between;color:#64748b;font-size:12px"><span>24h sparkline · CoinGecko</span><span id="nextRefresh">next refresh 60s</span></div>
+<div style="color:#64748b;font-size:12px;margin-top:6px">Tap the price to jump to the full BTC chart below ↓</div>
+</div>
+
+<div class="ticker"><div id="tick1"></div><div id="tick2"></div></div>
+
+<div class="focus">
+<div class="pane on" id="pane-block"><div class="lab">Now mining · block height</div><div class="big" id="height">—</div>
+<div class="ringrow"><svg class="ring" viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" id="ringfg" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg>
+<div><div style="font-size:26px;font-weight:900" id="blockAge">—</div><p>Since the last block. The ring fills toward a 10-minute target — blocks do not arrive on a schedule, so this is a gauge, not a promise.</p></div></div></div>
+
+<div class="pane" id="pane-sats"><div class="lab">sats per dollar</div><div class="big"><span id="sats">—</span> sats</div>
+<p id="sats100">—</p><p>One dollar buys this many satoshis right now. When the price falls, this number climbs — that is the whole point of watching it.</p></div>
+
+<div class="pane" id="pane-halving"><div class="lab">Next halving · the clock inside the clock</div><div class="big">#<span id="halving">—</span></div>
+<p id="halvingDetail">—</p><div class="bar"><i id="halvbar" style="width:0%"></i></div><p id="halvPct">—</p></div>
+
+<div class="pane" id="pane-net"><div class="lab">Network right now</div><div class="big"><span id="fees">—</span> <span style="font-size:24px;color:#94a3b8">sat/vB fastest</span></div>
+<p id="mempool">—</p><p id="diff">—</p></div>
+
+<div class="dots"><button data-pane="pane-block" class="on" aria-label="Block"></button><button data-pane="pane-sats" aria-label="Sats"></button><button data-pane="pane-halving" aria-label="Halving"></button><button data-pane="pane-net" aria-label="Network"></button></div>
+<p style="color:#64748b;font-size:12px;margin:10px 0 0">Focus screens rotate on their own every 12 seconds — tap a dot to jump. <button class="refresh" id="pauseBtn" type="button">Pause rotation</button></p>
+</div>
+
+<div class="grid">
+<div class="tile"><div class="lab">Sats per $10 / $100</div><div class="v" id="sats10100">—</div><div class="s">Stacking math, at a glance.</div></div>
+<div class="tile"><div class="lab">Difficulty adjustment</div><div class="v" id="diffPct">—</div><div class="s" id="diffDetail">—</div></div>
+</div>
+
+<div style="margin-top:16px">
+<div class="lab">Bitcoin chart · the full popover chart, live here</div>
+<p style="color:#94a3b8;line-height:1.55;margin:6px 0 14px">The exact chart from the homepage BTC popover — same ranges (1D to Max), same candles, same S&amp;P 500 / Gold / MSTR compare lines. Tap a candle for its details.</p>
+<div id="bcInline"></div>
+</div>
+
+<div style="margin-top:16px;border:1px solid #1e293b;border-radius:24px;padding:22px;background:rgba(15,23,42,.85)">
+<div class="lab">Network hash rate · mempool.space</div>
+<div class="big"><span id="hashNow">—</span></div>
+<p style="color:#94a3b8;line-height:1.55;margin:6px 0">Total computing power securing Bitcoin, right now. 1 EH/s = 10¹⁸ hashes per second.</p>
+<canvas id="hashC" width="860" height="180" style="display:block;width:100%;height:180px"></canvas>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px" id="hashRg">
+<button class="refresh" data-h="1w" type="button">1W</button>
+<button class="refresh" data-h="1m" type="button">1M</button>
+<button class="refresh" data-h="3m" type="button">3M</button>
+</div>
+<p style="color:#64748b;font-size:12px;margin:10px 0 0" id="hashNote">Daily averages · refreshes every 60s</p>
+</div>
+
+<div class="foot"><span>Price: CoinGecko, Coinbase fallback · Blocks, fees, difficulty: mempool.space · <button class="refresh" id="refreshBtn" type="button">Refresh now</button></span><span id="status"></span></div>
+<p class="note">Live data when online; if a feed fails it holds the last good value and says so — it never invents a number. This page is not linked from the rest of the site. <a href="../index.html" style="color:#22d3ee">← Back to PaperStreet</a> · Not financial advice.</p>
+</div>
+<script>
+var $=function(i){return document.getElementById(i);};
+var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;
+function fmt(n){return n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});}
+function etNow(){try{return new Date().toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'})+' ET';}catch(e){return new Date().toLocaleString();}}
+function fetchPrice(){return fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){if(!d.bitcoin||typeof d.bitcoin.usd!=='number')throw 0;return {usd:d.bitcoin.usd,chg:d.bitcoin.usd_24h_change,src:'CoinGecko'};})
+.catch(function(){return fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,chg:null,src:'Coinbase'};});});}
+function fetchBlock(){return fetch('https://mempool.space/api/blocks',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(a){if(!a||!a[0])throw 0;return {height:a[0].height,ts:a[0].timestamp*1000};});}
+function fetchFees(){return fetch('https://mempool.space/api/v1/fees/recommended',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).catch(function(){return null;});}
+function fetchMempool(){return fetch('https://mempool.space/api/mempool',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).catch(function(){return null;});}
+function fetchDiff(){return fetch('https://mempool.space/api/v1/difficulty-adjustment',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).catch(function(){return null;});}
+function fetchSpark(){return fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){return d.prices||[];}).catch(function(){return [];});}
+function drawSpark(pts){var c=$('spark'),x=c.getContext('2d');x.clearRect(0,0,860,110);if(pts.length<2)return;var vs=pts.map(function(p){return p[1];}),mn=Math.min.apply(null,vs),mx=Math.max.apply(null,vs);
+var g=x.createLinearGradient(0,0,0,110);g.addColorStop(0,'rgba(34,211,238,.35)');g.addColorStop(1,'rgba(34,211,238,0)');x.beginPath();pts.forEach(function(p,i){var px=i/(pts.length-1)*860,py=100-(p[1]-mn)/(mx-mn||1)*90;if(i===0)x.moveTo(px,py);else x.lineTo(px,py);});x.strokeStyle='#22d3ee';x.lineWidth=2.5;x.stroke();x.lineTo(860,110);x.lineTo(0,110);x.closePath();x.fillStyle=g;x.fill();}
+function showPane(i){pi=i;panes.forEach(function(id,j){$(id).classList.toggle('on',j===i);});document.querySelectorAll('.dots button').forEach(function(b,j){b.classList.toggle('on',j===i);});}
+document.querySelectorAll('.dots button').forEach(function(b,j){b.addEventListener('click',function(){showPane(j);});});
+$('pauseBtn').addEventListener('click',function(){paused=!paused;this.textContent=paused?'Resume rotation':'Pause rotation';});
+setInterval(function(){if(!paused)showPane((pi+1)%panes.length);},12000);
+function render(){
+if(lastPrice!=null){var prev=lastPrice;$('price').innerHTML=fmt(lastPrice).replace('$','<span>$</span>');
+var s=Math.floor(100000000/lastPrice);$('sats').textContent=s.toLocaleString('en-US');$('sats100').textContent=(s*100).toLocaleString('en-US')+' sats per $100';
+$('sats10100').textContent=(s*10).toLocaleString('en-US')+' / '+(s*100).toLocaleString('en-US');
+var t='₿ '+fmt(lastPrice)+' &nbsp;·&nbsp; '+s.toLocaleString('en-US')+' sats/$ &nbsp;·&nbsp; ';if(lastBlock)$('tick1').innerHTML=t+'Block #'+lastBlock.toLocaleString('en-US')+' &nbsp;·&nbsp; '+t+'Block #'+lastBlock.toLocaleString('en-US');$('tick2').innerHTML=$('tick1').innerHTML;}
+if(typeof lastChg==='number'){$('chg').textContent=(lastChg>=0?'▲ ':'▼ ')+Math.abs(lastChg).toFixed(1)+'% · 24h';$('chg').className='chg '+(lastChg>=0?'up':'down');}
+if(lastBlock!=null){$('height').textContent='#'+lastBlock.toLocaleString('en-US');
+var next=Math.ceil((lastBlock+1)/210000)*210000,rem=next-lastBlock,lastH=next-210000,pct=((lastBlock-lastH)/210000*100);
+$('halving').textContent=next.toLocaleString('en-US');$('halvingDetail').textContent=rem.toLocaleString('en-US')+' blocks to go · roughly '+(rem*10/1440).toFixed(0)+' days at 10 min per block';
+$('halvbar').style.width=pct.toFixed(1)+'%';$('halvPct').textContent=pct.toFixed(1)+'% of the way to the next halving';}
+if(lastFetch){$('updated').textContent='Updated '+new Date(lastFetch).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});}
+$('status').innerHTML=failed?'<span class="err">A feed failed — showing last good values, retrying.</span>':'';
+}
+function tick(){var now=Date.now();$('now').textContent=etNow();
+if(lastBlockTs){var s=Math.max(0,Math.floor((now-lastBlockTs)/1000)),m=Math.floor(s/60),ss=String(s%60).padStart(2,'0');
+$('blockAge').textContent=m+'m '+ss+'s ago';$('ringfg').style.strokeDashoffset=(326.7*(1-Math.min(1,s/600))).toFixed(1);}
+var left=Math.max(0,Math.ceil((nextAt-now)/1000));$('nextRefresh').textContent='next refresh '+left+'s';}
+function update(){Promise.allSettled([fetchPrice(),fetchBlock(),fetchFees(),fetchMempool(),fetchDiff(),fetchSpark()]).then(function(r){
+var ok=false,hero=$('hero');
+if(r[0].status==='fulfilled'){var np=r[0].value.usd;if(lastPrice!=null&&np!==lastPrice){hero.classList.remove('up','down');void hero.offsetWidth;hero.classList.add(np>lastPrice?'up':'down');}
+lastPrice=np;lastChg=r[0].value.chg;ok=true;}
+if(r[1].status==='fulfilled'){lastBlock=r[1].value.height;lastBlockTs=r[1].value.ts;ok=true;}
+if(r[2].status==='fulfilled'&&r[2].value)$('fees').textContent=r[2].value.fastestFee;
+if(r[3].status==='fulfilled'&&r[3].value)$('mempool').textContent=r[3].value.count.toLocaleString('en-US')+' unconfirmed transactions waiting in the mempool.';
+if(r[4].status==='fulfilled'&&r[4].value){var d=r[4].value;$('diffPct').textContent=d.progressPercent.toFixed(1)+'%';$('diffDetail').textContent='Through the current difficulty epoch · estimated change '+(d.difficultyChange>=0?'+':'')+d.difficultyChange.toFixed(1)+'%';$('diff').textContent='Difficulty epoch '+d.progressPercent.toFixed(1)+'% complete · estimated change '+(d.difficultyChange>=0?'+':'')+d.difficultyChange.toFixed(1)+'%.';}
+if(r[5].status==='fulfilled')drawSpark(r[5].value);
+if(ok){lastFetch=Date.now();failed=false;}else{failed=true;}
+nextAt=Date.now()+60000;render();});}
+$('refreshBtn').addEventListener('click',update);
+update();tick();setInterval(tick,1000);setInterval(update,60000);
+</script>
+<script src="../assets/js/et.js?v=et2" defer></script>
+<script src="../assets/js/btcchart.js?v=et7" defer></script>
+<script>
+/* Hash rate chart, V2 6 Nov 2026: mempool.space daily hashrate, live fetch,
+   last-good values on failure — same rule as the rest of this page. */
+var HASH={range:'1m',data:null,lastGood:null};
+function fmtHash(eh){return eh>=1000?(eh/1000).toFixed(2)+' ZH/s':Math.round(eh).toLocaleString('en-US')+' EH/s';}
+function hashDay(ts){try{return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'});}catch(e){return '';};}
+function drawHash(){
+  var c=$('hashC');if(!c)return;var x=c.getContext('2d');x.clearRect(0,0,860,180);
+  var pts=HASH.data||HASH.lastGood;if(!pts||pts.length<2)return;
+  var vs=pts.map(function(p){return p[1];}),mn=Math.min.apply(null,vs),mx=Math.max.apply(null,vs);
+  x.strokeStyle='rgba(255,255,255,.06)';x.lineWidth=1;[0.25,0.5,0.75].forEach(function(f){x.beginPath();x.moveTo(0,180*f);x.lineTo(860,180*f);x.stroke();});
+  var g=x.createLinearGradient(0,0,0,180);g.addColorStop(0,'rgba(249,115,22,.35)');g.addColorStop(1,'rgba(249,115,22,0)');
+  x.beginPath();pts.forEach(function(p,i){var px=i/(pts.length-1)*860,py=165-(p[1]-mn)/(mx-mn||1)*140;if(i===0)x.moveTo(px,py);else x.lineTo(px,py);});
+  x.strokeStyle='#f97316';x.lineWidth=2.5;x.stroke();x.lineTo(860,180);x.lineTo(0,180);x.closePath();x.fillStyle=g;x.fill();
+  x.fillStyle='#94a3b8';x.font='12px Inter,sans-serif';x.fillText(hashDay(pts[0][0]),4,14);x.fillText(hashDay(pts[pts.length-1][0]),860-52,14);
+  x.fillText(fmtHash(mx)+' peak',4,178);
+}
+function fetchHash(){
+  fetch('https://mempool.space/api/v1/mining/hashrate/'+HASH.range,{cache:'no-store'}).then(function(res){if(!res.ok)throw 0;return res.json();}).then(function(d){
+    if(!d||!Array.isArray(d.hashrates)||d.hashrates.length<2)throw 0;
+    HASH.data=d.hashrates.map(function(h){return [h.timestamp*1000,h.avgHashrate/1e18];});
+    HASH.lastGood=HASH.data;
+    var cur=(typeof d.currentHashrate==='number'?d.currentHashrate/1e18:0);
+    if(cur>0)$('hashNow').textContent=fmtHash(cur);
+    $('hashNote').textContent='Daily averages · '+HASH.data.length+' points · mempool.space · refreshes every 60s';
+    drawHash();
+  }).catch(function(){if(HASH.lastGood){HASH.data=HASH.lastGood;drawHash();$('hashNote').textContent='Feed failed — showing last good values, retrying.';}});
+}
+document.querySelectorAll('#hashRg button').forEach(function(b){b.addEventListener('click',function(){HASH.range=b.dataset.h;document.querySelectorAll('#hashRg button').forEach(function(x){x.style.background='';x.style.color='';});b.style.background='#22d3ee';b.style.color='#041018';fetchHash();});});
+document.querySelector('#hashRg button[data-h="1m"]').style.background='#22d3ee';document.querySelector('#hashRg button[data-h="1m"]').style.color='#041018';
+fetchHash();setInterval(fetchHash,60000);
+/* Tap the hero price to jump to the chart */
+$('price').style.cursor='pointer';
+$('price').addEventListener('click',function(){var el=$('bcInline');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});});
+</script></body></html>
