@@ -116,7 +116,9 @@ approximate — the page says so. Choice is remembered (localStorage).
    radius 8) + "Paperstreet BTC" with BTC in cyan + a muted "· Clock".
 7. CAD toggle: tap CAD — hero price, 24h %, sats, ticker, and chart all
    show C$ (axis labels, pill, title `BTC/CAD`, range summary `· CAD`);
-   tap USD — everything back to $. Choice survives a reload.
+   tap USD — everything back to $. Choice survives a reload. While the
+   CAD price has never loaded, the CAD button is disabled and its tooltip
+   says so ("CAD price loading — waiting on CoinGecko…").
 8. Regression: homepage BTC pill popover still opens, draws, and closes
    normally, in USD; screener popover unchanged.
 9. Phone width (390px): merged hero readable, range pills scroll, no

@@ -74,7 +74,7 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 <div class="top"><span class="lab">₿ Bitcoin Block Clock</span><span class="live"><i></i>LIVE · AUTO</span><span class="et" id="now">—</span></div>
 
 <div class="hero merged" id="hero">
-<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="lab" id="curLab">Bitcoin · USD · live price</span><span class="cur-toggle" role="group" aria-label="Price currency"><button type="button" data-cur="USD" class="on">USD $</button><button type="button" data-cur="CAD">CAD $</button></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="lab" id="curLab">Bitcoin · USD · live price</span><span class="cur-toggle" role="group" aria-label="Price currency"><button type="button" data-cur="USD" class="on" title="Show price in US dollars">USD $</button><button type="button" data-cur="CAD" title="Show price in Canadian dollars">CAD $</button></span></div>
 <div class="price" id="price">—</div>
 <div><span class="chg" id="chg">—</span> <span style="color:#94a3b8">· 24h &nbsp;·&nbsp; <span id="updated">connecting…</span></span></div>
 <div id="bcInline" style="margin-top:16px"></div>
@@ -147,7 +147,7 @@ setInterval(function(){if(!paused)showPane((pi+1)%panes.length);},12000);
 function render(){
 var ec=effCur(),pv=ec==='CAD'?lastCad:lastPrice;
 $('curLab').textContent='Bitcoin · '+ec+' · live price';
-document.querySelectorAll('.cur-toggle button').forEach(function(b){b.classList.toggle('on',b.dataset.cur===cur);b.disabled=b.dataset.cur==='CAD'&&lastCad==null;});
+document.querySelectorAll('.cur-toggle button').forEach(function(b){b.classList.toggle('on',b.dataset.cur===cur);b.disabled=b.dataset.cur==='CAD'&&lastCad==null;if(b.dataset.cur==='CAD')b.title=lastCad==null?'CAD price loading — waiting on CoinGecko…':'Show price in Canadian dollars';});
 if(pv!=null){var sym=ec==='CAD'?'C$':'$';$('price').innerHTML=fmtPrice(pv,ec).replace(sym,'<span>'+sym+'</span>');
 var s=Math.floor(100000000/pv);$('sats').textContent=s.toLocaleString('en-US');
 $('satsLab').textContent=ec==='CAD'?'sats per Canadian dollar':'sats per dollar';
