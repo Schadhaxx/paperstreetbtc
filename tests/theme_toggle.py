@@ -18,7 +18,7 @@ from playwright.sync_api import sync_playwright
 
 PAGES = ['index.html', 'screener.html', 'compare/index.html', 'custom/index.html', 'recap/index.html'] + \
         ['recap/2026-%02d/index.html' % m for m in range(1, 12)]
-FOOTER = {'index.html'} | {'recap/2026-%02d/index.html' % m for m in range(1, 12)}
+FOOTER = {'recap/2026-%02d/index.html' % m for m in range(1, 12)}  # index: pill only, no footer theme link
 exe = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
 CLOCK = '2026-10-30T20:00:00Z'
 
@@ -107,7 +107,11 @@ with sync_playwright() as p:
                 pg.locator('#psThemePill').press('Enter')
             pg.wait_for_load_state('networkidle')
             check(pgname + ' pill Enter -> dark + cleared', pg.evaluate(TH) is None and pg.evaluate(ST) is None)
-        if pgname in FOOTER:
+        if pgname == 'index.html':
+            # home: floating pill only — no footer / alt theme links
+            check(pgname + ' no footer theme link', pg.locator('.ps-theme-link').count() == 0)
+            check(pgname + ' no alt theme link', pg.locator('.ps-theme-alt').count() == 0)
+        elif pgname in FOOTER:
             check(pgname + ' "Light version" visible in dark', pg.locator('.ps-theme-link .ps-to-light').is_visible() and not pg.locator('.ps-theme-link .ps-to-dark').is_visible())
             pg.locator('.ps-theme-link .ps-to-light').click(); pg.wait_for_load_state('networkidle')
             check(pgname + ' click Light version -> light + saved', pg.evaluate(TH) == 'light' and pg.evaluate(ST) == 'light')

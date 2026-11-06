@@ -24,7 +24,7 @@ from playwright.sync_api import sync_playwright
 
 PAGES = ['index.html', 'screener.html', 'compare/index.html', 'custom/index.html', 'recap/index.html'] + \
         ['recap/2026-%02d/index.html' % m for m in range(1, 12)]
-FOOTER = {'index.html'} | {'recap/2026-%02d/index.html' % m for m in range(1, 12)}
+FOOTER = {'recap/2026-%02d/index.html' % m for m in range(1, 12)}  # index has pill only (no footer theme link)
 WIDTHS = [390, 1280]
 CLOCK = '2026-10-30T20:00:00Z'
 exe = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
