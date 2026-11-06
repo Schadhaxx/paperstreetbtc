@@ -182,7 +182,7 @@
      owl 40px, radius 8, "Paperstreet BTC" in Outfit 600, BTC in accent
      cyan #22d3ee — not an orange pill. Outfit is self-hosted. */
   @font-face{font-family:'Outfit';font-style:normal;font-weight:600;font-display:swap;src:url(assets/fonts/outfit-normal-latin.woff2) format('woff2')}
-  .brand-row{display:flex;align-items:center;gap:12px;margin:0 0 14px}
+  .brand-row{display:flex;align-items:center;gap:12px;margin:0 0 14px;text-decoration:none;color:inherit}
   .brand-row img{width:40px;height:40px;border-radius:8px;object-fit:cover}
   .brand-name{font-family:Outfit,Inter,sans-serif;font-weight:600;font-size:1.15rem;letter-spacing:-.02em}
   .brand-btc{color:#22d3ee}
@@ -193,7 +193,7 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand-row"><picture><source type="image/webp" srcset="assets/img/owl-220.webp"><img src="assets/img/owl-220.png" alt="Paperstreet BTC"></picture><span class="brand-name">Paperstreet <span class="brand-btc">BTC</span></span></div>
+    <a class="brand-row" href="index.html"><picture><source type="image/webp" srcset="assets/img/owl-220.webp"><img src="assets/img/owl-220.png" alt="Paperstreet BTC"></picture><span class="brand-name">Paperstreet <span class="brand-btc">BTC</span></span></a>
     <h1>Your watchlist,<br>at a glance.</h1>
     <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Seven stocks, four market indicators. Trend bars show only the size of today's move — they are not price history.</p></details>
     <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>

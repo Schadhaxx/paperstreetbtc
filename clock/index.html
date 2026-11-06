@@ -13,7 +13,7 @@ body:after{content:"";position:fixed;inset:0;background-image:linear-gradient(rg
    (styles.css .brand/.logo/.brand-text): owl 40px, radius 8, "Paperstreet
    BTC" in Outfit 600, BTC in accent cyan #22d3ee. Outfit is self-hosted. */
 @font-face{font-family:'Outfit';font-style:normal;font-weight:600;font-display:swap;src:url(../assets/fonts/outfit-normal-latin.woff2) format('woff2')}
-.brand{display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
 .brand .logo{width:40px;height:40px;border-radius:8px;object-fit:cover}
 .brand-text{font-family:Outfit,Inter,sans-serif;font-weight:600;font-size:1.15rem;letter-spacing:-.02em}
 .brand-text span{color:#22d3ee}
@@ -128,7 +128,7 @@ html[data-theme="light"] body.ps-clock .bc-ct-lab{color:#475569}
 html[data-theme="light"] body.ps-clock .bc-ct button{color:#475569;border-color:#e2e8f0;background:#fff}
 html[data-theme="light"] body.ps-clock .bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
 </style></head><body class="ps-clock"><div class="wrap">
-<div class="brand"><picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture><span class="brand-text">Paperstreet <span>BTC</span></span><span class="brand-clock">· Clock</span></div>
+<a class="brand" href="../index.html"><picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture><span class="brand-text">Paperstreet <span>BTC</span></span><span class="brand-clock">· Clock</span></a>
 <div class="top"><span class="lab">₿ Bitcoin Block Clock</span><span class="live"><i></i>LIVE · AUTO</span><span class="et" id="now">—</span></div>
 
 <div class="hero merged" id="hero">
