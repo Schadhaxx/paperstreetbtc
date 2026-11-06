@@ -7,12 +7,14 @@ const sleeves = {
 
 // Everything below is computed on page load by PSBook (book.js) from the site's ledger (ledger.js) and its own daily closes (history.json):
 // points = January 1st, 2026 start (2025-12-31 close), each completed month-end session close, and the latest close. No stored NAVs.
-let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null, BTCPROV = false;
+let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null, BTCPROV = false, BTCFB = null;
 /* Vehicle toggle, Day 3: paths are rebuilt from book.js navV when the
    shared 'psvehicle' event fires. Benchmarks stay Spot BTC (the hurdle)
    in every mode; only the sleeve lines are re-priced. */
 let BKREF = null, vehicle = 'SPOT', vehLoaded = false;
-const PROVNOTE = () => ' · BTC close provisional until ' + ET.btcCloseLabel(B_LAST);
+const BACKUP_LBL = 'Spot BTC (close from backup source until Yahoo\'s final bar)';
+const isBtcFb = (fs, d) => { const base = String((fs[d] && fs[d].BTC) || 'yahoo').split('-')[0]; return base !== 'yahoo' && base !== 'ffill'; };
+const PROVNOTE = () => BTCFB ? (' · BTC close ' + BTCFB + ' from backup source until Yahoo\'s final bar') : (BTCPROV ? (' · BTC close provisional until ' + ET.btcCloseLabel(B_LAST)) : '');
 let B_LAST = null;
 const MN3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildFromBook(B){
@@ -22,10 +24,14 @@ function buildFromBook(B){
     sleeves[k].now = vals[k].at(-1); sleeves[k].ytd = (sleeves[k].now / 100000 - 1) * 100; });
   Object.keys(B.BM).forEach(k => { benchmarks[k] = ISO.map(d => Math.round(B.bench(k, d) * 100) / 100); });
   LASTC = B.close(B.last);
-  // BTC close provisional: history.json btc_provisional lists the latest date and its UTC-day bar (8 PM ET) has not closed yet
-  BTCPROV = (B.H.btc_provisional || []).indexOf(B.last) >= 0 && Date.now() < Date.parse(B.last + 'T00:00:00Z') + 864e5;
+  // OI-001: backup-source label keyed on fallback_sources (not time-window alone). Missing entry = Yahoo.
+  const fs = B.H.fallback_sources || {};
+  const fbDates = Object.keys(fs).filter(d => isBtcFb(fs, d)).sort();
+  BTCFB = fbDates.length ? fbDates[fbDates.length - 1] : null;
   B_LAST = B.last;
-  if (BTCPROV) benchNames.btc = 'Spot BTC (close provisional until ' + ET.btcCloseLabel(B.last) + ')';
+  const inWin = (B.H.btc_provisional || []).indexOf(B.last) >= 0 && Date.now() < Date.parse(B.last + 'T00:00:00Z') + 864e5 && !isBtcFb(fs, B.last);
+  BTCPROV = !!BTCFB || inWin;
+  benchNames.btc = BTCFB ? BACKUP_LBL : (inWin ? ('Spot BTC (close provisional until ' + ET.btcCloseLabel(B.last) + ')') : 'Spot BTC');
 }
 const benchColors = { btc: '#64748b', spy: '#94a3b8', qqq: '#cbd5e1', brk: '#a8a29e', gold: '#d4b06a', mstr: '#f97316' };
 const benchNames = { btc: 'Spot BTC', spy: 'SPY', qqq: 'QQQ', brk: 'BRK.B', gold: 'Gold (GLD)', mstr: 'MSTR' };
