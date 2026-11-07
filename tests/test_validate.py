@@ -79,7 +79,7 @@ NOW = dt.datetime(2026, 11, 6, 23, 30, tzinfo=dt.timezone.utc)
 
 
 def run_cli(tmp, hist, prices, ledger=None, prev_hist=None, prev_prices=None,
-            publish=False):
+            publish=False, now=NOW):
     """Write the fixtures, run validate.main(), return (exit_code, health)."""
     hp = os.path.join(tmp, 'history.json')
     pp = os.path.join(tmp, 'prices.json')
@@ -87,7 +87,7 @@ def run_cli(tmp, hist, prices, ledger=None, prev_hist=None, prev_prices=None,
         f.write(hist if isinstance(hist, str) else json.dumps(hist))
     with open(pp, 'w') as f:
         f.write(prices if isinstance(prices, str) else json.dumps(prices))
-    args = ['--history', hp, '--prices', pp, '--now', NOW.strftime('%Y-%m-%dT%H:%M:%SZ'),
+    args = ['--history', hp, '--prices', pp, '--now', now.strftime('%Y-%m-%dT%H:%M:%SZ'),
             '--out-health', os.path.join(tmp, 'health.json')]
     if ledger is not None:
         lp = os.path.join(tmp, 'ledger.js')
@@ -127,8 +127,9 @@ def main():
     chk('good data: exit 0', code == 0, 'exit=%s' % code)
     chk('good data: health status ok', health['status'] == 'ok')
     names = [r['check'] for r in health['validation']]
-    chk('good data: all 7 checks ran',
-        names == ['parse', 'sessions', 'values', 'jumps', 'tiingo', 'provisional', 'dividends'],
+    chk('good data: all 8 checks ran',
+        names == ['parse', 'sessions', 'values', 'jumps', 'tiingo', 'provisional', 'dividends',
+                  'inclusion'],
         ','.join(names))
     chk('good data: no fails or holds',
         all(r['status'] in ('pass', 'flag', 'skip') for r in health['validation']))
@@ -159,10 +160,11 @@ def main():
 
     h = copy.deepcopy(gh)
     del h['closes']['2026-11-04']
-    # A missing session also shrinks the history vs published, so both the
-    # parse (shrink) and sessions checks fail — intentional defence in depth.
+    # A missing session also shrinks the history vs published and drops a
+    # published date, so parse (shrink), sessions and inclusion all fail —
+    # intentional defence in depth.
     cases.append(('sessions: missing 2026-11-04', h, gp, GOOD_LEDGER,
-                  ['parse', 'sessions']))
+                  ['parse', 'sessions', 'inclusion']))
     h = copy.deepcopy(gh)
     h['closes']['2026-11-05']['TSLA'] = 0
     cases.append(('values: zero TSLA close', h, gp, GOOD_LEDGER, ['values']))
@@ -176,9 +178,13 @@ def main():
     cases.append(('jumps: TSLA +50% in one session', h, gp, GOOD_LEDGER, ['jumps']))
 
     h = copy.deepcopy(gh)
-    h['fallback_sources'] = {'2026-11-05': {'BTC': 'coinbase'}}
+    # 2026-11-06's UTC day is still open at NOW (23:30Z; final at 00:20Z),
+    # so an untagged fallback there must hold. (A fallback on a FINAL date
+    # untagged is legitimate — see the rework-2 tests below.)
+    h['fallback_sources'] = {'2026-11-06': {'BTC': 'coinbase'}}
     h['btc_provisional'] = []
-    cases.append(('provisional: BTC fallback untagged', h, gp, GOOD_LEDGER, ['provisional']))
+    cases.append(('provisional: BTC fallback untagged on open day', h, gp, GOOD_LEDGER,
+                  ['provisional']))
 
     h = copy.deepcopy(gh)
     h['btc_provisional'] = ['2026-11-09']
@@ -200,7 +206,11 @@ def main():
     del h['closes']['2026-11-05']
     h['btc_provisional'] = []
     h['fallback_sources'] = {}
-    cases.append(('parse: history shrank vs published', h, gp, GOOD_LEDGER, ['parse']))
+    # Dropping 2026-11-05 also orphans its tiingo_ref entry (a confirmation
+    # for a date with no close), so tiingo fails too — a dangling
+    # confirmation must not pass silently.
+    cases.append(('parse: history shrank vs published', h, gp, GOOD_LEDGER,
+                  ['parse', 'tiingo', 'inclusion']))
 
     for name, hist, prices, ledger, want in cases:
         code, health, pubdir = run_cli(tmp, hist, prices, ledger=ledger,
@@ -256,6 +266,230 @@ def main():
                         '--out-health', os.path.join(tmp, 'health2.json')],
                        capture_output=True, text=True)
     chk('CLI subprocess: exit 0 on good data', r.returncode == 0, r.stderr.strip()[:200])
+
+    # 8. Rework 2 (Grok Bot review #2).
+    NOW2 = dt.datetime(2026, 11, 7, 0, 30, tzinfo=dt.timezone.utc)  # past 2026-11-06 finality
+
+    # 8a. Atomic publish: a failure BETWEEN the two writes leaves the old pair.
+    pubdir2 = os.path.join(tmp, 'pub-atomic')
+    os.makedirs(pubdir2, exist_ok=True)
+    prev_h_bytes = json.dumps(gh).encode()
+    prev_p_bytes = json.dumps(gp).encode()
+    prev_health_bytes = b'{"status": "ok"}\n'
+    open(os.path.join(pubdir2, 'history.json'), 'wb').write(prev_h_bytes)
+    open(os.path.join(pubdir2, 'prices.json'), 'wb').write(prev_p_bytes)
+    open(os.path.join(pubdir2, 'health.json'), 'wb').write(prev_health_bytes)
+    h2 = copy.deepcopy(gh)
+    h2['closes']['2026-11-06']['BTC'] = 76000.0
+    hp2 = os.path.join(tmp, 'history2.json')
+    json.dump(h2, open(hp2, 'w'))
+    pp2 = os.path.join(tmp, 'prices2.json')
+    json.dump(gp, open(pp2, 'w'))
+    hh2 = os.path.join(tmp, 'health2x.json')
+    open(hh2, 'w').write('{"status": "ok"}\n')
+    calls = {'n': 0}
+    real_replace = V._replace
+
+    def flaky_replace(src, dst):
+        calls['n'] += 1
+        if calls['n'] == 2:
+            raise RuntimeError('injected failure between writes')
+        return real_replace(src, dst)
+
+    V._replace = flaky_replace
+    try:
+        try:
+            V.publish_snapshot([(hp2, 'history.json'), (pp2, 'prices.json'),
+                                (hh2, 'health.json')], pubdir2)
+            raised = False
+        except V.PublishError:
+            raised = True
+    finally:
+        V._replace = real_replace
+    chk('atomic publish: failure between writes raises PublishError', raised)
+    chk('atomic publish: old history kept byte-identical',
+        open(os.path.join(pubdir2, 'history.json'), 'rb').read() == prev_h_bytes)
+    chk('atomic publish: old prices kept byte-identical',
+        open(os.path.join(pubdir2, 'prices.json'), 'rb').read() == prev_p_bytes)
+    chk('atomic publish: old health kept byte-identical',
+        open(os.path.join(pubdir2, 'health.json'), 'rb').read() == prev_health_bytes)
+    chk('atomic publish: no temp files left behind',
+        not [f for f in os.listdir(pubdir2) if '.tmp-' in f],
+        str(os.listdir(pubdir2)))
+    names = V.publish_snapshot([(hp2, 'history.json'), (pp2, 'prices.json'),
+                                (hh2, 'health.json')], pubdir2)
+    chk('atomic publish: clean publish lands the whole new snapshot',
+        names == ['history.json', 'prices.json', 'health.json']
+        and json.load(open(os.path.join(pubdir2, 'history.json')))['closes']['2026-11-06']['BTC'] == 76000.0
+        and json.load(open(os.path.join(pubdir2, 'health.json')))['status'] == 'ok')
+
+    # 8b. Safe health writes: a failure mid-write leaves the previous health intact.
+    hh = os.path.join(tmp, 'health-safe.json')
+    V.atomic_write(hh, b'{"status": "ok"}\n')
+    calls['n'] = 1  # the next _replace (this write's rename) is call #2: fails
+    V._replace = flaky_replace
+    try:
+        try:
+            V.atomic_write(hh, b'{"status": "held"}\n')
+            raised = False
+        except RuntimeError:
+            raised = True
+    finally:
+        V._replace = real_replace
+    chk('safe health write: failure mid-write raises', raised)
+    chk('safe health write: previous health kept byte-identical',
+        open(hh, 'rb').read() == b'{"status": "ok"}\n')
+    chk('safe health write: no temp files left behind',
+        not [f for f in os.listdir(tmp) if f.startswith('.health-safe.json.tmp-')],
+        str([f for f in os.listdir(tmp) if 'health-safe' in f]))
+
+    # 8b2. End to end: a publish failure inside main() exits 1, old pair kept.
+    pubdir3 = os.path.join(tmp, 'pub-e2e')
+    os.makedirs(pubdir3, exist_ok=True)
+    open(os.path.join(pubdir3, 'history.json'), 'wb').write(prev_h_bytes)
+    open(os.path.join(pubdir3, 'prices.json'), 'wb').write(prev_p_bytes)
+    open(os.path.join(pubdir3, 'health.json'), 'wb').write(prev_health_bytes)
+    hp3 = os.path.join(tmp, 'history3.json')
+    json.dump(gh, open(hp3, 'w'))
+    pp3 = os.path.join(tmp, 'prices3.json')
+    json.dump(gp, open(pp3, 'w'))
+    calls['n'] = 0  # call #1: health write; call #2: first install -> fails
+    V._replace = flaky_replace
+    try:
+        code = V.main(['--history', hp3, '--prices', pp3, '--ledger',
+                       os.path.join(tmp, 'ledger.js'),
+                       '--now', NOW.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                       '--out-health', os.path.join(tmp, 'health-e2e.json'),
+                       '--publish-to', pubdir3])
+    finally:
+        V._replace = real_replace
+    chk('atomic publish (main): publish failure exits 1', code == 1, 'exit=%s' % code)
+    chk('atomic publish (main): old history kept byte-identical',
+        open(os.path.join(pubdir3, 'history.json'), 'rb').read() == prev_h_bytes)
+    chk('atomic publish (main): old prices kept byte-identical',
+        open(os.path.join(pubdir3, 'prices.json'), 'rb').read() == prev_p_bytes)
+    chk('atomic publish (main): old health kept byte-identical',
+        open(os.path.join(pubdir3, 'health.json'), 'rb').read() == prev_health_bytes)
+
+    # 8b3. On a hold, only health.json is published (hold visible, data untouched).
+    h_bad = copy.deepcopy(gh)
+    h_bad['closes']['2026-11-05']['TSLA'] = 0
+    code, health, pubdir = run_cli(tmp, h_bad, gp, ledger=GOOD_LEDGER,
+                                   prev_hist=gh, prev_prices=gp, publish=True)
+    chk('hold publish: health.json published with status held',
+        code == 1 and json.load(open(os.path.join(pubdir, 'health.json')))['status'] == 'held')
+    chk('hold publish: previous history still the published file',
+        json.load(open(os.path.join(pubdir, 'history.json')))['closes'] == gh['closes'])
+
+    # 8c. Inclusion: counts looking right must not hide a dropped date/symbol.
+    h = copy.deepcopy(gh)
+    for d in h['closes']:
+        del h['closes'][d]['TSLA']
+    del h['tiingo_ref']['2026-11-05']['TSLA']  # isolate: no dangling confirmation
+    code, health, _ = run_cli(tmp, h, gp, ledger=GOOD_LEDGER,
+                              prev_hist=gh, prev_prices=gp)
+    got = [r['check'] for r in health['validation'] if r['status'] == 'fail']
+    chk('inclusion: TSLA dropped from every session fails (counts unchanged)',
+        code == 1 and got == ['inclusion'], 'got=%s' % got)
+    chk('inclusion: hold_reason names the core symbol',
+        'TSLA' in (health.get('hold_reason') or ''))
+
+    h = copy.deepcopy(gh)
+    del h['closes']['2026-11-04']
+    prev4 = copy.deepcopy(gh)
+    del prev4['closes']['2026-11-06']  # same count as the candidate (4), different set
+    code, health, _ = run_cli(tmp, h, gp, ledger=GOOD_LEDGER,
+                              prev_hist=prev4, prev_prices=gp)
+    got = [r['check'] for r in health['validation'] if r['status'] == 'fail']
+    chk('inclusion: dropped date fails even when the count matches',
+        code == 1 and got == ['sessions', 'inclusion'], 'got=%s' % got)
+    chk('inclusion: hold_reason names the dropped date',
+        '2026-11-04' in (health.get('hold_reason') or ''))
+
+    p = copy.deepcopy(gp)
+    del p['stocks']['MU']
+    code, health, _ = run_cli(tmp, gh, p, ledger=GOOD_LEDGER,
+                              prev_hist=gh, prev_prices=gp)
+    got = [r['check'] for r in health['validation'] if r['status'] == 'fail']
+    chk('inclusion: dropped live symbol fails',
+        code == 1 and got == ['parse', 'inclusion'], 'got=%s' % got)
+    chk('inclusion: hold_reason names the dropped live symbol',
+        'MU' in (health.get('hold_reason') or ''))
+
+    # 8d. Legitimate Yahoo replacement: a Yahoo final bar replacing a
+    # fallback/provisional BTC value passes (value may change, tag drops).
+    prev_r = copy.deepcopy(gh)
+    prev_r['closes']['2026-11-06']['BTC'] = 75731.04
+    prev_r['btc_provisional'] = []
+    prev_r['tiingo_ref']['2026-11-06'] = {'BTC': {'v': 75732.244103,
+                                                  't': '2026-11-07T00:20:19Z'}}
+    h = copy.deepcopy(gh)
+    h['closes']['2026-11-06']['BTC'] = 76200.0
+    h['btc_provisional'] = []
+    h['fallback_sources'] = {}
+    h['tiingo_ref']['2026-11-06'] = {'BTC': {'v': 75732.244103,
+                                             't': '2026-11-07T00:20:19Z'}}
+    code, health, _ = run_cli(tmp, h, gp, ledger=GOOD_LEDGER,
+                              prev_hist=prev_r, prev_prices=gp, now=NOW2)
+    tg = [r for r in health['validation'] if r['check'] == 'tiingo'][0]
+    inc = [r for r in health['validation'] if r['check'] == 'inclusion'][0]
+    chk('yahoo replacement: exit 0, run passes',
+        code == 0 and health['status'] == 'ok', 'exit=%s' % code)
+    chk('yahoo replacement: tiingo flags (not holds) the stale confirmation',
+        tg['status'] == 'flag' and 'previously published value' in tg['detail'],
+        tg['detail'])
+    chk('yahoo replacement: inclusion names it legitimate',
+        inc['status'] == 'pass' and 'legitimate Yahoo replacement' in inc['detail'],
+        inc['detail'])
+
+    # 8e. Today's real-data shape: fallback BTC on a FINAL date, untagged, passes.
+    h = copy.deepcopy(gh)
+    h['btc_provisional'] = []
+    code, health, _ = run_cli(tmp, h, gp, ledger=GOOD_LEDGER,
+                              prev_hist=gh, prev_prices=gp, now=NOW2)
+    pv = [r for r in health['validation'] if r['check'] == 'provisional'][0]
+    chk('provisional: fallback on a final date, untagged, passes',
+        code == 0 and pv['status'] == 'pass', 'exit=%s prov=%s' % (code, pv['status']))
+
+    # 8f. A stale provisional tag (final date still tagged) flags, never holds.
+    h = copy.deepcopy(gh)
+    code, health, _ = run_cli(tmp, h, gp, ledger=GOOD_LEDGER,
+                              prev_hist=gh, prev_prices=gp, now=NOW2)
+    pv = [r for r in health['validation'] if r['check'] == 'provisional'][0]
+    chk('provisional: stale tag on a final date flags, does not hold',
+        code == 0 and pv['status'] == 'flag', 'exit=%s prov=%s' % (code, pv['status']))
+
+    # 8g. Tiingo confirmations: malformed or mismatched must FAIL, not pass silently.
+    tg_cases = []
+    h = copy.deepcopy(gh)
+    h['tiingo_ref']['2026-11-05']['TSLA']['v'] = '352.0'
+    tg_cases.append(('tiingo: non-numeric value', h))
+    h = copy.deepcopy(gh)
+    h['tiingo_ref']['2026-11-01'] = {'BTC': {'v': 75000.0, 't': '2026-11-06T00:20:24Z'}}
+    tg_cases.append(('tiingo: entry for a date with no close', h))
+    h = copy.deepcopy(gh)
+    h['tiingo_ref']['2026-11-05']['NOPE'] = {'v': 1.0, 't': '2026-11-06T00:20:24Z'}
+    tg_cases.append(('tiingo: entry for a symbol with no close', h))
+    h = copy.deepcopy(gh)
+    del h['tiingo_ref']['2026-11-05']['BTC']['t']
+    tg_cases.append(('tiingo: missing timestamp', h))
+    h = copy.deepcopy(gh)
+    h['tiingo_ref']['2026-11-06'] = {'BTC': {'v': 75732.0, 't': '2026-11-07T00:20:19Z'}}
+    tg_cases.append(('tiingo: BTC confirmation for a provisional date', h))
+    for name, hist in tg_cases:
+        code, health, _ = run_cli(tmp, hist, gp, ledger=GOOD_LEDGER,
+                                  prev_hist=gh, prev_prices=gp)
+        got = [r['check'] for r in health['validation'] if r['status'] == 'fail']
+        chk('%s: exit 1, fails tiingo' % name,
+            code == 1 and got == ['tiingo'], 'got=%s' % got)
+    # A recorded miss (v null, valid timestamp) is not a failure.
+    h = copy.deepcopy(gh)
+    h['tiingo_ref']['2026-11-05']['BTC'] = {'v': None, 't': '2026-11-06T00:20:24Z'}
+    code, health, _ = run_cli(tmp, h, gp, ledger=GOOD_LEDGER,
+                              prev_hist=gh, prev_prices=gp)
+    tg = [r for r in health['validation'] if r['check'] == 'tiingo'][0]
+    chk('tiingo: recorded miss (v null) passes',
+        code == 0 and tg['status'] == 'pass', 'exit=%s tiingo=%s' % (code, tg['status']))
 
     bad = [x for x in R if not x[1]]
     print('\n%d checks, %d failed' % (len(R), len(bad)))
