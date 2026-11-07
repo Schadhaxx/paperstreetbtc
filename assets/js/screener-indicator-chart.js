@@ -252,11 +252,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
           setTimeout(function () { if (liveEl) liveEl.style.color = ''; }, 700);
         }
       }
-      setStatus('Experimental live feel — LIVE · ' + countdownText() + ' · Tap a candle for its week.');
+      setStatus('LIVE · ' + countdownText() + ' · Tap a candle for its week.');
     } else {
       if (liveEl) liveEl.style.display = 'none';
       var last = state.weeks[state.weeks.length - 1];
-      setStatus('Experimental live feel — Market closed · Last close ' + state.cfg.format(last.close) + ' · ' + countdownText() + ' · Tap a candle for its week.');
+      setStatus('Market closed · Last close ' + state.cfg.format(last.close) + ' · ' + countdownText() + ' · Tap a candle for its week.');
     }
   }
   function refreshLive() {
