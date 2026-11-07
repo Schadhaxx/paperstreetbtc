@@ -71,6 +71,11 @@ button.refresh{background:transparent;color:#22d3ee;border:1px solid rgba(34,211
 .cur-toggle button{background:transparent;color:#94a3b8;border:0;padding:6px 12px;font-weight:900;font-size:12px;cursor:pointer;font-family:inherit}
 .cur-toggle button.on{background:#22d3ee;color:#041018}
 .cur-toggle button:disabled{opacity:.4;cursor:default}
+/* CAD loading state, 6 Nov 2026: while no CAD rate is known yet (first visit,
+   CoinGecko still fetching) the CAD button pulses visibly instead of sitting
+   faded and dead-looking. A tooltip alone never shows on touch. */
+.cur-toggle button.loading{animation:cadpulse 1.2s ease-in-out infinite}
+@keyframes cadpulse{50%{opacity:.35}}
 /* Muted text + hash card, as classes (not inline styles) so light mode can
    recolour them. .mut = #94a3b8, .mut2 = #64748b. */
 .mut{color:#94a3b8}
@@ -188,12 +193,26 @@ html[data-theme="light"] body.ps-clock .bc-ct button.on{background:#22d3ee;color
 </div>
 <script>
 var $=function(i){return document.getElementById(i);};
-var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,lastCadChg=null,lastEcon=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;var cur='USD';try{var sc=localStorage.getItem('ps-clock-cur');if(sc==='CAD'||sc==='USD')cur=sc;}catch(e){}var fxRate=1;/* The chart always starts in USD, even for a returning CAD user:
-   the CAD rate is not known until the first fetch lands, and starting the
-   chart in CAD with rate 1 would label USD values as C$ for the first
-   minute while the hero (correctly) stays USD. applyCurrency() flips
-   chart + hero to CAD together once the rate arrives. */
+var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,lastCadChg=null,lastEcon=null,lastFetch=0,nextAt=0,failed=false,paused=false,panes=['pane-block','pane-sats','pane-halving','pane-net'],pi=0;var cur='USD';try{var sc=localStorage.getItem('ps-clock-cur');if(sc==='CAD'||sc==='USD')cur=sc;}catch(e){}var fxRate=1;
+/* Last-good CAD, 6 Nov 2026: the CAD rate is persisted (ps-clock-cad) so a
+   returning user gets an enabled toggle and CAD prices at once, instead of
+   a greyed-out button until the first CoinGecko fetch lands. Without it,
+   every load started with lastCad null and a failing/slow CoinGecko left
+   the button faded with no explanation (and a returning CAD user saw CAD
+   shown as selected while the price stayed USD). The stored rate is the
+   last good one; the live fetch refreshes it, and "Updated" still shows
+   when the last successful fetch landed. */
+var LG_KEY='ps-clock-cad';
+function loadLastGoodCad(){try{var raw=localStorage.getItem(LG_KEY);if(!raw)return;var o=JSON.parse(raw);if(o&&typeof o.cad==='number'&&o.cad>0){lastCad=o.cad;if(typeof o.cadChg==='number')lastCadChg=o.cadChg;if(typeof o.fx==='number'&&o.fx>0)fxRate=o.fx;else if(typeof o.usd==='number'&&o.usd>0)fxRate=o.cad/o.usd;}}catch(e){}}
+function saveLastGoodCad(){try{if(typeof lastCad==='number'&&lastCad>0)localStorage.setItem(LG_KEY,JSON.stringify({cad:lastCad,cadChg:lastCadChg,usd:lastPrice,fx:fxRate,t:Date.now()}));}catch(e){}}
+loadLastGoodCad();
+/* The chart starts in USD unless a last-good CAD rate was restored above:
+   with no rate known, starting the chart in CAD with rate 1 would label
+   USD values as C$ until the first fetch lands. applyCurrency() flips
+   chart + hero to CAD together once the rate arrives (or at once, below,
+   when a last-good rate is already known). */
 window.BC_CUR={code:'USD',rate:1};
+if(effCur()==='CAD')applyCurrency();
 function fmt(n){return n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});}
 function fmtPrice(n,code){if(n==null)return '—';var s=code==='CAD'?'C$':'$';return s+Math.round(n).toLocaleString('en-US');}
 function effCur(){return cur==='CAD'&&lastCad!=null?'CAD':'USD';}
@@ -215,7 +234,7 @@ $('curLab').textContent='Bitcoin · '+ec+' · live price';
    lastCad/lastPrice division — after a USD-only fallback those two values
    are from different times. Nothing shows until a CAD price has loaded. */
 $('fxRate').textContent=lastCad!=null?' (1 USD = '+fxRate.toFixed(2)+' CAD)':'';
-document.querySelectorAll('.cur-toggle button').forEach(function(b){b.classList.toggle('on',b.dataset.cur===cur);b.disabled=b.dataset.cur==='CAD'&&lastCad==null;if(b.dataset.cur==='CAD')b.title=lastCad==null?'CAD price loading — waiting on CoinGecko…':'Show price in Canadian dollars';});
+document.querySelectorAll('.cur-toggle button').forEach(function(b){var isCad=b.dataset.cur==='CAD';/* 'on' follows the EFFECTIVE currency, not just the stored choice: when CAD is chosen but no rate is known yet, the price is USD, so USD shows as on and CAD shows loading — never CAD-on-but-disabled with a USD price. */b.classList.toggle('on',b.dataset.cur===effCur());b.disabled=isCad&&lastCad==null;b.classList.toggle('loading',isCad&&lastCad==null);if(isCad){b.textContent=lastCad==null?'CAD …':'CAD $';b.title=lastCad==null?'CAD price loading — waiting on CoinGecko…':'Show price in Canadian dollars';}});
 if(pv!=null){var sym=ec==='CAD'?'C$':'$';$('price').innerHTML=fmtPrice(pv,ec).replace(sym,'<span>'+sym+'</span>');
 var s=Math.floor(100000000/pv);$('sats').textContent=s.toLocaleString('en-US');
 $('satsLab').textContent=ec==='CAD'?'sats per Canadian dollar':'sats per dollar';
@@ -249,7 +268,7 @@ if(typeof r[0].value.cad==='number'){lastCad=r[0].value.cad;lastCadChg=r[0].valu
    USD and CAD: a USD-only fallback (Coinbase) leaves lastCad stale, and
    dividing that older CAD price by the new USD price would recompute the
    rate from mismatched timestamps. (Grok live review, 6 Nov.) */
-if(lastPrice&&lastCad)fxRate=lastCad/lastPrice;}
+if(lastPrice&&lastCad)fxRate=lastCad/lastPrice;saveLastGoodCad();}
 if(effCur()==='CAD')applyCurrency();
 priceOk=true;}
 if(r[1].status==='fulfilled'){lastBlock=r[1].value.height;lastBlockTs=r[1].value.ts;blockOk=true;}
@@ -266,7 +285,7 @@ if(priceOk&&blockOk){lastFetch=Date.now();}
 failed=r.some(function(x){return x.status==='rejected';});
 nextAt=Date.now()+60000;render();});}
 $('refreshBtn').addEventListener('click',update);
-update();tick();setInterval(tick,1000);setInterval(update,60000);
+render();/* Paint the initial state at once (restored CAD, or the CAD loading state) instead of waiting for the first fetch. */update();tick();setInterval(tick,1000);setInterval(update,60000);
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
 <script src="../assets/js/btcchart.js?v=et13" defer></script>
