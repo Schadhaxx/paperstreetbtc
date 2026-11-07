@@ -36,8 +36,14 @@ existing health.json (written by slice 1's validate.py), sets its
 there are no alerts, `alerts` is [] — the field is always present
 after this tool runs, so a reader can tell the check ran. If no
 health file is given, a minimal one is written (last_run + alerts).
-Run this step AFTER the validate gate in the proposed wiring, so the
-gate does not overwrite the alerts field.
+Run this step LAST in the job — after the validate gate and after the
+prices + health writes — so nothing after it overwrites the `alerts`
+field. That order is the settled default: alerts merge last.
+
+Writes are safe: health.json (and the optional alerts.json) are
+serialised with allow_nan=False (non-finite numbers can never be
+written) and published by write-to-temp + atomic rename, so a failed
+run can never leave a partial file.
 
 This is a REPORTER, not a gate: it never holds a run, never changes a
 price, and exits 0 whether or not alerts were found. A finding is a
@@ -55,7 +61,9 @@ unwritable, 2 = usage error.
 """
 import datetime as dt
 import json
+import os
 import sys
+import tempfile
 import zoneinfo
 
 STALL_H = 48
@@ -150,6 +158,36 @@ def update_health(health, alerts, now):
     return out
 
 
+def _atomic_write_json(path, data):
+    """Write JSON safely: finite numbers only, atomically.
+
+    The data is serialised first with allow_nan=False, so a NaN or
+    Infinity anywhere raises BEFORE the target is touched; then it is
+    written to a temp file in the same directory, fsynced, and moved
+    over the target with os.replace. A failed write can never leave a
+    partial file, and no non-finite number can ever be published.
+    Existing health fields are preserved because the caller passes the
+    full merged dict (see update_health) — this helper only writes it.
+    """
+    text = json.dumps(data, indent=2, sort_keys=True,
+                      allow_nan=False) + '\n'
+    d = os.path.dirname(os.path.abspath(path))
+    fd, tmp = tempfile.mkstemp(dir=d, prefix='.stall-alert-',
+                               suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def _parse_args(argv):
     history = None
     prices = None
@@ -238,19 +276,15 @@ def main(argv):
         print('stall-alert: no stalls')
     if args['out']:
         try:
-            with open(args['out'], 'w') as f:
-                json.dump(alerts, f, indent=2, sort_keys=True)
-                f.write('\n')
+            _atomic_write_json(args['out'], alerts)
         except Exception as e:
             print(f'stall-alert: cannot write {args["out"]}: '
                   f'{type(e).__name__}: {e}', file=sys.stderr)
             return 1
     if args['out_health']:
         try:
-            with open(args['out_health'], 'w') as f:
-                json.dump(update_health(health, alerts, now), f,
-                          indent=2, sort_keys=True)
-                f.write('\n')
+            _atomic_write_json(args['out_health'],
+                               update_health(health, alerts, now))
         except Exception as e:
             print(f'stall-alert: cannot write {args["out_health"]}: '
                   f'{type(e).__name__}: {e}', file=sys.stderr)

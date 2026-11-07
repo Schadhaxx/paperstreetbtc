@@ -203,6 +203,43 @@ def main():
                            capture_output=True, text=True)
         chk('CLI missing --history: exit 2', r.returncode == 2)
 
+    # 15. r2: safe finite-only atomic writes. A health file carrying a
+    #     non-finite value must exit 1 with the file byte-identical
+    #     (never half-written), and no temp files may be left behind.
+    with tempfile.TemporaryDirectory() as tmp:
+        hp = os.path.join(tmp, 'history.json')
+        hh = os.path.join(tmp, 'health.json')
+        tool = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            '..', 'tools', 'stall_alert.py')
+        json.dump(hist(), open(hp, 'w'))
+        open(hh, 'w').write('{"last_run": "2026-11-06T23:00:00Z", '
+                            '"status": "ok", "score": NaN}')
+        before = open(hh).read()
+        r = subprocess.run(
+            [sys.executable, tool, '--history', hp, '--health', hh,
+             '--out-health', hh, '--now', NOW],
+            capture_output=True, text=True)
+        chk('CLI non-finite health.json: exit 1, file untouched',
+            r.returncode == 1 and open(hh).read() == before,
+            r.stderr.strip()[:200])
+        chk('CLI non-finite health.json: no temp files left',
+            [f for f in os.listdir(tmp)
+             if f.startswith('.stall-alert-')] == [], str(os.listdir(tmp)))
+        # ... and a clean write leaves no temp files either.
+        json.dump({'last_run': '2026-11-06T23:00:00Z', 'status': 'ok'},
+                  open(hh, 'w'))
+        r = subprocess.run(
+            [sys.executable, tool, '--history', hp, '--health', hh,
+             '--out-health', hh, '--now', NOW],
+            capture_output=True, text=True)
+        out = json.load(open(hh))
+        chk('CLI clean write: exit 0, fields kept, no temp files',
+            r.returncode == 0 and out['status'] == 'ok'
+            and out['alerts'] == []
+            and [f for f in os.listdir(tmp)
+                 if f.startswith('.stall-alert-')] == [],
+            str(os.listdir(tmp)))
+
     bad = [x for x in R if not x[1]]
     print('\n%d checks, %d failed' % (len(R), len(bad)))
     return 1 if bad else 0

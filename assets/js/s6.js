@@ -152,9 +152,9 @@
       rows+='<tr><td>STRC div receivable (cash)</td><td></td><td>'+m(q.cash)+'</td><td></td><td>'+(q.cash/v*100).toFixed(1)+'%</td></tr>';
       html+='<div class="pf-card'+(open[i]?' open':'')+'" data-i="'+i+'" role="button" tabindex="0" aria-expanded="'+(open[i]?'true':'false')+'"><div class="pf-head"><span class="pf-name">'+p.name+'</span><span class="pf-val">'+m(v)+'</span>'+
         '<span class="pf-sub">'+chgLabel()+' '+pct(v/navPrior(p)-1)+' &middot; '+ytdLabel()+' '+pct(v/START-1)+'</span></div>'+
-        '<table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p><span class="pf-toggle" aria-hidden="true"><svg class="pf-chev" viewBox="0 0 16 16" width="16" height="16"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>';
+        '<div class="pf-tbl-wrap"><table class="pf-tbl"><tr><th>Asset</th><th>Price</th><th>Value</th><th>Original</th><th>Live</th></tr>'+rows+'</table></div><p class="pf-start">Started with $100k on January 1st, 2026: '+p.start+'.</p><span class="pf-toggle" aria-hidden="true"><svg class="pf-chev" viewBox="0 0 16 16" width="16" height="16"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span></div>';
     });
-    patch(root.querySelector('.pf-grid'),html,'.pf-card','i',['.pf-val','.pf-sub','.pf-tbl','.pf-start']);
+    patch(root.querySelector('.pf-grid'),html,'.pf-card','i',['.pf-val','.pf-sub','.pf-tbl-wrap','.pf-start']);
     root.querySelector('.pf-note').textContent=mode==='me'?asOfLabel()+'. All prices at the month-end close; switch to Live for current prices. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.':asOfLabel()+'. BTC: '+(live.BTC?btcSrc+', refreshed every 60s':'last close '+fmtD(ASOF))+'. '+(Object.keys(src).some(function(k){return src[k];})?(cacheLabel()||'Stocks: cached'):'Stocks: last close '+fmtD(ASOF))+'. Holdings computed from the ledger as of the date shown. YTD vs $100,000 start on January 1st, 2026. Tap a portfolio for holdings.';
   }
   root.addEventListener('click',function(e){
