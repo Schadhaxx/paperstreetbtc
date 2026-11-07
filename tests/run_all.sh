@@ -52,6 +52,8 @@ run oi001_label node tests/test_oi001_label.js                              # OI
 run oi001_compare_scope python3 tests/test_oi001_compare_scope.py           # OI-001: Compare #pvChartNote backup label with crafted Coinbase day (scope fix)
 run cmp_daily_py python3 tests/test_cmp_daily.py                             # comparison chart: daily-close generator fixtures + shipped file
 run cmp_js node tests/test_cmp.js                                            # comparison chart: rebase math, ranges, SPCX rule, shipped closes
+run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et14): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
+run needchart_retry python3 tests/test_needchart_retry.py                    # needChart failure-then-retry (real _needChart, chart.umd aborted once)
 TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"
 run test_freeze_liveURL python3 tests/test_freeze.py                       # F8: against the live data-branch URL (read-only)
 run et_expiry_guard_2028-11-15 bash -c 'if ET_TEST_NOW=2028-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9 (moved with the 2028 list extension)
