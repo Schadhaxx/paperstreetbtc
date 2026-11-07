@@ -32,32 +32,27 @@
 }
 @media (max-width:480px){
   .header>.header-inner>.hdr-tick{padding:4px 8px;font-size:.78rem}
-  /* iPhone launch fit (6 Nov 2026): once the live price fills in, the pill
-     (price + change + Chart chip) grows to ~186px and the header needs ~425px
-     on a 390px screen — the hamburger is pushed off the right edge and the
-     page can be scrolled sideways on launch. The Chart chip is 62px and the
-     pill itself is already the chart trigger, so hide the chip at phone width.
-     That leaves ~27px of margin even at a 6-digit BTC price.
-     Breakpoint widened 420px -> 480px (6 Nov 2026 evening): Sunil's iPhone
-     is 430 CSS px wide (Pro Max, 1290px @3x), so the 420px query never
-     matched there — the chip stayed visible and the hamburger stayed cut
-     off at the right edge. 480px covers all phones; tablets are >=768px. */
-  .header>.header-inner>.hdr-tick .lp-cv{display:none}
-  /* Screener (6 Nov 2026 evening): the screener's BTC pill lives in
-     .btc-pill-row, NOT inside .header>.header-inner, so the hide above
-     never matched it — the 62px chip stayed visible and the pill could
-     push the page 13px over at 390px once the live price loaded. Hide
-     it here too; the pill itself still opens the chart. */
-  .btc-pill-row .hdr-tick .lp-cv{display:none}
   /* Menu button move (6 Nov 2026): the header is still cramped at 390px and
      the menu button was cut off at the right edge. Take it out of the header
      row and float it under the Paperstreet logo (top-left, below the header).
      Absolutely positioned against the sticky .header, so it tracks the header
      as it sticks. The menu panel drops below the floater when open, so the
      button stays visible and tappable to close.
-     Same 480px breakpoint as the chip-hide above (Pro Max is 430px). */
+     480px covers all phones incl. Sunil's 430px Pro Max; tablets are >=768px. */
   .header>.header-inner>.mnav-btn{position:absolute;top:calc(100% + 10px);left:14px;margin:0!important;z-index:30;background:var(--surface,#0f172a);box-shadow:0 4px 16px rgba(0,0,0,.35)}
   .header>.mnav-menu{top:calc(100% + 62px)}
+}
+/* Chart chip (6 Nov 2026 evening): hide the chip only at <=420px.
+   It was hidden at <=480px, which also hid it on Sunil's 430px Pro Max —
+   he wants the Chart symbol back on his phone. At 430px the header fits
+   with the chip (the floater frees the hamburger's space); at 390px the
+   chip stays hidden so the header doesn't overflow (the pill grows to
+   ~186px with the chip and the header needs ~425px on a 390px screen).
+   Same for the screener pill (its 13px overflow was measured at 390px).
+   The pill itself still opens the chart either way. */
+@media (max-width:420px){
+  .header>.header-inner>.hdr-tick .lp-cv{display:none}
+  .btc-pill-row .hdr-tick .lp-cv{display:none}
 }
 @media (max-width:374px){.header>.header-inner>.mnav-btn{left:10px}} /* logo sits at 10px here */
 /* BTC chart */
