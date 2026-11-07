@@ -14,7 +14,7 @@
 <style>
   * { box-sizing:border-box; }
   :root { --bg:#05070f; --card:#121a2e; --card2:#16213d; --line:#233253; --txt:#eef2fb; --mut:#94a3b8; --green:#22c55e; --red:#ef4444; --cyan:#22d3ee; --orange:#f97316; }
-  body { margin:0; background:radial-gradient(900px 400px at 85% -10%,rgba(34,211,238,.22),transparent 60%),radial-gradient(700px 350px at -10% 0,rgba(249,115,22,.14),transparent 55%),var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Outfit,system-ui,sans-serif; -webkit-text-size-adjust:100%; }
+  body { margin:0; padding-bottom:96px; background:radial-gradient(900px 400px at 85% -10%,rgba(34,211,238,.22),transparent 60%),radial-gradient(700px 350px at -10% 0,rgba(249,115,22,.14),transparent 55%),var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Outfit,system-ui,sans-serif; -webkit-text-size-adjust:100%; }
   .wrap { max-width:1060px; margin:0 auto; padding:18px 14px 44px; }
   header { padding:22px 2px 8px; }
   h1 { font-size:30px; line-height:1.05; margin:0; letter-spacing:-.02em; }
@@ -22,9 +22,19 @@
   .asof { color:var(--mut); font-size:14px; line-height:1.6; margin:0 0 4px; }
   .btc-pill-row { display:flex; margin:18px 0 0; }
   /* Block clock: the one non-hidden link (4 Nov 2026). Floating pill at
-     the bottom of the screener only — nowhere else on the site. */
-  .clock-float{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:55;background:linear-gradient(180deg,#1e293b,#0f172a);border:1px solid rgba(34,211,238,.55);border-radius:999px;padding:11px 20px;color:#eef2fb;font-weight:800;font-size:15px;text-decoration:none;white-space:nowrap;box-shadow:0 14px 40px rgba(0,0,0,.45)}
-  .clock-float:hover,.clock-float:focus-visible{border-color:#22d3ee;outline:none}
+     the bottom of the screener only — nowhere else on the site.
+     Restyled 6 Nov 2026 to match the homepage pills (BTC live pill
+     gradient + cyan border, Variant A Chart chip's inline SVG icon,
+     floating theme pill's glow): theme-aware via the --card/--txt
+     variables light.css redefines, so it reads as a white pill in
+     light mode and a navy pill in dark mode. Body padding-bottom
+     (above) keeps the footer "Light version" link clear of it. */
+  .clock-float{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:55;display:inline-flex;align-items:center;gap:9px;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,0) 42%),linear-gradient(180deg,var(--card2),var(--card));border:1px solid rgba(34,211,238,.55);border-radius:999px;padding:11px 20px;color:var(--txt);font-weight:800;font-size:15px;text-decoration:none;white-space:nowrap;box-shadow:0 14px 40px rgba(15,23,42,.35),0 0 28px rgba(34,211,238,.20);overflow:hidden;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+  .clock-float svg{width:16px;height:16px;flex:0 0 auto;display:block;color:var(--cyan)}
+  .clock-float::before{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.22) 50%,transparent 58%);transform:translateX(-130%);transition:transform .6s ease;pointer-events:none}
+  .clock-float:hover,.clock-float:focus-visible{border-color:#22d3ee;outline:none;transform:translateX(-50%) translateY(-2px);box-shadow:0 18px 44px rgba(15,23,42,.40),0 0 34px rgba(34,211,238,.34)}
+  .clock-float:hover::before,.clock-float:focus-visible::before{transform:translateX(130%)}
+  @media (prefers-reduced-motion:reduce){.clock-float,.clock-float::before{transition:none}}
   .btc-pill-row .hdr-tick { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:56px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 18px; box-shadow:0 14px 40px rgba(0,0,0,.45); color:var(--txt); font-size:27px; font-weight:850; letter-spacing:-.02em; line-height:1.1; cursor:pointer; }
   .btc-pill-row .hdr-chg { font-size:19px; font-weight:800; }
   .btc-pill-row .lp-lab { font-size:.85rem; letter-spacing:.1em; }
@@ -57,6 +67,8 @@
   #ind-cardline { display:none; margin:2px 0 8px; font-size:15px; font-weight:800; letter-spacing:-.01em; line-height:1.35; }
   #ind-pill { display:none; margin-top:12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:14px; line-height:1.55; text-align:center; cursor:pointer; }
   #ind-status { color:var(--mut); font-size:13px; line-height:1.55; margin-top:12px; }
+  .ind-exp { display:inline-block; background:#7c2d12; color:#fdba74; border:1px solid #f97316; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700; margin-left:8px; vertical-align:middle; }
+  #ind-liveprice { display:none; font-size:15px; font-weight:800; margin-left:8px; }
   .ind-enh-btn { height:36px; padding:0 12px; font-size:13px; }
   .ind-enh-btn[aria-pressed="true"] { border-color:var(--cyan); color:var(--cyan); }
   #ind-retry { display:none; margin-top:10px; }
@@ -282,7 +294,7 @@
 <script src="assets/vendor/chart.umd.min.js"></script>
 <div class="ind-modal" id="ind-modal" aria-hidden="true" role="dialog" aria-label="Indicator YTD weekly candle chart">
   <div class="ind-dialog">
-    <div class="ind-head"><h3 id="ind-title">Gold — YTD weekly candles</h3><span style="display:flex;gap:8px;"><button type="button" class="ind-info-btn" id="ind-info-top" aria-label="About this chart">+</button><button type="button" class="btn" id="ind-close" aria-label="Close indicator chart">✕</button></span></div>
+    <div class="ind-head"><h3 id="ind-title">Gold — YTD weekly candles</h3><span><span class="ind-exp">EXPERIMENTAL</span><span id="ind-liveprice"></span></span><span style="display:flex;gap:8px;"><button type="button" class="ind-info-btn" id="ind-info-top" aria-label="About this chart">+</button><button type="button" class="btn" id="ind-close" aria-label="Close indicator chart">✕</button></span></div>
     <p class="ind-sub" id="ind-sub" hidden></p>
     <div id="ind-info-pill" role="note" tabindex="0"><button type="button" id="ind-info-x" aria-label="Dismiss">✕</button><span id="ind-info-text"></span></div>
     <p id="ind-cardline"></p>
@@ -302,12 +314,12 @@
     <button type="button" class="btn" id="ind-retry">Retry</button>
   </div>
 </div>
-<script src="assets/js/screener.js"></script>
-<script src="assets/js/screener-indicator-chart.js?v=stocks4"></script>
+<script src="assets/js/screener.js?v=scr1"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks6"></script>
 <script src="assets/js/screener-chart.js?v=cmp5"></script>
 <script src="assets/js/et.js?v=et2"></script>
-<script src="assets/js/btcchart.js?v=et11"></script>
-<a class="clock-float" href="clock/index.html">PaperstreetBTC clock</a>
+<script src="assets/js/btcchart.js?v=et13"></script>
+<p class="ps-theme-alt"><a class="ps-to-light" href="?theme=light">Light version</a><a class="ps-to-dark" href="?theme=dark">Back to dark</a></p>
+<a class="clock-float" href="clock/index.html"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.4 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>PaperstreetBTC clock</a>
 </body>
-<p class="ps-theme-alt"><a class="ps-to-light" href="?theme=light">Light version</a><a class="ps-to-dark" href="?theme=dark">Back to dark</a></p></body>
 </html>
