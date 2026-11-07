@@ -32,8 +32,9 @@ def ledger(C, D, strc):
 def expected_months(C, prov, tf=None):
     """Months Jan 2026 .. month of the newest FINAL close.
 
-    A Tiingo-final date (Yahoo pending, see tools/tiingo_unstall.py) counts
-    as final here, same as in recap_gen.py; `tf` is the tiingo_final key set.
+    A Tiingo-confirmed date (Yahoo's final bar pending, see
+    tools/tiingo_unstall.py) counts as final here, same as in recap_gen.py;
+    `tf` is the tiingo_final key set.
     """
     tf = set(tf or [])
     last = max(d for d in C if d not in set(prov or []) or d in tf)

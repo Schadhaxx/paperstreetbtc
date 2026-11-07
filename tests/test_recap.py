@@ -8,7 +8,7 @@ ap = argparse.ArgumentParser(); ap.add_argument('--history', default='https://ra
 a = ap.parse_args(); os.chdir(a.repo)
 H = fetch_json(a.history) if a.history.startswith('http') else json.load(open(a.history))
 C = H['closes']; D = sorted(C); prov = H.get('btc_provisional') or []
-tf = set(H.get('tiingo_final') or {})   # S2: a Tiingo-final date counts as final (Yahoo pending)
+tf = set(H.get('tiingo_final') or {})   # S2: a Tiingo-confirmed date counts as final (Yahoo's final bar pending)
 VAL, EV = ledger(C, D, strc_from_ledger(open('assets/js/ledger.js').read()))
 BD = dict(json.load(open('assets/data/btc-daily.json'))['d']); BD_RAW = dict(BD)
 for d in D: BD.setdefault(d, C[d]['BTC'])
@@ -29,7 +29,7 @@ for m in months:
     chk(f'{m} through date inside month', ME.startswith(m))
     chk(f'{m} BTC table headers say High/Low close (in Month)', bool(re.search(r'<th>High close \(in (\w+)\)</th><th>Low close \(in \1\)</th>', s)))
     chk(f'{m} live ticker (pollPX) and et.js present', 'pollPX(' in s and 'assets/js/et.js' in s)
-    chk(f'{m} through date {ME} is a FINAL close (not provisional, or Tiingo-final)', ME not in prov or ME in tf)
+    chk(f'{m} through date {ME} is a FINAL close (not provisional, or Tiingo-confirmed)', ME not in prov or ME in tf)
     nav = re.search(r'<nav class="pn"[^>]*>(.*?)</nav>', s, re.S).group(1)
     i = months.index(m); nxt = months[i + 1] if i + 1 < len(months) else None
     chk(f'{m} next link -> ' + (nxt or 'All recaps'), (f'href="../{nxt}/index.html"' in nav) if nxt else ('href="../index.html">All recaps' in nav), nav[-120:])

@@ -9,19 +9,24 @@ exit 3) fires after 48 h, but nothing moves. The manual way out was a
 reviewed PR; this tool is the automated, Tiingo-confirmed version of it.
 
 What this tool does. For each BTC date that is still provisional more than
-48 h after its UTC day ended (the same clock btc_daily.py uses), it fetches
-the Tiingo close for that date ONLY and checks it against the value already
-published (the fallback value). If Tiingo agrees within the BTC tolerance
-(0.3%, the same threshold the reference cross-check uses), the date is
-recorded as Tiingo-final in a new top-level field:
+48 h after its UTC day ended (the same clock btc_daily.py uses — strictly
+more than 48 h: exactly 48 h does NOT freeze), it fetches the Tiingo close
+for that date ONLY and checks it against the value already published (the
+fallback value). If Tiingo agrees within the BTC tolerance (0.3%, the same
+threshold the reference cross-check uses), the date is recorded as
+Tiingo-confirmed in a new top-level field:
 
     "tiingo_final": {"2026-11-02": {"BTC": 75799.14, "tiingo": 75801.55,
                                      "diff_pct": 0.0032,
                                      "confirmed": "2026-11-04T23:30:00Z"}}
 
+The field is named `tiingo_final` for the slice-1 validate-gate fit (the
+gate and the pipeline read that name); every user-facing string calls the
+date Tiingo-confirmed, never Yahoo-final.
+
 The published value NEVER changes: Tiingo confirms it, it does not replace
-it. Nothing is ever rewritten to Tiingo closes, and a Tiingo-final value is
-never presented as a Yahoo-final close:
+it. Nothing is ever rewritten to Tiingo closes, and a Tiingo-confirmed value
+is never presented as a Yahoo-final close:
 
   * the date STAYS in btc_provisional (so slice 1's validate gate, check 6,
     still passes unchanged, and the site keeps showing the OI-001
@@ -45,6 +50,17 @@ A disagreement is printed as a ::warning:: (and recorded in the report) —
 it is a data event for a human, not something to freeze over. The tool
 never fails the run for a disagreement: exit 0, the recap simply stays
 stalled, as it does today.
+
+A malformed Tiingo confirmation is rejected the same way, and recorded as
+a disagreement (never silently accepted, never frozen): a confirmation row
+that is missing its close, carries a non-numeric close, is for the wrong
+date, or a value outside the sanity band. "Tiingo returned nothing" (no
+rows at all) is different — that is an absence, recorded as a skip, not a
+disagreement. A carried-forward freeze from the previous published history
+is trusted only if it is well-formed (date in provisional, value matches
+the published close, numeric Tiingo value); a malformed carried record is
+dropped, never trusted, and the date is re-verified (or skipped if there
+is no key / the budget is spent).
 
 Call budget (plan rec 4). Only NEWLY stalled dates cost a call — at most
 --max-calls (default 5) per run, oldest first. A date already frozen is
@@ -103,9 +119,17 @@ def _is_num(v):
 def stall_cutoff(date, hours=STALL_HOURS):
     """The moment a date counts as stalled: its UTC day ended + `hours`.
 
-    Same clock as tools/btc_daily.py: now - (date + 1 day) > 48 h.
+    Same clock as tools/btc_daily.py: now - (date + 1 day) > 48 h — strictly
+    greater, so exactly 48 h is NOT stalled.
     """
     return dt.datetime.fromisoformat(date).replace(tzinfo=UTC) + dt.timedelta(days=1, hours=hours)
+
+
+class MalformedConfirmation(Exception):
+    """Tiingo returned rows but no usable confirmation for the date:
+    the row is missing its close, the close is non-numeric, or every row
+    is for a different date. Raised (not swallowed) so the caller records
+    it as a disagreement instead of silently accepting or skipping it."""
 
 
 def tiingo_btc_close(getter, date):
@@ -115,16 +139,27 @@ def tiingo_btc_close(getter, date):
     resampleFreq=1day, startDate=date, endDate=date+1. Raw 'close' only
     (never adjClose/divCash — the crypto endpoint has none). `getter` is
     an injectable fetch function (url -> parsed JSON) so tests can stub it.
+
+    Returns None only when Tiingo returned no rows at all (absence).
+    Raises MalformedConfirmation when rows exist but none carries a usable
+    close for `date` (missing field, non-numeric value, wrong date).
     """
     n = (dt.date.fromisoformat(date) + dt.timedelta(days=1)).isoformat()
     j = getter('https://api.tiingo.com/tiingo/crypto/prices'
                '?tickers=btcusd&startDate=%s&endDate=%s&resampleFreq=1day' % (date, n))
     rows = (j[0].get('priceData') or []) if isinstance(j, list) and j else []
+    if not rows:
+        return None
     for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get('date', ''))[:10] != date:
+            continue
         c = row.get('close')
-        if str(row.get('date', ''))[:10] == date and _is_num(c):
-            return round(float(c), 6)
-    return None
+        if not _is_num(c):
+            raise MalformedConfirmation('row for %s has no usable close (%r)' % (date, c))
+        return round(float(c), 6)
+    raise MalformedConfirmation('no row for %s in %d returned row(s)' % (date, len(rows)))
 
 
 def real_getter(key):
@@ -166,7 +201,7 @@ def unstall(hist, prev_hist, getter, now, max_calls=MAX_CALLS, stall_hours=STALL
     stalled = sorted(d for d in prov
                      if DATE_RE.match(d) and d in closes
                      and _is_num(closes[d].get('BTC'))
-                     and now >= stall_cutoff(d, stall_hours))
+                     and now > stall_cutoff(d, stall_hours))   # strictly more than 48 h: exactly 48 h is NOT stalled
     report['stalled'] = stalled
     for d in stalled:
         published = closes[d]['BTC']
@@ -194,6 +229,15 @@ def unstall(hist, prev_hist, getter, now, max_calls=MAX_CALLS, stall_hours=STALL
         report['calls'] += 1
         try:
             tv = tiingo_btc_close(getter, d)
+        except MalformedConfirmation as e:
+            # A malformed confirmation is REJECTED, never frozen, and
+            # recorded as a disagreement — not silently accepted, not a
+            # quiet skip. The date stays stalled and provisional.
+            report['disagreements'].append({'date': d, 'site': published,
+                                            'tiingo': None, 'diff_pct': None,
+                                            'reason': 'malformed Tiingo confirmation: %s' % e})
+            report['skipped'].append((d, 'malformed Tiingo confirmation (%s)' % e))
+            continue
         except Exception as e:
             report['skipped'].append((d, 'Tiingo fetch failed (%s)' % type(e).__name__))
             continue
@@ -202,6 +246,13 @@ def unstall(hist, prev_hist, getter, now, max_calls=MAX_CALLS, stall_hours=STALL
             continue
         prev = _prev_btc_close(closes, d)
         if prev and not (0.6 * prev <= tv <= prev / 0.6):
+            # Outside the sanity band: the confirmation cannot be trusted,
+            # so it is a disagreement too — never frozen on a wild value.
+            diff = (tv - published) / published
+            report['disagreements'].append({'date': d, 'site': published,
+                                            'tiingo': tv,
+                                            'diff_pct': round(diff * 100, 4),
+                                            'reason': 'Tiingo value %s outside the sanity band vs previous session %s' % (tv, prev)})
             report['skipped'].append((d, 'Tiingo value %s implausible vs previous %s'
                                      % (tv, prev)))
             continue
@@ -209,7 +260,8 @@ def unstall(hist, prev_hist, getter, now, max_calls=MAX_CALLS, stall_hours=STALL
         if abs(diff) > TG_TOL_BTC:
             report['disagreements'].append({'date': d, 'site': published,
                                             'tiingo': tv,
-                                            'diff_pct': round(diff * 100, 4)})
+                                            'diff_pct': round(diff * 100, 4),
+                                            'reason': 'Tiingo disagrees beyond the 0.3% tolerance'})
             report['skipped'].append((d, 'Tiingo disagrees %+.3f%% (> %.1f%%)'
                                      % (diff * 100, TG_TOL_BTC * 100)))
             continue
@@ -266,9 +318,14 @@ def main(argv=None):
                      max_calls=a.max_calls, stall_hours=a.stall_hours,
                      dry_run=a.dry_run)
     for f in report['disagreements']:
-        print('::warning title=Tiingo un-stall disagreement::BTC %s: site %s vs Tiingo %s differ %+.3f%%; '
-              'not frozen, recap stays stalled for this date'
-              % (f['date'], f['site'], f['tiingo'], f['diff_pct']))
+        if f.get('diff_pct') is None:
+            print('::warning title=Tiingo un-stall disagreement::BTC %s: %s; '
+                  'not frozen, recap stays stalled for this date'
+                  % (f['date'], f.get('reason', 'malformed Tiingo confirmation')))
+        else:
+            print('::warning title=Tiingo un-stall disagreement::BTC %s: site %s vs Tiingo %s differ %+.3f%%; '
+                  'not frozen, recap stays stalled for this date'
+                  % (f['date'], f['site'], f['tiingo'], f['diff_pct']))
     print('tiingo-unstall: stalled=%s frozen=%s carried=%s skipped=%s calls=%d'
           % (report['stalled'], report['frozen'], report['carried'],
              [d for d, _ in report['skipped']], report['calls']))

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Refresh the current month's recap page (recap/YYYY-MM/index.html) and its card in recap/months.js
 from history.json, using FINAL closes only (dates listed in btc_provisional are ignored — except
-Tiingo-final dates, see tools/tiingo_unstall.py, which count as final: Tiingo confirmed the
+Tiingo-confirmed dates, see tools/tiingo_unstall.py, which count as final: Tiingo confirmed the
 published fallback value, Yahoo's final bar is still pending, and the date is still listed as
 provisional in the recap note / btc-daily.json so it is never presented as Yahoo-final).
 
 - Only the month of the newest final close is written. Completed months are never rewritten
   (the one exception: when a new month starts, the previous page's "All recaps ->" link becomes "<Month> 2026 ->").
 - The month's page is "month to date" until its last NYSE trading day has a final close; then it is finalized.
+  A month MAY finalize on a Tiingo-confirmed close (Sunil's decision, Nov 2026): the page then says so
+  explicitly — the month is final on a Tiingo-confirmed close and Yahoo's final bar is still pending.
 - Idempotent: if nothing changes, nothing is written. Writes go to *.tmp, are validated, then moved into place.
 - Exit 0 = ok (changed or not), exit 1 = validation failed (nothing written).
 
@@ -49,7 +51,7 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--history', default=URL); ap.add_argument('--repo', default='.'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); os.chdir(a.repo)
     H = load(a.history); prov = set(H.get('btc_provisional') or [])
-    tf = set(H.get('tiingo_final') or {})   # Tiingo-final (Yahoo pending): final for the recap, still provisional in the note
+    tf = set(H.get('tiingo_final') or {})   # Tiingo-confirmed (Yahoo's final bar pending): final for the recap, still provisional in the note
     C = {d: v for d, v in H['closes'].items() if d not in prov or d in tf}; D = sorted(C); LASTF = D[-1]
     m = LASTF[:7]; y, mo = map(int, m.split('-')); full = calendar.month_name[mo]
     pfile = f'recap/{m}/index.html'
@@ -95,7 +97,8 @@ def main():
         f'{B[hi]:,.2f}', nice(hi) + (' (provisional)' if hi in BPROV or hi in tf else ''), f'{B[lo]:,.2f}', nice(lo) + (' (provisional)' if lo in BPROV or lo in tf else ''), days_txt,
         ('' if final else f' Static snapshot through {nicey(bdays[-1])}; the month is not complete.') +
         ((' Provisional (fallback source until Yahoo\'s final bar arrives): ' + ', '.join(nice(x) for x in sorted(BPROV) if x in bdays and x not in tf) + '.') if any(x in bdays and x not in tf for x in BPROV) else '') +
-        ((' Tiingo-final (confirmed by Tiingo, Yahoo\'s final bar pending): ' + ', '.join(nice(x) for x in sorted(tf) if x in bdays) + '.') if any(x in bdays for x in tf) else ''))
+        ((' Tiingo-confirmed (Yahoo\'s final bar pending): ' + ', '.join(nice(x) for x in sorted(tf) if x in bdays) + '.') if any(x in bdays for x in tf) else '') +
+        ((' This month is final on a Tiingo-confirmed close; Yahoo\'s final bar is still pending.') if final and ME in tf else ''))
     s = sub1(s, r'<section><h2>Bitcoin in .*?</section>\n(?=<section><h2>Sleeves vs spot BTC</h2>)', card, re.S)
     s = sub1(s, r'<p class="note" style="margin-bottom:12px">Month = [^<]*',
              f'<p class="note" style="margin-bottom:12px">Month = {nicey(PM) if PM < "2026-01-01" else nice(PM)} → {nice(ME)} close. YTD = Dec 31, 2025 → {nice(ME)} close.')
