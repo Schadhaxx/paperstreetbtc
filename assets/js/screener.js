@@ -195,6 +195,12 @@
     }
     if (typeof CustomEvent !== 'undefined') {
       window.dispatchEvent(new CustomEvent('screener-rows', { detail: rows }));
+      // Live-feel (experimental): the candle modal also needs the
+      // indicator rows (their _src live/close verdicts), which the stock
+      // event above does not carry. indRows is built by mergeList with
+      // the same freshness/market-hours gate (indicatorLiveFn), so this
+      // dispatch carries the gated rows, not raw quotes.
+      window.dispatchEvent(new CustomEvent('screener-ind-rows', { detail: indRows }));
     }
   }
 

@@ -17,7 +17,7 @@ var pill=$('hdrTick'),menu=$('mnavMenu');
 var INLINEHOST=document.getElementById('bcInline');
 if(!pill&&!INLINEHOST)return;
 var INLINE=!!INLINEHOST;
-var live={usd:null,chg:null};
+var live={usd:null,chg:null};var lastPaintUsd=null;
 /* CAD display, 6 Nov 2026 (clock page only): the clock page sets
    window.BC_CUR={code:'CAD',rate:<CAD per USD>} before this script loads
    and calls window.BC_setCurrency(code,rate) on toggle. Every displayed
@@ -30,7 +30,7 @@ var curSym=function(){return CUR.code==='CAD'?'C$':'$';};
 var curVal=function(v){return v*(CUR.rate||1);};
 var cadTag=function(){return CUR.code==='CAD'?' · CAD':'';};
 var fmt=function(n){var v=curVal(n);return curSym()+(v<1?v.toLocaleString('en-US',{maximumFractionDigits:2}):Math.round(v).toLocaleString('en-US'));};
-window.BC_setCurrency=function(code,rate){CUR.code=code;CUR.rate=rate||1;var t=$('bcTitle');if(t)t.innerHTML='<span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+code;if(dlg&&!dlg.hidden)draw();};
+window.BC_setCurrency=function(code,rate){CUR.code=code;CUR.rate=rate||1;var t=$('bcTitle');if(t)t.innerHTML='<span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+code+' <span style="background:#7c2d12;color:#fdba74;border:1px solid #f97316;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;">EXPERIMENTAL</span>';if(dlg&&!dlg.hidden)draw();};
 /* pill markup */
 function decorate(el,full){if(el.querySelector('.lp-cv'))return;
   el.insertAdjacentHTML('afterbegin','<span class="lp-lab"><span class="lp-dot" aria-hidden="true"></span>Live BTC</span>');
@@ -44,14 +44,24 @@ function chgTxt(c){return typeof c==='number'?(c>=0?'▲':'▼')+Math.abs(c).toF
 function paint(){if(live.usd==null)return;var cls='hdr-chg '+(live.chg>=0?'up':'down');
   var hp=$('hdrPx'),hc=$('hdrChg');if(hp){hp.textContent=fmt(live.usd);}if(hc&&typeof live.chg==='number'){hc.textContent=chgTxt(live.chg);hc.className=cls;}
   if(mp){mp.querySelector('.mpPx').textContent=fmt(live.usd);var m=mp.querySelector('.mpChg');m.textContent=chgTxt(live.chg);m.className=cls+' mpChg';}
-  if(dlg&&!dlg.hidden)head();}
-window.addEventListener('btcprice',function(e){live.usd=e.detail.usd;live.chg=e.detail.chg;paint();if(dlg&&!dlg.hidden&&ch)draw();});
+  if(dlg&&!dlg.hidden){
+    head();
+    // Tick flash on the popover price (experimental live feel): brief
+    // green/red on a changed live price, then back to default.
+    var px=$('bcPx');
+    if(px&&lastPaintUsd!==null&&live.usd!==lastPaintUsd){
+      px.style.color=live.usd>=lastPaintUsd?'#22c55e':'#ef4444';
+      (function(el){setTimeout(function(){el.style.color='';},700);})(px);
+    }
+  }
+  lastPaintUsd=live.usd;}
+window.addEventListener('btcprice',function(e){live.usd=e.detail.usd;live.chg=e.detail.chg;paint();if(dlg&&!dlg.hidden&&(ch||candViewActive()))draw();});
 /* pages without the homepage price widget fetch the same feed themselves */
 if(!$('btcLive')){
   var tf=function(u){return fetch(u,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});};
   var load=function(){tf('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true').then(function(d){var b=d.bitcoin;if(!b||typeof b.usd!=='number')throw 0;return {usd:b.usd,chg:b.usd_24h_change};})
     .catch(function(){return tf('https://api.coinbase.com/v2/prices/BTC-USD/spot').then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,chg:null};});})
-    .then(function(b){live.usd=b.usd;live.chg=b.chg;paint();if(dlg&&!dlg.hidden&&ch)draw();setTimeout(load,60000);},function(){setTimeout(load,90000);});};
+    .then(function(b){live.usd=b.usd;live.chg=b.chg;paint();if(dlg&&!dlg.hidden&&(ch||candViewActive()))draw();setTimeout(load,60000);},function(){setTimeout(load,90000);});};
   load();}
 /* data */
 var DATA=null,PROV=false,dataP=null,SPX=null,SPXK=[],SHOWSPX=false,GOLD=null,GOLDK=[],SHOWGLD=false,MSTR=null,MSTRK=[],SHOWMSTR=false,CBDAILY=null;
@@ -104,12 +114,20 @@ function aggCandles(pts,per){
    - Labels cleaned up: 4 price gridlines, times evenly spaced and inset so first/last do not clip, and the date is shown when the day changes overnight.
    - Razzle, kept minimal: a short fade-in when the candle view first draws, no bounce, no new colours. */
 var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
+/* EXPERIMENTAL LIVE FEEL (branch pepper-live-feel-exp, Nov 2026, NOT live):
+   range candle views gain a live last candle (daily/weekly/monthly buckets
+   that contain today only: close = live CoinGecko price, high/low extended),
+   a dashed live price line + tag, a tick flash on the popover price, a
+   countdown to the bucket close, and an EXPERIMENTAL chip in the header.
+   1D intraday and range line views already carried the live price; 1D
+   candle views (1H/4H complete buckets) and the 1W 4H view are unchanged.
+   See proposals/live-feel-experimental/REVIEW.md.
 /* Candle ranges, Day 1 (test branch only, NOT live): 1W daily candles + 1M weekly/daily choice.
    RGCT is the chart type for 1W/1M only (default Line, so the existing line view is unchanged
    unless the visitor opts into candles). RGGRAN is the candle size for the range view.
    CANDRANGE marks that the shared candle canvas + pill are currently showing range candles,
    so the shared listeners and pill dismiss redraw the range view, not the 1D view. */
-var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='';
+var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='',RGLIVE=false;
 /* Per-range default candle size, explicit by range — NOT "first button in
    the list" (the button order is finest-first: Daily, Weekly, Monthly).
    1M defaults to Weekly; 3M/6M/YTD/1Y default to Monthly; 1W is daily only. */
@@ -295,6 +313,23 @@ function rangeLabelIndices(n,iw){
   }
   return out;
 }
+/* Experimental live feel: time left until the current bucket closes
+   (daily -> midnight UTC, weekly -> Monday 00:00 UTC, monthly -> 1st). */
+function bucketCloseCountdown(gran){
+  var now=new Date(), target;
+  if(gran==='weekly'){
+    var d=(8-now.getUTCDay())%7;
+    target=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+d,0,0,0));
+    if(target<=now)target=new Date(target.getTime()+7*86400000);
+  }else if(gran==='monthly'){
+    target=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+1,1,0,0,0));
+  }else{
+    target=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+1,0,0,0));
+  }
+  var ms=Math.max(0,target-Date.now());
+  var dd=Math.floor(ms/86400000),hh=Math.floor(ms/3600000)%24,mm=Math.floor(ms/60000)%60;
+  return (dd?dd+'d ':'')+hh+'h '+mm+'m';
+}
 function drawCandlesRange(){
   var candles=RGCAND;if(!candles||!candles.length)return false;
   CANDRANGE=true;CANDGRAN=RGGRAN;CAND=candles;CANDLBL=RGLBL;
@@ -304,7 +339,7 @@ function drawCandlesRange(){
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
-  var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
+  var L=62,R=(typeof RGLIVE!=='undefined'&&RGLIVE)?78:12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
@@ -329,6 +364,22 @@ function drawCandlesRange(){
       if(lastTx==null||dx-lastTx>=56){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastTx=dx;}
     }
   });
+  if(typeof RGLIVE!=='undefined'&&RGLIVE&&live.usd!=null&&candles.length){
+    var lg=CANDGEOM[candles.length-1], ly2=Y(live.usd);
+    ctx.save();
+    // Live-overlay colors are theme-aware via psC (the bright dark-theme
+    // cyan/green wash out on a light chart background).
+    ctx.strokeStyle=psC('#22d3ee','#0891b2');ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(L,ly2);ctx.lineTo(W-R,ly2);ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle=psC('#22d3ee','#0891b2');ctx.setLineDash([4,4]);
+    ctx.strokeRect(lg.x-lg.bw/2-4,lg.wickTop-8,lg.bw+8,lg.wickBot-lg.wickTop+16);ctx.setLineDash([]);
+    ctx.font='bold 11px Inter, sans-serif';ctx.textAlign='left';
+    ctx.fillStyle=psC('#22c55e','#15803d');ctx.fillText('LIVE',lg.x-13,lg.wickTop-14);
+    var tag='LIVE '+fmt(live.usd), tw2=ctx.measureText(tag).width;
+    ctx.fillStyle=psC('#22d3ee','#0891b2');ctx.fillRect(W-R+4,ly2-8,tw2+8,16);
+    ctx.fillStyle=psC('#0b1226','#ffffff');ctx.fillText(tag,W-R+8,ly2+4);
+    ctx.restore();
+  }
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
     if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
     if(layer===0){ctx.strokeStyle=psC('rgba(255,255,255,.25)','rgba(15,23,42,.35)');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
@@ -500,13 +551,54 @@ function drawRange(){
   }
   var cand=aggDailyCandles(win,RGGRAN);
   if(cand.length<2){fallback('Not enough daily candles — showing daily closes.');return;}
-  RGCAND=cand;RGLBL=rng+' · '+RGGRAN+' candles';
-  var a0=cand[0].o,b0=cand[cand.length-1].c,pc0=(b0/a0-1)*100;
-  $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+cand.length+' '+RGGRAN+' candles, from '+new Date(cand[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')'+cadTag();
+  // EXPERIMENTAL LIVE FEEL: when the last bucket IS the current calendar
+  // bucket (daily: today's bar; weekly: this calendar week; monthly: this
+  // calendar month), its close follows the live CoinGecko price and its
+  // high/low extend to it — for display only. The current bucket is
+  // detected by CALENDAR boundaries, not by the last constituent bar: a
+  // stale feed whose last daily bar is Monday must still extend the
+  // current week on Wednesday, and a last bar from last week must never
+  // extend into a new week. Buckets that are not the current calendar
+  // bucket are never extended and no new candle is invented (no rollover
+  // candle). The 1D/4H candle views (complete buckets only) are unchanged.
+  var disp=cand.slice(), RGLIVE2=false;
+  if(live.usd!=null&&disp.length){
+    var lb=disp[disp.length-1], nd=new Date();
+    var contains=false;
+    if(RGGRAN==='daily'){
+      var todayUTC=Date.UTC(nd.getUTCFullYear(),nd.getUTCMonth(),nd.getUTCDate());
+      contains=(lb.t===todayUTC);
+    }else if(RGGRAN==='weekly'){
+      // Calendar week (Monday-start, UTC) of today vs of the bucket's
+      // first day. The bucket's first day is in the same calendar week
+      // as its last day (weekly buckets never span weeks).
+      var dow=nd.getUTCDay();
+      var todayMon=Date.UTC(nd.getUTCFullYear(),nd.getUTCMonth(),nd.getUTCDate()-(dow===0?6:dow-1));
+      var lbD=new Date(lb.t), lbDow=lbD.getUTCDay();
+      var lbMon=Date.UTC(lbD.getUTCFullYear(),lbD.getUTCMonth(),lbD.getUTCDate()-(lbDow===0?6:lbDow-1));
+      contains=(lbMon===todayMon);
+    }else if(RGGRAN==='monthly'){
+      // Calendar month of the bucket's first day vs today. Monthly
+      // buckets never span months, so the first day's month is the
+      // bucket's month.
+      var lbM=new Date(lb.t);
+      contains=(lbM.getUTCFullYear()===nd.getUTCFullYear()&&lbM.getUTCMonth()===nd.getUTCMonth());
+    }
+    if(contains){
+      disp[disp.length-1]={t:lb.t,end:lb.end,o:lb.o,h:Math.max(lb.h,live.usd),l:Math.min(lb.l,live.usd),c:live.usd};
+      RGLIVE2=true;
+    }
+  }
+  RGLIVE=RGLIVE2;
+  RGCAND=disp;RGLBL=rng+' · '+RGGRAN+' candles';
+  var a0=disp[0].o,b0=disp[disp.length-1].c,pc0=(b0/a0-1)*100;
+  $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+disp.length+' '+RGGRAN+' candles, from '+new Date(disp[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')'+cadTag();
   var aggTxt=RGGRAN==='monthly'?'by calendar month (UTC)':(RGGRAN==='weekly'?'by Monday-start UTC week':'by day');
-  $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. Last candle is the latest complete UTC day; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view only.';
+  $('bcNt').textContent='[Experimental live feel] Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. '+(RGLIVE?'Last candle is live — its close is the live price; this bucket closes in '+bucketCloseCountdown(RGGRAN)+'.':'Last candle is the latest complete UTC day; today\'s live price is not a candle.')+' S&P 500, Gold and MSTR toggles are off for candle view only.';
   if(ch){ch.destroy();ch=null;}
-  CANDSEL=-1;CANDHOV=-1;drawCandlesRange();
+  CANDSEL=-1;CANDHOV=-1;
+  var cc=$('bcC');if(cc){cc.style.transition='opacity .3s ease';cc.style.opacity='0';requestAnimationFrame(function(){cc.style.opacity='1';});}
+  drawCandlesRange();
 }
 function draw1D(){
   if(!window.Chart)return;
@@ -602,7 +694,7 @@ function isPhone(){return window.innerWidth<=640;}
    the sole vehicle control; it is not touched here. */
 function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hidden=true;
   dlg=document.createElement('div');dlg.className=INLINE?'bc-w bc-inline':'bc-w';dlg.hidden=true;dlg.setAttribute('role','dialog');if(!INLINE)dlg.setAttribute('aria-modal','true');dlg.setAttribute('aria-labelledby','bcTitle');
-  dlg.innerHTML='<div class="bc-grab" aria-hidden="true"></div><div class="bc-h"><div><span class="lp-lab" id="bcTitle"><span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+CUR.code+'</span><div class="bc-px"><span id="bcPx">—</span><span id="bcChg" class="hdr-chg"></span></div><div class="bc-rr" id="bcRr"></div></div><button type="button" class="bc-x" id="bcX" aria-label="Close BTC chart">✕</button></div>'
+  dlg.innerHTML='<div class="bc-grab" aria-hidden="true"></div><div class="bc-h"><div><span class="lp-lab" id="bcTitle"><span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+CUR.code+' <span style="background:#7c2d12;color:#fdba74;border:1px solid #f97316;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;">EXPERIMENTAL</span></span><div class="bc-px"><span id="bcPx">—</span><span id="bcChg" class="hdr-chg"></span></div><div class="bc-rr" id="bcRr"></div></div><button type="button" class="bc-x" id="bcX" aria-label="Close BTC chart">✕</button></div>'
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-rg-hint" id="bcRgHint" aria-hidden="true">\u2190 Swipe for longer ranges</span><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
    +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
    +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="4h" style="display:none">4H</button><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
