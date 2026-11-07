@@ -56,7 +56,8 @@
     var mins=(+o.hour%24)*60+(+o.minute);var cm=ET.closeMin(ET.today());return cm>0&&mins>=235&&mins<=(cm<960?1020:1215);}   /* pre-market 3:55 AM to after-hours end (8:15 PM; 5:00 PM on early-close days) */
   var stkLoaded=false, cacheUpd=0, JSONURL=BK.DATA+'prices.json';
   function cacheLabel(){if(!cacheUpd)return '';var st=mktOpen()&&(Date.now()-cacheUpd>30*60*1000);
-    return 'Stocks: cached · updated '+ET.time(new Date(cacheUpd))+(st?' (stale)':'');}
+    var age=st?Math.round((Date.now()-cacheUpd)/60000):0;
+    return 'Stocks: cached · updated '+ET.time(new Date(cacheUpd))+(st?' (stale — last updated '+age+' min ago)':'');}
   function tick(){if(document.hidden)return;if(!stkLoaded||mktOpen())loadStocks();}
   function loadStocks(){
     stkLoaded=true;
@@ -66,7 +67,15 @@
     .then(function(d){var u=Date.parse(d&&d.updated);if(u>0)cacheUpd=u;var S=(d&&d.stocks)||{};
       ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD'].forEach(function(T){var q=S[T];if(!q||typeof q.c!=='number'||!(q.c>0))return;
         var qt=q.t?q.t*1000:Date.now();if(qt>Date.now())qt=Date.now();if(['MSTR','STRC','TSLA','PLTR'].indexOf(T)>=0&&qt>lastTs)lastTs=qt;
-        live[T]=q.c;prev[T]=(typeof q.pc==='number'&&q.pc>0)?q.pc:null;src[T]='cached '+(q.t?hhmm(q.t):'');});
+        live[T]=q.c;prev[T]=(typeof q.pc==='number'&&q.pc>0)?q.pc:null;
+        /* Slice 5: a quote is stale when its own timestamp is >30 min old
+           during market hours (same 30-min rule as stocksFresh, but per
+           symbol — a single frozen quote must not read as live just
+           because prices.json itself is fresh). The age comes from the
+           quote's own timestamp, never guessed. q.src names a fallback
+           source (Yahoo) so a fallback price is visibly not the primary. */
+        var sqStale=mktOpen()&&qt>0&&(Date.now()-qt>30*60*1000), sqAge=sqStale?Math.round((Date.now()-qt)/60000):0;
+        src[T]='cached '+(q.t?hhmm(q.t):'')+(q.src?' · '+q.src:'')+(sqStale?' (stale, '+sqAge+' min ago)':'');});
       stkTime=cacheUpd?ET.time(new Date(cacheUpd)):null;
       var b=d&&d.btc;if(!live.BTC&&b&&b.usd>0){live.BTC=b.usd;btcChg=(typeof b.chg24h==='number')?b.chg24h:null;btcSrc='cached '+(b.src||'');btcTime=b.time?ET.time(new Date(b.time)):null;}
       else if(b&&btcChg===null&&typeof b.chg24h==='number')btcChg=b.chg24h; /* fallback (e.g. Coinbase) price arrived first: use the saved 24h move for % today */
