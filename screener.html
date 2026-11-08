@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stock Screener — Maple Leaf Pack</title>
-<link rel="stylesheet" href="assets/css/nav.css?v=cr021">
+<link rel="stylesheet" href="assets/css/nav.css?v=cr022">
 <!-- REMOVABLE BY DESIGN: This page is part of the additive Maple Leaf Screener pack.
      To shut it off and delete it, delete screener.html, assets/data/screener-pack.json,
      assets/js/screener.js, assets/js/screener-chart.js, assets/js/screener-indicator-chart.js, assets/data/gold-weekly.json, assets/data/wti-weekly.json, assets/js/maple-screener.js, and remove the one maple-screener.js
@@ -53,6 +53,7 @@
   .ind-modal { display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.72); align-items:flex-end; justify-content:center; padding:16px; }
   .ind-modal.open { display:flex; }
   .ind-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  @media (orientation:landscape) and (min-width:700px){ .ind-dialog{ max-width:920px; } }
   .ind-dialog h3 { margin:0 0 4px; font-size:19px; }
   .ind-dialog .ind-sub { display:none; }
   /* Gold modal info "+" buttons (30 Oct 2026): same pill style as the
@@ -71,6 +72,9 @@
   #ind-liveprice { display:none; font-size:15px; font-weight:800; margin-left:8px; }
   .ind-enh-btn { height:36px; padding:0 12px; font-size:13px; }
   .ind-enh-btn[aria-pressed="true"] { border-color:var(--cyan); color:var(--cyan); }
+  .ind-boll-mode { align-items:center; border:1px solid var(--line); border-radius:999px; overflow:hidden; }
+  .ind-boll-mode-btn { height:36px; padding:0 12px; font-size:13px; border:0; border-radius:0; background:transparent; }
+  .ind-boll-mode-btn[aria-pressed="true"] { background:var(--card2); color:var(--cyan); }
   #ind-retry { display:none; margin-top:10px; }
   .ind-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .tile .k { font-size:11px; letter-spacing:.14em; color:var(--mut); font-weight:800; text-transform:uppercase; }
@@ -301,6 +305,7 @@
     <canvas id="ind-canvas" width="320" height="280" aria-label="Indicator weekly candle chart, year to date"></canvas>
     <div id="ind-enh" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
       <button type="button" class="btn ind-enh-btn" data-enh="boll" aria-pressed="false">Bollinger (20, 2σ)</button>
+      <span id="ind-boll-mode" class="ind-boll-mode" style="display:none;"><button type="button" class="btn ind-boll-mode-btn" data-bollmode="weekly" aria-pressed="true">Weekly</button><button type="button" class="btn ind-boll-mode-btn" data-bollmode="daily" aria-pressed="false">Daily</button></span>
       <button type="button" class="btn ind-enh-btn" data-enh="lines" aria-pressed="false">High / low lines</button>
       <button type="button" class="btn ind-enh-btn" data-enh="drawdown" aria-pressed="false">Drawdown shading</button>
       <button type="button" class="btn ind-enh-btn" data-enh="patterns" aria-pressed="false">Pattern hints</button>
@@ -314,10 +319,10 @@
   </div>
 </div>
 <script src="assets/js/screener.js?v=scr1"></script>
-<script src="assets/js/screener-indicator-chart.js?v=stocks8"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks9"></script>
 <script src="assets/js/screener-chart.js?v=cmp6"></script>
 <script src="assets/js/et.js?v=et2"></script>
-<script src="assets/js/btcchart.js?v=et16"></script>
+<script src="assets/js/btcchart.js?v=et17"></script>
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>
 
 <a class="clock-float" href="clock/index.html"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.4 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>PaperstreetBTC clock</a>
