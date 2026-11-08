@@ -1125,6 +1125,14 @@ h2 {
   margin-right: 0.5rem;
 }
 .copy-btn:hover, .pdf-link:hover { background: #22d3ee; color: #070b18; }
+/* Portfolio Lab pill link under the YTD chart (8 Nov 2026): replaces the
+   "Download one-page sleeves PDF" button. Rounded pill, cyan accent;
+   darkens in light mode like the other cyan links. */
+.lab-pill{display:inline-block;background:transparent;border:1px solid var(--accent,#22d3ee);color:var(--accent,#22d3ee);padding:.55rem 1.1rem;border-radius:999px;font:600 .95rem Outfit,Inter,sans-serif;text-decoration:none;cursor:pointer}
+.lab-pill:hover{background:var(--accent,#22d3ee);color:#041018}
+html[data-theme="light"] .lab-pill{color:#0e7490;border-color:#0e7490}
+html[data-theme="light"] .lab-pill:hover{background:#0e7490;color:#fff}
+@media (max-width:480px){.lab-pill{font-size:.82rem;padding:.5rem .9rem}}
 .footer a { color: #22d3ee; text-decoration: none; }
 .footer a:hover { text-decoration: underline; }
 
