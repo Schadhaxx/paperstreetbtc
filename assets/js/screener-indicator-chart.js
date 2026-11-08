@@ -63,11 +63,16 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // level in that indicator's unit. "lastInProgress" (WTI only) is
   // the label for a latest week built from an intraday bar, not a
   // final close — it must never be called a daily close.
+  // "dailyUrl" is the daily-closes file for the Bollinger Weekly/Daily
+  // switch (Nov 2026): 20 daily closes ending on each week's last
+  // session. DAILY_V is bumped when the daily files are regenerated.
+  var DAILY_V = '20261107';
   var CONFIGS = {
     GOLD: {
       symbol: 'GOLD',
       title: 'Gold — YTD weekly candles',
       dataUrl: 'assets/data/gold-weekly.json?v=3',
+      dailyUrl: 'assets/data/ind-daily-gold.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Current ',
       subBlurb: 'Weekly candles. Tap a candle for its week.',
@@ -77,6 +82,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       symbol: 'WTI',
       title: 'WTI — YTD weekly candles',
       dataUrl: 'assets/data/wti-weekly.json?v=2',
+      dailyUrl: 'assets/data/ind-daily-wti.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Current ',
       subBlurb: 'Weekly candles. Tap a candle for its week.',
@@ -86,6 +92,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       symbol: 'US10Y',
       title: '10-Year — YTD weekly candles',
       dataUrl: 'assets/data/us10y-weekly.json?v=2',
+      dailyUrl: 'assets/data/ind-daily-us10y.json?v=' + DAILY_V,
       format: fmtYield,
       currentPrefix: 'Current ',
       subBlurb: 'Weekly candles. Tap a candle for its week.',
@@ -96,6 +103,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       symbol: 'VIX',
       title: 'VIX — YTD weekly candles',
       dataUrl: 'assets/data/vix-weekly.json?v=2',
+      dailyUrl: 'assets/data/ind-daily-vix.json?v=' + DAILY_V,
       format: fmtPoints,
       currentPrefix: 'Current ',
       subBlurb: 'Weekly candles. Tap a candle for its week.',
@@ -117,6 +125,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       basis: basis,
       title: listing ? (sym + ' — since listing') : (sym + ' — YTD weekly candles'),
       dataUrl: 'assets/data/stock-weekly-' + sym + '.json?v=' + STOCK_V,
+      dailyUrl: 'assets/data/stock-daily-' + sym + '.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Close ',
       subBlurb: 'Weekly candles. Tap a candle for its week.',
@@ -141,7 +150,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   }
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '' };
 
 
   // --- Experimental live feel: pure helpers (also exposed for harness) ---
@@ -321,6 +330,103 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     }
     return { sma: sma, up: up, lo: lo };
   }
+  // Bollinger Weekly/Daily switch (Nov 2026): the DAILY bands use the
+  // same 20-close, +/-2 sigma recipe, but from DAILY closes instead of
+  // weekly closes. For each week, the 20 daily closes ending on that
+  // week's last session (the last daily close on or before the week's
+  // Sunday). The in-progress latest week uses the daily closes as of
+  // the latest completed session. Returns {sma, up, lo} aligned to
+  // weeks, null where fewer than 20 daily closes are available up to
+  // that week. One set at a time — this REPLACES the weekly bands when
+  // the Daily mode is selected, it never draws alongside them.
+  // dailyDays: [{date: 'YYYY-MM-DD', close: number}] ascending.
+  // weeks: state.weeks (sunday is a Date) or raw weeks (sunday a string).
+  function enhBollDaily(weeks, dailyDays) {
+    var sma = [], up = [], lo = [], i, j, m, sd, sum, idx;
+    function sunStr(w) {
+      var s = w.sunday;
+      if (s instanceof Date) return s.toISOString().slice(0, 10);
+      return String(s).slice(0, 10);
+    }
+    function lastIdx(sunday) {
+      var loI = 0, hiI = dailyDays.length - 1, ans = -1, mid;
+      while (loI <= hiI) {
+        mid = (loI + hiI) >> 1;
+        if (dailyDays[mid].date <= sunday) { ans = mid; loI = mid + 1; }
+        else hiI = mid - 1;
+      }
+      return ans;
+    }
+    for (i = 0; i < weeks.length; i++) {
+      idx = lastIdx(sunStr(weeks[i]));
+      if (idx < 19) { sma.push(null); up.push(null); lo.push(null); continue; }
+      sum = 0; for (j = idx - 19; j <= idx; j++) sum += dailyDays[j].close;
+      m = sum / 20; sd = 0;
+      for (j = idx - 19; j <= idx; j++) sd += (dailyDays[j].close - m) * (dailyDays[j].close - m);
+      sd = Math.sqrt(sd / 19);
+      sma.push(m); up.push(m + 2 * sd); lo.push(m - 2 * sd);
+    }
+    return { sma: sma, up: up, lo: lo };
+  }
+  // Bollinger mode: 'weekly' (20 weekly closes, the original) or
+  // 'daily' (20 daily closes ending on each week's last session).
+  // Default weekly — the switch only appears while Bollinger is on,
+  // and a symbol change resets it to weekly.
+  var bollMode = 'weekly';
+  function syncBollModeUI() {
+    var sw = el('ind-boll-mode');
+    if (sw) sw.style.display = ENH.boll ? 'inline-flex' : 'none';
+    document.querySelectorAll('[data-bollmode]').forEach(function (b) {
+      var on = b.getAttribute('data-bollmode') === bollMode;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.classList.toggle('active', on);
+    });
+  }
+  function loadDailyBoll() {
+    var cfg = state.cfg;
+    if (!cfg || !cfg.dailyUrl || !state.weeks.length) return;
+    if (state.dailyLoading) return;
+    if (state.dailyDays && state.loadedDailySymbol === cfg.symbol) {
+      state.dailyBoll = enhBollDaily(state.weeks, state.dailyDays);
+      state.dailyError = null;
+      draw();
+      return;
+    }
+    state.dailyLoading = true;
+    state.dailyError = null;
+    fetch(cfg.dailyUrl)
+      .then(function (res) { if (!res.ok) throw new Error('no daily file'); return res.json(); })
+      .then(function (data) {
+        state.dailyLoading = false;
+        if (!state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale response: ignore
+        var days = (data && data.days) || [];
+        if (!days.length) throw new Error('empty daily file');
+        // Freshness: the daily file's last close should be within 10 days
+        // of the weekly file's last session. A much older file would draw
+        // stale bands — fall back to weekly instead.
+        var lastDaily = days[days.length - 1].date;
+        var lastWeek = state.weeks[state.weeks.length - 1];
+        var lastSun = lastWeek ? (lastWeek.sunday instanceof Date ? lastWeek.sunday.toISOString().slice(0, 10) : String(lastWeek.sunday).slice(0, 10)) : null;
+        if (lastSun) {
+          var gap = (new Date(lastSun + 'T00:00:00Z') - new Date(lastDaily + 'T00:00:00Z')) / 86400000;
+          if (!(gap >= 0 && gap <= 10)) throw new Error('stale daily file');
+        }
+        state.dailyDays = days;
+        state.loadedDailySymbol = cfg.symbol;
+        state.dailyBoll = enhBollDaily(state.weeks, days);
+        state.dailyError = null;
+        draw();
+      })
+      .catch(function () {
+        state.dailyLoading = false;
+        if (!state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale failure: ignore
+        state.dailyDays = null; state.dailyBoll = null;
+        state.dailyError = 'Daily data could not be loaded — showing weekly bands.';
+        bollMode = 'weekly';
+        syncBollModeUI();
+        draw();
+      });
+  }
   function enhDrawdown(weeks) {
     var peak = -Infinity, peakIdx = 0, best = 0, bestPeak = 0, bestTrough = 0, i, dd;
     for (i = 0; i < weeks.length; i++) {
@@ -471,6 +577,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       state.loadToken++;
       state.weeks = [];
       state.loadedSymbol = '';
+      // A new symbol starts on weekly Bollinger with no daily data:
+      // the daily file is per-symbol and is fetched on demand.
+      bollMode = 'weekly';
+      state.dailyDays = null; state.dailyBoll = null; state.dailyError = null;
+      state.dailyLoading = false; state.loadedDailySymbol = '';
+      syncBollModeUI();
       loadData();
     } else if (state.weeks.length && state.loadedSymbol === cfg.symbol) {
       state.drawStart = performance.now();
@@ -586,7 +698,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
       lo = Math.min(lo, state.base.value); hi = Math.max(hi, state.base.value);
     }
-    var fullBands = ENH.boll ? enhBoll(state.weeks) : null;
+    var fullBands = null;
+    if (ENH.boll) {
+      if (bollMode === 'daily' && state.dailyBoll) fullBands = state.dailyBoll;
+      else fullBands = enhBoll(state.weeks);
+    }
     var bands = fullBands ? { sma: fullBands.sma.slice(viewStart), up: fullBands.up.slice(viewStart), lo: fullBands.lo.slice(viewStart) } : null;
     if (bands) {
       bands.up.forEach(function (v) { if (v != null) hi = Math.max(hi, v); });
@@ -805,7 +921,14 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var note = el('ind-enh-note');
     if (note) {
       var lines = [];
-      if (ENH.boll) lines.push(bands && bands.up[n - 1] != null ? 'Bollinger (20, 2σ): SMA ' + fmt(bands.sma[n - 1]) + ' · upper ' + fmt(bands.up[n - 1]) + ' · lower ' + fmt(bands.lo[n - 1]) : 'Bollinger needs 20 weeks; this chart has ' + n + '.');
+      if (ENH.boll) {
+        var modeLab = bollMode === 'daily' ? 'daily, 20 closes' : 'weekly, 20 weeks';
+        var needLab = bollMode === 'daily'
+          ? 'Bollinger (daily) needs 20 daily closes before this week.'
+          : 'Bollinger needs 20 weeks; this chart has ' + n + '.';
+        lines.push(bands && bands.up[n - 1] != null ? 'Bollinger (' + modeLab + ', 2σ): SMA ' + fmt(bands.sma[n - 1]) + ' · upper ' + fmt(bands.up[n - 1]) + ' · lower ' + fmt(bands.lo[n - 1]) : needLab);
+      }
+      if (ENH.boll && state.dailyError) lines.push(state.dailyError);
       if (ENH.lines) lines.push('Highest shown ' + fmt(shownHi) + ' · lowest shown ' + fmt(shownLo) + ' — shown weeks only, not a lifetime high/low.');
       if (ENH.drawdown && ddInfo) lines.push('Max drawdown ' + (ddInfo.pct * 100).toFixed(1) + '% · ' + viewWeeks[ddInfo.peak].label + ' → ' + viewWeeks[ddInfo.trough].label + '.');
       if (ENH.patterns) lines.push(patCount ? patCount + ' pattern hint' + (patCount === 1 ? '' : 's') + ' marked (white dots). Tap a candle to see its pattern.' : 'No pattern hints on these weeks.');
@@ -815,7 +938,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
           lines.push('Volume: latest week ' + fmtVol(viewWeeks[n - 1].volume) + ' · average ' + fmtVol(vc ? vs / vc : 0) + '.');
         } else lines.push('Volume: no volume data in the shipped file for this symbol.');
       }
-      if ((ENH.boll || ENH.drawdown) && (state.cfg.lastInProgress || state.progressNote)) lines.push('Bollinger/drawdown include the in-progress latest week.');
+      if ((ENH.boll || ENH.drawdown) && (state.cfg.lastInProgress || state.progressNote)) lines.push(bollMode === 'daily' && ENH.boll ? 'Daily Bollinger for the in-progress week uses the latest completed session.' : 'Bollinger/drawdown include the in-progress latest week.');
       if (lines.length) { note.textContent = lines.join(' '); note.style.display = 'block'; }
       else { note.style.display = 'none'; note.textContent = ''; }
     }
@@ -986,11 +1109,29 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         if (k === 'zoom') state.selected = -1;
         b.setAttribute('aria-pressed', ENH[k] ? 'true' : 'false');
         b.classList.toggle('active', ENH[k]);
+        if (k === 'boll') {
+          syncBollModeUI();
+          if (ENH.boll && bollMode === 'daily') loadDailyBoll();
+        }
         draw();
+      });
+    });
+    // Bollinger Weekly/Daily switch: one set at a time. Shown only
+    // while Bollinger is on (syncBollModeUI). Daily loads the symbol's
+    // daily file on demand; a failed load falls back to weekly.
+    document.querySelectorAll('[data-bollmode]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = b.getAttribute('data-bollmode');
+        if (m !== 'weekly' && m !== 'daily') return;
+        if (!ENH.boll) return;
+        bollMode = m;
+        syncBollModeUI();
+        if (m === 'daily') loadDailyBoll();
+        else draw();
       });
     });
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
 })();
