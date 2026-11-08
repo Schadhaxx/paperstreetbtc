@@ -91,8 +91,8 @@ for (const h of htmls) {
   if (/btcchart\.js\?v=et15/.test(t)) { bad++; console.log('FAIL still et15', path.relative(R, h)); }
 }
 chk('all btcchart.html refs use ?v=et22 (16 files)', bad === 0 && refs === 16);
-chk('no burned btcchart pins (et5/et6/et7/et8/et12/et13/et14/et15) in new files',
-  !/btcchart(?:-panel)?\.js\?v=et(?:5|6|7|8|12|13|14|15)\b/.test(pill + panel));
+chk('no burned btcchart pins (et5/et6/et7/et8/et12/et13/et14/et15/et21) in new files',
+  !/btcchart(?:-panel)?\.js\?v=et(?:5|6|7|8|12|13|14|15|21)\b/.test(pill + panel));
 
 // --- no other Strategy preferreds ---
 chk('no STRF/STRK/STRD in new files', !/\bSTR[FKD]\b/.test(pill + panel));
