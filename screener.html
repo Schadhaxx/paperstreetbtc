@@ -3,9 +3,9 @@
 <head><script>(function(){var q=null,s=null;try{q=new URLSearchParams(location.search).get("theme")}catch(e){}try{s=localStorage.getItem("ps-theme")}catch(e){}var on=q==="light"||(q!=="dark"&&s==="light");if(on)document.documentElement.setAttribute("data-theme","light");try{if(q==="light")localStorage.setItem("ps-theme","light");else if(q==="dark"||(s!==null&&s!=="light"))localStorage.removeItem("ps-theme")}catch(e){}})();window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stock Screener — Maple Leaf Pack</title>
+<title>The Desk — Paperstreet BTC</title>
 <link rel="stylesheet" href="assets/css/nav.css?v=cr022">
-<!-- REMOVABLE BY DESIGN: This page is part of the additive Maple Leaf Screener pack.
+<!-- REMOVABLE BY DESIGN: This page is part of the additive The Desk pack.
      To shut it off and delete it, delete screener.html, assets/data/screener-pack.json,
      assets/js/screener.js, assets/js/screener-chart.js, assets/js/screener-indicator-chart.js, assets/data/gold-weekly.json, assets/data/wti-weekly.json, assets/js/maple-screener.js, and remove the one maple-screener.js
      script tag from index.html. No existing file's logic was modified, no old version needs
@@ -210,8 +210,8 @@
 <div class="wrap">
   <header>
     <a class="brand-row" href="index.html"><picture><source type="image/webp" srcset="assets/img/owl-220.webp"><img src="assets/img/owl-220.png" alt="Paperstreet BTC"></picture><span class="brand-name">Paperstreet <span class="brand-btc">BTC</span></span></a>
-    <h1>Your watchlist,<br>at a glance.</h1>
-    <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Seven stocks, four market indicators. Trend bars show only the size of today's move — they are not price history.</p></details>
+    <h1>The Desk.</h1>
+    <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Your watchlist, at a glance. Seven stocks, four market indicators. Trend bars show only the size of today's move — they are not price history.</p></details>
     <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
   </header>
   <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>How the boxes work</summary><p class="asof">Each box has one status line below it, saying which rows are live and which are on a dated close.</p></details>
@@ -325,6 +325,6 @@
 <script src="assets/js/btcchart.js?v=et18"></script>
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>
 
-<a class="clock-float" href="clock/index.html"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.4 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>PaperstreetBTC clock</a>
+<a class="clock-float" href="clock/index.html"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.4 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Live BTC Chart</a>
 </body>
 </html>
