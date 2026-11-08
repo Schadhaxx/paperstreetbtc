@@ -666,7 +666,15 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (state.loadedSymbol && state.cfg && state.loadedSymbol !== state.cfg.symbol) return;
     var dpr = window.devicePixelRatio || 1;
     var cssW = canvas.clientWidth || 320;
-    var cssH = (window.innerWidth > window.innerHeight && window.innerHeight >= 600) ? 360 : 280;
+    /* Short landscape (iPhone landscape, viewport <500px tall, 8 Nov 2026,
+       round 3): the dialog is bottom-anchored and only ~227px of the
+       280px canvas was visible. A 240px canvas fits fully inside the
+       taller dialog (max-height raised to 100vh-24px in screener.html),
+       so the whole chart — including the date axis — is visible without
+       scrolling. The dialog is already full width (812px), so the chart
+       stays wide. */
+    var shortLand = window.innerWidth > window.innerHeight && window.innerHeight < 500;
+    var cssH = shortLand ? 240 : ((window.innerWidth > window.innerHeight && window.innerHeight >= 600) ? 360 : 280);
     canvas.width = Math.round(cssW * dpr);
     canvas.height = Math.round(cssH * dpr);
     canvas.style.height = cssH + 'px';
@@ -951,7 +959,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (prog < 1 && !reducedM) requestAnimationFrame(function () { draw(); });
   }
 
-  function onCanvasTap(e) {
+  function onCanvasTap(e, isScrub) {
     var canvas = el('ind-canvas');
     if (!canvas || !canvas._plot) return;
     if (state.infoOpen) { hideInfo(); return; }
@@ -971,6 +979,19 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       else return;
     }
     if (idx < 0 || idx >= vw.length) return;
+    // Toggle-off (round 3, 8 Nov 2026): tapping the already-selected
+    // candle dismisses the pill. Before this, a re-tap just re-selected
+    // the same candle and the pill could never be dismissed that way —
+    // the only dismiss was tapping the pill itself. Not during a scrub:
+    // pointermove calls this while dragging, and dismissing mid-scrub
+    // would fight the drag.
+    if (!isScrub && idx === state.selected) {
+      var pill = el('ind-pill');
+      if (pill) pill.style.display = 'none';
+      state.selected = -1;
+      draw();
+      return;
+    }
     state.selected = idx;
     var w = vw[idx];
     // Live display: if the tapped candle is the in-progress last
@@ -1087,14 +1108,47 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   document.addEventListener('DOMContentLoaded', function () {
     var canvas = el('ind-canvas');
     if (canvas) {
-      canvas.addEventListener('click', onCanvasTap);
+      // Round 3 press-end dismiss (8 Nov 2026): the tap logic runs on
+      // press end (pointerup/pointercancel/touchend/touchcancel) via
+      // endPress, using the pointerdown position, so it works even when
+      // the browser never dispatches a click for the tap — which is what
+      // happens for real finger taps on iOS. Before this, the canvas tap
+      // was click-only, and onCanvasTap had no toggle-off at all, so a
+      // same-candle re-tap could never dismiss the pill. A press only
+      // counts as a drag when the scrub actually moved the selection;
+      // how far the finger moved does not matter. The click handler is
+      // only a fallback, suppressed via pressDone so a tap is never
+      // applied twice. The press is armed on touchstart as well as
+      // pointerdown.
+      var scrubbing = false, scrubChanged = false, downX = 0, downY = 0, pressDone = false, SCRUB_PX = 24;
+      var endPress = function () {
+        if (pressDone) return;
+        pressDone = true;
+        if (scrubChanged) return;
+        onCanvasTap({ clientX: downX }, false);
+      };
+      var armPress = function (x, y) {
+        scrubbing = true; scrubChanged = false; pressDone = false;
+        downX = x; downY = y;
+      };
+      canvas.addEventListener('click', function (e) { if (pressDone) { pressDone = false; return; } onCanvasTap(e, false); });
+      canvas.addEventListener('pointerdown', function (e) { armPress(e.clientX, e.clientY); });
+      canvas.addEventListener('touchstart', function (e) { if (!e.touches || !e.touches.length) return; var t = e.touches[0]; armPress(t.clientX, t.clientY); }, { passive: true });
+      canvas.addEventListener('pointerup', function () { scrubbing = false; endPress(); });
+      canvas.addEventListener('pointercancel', function () { scrubbing = false; endPress(); });
+      canvas.addEventListener('touchend', function () { scrubbing = false; endPress(); }, { passive: true });
+      canvas.addEventListener('touchcancel', function () { scrubbing = false; endPress(); }, { passive: true });
       // Mockup 2 scrub: drag across the chart and the pill follows
-      // candle by candle. A tap still works exactly as before.
-      var scrubbing = false;
-      canvas.addEventListener('pointerdown', function () { scrubbing = true; });
-      canvas.addEventListener('pointerup', function () { scrubbing = false; });
-      canvas.addEventListener('pointercancel', function () { scrubbing = false; });
-      canvas.addEventListener('pointermove', function (e) { if (scrubbing) onCanvasTap({ clientX: e.clientX }); });
+      // candle by candle. Small movements (<= SCRUB_PX) do not move the
+      // selection, so a tap is not mistaken for a scrub.
+      canvas.addEventListener('pointermove', function (e) {
+        if (!scrubbing) return;
+        var d = Math.max(Math.abs(e.clientX - downX), Math.abs(e.clientY - downY));
+        if (d <= SCRUB_PX) return;
+        var before = state.selected;
+        onCanvasTap({ clientX: e.clientX }, true);
+        if (state.selected !== before) scrubChanged = true;
+      });
     }
     var pill = el('ind-pill');
     if (pill) pill.addEventListener('click', function () { pill.style.display = 'none'; });
