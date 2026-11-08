@@ -129,7 +129,7 @@ function customVals(){const cS=document.getElementById('pvS');if(!cS||!document.
 if(document.getElementById('pvChart')){
 // chart
 const COL={berkshire:'#22d3ee',hodlr:'#3b82f6',hf:'#a78bfa',saylor:'#f472b6',BTC:'#f97316',GLD:'#facc15',MSTR:'#94a3b8',SPY:'#e2e8f0',QQQ:'#86efac','BRK-B':'#fb7185'};
-if(!pvOn)pvOn=new Set(['hodlr','BTC','GLD','MSTR','CUSTOM']);let on=pvOn,rng=pvRng;
+if(!pvOn)pvOn=new Set(['hodlr','BTC','GLD','MSTR']);let on=pvOn,rng=pvRng;
 /* Vehicle toggle, Day 3: the Compare sleeve lines follow the shared
    session mode (set on the homepage or in the BTC chart popover).
    Sleeve values are recomputed with the same re-basing as book.js:
@@ -160,7 +160,11 @@ ch.update();
  sp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',on.has(b.dataset.k)));rp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r===rng));
  const customNote=!on.has('CUSTOM')||!document.getElementById('pvCalc')?'':(cv?' Your sleeve line: starting amount follows the sleeve daily closes; extra contributions buy at opens, as in the calculator.'+(VEH!=='SPOT'?` In ${VEH} mode the line follows the ${VEH} vehicle — the BTC leg is priced at vehicle closes, since no vehicle opens exist.`:''):' Your sleeve line needs an amount above $0 and a valid start date.');
  document.getElementById('pvChartNote').innerHTML=`Data as of ${fmtDate(LAST)} close. % change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(fd?'<span class="prov">BTC close '+fd+' from backup source until Yahoo\'s final bar.</span>':(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`))+(VEHFAIL?(VEHERR&&VEHERR.stale?` Vehicle data is out of date (last close ${fmtDate(VEHERR.end)}) — showing Spot BTC.`:(VEHERR?` Vehicle data unavailable — ${VEHERR.message} — showing Spot BTC.`:` Vehicle data unavailable — showing Spot BTC.`)):'')+(VEH!=='SPOT'?` You are in ${VEH} mode — BTC sleeve priced in ${VEH} at its latest close${VEHSTAT&&VEHSTAT.end?` (as of the ${fmtDate(vehAsOf())} close)`:''}${VEHSTAT&&VEHSTAT.lag?` — the latest session uses that close until tonight's update`:''}${vehFillText(VEH)?` · ${vehFillText(VEH)}`:''}. Spot BTC remains the hurdle.`:'')+customNote+(VEHGAP?` A contribution could not be priced in ${VEH} mode (vehicle price missing for ${VEHGAP}) and was left out of the line.`:'')+(refreshMsg?` ${refreshMsg}`:'');if(document.getElementById('pvCandles'))drawCandles();}
-sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;on.has(k)?(on.size>1&&on.delete(k)):on.add(k);draw()};rp.onclick=e=>{if(e.target.dataset.r){rng=pvRng=e.target.dataset.r;draw()}};
+function calcUntouched(){const cS=document.getElementById('pvS');if(!cS||!document.getElementById('pvCalc'))return false;
+ return cS.value===Object.keys(L.sleeves)[0]&&document.getElementById('pvD').value==='2026-01-01'&&+document.getElementById('pvA').value===10000&&!document.querySelector('#pvX .pvx-row');}
+sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;
+ if(k==='CUSTOM'&&!on.has('CUSTOM')&&calcUntouched()){const c=document.getElementById('calculator');if(c)c.scrollIntoView({behavior:(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)?'auto':'smooth'});return;}
+ on.has(k)?(on.size>1&&on.delete(k)):on.add(k);draw()};rp.onclick=e=>{if(e.target.dataset.r){rng=pvRng=e.target.dataset.r;draw()}};
 if(document.getElementById('pvRefresh')&&!refreshWired){refreshWired=true;document.getElementById('pvRefresh').onclick=()=>{const btn=document.getElementById('pvRefresh');if(!btn||btn.disabled)return;const oldLast=LAST;btn.disabled=true;refreshMsg='Refreshing…';draw();loadHistory().then(ok=>{if(ok){const nl=Object.keys(CL).sort().pop();if(nl&&nl!==oldLast){refreshMsg='Updated '+etTime()+' · Data as of '+fmtDate(nl)+' close.';run();}else{refreshMsg='Already up to date · Data as of '+fmtDate(oldLast)+' close.';draw();}}else{refreshMsg='Couldn\'t refresh — showing '+fmtDate(oldLast)+' close.';draw();}btn.disabled=false;});};}
 // Sleeve candles (mockup 11, test branch 4 Nov 2026): weekly candles of
 // ONE sleeve's value, built from the same daily SER values as the line
