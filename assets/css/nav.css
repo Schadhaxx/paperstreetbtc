@@ -308,13 +308,13 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .mnav-drop.open .nav-chev{transform:rotate(180deg)}
 .mnav-sub a{display:flex;align-items:center;min-height:44px;padding:0 8px 0 24px;color:var(--muted,#94a3b8);font:500 .95rem Outfit,Inter,sans-serif;text-decoration:none;border-left:2px solid rgba(34,211,238,.35);margin-left:8px}
 .mnav-sub a:hover{color:#22d3ee}
-/* Menu-tab vibrancy (8 Nov 2026, Sunil): "Live BTC Chart" is the most
-   vibrant tab — almost alive — and "The Desk" is a clear step below it.
-   Live gets the BTC cyan + a soft glow + a gently pulsing dot; Desk gets a
-   brighter neutral + a whisper of glow, no dot, no motion. Both sit above
-   the muted tabs. Scoped to the nav (desktop) and hamburger menu (mobile)
-   via the tab hrefs, so the popup footer links and the screener's floating
-   pill are untouched. */
+/* Menu-tab vibrancy (8 Nov 2026, Sunil): "Live BTC Chart" and "The Desk"
+   share the BTC cyan — Desk now matches Live's colour. Live is still the
+   most alive tab: it alone gets the gently pulsing dot (plus a stronger
+   glow on hover); Desk has no dot, no motion. Both sit above the muted
+   tabs. Scoped to the nav (desktop) and hamburger menu (mobile) via the
+   tab hrefs, so the popup footer links and the screener's floating pill
+   are untouched. */
 @keyframes navLivePulse{0%,100%{opacity:1;box-shadow:0 0 8px rgba(34,211,238,.9)}50%{opacity:.45;box-shadow:0 0 2px rgba(34,211,238,.35)}}
 .header nav a[href$="clock/index.html"],
 .mnav-menu a[href$="clock/index.html"]{color:#22d3ee;text-shadow:0 0 12px rgba(34,211,238,.55)}
@@ -325,21 +325,22 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .header nav a[href$="clock/index.html"]:hover,
 .mnav-menu a[href$="clock/index.html"]:hover{color:#a5f3fc;text-shadow:0 0 16px rgba(34,211,238,.8)}
 .header nav a[href$="screener.html"],
-.mnav-menu a[href$="screener.html"]{color:#cbd5e1;text-shadow:0 0 10px rgba(203,213,225,.28)}
+.mnav-menu a[href$="screener.html"]{color:#22d3ee;text-shadow:0 0 12px rgba(34,211,238,.55)}
 .header nav a[href$="screener.html"]:hover,
-.mnav-menu a[href$="screener.html"]:hover{color:#f1f5f9;text-shadow:0 0 12px rgba(203,213,225,.45)}
-/* Light theme: the bright cyan / light slate are unreadable on a light
-   background, so Live drops to the site's light-mode accent text (#0e7490,
-   as used for .is-active links) and Desk to near-black; the glow is
-   dropped (invisible on light) but the pulsing dot stays — it follows the
-   text colour via currentColor. These beat light.css (loaded after nav.css)
-   on specificity. */
+.mnav-menu a[href$="screener.html"]:hover{color:#a5f3fc;text-shadow:0 0 16px rgba(34,211,238,.8)}
+/* Light theme: the bright cyan is unreadable on a light background, so
+   Live and Desk both drop to the site's light-mode accent text (#0e7490,
+   as used for .is-active links); the glow is dropped (invisible on light)
+   but the pulsing dot stays — it follows the text colour via currentColor.
+   These beat light.css (loaded after nav.css) on specificity. */
 html[data-theme="light"] .header nav a[href$="clock/index.html"],
 html[data-theme="light"] .mnav-menu a[href$="clock/index.html"]{color:#0e7490;text-shadow:none}
 html[data-theme="light"] .header nav a[href$="clock/index.html"]:hover,
 html[data-theme="light"] .mnav-menu a[href$="clock/index.html"]:hover{color:#155e75;text-shadow:none}
 html[data-theme="light"] .header nav a[href$="screener.html"],
-html[data-theme="light"] .mnav-menu a[href$="screener.html"]{color:#0f172a;text-shadow:none}
+html[data-theme="light"] .mnav-menu a[href$="screener.html"]{color:#0e7490;text-shadow:none}
+html[data-theme="light"] .header nav a[href$="screener.html"]:hover,
+html[data-theme="light"] .mnav-menu a[href$="screener.html"]:hover{color:#155e75;text-shadow:none}
 @media (prefers-reduced-motion:reduce){
   .header nav a[href$="clock/index.html"]::before,
   .mnav-menu a[href$="clock/index.html"]::before{animation:none}
