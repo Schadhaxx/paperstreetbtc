@@ -540,7 +540,7 @@ function drawRange(){
     var a04=cand4[0].o,b04=cand4[cand4.length-1].c,pc04=(b04/a04-1)*100;
     $('bcRr').textContent='1W: BTC '+((pc04>=0?'+':'')+pc04.toFixed(2)+'%')+' · '+cand4.length+' 4-hour candles, from '+new Date(cand4[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a04)+')';
     $('bcNt').textContent='Coinbase 4-hour candles (UTC), in 4-hour blocks. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete 4-hour block; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view.';
-    if(ch){ch.destroy();ch=null;}
+    clearLineChart();
     CANDSEL=-1;CANDHOV=-1;drawCandlesRange();return;
   }
 
@@ -619,13 +619,13 @@ function drawRange(){
   $('bcRr').textContent=rng+': BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · '+disp.length+' '+RGGRAN+' candles, from '+new Date(disp[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a0)+')'+cadTag();
   var aggTxt=RGGRAN==='monthly'?'by calendar month (UTC)':(RGGRAN==='weekly'?'by Monday-start UTC week':'by day');
   $('bcNt').textContent='Coinbase daily candles (UTC days), aggregated '+aggTxt+'. Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. '+(RGLIVE?'Last candle is live — its close is the live price; this bucket closes in '+bucketCloseCountdown(RGGRAN)+'.':'Last candle is the latest complete UTC day; today\'s live price is not a candle.')+' S&P 500, Gold and MSTR toggles are off for candle view only.';
-  if(ch){ch.destroy();ch=null;}
+  clearLineChart();
   CANDSEL=-1;CANDHOV=-1;
   var cc=$('bcC');if(cc){cc.style.transition='opacity .3s ease';cc.style.opacity='0';requestAnimationFrame(function(){cc.style.opacity='1';});}
   drawCandlesRange();
 }
 function draw1D(){
-  if(!window.Chart)return;
+  if(!NATIVE_LINE&&!window.Chart)return;
   head();
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   $('bcSc').style.display='none';
@@ -647,7 +647,7 @@ function draw1D(){
       var a0=cand[0].o, b0=cand[cand.length-1].c, pc0=(b0/a0-1)*100;
       $('bcRr').textContent='1D: BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · last 24 hours, '+CT+' candles, from '+etTime(cand[0].t)+' ET ('+fmt(a0)+')'+cadTag();
       $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. S&P 500, Gold and MSTR toggles are off for 1D only.';
-      if(ch){ch.destroy();ch=null;}
+      clearLineChart();
       CANDSEL=-1;CANDHOV=-1;drawCandles1D(cand, CT==='1h'?'1-hour candles':'4-hour candles', per);
       return;
     }
@@ -668,7 +668,10 @@ function draw1D(){
       label:function(i){return 'BTC '+fmt(i.parsed.y);}}}},
     scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0}},
       y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:function(v){var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);}}}}};
-  if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});
+  /* Stage 2 Step 2: native 1D line behind the NATIVE_LINE flag; Chart.js stays the fallback. */
+  var nativeOK=false;
+  if(NATIVE_LINE){if(ch){ch.destroy();ch=null;}nativeOK=draw1DNative(pts);lineDrawn=nativeOK;}
+  if(!nativeOK){if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});lineDrawn=false;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;}
 }
 
 /* Range-row scroll hint, 29 Oct 2026: tabs run shortest (1D) to longest (Max) left to right, so on a phone the longer ranges sit off-screen to the right and are reached by swiping left. The hint shows only while there is still more to the right. */
@@ -746,7 +749,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
   dlg.addEventListener('touchend',function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>80)close();y0=null;},{passive:true});
-  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
+  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();nativeResize();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
 function place(){if(INLINE)return;var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
   if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),isLand=window.innerWidth>window.innerHeight,shortLand=isLand&&window.innerHeight<500,wide=isLand&&(window.innerWidth>=900||window.innerHeight<500),wCap=wide?900:640,w=Math.min(wCap,window.innerWidth-32);
   /* Short landscape (iPhone landscape, viewport <500px tall, 8 Nov 2026,
@@ -762,7 +765,7 @@ function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   var last=new Date(d[d.length-1][0]+'T00:00:00Z'),st;
   if(rng==='Max')st='0000';else if(rng==='YTD')st=(last.getUTCFullYear()-1)+'-12-31';else st=new Date(last-DAYS[rng]*864e5).toISOString().slice(0,10);
   return d.filter(function(p){return p[0]>=st;});}
-function drawDaily(){if(!DATA||!window.Chart)return;clearCandState();head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(CANDLE_RANGES.indexOf(rng)>=0){_cg.style.display='';syncCg();}else _cg.style.display='none';}
+function drawDaily(){if(!DATA)return;if(!NATIVE_LINE&&!window.Chart)return;clearCandState();lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(CANDLE_RANGES.indexOf(rng)>=0){_cg.style.display='';syncCg();}else _cg.style.display='none';}
 var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   var onb=$('bcRgs').querySelector('.on'),rs=$('bcRgs');if(onb&&rs.scrollWidth>rs.clientWidth){var L=onb.offsetLeft-rs.offsetLeft,R=L+onb.offsetWidth;if(L<rs.scrollLeft+16||R>rs.scrollLeft+rs.clientWidth-16)rs.scrollTo({left:Math.max(0,L-(rs.clientWidth-onb.offsetWidth)/2),behavior:'smooth'});}
@@ -795,7 +798,563 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
         return i.dataset.label==='BTC'?'BTC '+fmt(raw)+' ('+fp(q)+')':i.dataset.label==='Gold'?'Gold '+curSym()+curVal(raw).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')':i.dataset.label==='MSTR'?'MSTR '+curSym()+curVal(raw).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')':'S&P 500 '+raw.toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')';}}}},
     scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0,callback:function(v){var s=this.getLabelForValue(v);return n>400?s.slice(0,4):s.slice(5);}}},
       y:{type:LOG?'logarithmic':'linear',grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:yTick}}}};
-  if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});}
+  /* Stage 2 Step 3: native range line behind the NATIVE_LINE flag; Chart.js stays the fallback. */
+  var nativeOK=false;
+  if(NATIVE_LINE){if(ch){ch.destroy();ch=null;}nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG});lineDrawn=nativeOK;}
+  if(!nativeOK){if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});lineDrawn=false;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;}}
+/* ===== Stage 2 native line renderer — Step 2: 1D line (8 Nov 2026) =====
+   draw1DNative implements the 1D intraday line natively (smooth curve,
+   cyan gradient fill, axes, labels, live "Now" point, tap/hover tooltip).
+   drawDailyNative implements the range daily line natively (Step 3).
+   The native renderer replaces
+   ONLY the two Chart.js line constructions (draw1D, drawDaily); everything
+   else in this file stays. Design note (flags F1–F8):
+   ~/workspace/ps-stage2-step1/design-note.md
+   F5 — DPR: uncapped, matching the candle pattern in this file (the line
+   and candle views share this canvas; a cap would make the line view
+   blurrier than the candle view on a 3x phone).
+   F6 — Colours: the hardcoded dark Chart.js values, not "improved".
+   The native line is behind the NATIVE_LINE flag (off by default); the
+   Chart.js path stays the fallback until Step 4 side-by-side passes. */
+var NATIVE_LINE=false; /* Step 2: off by default. Set true via P.setNativeLine / window.__BTC_SET_NATIVE_LINE (test hook). */
+var lineDrawn=false; /* F1: true while the native 1D line is on the canvas. */
+var linePts=null; /* pts array last drawn by draw1DNative (tooltip + redraw). */
+var lineHover=-1; /* index of the hovered/tapped point, -1 = none. */
+var lineGeom=null; /* layout of the last native 1D draw (hit-testing + parity). */
+/* F1: clear the line chart — destroys any Chart.js instance AND clears the
+   native line flag. Call this wherever the old code did `if(ch){ch.destroy();ch=null;}`
+   before drawing candles (the line view is leaving the canvas). */
+function clearLineChart(){if(ch){ch.destroy();ch=null;}lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;}
+/* F1: redraw the native line at the current size (Chart.js responsive:true
+   replacement — flag F4). No-op unless the native 1D line is showing. */
+function redrawLine(){if(lineDrawn)draw();}
+function nativeResize(){redrawLine();}
+/* Redraw the native line with the current hover state (tooltip show/hide).
+   Dispatches on the layout kind: the 1D line or the range daily line.
+   Guarded on lineDrawn so a scroll after switching back to the Chart.js
+   fallback cannot repaint the native line over it. */
+function redrawNativeLine(){
+  if(!lineDrawn||!lineGeom)return;
+  if(lineGeom.kind==='daily'&&linePts&&linePts.d)drawDailyNative(linePts.d,linePts.cmp);
+  else if(linePts)draw1DNative(linePts);
+}
+
+function chartNiceNum(x){
+  /* Chart.js niceNum (vendored chart.umd.min.js, function B): round to the
+     nearest integer when within x/1000, then a 1/2/5/10 step at the decade
+     below x (thresholds <=1 / <=2 / <=5). */
+  var r=Math.round(x);
+  if(Math.abs(x-r)<x/1e3)x=r;
+  var p=Math.pow(10,Math.floor(Math.log10(x)));
+  var s=x/p;
+  return (s<=1?1:s<=2?2:s<=5?5:10)*p;
+}
+function nativeNiceTicks(min,max,plotH){
+  /* Chart.js linear-scale tick generation, replicated exactly (vendored
+     chart.umd.min.js: getTickLimit + the buildTicks tick function).
+     maxTicks = min(11, ceil(plotH/14.4)): 11 is Chart.js's default
+     maxTicksLimit; computeTickLimit = ceil(plot height / tick-font
+     lineHeight), the default 12px tick font at lineHeight 1.2 = 14.4px.
+     The step is niceNum(span/(maxTicks-1)); if the tick count then
+     exceeds maxTicks-1 intervals the step is recomputed as
+     niceNum(count*step/(maxTicks-1)). Ticks run from
+     floor(min/step)*step to ceil(max/step)*step, so the top tick covers
+     the data max. (The old target-of-4 gave $1,000 steps on 1W and
+     $2,000 on 1M where Chart.js uses $500 / $1,000 — Step 4 (a).) */
+  if(!(max>min)){max=min+1;}
+  var mt=Math.min(11,Math.ceil((plotH||320)/14.4));
+  if(mt<2)mt=2;
+  var g=mt-1,span=max-min,step=chartNiceNum(span/g);
+  var k=Math.ceil(max/step)-Math.floor(min/step);
+  if(k>g)step=chartNiceNum(k*step/g);
+  var t0=Math.floor(min/step)*step,t1=Math.ceil(max/step)*step,out=[];
+  for(var v=t0;v<=t1+step*0.01;v+=step)out.push(Math.round(v*1000)/1000);
+  return out;
+}
+var LOG_SIG=[1,2,3,4,5,6,7,8,9,10,15,20];
+function logGridCeil(v){
+  /* Smallest Chart.js log-scale tick-grid value >= v (the wo grid:
+     significands 1..10, 15, 20 per decade). The 15/20 of one decade spill
+     into the next decade's range (15e4 = 150,000), so start a decade low. */
+  if(!(v>0))return 1;
+  var o=Math.floor(Math.log10(v))-1;
+  for(var j=0;j<4;j++){
+    var pw=Math.pow(10,o+j);
+    for(var i=0;i<LOG_SIG.length;i++){var tv=LOG_SIG[i]*pw;if(tv>=v*(1-1e-9))return tv;}
+  }
+  return Math.pow(10,Math.floor(Math.log10(v))+1);
+}
+function logGridFloor(v){
+  /* Largest Chart.js log-scale tick-grid value <= v. */
+  if(!(v>0))return 1;
+  var o=Math.floor(Math.log10(v));
+  for(var j=0;j<4;j++){
+    var pw=Math.pow(10,o-j);
+    for(var i=LOG_SIG.length-1;i>=0;i--){var tv=LOG_SIG[i]*pw;if(tv<=v*(1+1e-9))return tv;}
+  }
+  return Math.pow(10,Math.floor(Math.log10(v)));
+}
+function nativeTraceLine(ctx,xs,ys,tension,bounds){
+  /* Chart.js splineCurve (Catmull-Rom), matching the vendored Chart.js
+     _updateBezierControlPoints exactly: each point's cp1 (before) and cp2
+     (after) come from splineCurve(prev, curr, next, tension); the segment
+     from point i to i+1 uses i.cp2 -> (i+1).cp1. Control points are clamped
+     to the plot bounds (capBezierPoints, on by default). The YTD backup's
+     horizontal-handle version is close but visibly different on steep
+     sections, so it is NOT reused here. */
+  var n=xs.length;
+  if(n<1)return;
+  ctx.moveTo(xs[0],ys[0]);
+  if(n===1)return;
+  if(!tension||n===2){for(var i=1;i<n;i++)ctx.lineTo(xs[i],ys[i]);return;}
+  function spline(pX,pY,cX,cY,nX,nY,t){
+    var d01=Math.sqrt(Math.pow(cX-pX,2)+Math.pow(cY-pY,2));
+    var d12=Math.sqrt(Math.pow(nX-cX,2)+Math.pow(nY-cY,2));
+    var s01=d01/(d01+d12),s12=d12/(d01+d12);
+    if(isNaN(s01))s01=0;
+    if(isNaN(s12))s12=0;
+    var fa=t*s01,fb=t*s12;
+    return{prev:{x:cX-fa*(nX-pX),y:cY-fa*(nY-pY)},
+           next:{x:cX+fb*(nX-pX),y:cY+fb*(nY-pY)}};
+  }
+  function clamp(v,lo,hi){return Math.max(Math.min(v,hi),lo);}
+  var cp1x=[],cp1y=[],cp2x=[],cp2y=[],j;
+  for(j=0;j<n;j++){
+    var p=Math.max(0,j-1),q=Math.min(n-1,j+1);
+    var c=spline(xs[p],ys[p],xs[j],ys[j],xs[q],ys[q],tension);
+    cp1x[j]=c.prev.x;cp1y[j]=c.prev.y;cp2x[j]=c.next.x;cp2y[j]=c.next.y;
+  }
+  if(bounds){
+    for(j=0;j<n;j++){
+      cp1x[j]=clamp(cp1x[j],bounds.l,bounds.r);cp1y[j]=clamp(cp1y[j],bounds.t,bounds.b);
+      cp2x[j]=clamp(cp2x[j],bounds.l,bounds.r);cp2y[j]=clamp(cp2y[j],bounds.t,bounds.b);
+    }
+  }
+  for(var i=0;i<n-1;i++){
+    ctx.bezierCurveTo(cp2x[i],cp2y[i],cp1x[i+1],cp1y[i+1],xs[i+1],ys[i+1]);
+  }
+}
+function nativeGradientFill(ctx,x,y,w,h){
+  /* Cyan gradient, same stops as the Chart.js 1D fill (rgba(34,211,238,.28) -> transparent). */
+  var g=ctx.createLinearGradient(x,y,x,y+h);
+  g.addColorStop(0,'rgba(34,211,238,.28)');
+  g.addColorStop(1,'rgba(34,211,238,0)');
+  return g;
+}
+function drawLineTooltip(ctx,p,px,py,W,padT,plotH){
+  /* Tooltip content = the Chart.js 1D tooltip (title: 'Now (live)' or ET date;
+     label: 'BTC ' + fmt(price)). Positioned above the point, flipping below
+     if it would run off the top — Chart.js's default placement. */
+  var title=p.live?'Now (live)':etDateTime(p.t);
+  var lines=[title,'BTC '+fmt(p.v)];
+  ctx.font='11px Inter, sans-serif';
+  var tw=0;lines.forEach(function(t){tw=Math.max(tw,ctx.measureText(t).width);});tw+=16;
+  var th=lines.length*14+10;
+  var tx=px-tw/2,ty=py-th-10;
+  if(ty<padT)ty=py+10;
+  if(ty+th>padT+plotH)ty=padT+plotH-th;
+  if(tx<4)tx=4;
+  if(tx+tw>W-4)tx=W-4-tw;
+  ctx.fillStyle='rgba(15,23,42,.92)';
+  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.beginPath();ctx.rect(tx,ty,tw,th);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#e2e8f0';ctx.textAlign='left';ctx.textBaseline='top';
+  lines.forEach(function(t,i){ctx.fillText(t,tx+8,ty+6+i*14);});
+}
+function nativeTooltipBind(c){
+  if(c._lineTipBound)return;
+  c._lineTipBound=true;
+  /* F3 — SCROLL SAFETY (Speed Option 2 rollback + round-3 pill lesson):
+     NEVER set touch-action 'none' and NEVER capture the pointer on this
+     canvas (that trapped vertical page scroll on iPhone/iPad). The canvas
+     already has touch-action: pan-y in CSS; these listeners never change it.
+     The listeners do NOTHING while a candle view is active (candViewActive)
+     — the candle pill owns the canvas then. */
+  var downX=0,downY=0,downIdx=-1,pressMoved=false,pressDone=false;
+  function pick(ev){
+    if(!lineGeom||!linePts)return -1;
+    var r=c.getBoundingClientRect();
+    var cx=(ev.clientX!=null)?ev.clientX:((ev.touches&&ev.touches[0])?ev.touches[0].clientX:((ev.changedTouches&&ev.changedTouches[0])?ev.changedTouches[0].clientX:null));
+    if(cx==null)return -1;
+    var x=cx-r.left,L=lineGeom.pad.l,iw=lineGeom.plotW,n=lineGeom.n;
+    if(x<L||x>L+iw)return -1;
+    var t=(x-L)/iw;
+    return Math.max(0,Math.min(n-1,Math.round(t*Math.max(1,n-1))));
+  }
+  function show(i){if(i===lineHover)return;lineHover=i;redrawNativeLine();}
+  function hide(){if(lineHover===-1)return;lineHover=-1;redrawNativeLine();}
+  /* Mouse hover follows the pointer (desktop). */
+  c.addEventListener('pointermove',function(e){
+    if(e.pointerType!=='mouse')return;
+    if(candViewActive()||!lineDrawn)return;
+    show(pick(e));
+  });
+  c.addEventListener('pointerleave',function(e){
+    if(e.pointerType!=='mouse')return;
+    hide();
+  });
+  /* Touch/pen tap: arm on press down, decide on press end (round-3 model).
+     A tap shows the tooltip at the down point; tapping the same point again
+     dismisses it; tapping empty space dismisses it. A press that moved far
+     (a scroll/drag) does not show a tooltip — the scroll dismisses it. */
+  c.addEventListener('pointerdown',function(e){
+    if(candViewActive()||!lineDrawn)return;
+    var r=c.getBoundingClientRect();
+    downX=e.clientX-r.left;downY=e.clientY-r.top;downIdx=pick(e);pressMoved=false;pressDone=false;
+    window.__BTC_LINE_PRESS={downIdx:downIdx,pressMoved:false,hover:lineHover};
+  });
+  c.addEventListener('touchstart',function(e){
+    if(candViewActive()||!lineDrawn)return;
+    if(!e.touches||!e.touches.length)return;
+    var r=c.getBoundingClientRect(),t=e.touches[0];
+    downX=t.clientX-r.left;downY=t.clientY-r.top;downIdx=pick(e);pressMoved=false;pressDone=false;
+  },{passive:true});
+  c.addEventListener('pointermove',function(e){
+    if(e.pointerType==='mouse')return;
+    if(downIdx<0)return;
+    var r=c.getBoundingClientRect();
+    var dx=Math.abs(e.clientX-r.left-downX),dy=Math.abs(e.clientY-r.top-downY);
+    if(Math.max(dx,dy)>40)pressMoved=true;
+  });
+  function endLinePress(){
+    if(pressDone)return;
+    if(candViewActive()||!lineDrawn)return;
+    pressDone=true;
+    window.__BTC_LINE_PRESS={downIdx:downIdx,pressMoved:pressMoved,hover:lineHover,ended:true};
+    if(downIdx<0){hide();return;}
+    if(pressMoved)return;
+    if(downIdx===lineHover){hide();return;}
+    show(downIdx);
+  }
+  c.addEventListener('pointerup',function(){endLinePress();});
+  c.addEventListener('pointercancel',function(){endLinePress();});
+  c.addEventListener('touchend',function(){endLinePress();},{passive:true});
+  c.addEventListener('touchcancel',function(){endLinePress();},{passive:true});
+  /* Dismiss the sticky tooltip when the page scrolls. */
+  window.addEventListener('scroll',function(){hide();},{passive:true,capture:true});
+  document.addEventListener('touchmove',function(e){if(!c.contains(e.target))hide();},{passive:true});
+}
+function nativeTooltipHide(){
+  if(lineHover===-1)return;
+  lineHover=-1;
+  redrawNativeLine();
+}
+function draw1DNative(pts){
+  /* Stage 2 Step 2 — implemented. The 1D intraday line, drawn natively.
+     Same data, same labels, same colours as the Chart.js draw1D. Returns
+     true on success, false on failure (caller falls back to Chart.js). */
+  try{
+    if(!pts||pts.length<2)return false;
+    var c=$('bcC');if(!c)return false;
+    var ctx=c.getContext('2d');
+    var W=c.parentNode.clientWidth||640,H=c.parentNode.clientHeight||300;
+    var dpr=window.devicePixelRatio||1; /* F5: uncapped, matching the candles on this shared canvas. */
+    c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);
+    c.style.width=W+'px';c.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    var hasLive=pts[pts.length-1].live===true;
+    var vals=pts.map(function(p){return p.v;});
+    var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+    /* No explicit pad: Chart.js does not pad the data range — its nice
+       ticks provide the padding. An 8% pad (the candle pattern) would
+       extend the axis below Chart.js (e.g. $74k instead of $75k). */
+    var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
+    var ticks=nativeNiceTicks(lo,hi,ih);
+    if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
+    var n=pts.length;
+    var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
+    var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
+    var xs=pts.map(function(p,i){return X(i);}),ys=vals.map(function(v){return Y(v);});
+    /* Y gridlines + labels (same format as the Chart.js yTick callback). */
+    ctx.strokeStyle='rgba(255,255,255,.05)';ctx.fillStyle='#9aa6bc';
+    ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
+    ticks.forEach(function(v){
+      var y=Y(v);
+      ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(L+iw,y);ctx.stroke();
+      var vv=curVal(v);
+      ctx.fillText(vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv),L-6,y);
+    });
+    /* X labels: Chart.js autoSkip uses a fixed step (ceil(n/maxTicksLimit))
+       and does NOT force-include the last label — so 'Now (live)' never
+       appears on its x-axis. Same step here, so the labels land on the
+       same points Chart.js picks. */
+    var maxX=isPhone()?5:7,step=Math.max(1,Math.ceil(n/maxX)),xIdx=[];
+    for(var i=0;i<n;i+=step)xIdx.push(i);
+    var lab=pts.map(function(p){return p.live?'Now (live)':etTime(p.t);});
+    /* Vertical gridlines at each x tick (Chart.js scales.x.grid). */
+    xIdx.forEach(function(i){
+      var x=X(i);
+      ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
+    });
+    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#9aa6bc';
+    xIdx.forEach(function(i){
+      var dx=Math.max(L+30,Math.min(W-R-30,X(i)));
+      ctx.fillText(lab[i],dx,T+ih+6);
+    });
+    /* Fill under the line, then the line (tension .15, same as Chart.js). */
+    ctx.beginPath();
+    nativeTraceLine(ctx,xs,ys,.15,{l:L,t:T,r:L+iw,b:T+ih});
+    ctx.lineTo(xs[n-1],T+ih);ctx.lineTo(xs[0],T+ih);ctx.closePath();
+    ctx.fillStyle=nativeGradientFill(ctx,0,0,W,H);
+    ctx.fill();
+    ctx.beginPath();
+    nativeTraceLine(ctx,xs,ys,.15,{l:L,t:T,r:L+iw,b:T+ih});
+    ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.stroke();
+    /* Live "Now" dot (4px, same as Chart.js pointRadius) + hovered dot (3px, same as pointHoverRadius). */
+    if(hasLive){ctx.beginPath();ctx.arc(xs[n-1],ys[n-1],4,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
+    if(lineHover>=0&&lineHover<n){ctx.beginPath();ctx.arc(xs[lineHover],ys[lineHover],3,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
+    if(lineHover>=0&&lineHover<n)drawLineTooltip(ctx,pts[lineHover],xs[lineHover],ys[lineHover],W,T,ih);
+    linePts=pts;
+    lineGeom={kind:'1d',pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,n:n,xs:xs,ys:ys,hasLive:hasLive};
+    window.__BTC_LINE_LAYOUT={w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:ticks,xLabels:xIdx.map(function(i){return lab[i];}),hasLive:hasLive,livePrice:hasLive?pts[n-1].v:null};
+    window.__BTC_LINE_HOVER=lineHover;
+    nativeTooltipBind(c);
+    /* Redraw once Inter loads, so canvas text sharpens (YTD backup pattern). */
+    if(!draw1DNative._fonts&&document.fonts&&document.fonts.load){
+      draw1DNative._fonts=true;
+      document.fonts.load('11px Inter').then(function(){if(lineDrawn&&linePts)draw1DNative(linePts);}).catch(function(){});
+    }
+    return true;
+  }catch(e){
+    try{window.__BTC_DRAWERR={where:'draw1DNative',msg:String(e&&e.message||e)};}catch(_){}
+    return false;
+  }
+}
+function yTickDaily(v,sx,log){
+  /* The Chart.js drawDaily yTick callback, replicated exactly (label text
+     for a y value; null = no label and no gridline — Chart.js autoSkip
+     removes such log ticks entirely). */
+  if(sx){
+    if(log){var m=v/Math.pow(10,Math.floor(Math.log10(v)+1e-9));if([1,2,5].indexOf(Math.round(m*1000)/1000)<0)return null;}
+    var q=v-100;return (q>0?'+':'')+(Math.abs(q)>=1000?Math.round(q).toLocaleString('en-US'):Math.round(q))+'%';
+  }
+  if(log){var l=Math.log10(v);if(Math.abs(l-Math.round(l))>1e-6)return null;}
+  var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);
+}
+function drawDailyTooltip(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH){
+  /* Tooltip content = the Chart.js drawDaily tooltip (title: 'Now (live) · date'
+     or the date; labels: BTC price (+ % in compare mode), S&P/Gold/MSTR price
+     (+ %) when shown and non-null). In compare mode each label line gets the
+     dataset's colour chip, as Chart.js does (displayColors). Positioned above
+     the hovered index's average point height, flipping below if it would run
+     off the top — Chart.js's default placement. */
+  var n=d.length,hasLive=!!cmp.hasLive,sx=!!cmp.sx;
+  var fp=function(x){return (x>=0?'+':'')+(Math.abs(x)>=1e4?Math.round(x).toLocaleString('en-US'):x.toFixed(1))+'%';};
+  var title=(i===n-1&&hasLive)?'Now (live) · '+d[i][0]:d[i][0];
+  var lines=[{t:title,c:null}];
+  if(!sx){
+    lines.push({t:'BTC '+fmt(d[i][1]),c:null});
+  }else{
+    lines.push({t:'BTC '+fmt(d[i][1])+' ('+fp(reb.btc[i]-100)+')',c:'#22d3ee'});
+    if(cmp.S&&cmp.S[i]!=null&&cmp.s0)lines.push({t:'S&P 500 '+cmp.S[i].toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(reb.spx[i]-100)+')',c:'#c4b5fd'});
+    if(cmp.G&&cmp.G[i]!=null&&cmp.g0)lines.push({t:'Gold '+curSym()+curVal(cmp.G[i]).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(reb.gld[i]-100)+')',c:'#facc15'});
+    if(cmp.M&&cmp.M[i]!=null&&cmp.m0)lines.push({t:'MSTR '+curSym()+curVal(cmp.M[i]).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(reb.mstr[i]-100)+')',c:'#f97316'});
+  }
+  ctx.font='11px Inter, sans-serif';
+  var tw=0;lines.forEach(function(L){var w=ctx.measureText(L.t).width+(L.c?14:0);if(w>tw)tw=w;});tw+=16;
+  var th=lines.length*14+10;
+  var ysAt=[];['btc','spx','gld','mstr'].forEach(function(k){var a=ysMap[k];if(a&&a[i]!=null)ysAt.push(a[i]);});
+  var ay=ysAt.length?ysAt.reduce(function(s,v){return s+v;},0)/ysAt.length:ysMap.btc[i];
+  var tx=xs[i]-tw/2,ty=ay-th-10;
+  if(ty<padT)ty=ay+10;
+  if(ty+th>padT+plotH)ty=padT+plotH-th;
+  if(tx<4)tx=4;
+  if(tx+tw>W-4)tx=W-4-tw;
+  ctx.fillStyle='rgba(15,23,42,.92)';
+  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.beginPath();ctx.rect(tx,ty,tw,th);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#e2e8f0';ctx.textAlign='left';ctx.textBaseline='top';
+  lines.forEach(function(L,j){
+    var lx=tx+8;
+    if(L.c){ctx.fillStyle=L.c;ctx.fillRect(lx,ty+6+j*14+2,8,8);lx+=14;}
+    ctx.fillStyle='#e2e8f0';ctx.fillText(L.t,lx,ty+6+j*14);
+  });
+}
+function drawDailyNative(d,cmp){
+  /* Stage 2 Step 3 — implemented. The range daily line, drawn natively.
+     Same data, same labels, same colours as the Chart.js drawDaily.
+     cmp: {sx, S, G, M, s0, g0, m0, hasLive, log} (prepared by drawDaily;
+     S/G/M are the raw comparison closes, s0/g0/m0 their first non-null
+     values). Returns true on success, false on failure (caller falls back
+     to Chart.js). */
+  try{
+    if(!d||d.length<2||!cmp)return false;
+    var c=$('bcC');if(!c)return false;
+    var ctx=c.getContext('2d');
+    var W=c.parentNode.clientWidth||640,H=c.parentNode.clientHeight||300;
+    var dpr=window.devicePixelRatio||1; /* F5: uncapped, matching the candles on this shared canvas. */
+    c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);
+    c.style.width=W+'px';c.style.height=H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    var n=d.length,hasLive=!!cmp.hasLive,sx=!!cmp.sx,LOG=!!cmp.log;
+    var a=d[0][1];
+    /* Plotted values: dollars when alone, rebased to 100 at the first close
+       when comparing (Chart.js drawDaily datasets). */
+    var btcY,spxY,gldY,mstrY;
+    if(sx){
+      btcY=d.map(function(p){return 100*p[1]/a;});
+      spxY=cmp.S?cmp.S.map(function(v){return v!=null&&cmp.s0?100*v/cmp.s0:null;}):null;
+      gldY=cmp.G?cmp.G.map(function(v){return v!=null&&cmp.g0?100*v/cmp.g0:null;}):null;
+      mstrY=cmp.M?cmp.M.map(function(v){return v!=null&&cmp.m0?100*v/cmp.m0:null;}):null;
+    }else{
+      btcY=d.map(function(p){return p[1];});
+      spxY=gldY=mstrY=null;
+    }
+    /* Y range over all plotted (non-null) values. */
+    var lo=Infinity,hi=-Infinity;
+    [btcY,spxY,gldY,mstrY].forEach(function(arr){
+      if(!arr)return;
+      for(var i=0;i<arr.length;i++){var v=arr[i];if(v!=null&&isFinite(v)){if(v<lo)lo=v;if(v>hi)hi=v;}}
+    });
+    if(!(hi>lo)){lo=(lo===Infinity?0:lo);hi=lo+1;}
+    var R=12,T=18,B=44,ih=H-T-B;
+    var Y,yTicks=[];
+    if(LOG){
+      /* Log scale: Chart.js extends the axis to the first/last ticks of
+         its tick generation (wo) — the axis min is the largest tick-grid
+         value <= the data min, the axis max the smallest tick-grid value
+         >= the data max (e.g. data max $124,752 -> axis max $150,000;
+         data min $15,787 -> axis min $10,000). Without this the line
+         sits ~4px low at the top and the top compare tick ($200M) is
+         missing. Ticks at 1/2/5 x 10^k within the extended range; labels
+         only where the yTick callback passes. */
+      if(!(lo>0))lo=1;
+      lo=logGridFloor(lo);hi=logGridCeil(hi);
+      var llo=Math.log10(lo),lhi=Math.log10(hi);
+      if(!(lhi>llo))lhi=llo+1;
+      Y=function(v){return T+ih*(1-(Math.log10(v)-llo)/(lhi-llo));};
+      var k0=Math.floor(Math.log10(lo)),k1=Math.ceil(Math.log10(hi));
+      for(var k=k0;k<=k1;k++){
+        var pw=Math.pow(10,k);
+        [1,2,5].forEach(function(m){var tv=m*pw;if(tv>=lo*(1-1e-9)&&tv<=hi*(1+1e-9))yTicks.push(tv);});
+      }
+    }else{
+      var ticks=nativeNiceTicks(lo,hi,ih);
+      if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
+      yTicks=ticks;
+      Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
+    }
+    /* Chart.js sizes the left margin to fit the widest y-axis label; a fixed
+       62px clips long labels (Max + comparisons: '+179,999,900%'). Measure
+       the labels and widen the margin when they need it; short labels keep
+       the usual 62px. */
+    ctx.font='11px Inter, sans-serif';
+    var maxLabW=0;
+    yTicks.forEach(function(v){var s=yTickDaily(v,sx,LOG);if(s!=null)maxLabW=Math.max(maxLabW,ctx.measureText(s).width);});
+    var L=Math.max(62,Math.ceil(maxLabW)+12),iw=W-L-R;
+    var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
+    var xs=d.map(function(p,i){return X(i);});
+    var btcYs=btcY.map(function(v){return Y(v);});
+    var spxYs=spxY?spxY.map(function(v){return v==null?null:Y(v);}):null;
+    var gldYs=gldY?gldY.map(function(v){return v==null?null:Y(v);}):null;
+    var mstrYs=mstrY?mstrY.map(function(v){return v==null?null:Y(v);}):null;
+    /* Y gridlines + labels. A tick is drawn (gridline + label) only where
+       the yTick callback returns a label: Chart.js's autoSkip removes the
+       other log ticks entirely, gridlines included — for a non-compare log
+       view that leaves only the powers of 10 (7 gridlines on Max, not the
+       19 the 1/2/5 set would draw), and for a compare log view the 1/2/5
+       set. (Linear ticks always get a label, so this changes nothing
+       there.) The drawn ticks are what the layout hook reports. */
+    ctx.strokeStyle='rgba(255,255,255,.05)';ctx.fillStyle='#9aa6bc';
+    ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
+    var drawnY=[];
+    yTicks.forEach(function(v){
+      var s=yTickDaily(v,sx,LOG);
+      if(s==null)return;
+      drawnY.push(v);
+      var y=Y(v);
+      ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(L+iw,y);ctx.stroke();
+      ctx.fillText(s,L-6,y);
+    });
+    /* X labels: Chart.js autoSkip step (ceil(n/maxTicksLimit), 7 desktop /
+       5 phone); the callback shows the year for n>400, else month-day. */
+    var maxX=isPhone()?5:7,step=Math.max(1,Math.ceil(n/maxX)),xIdx=[];
+    for(var i=0;i<n;i+=step)xIdx.push(i);
+    var lab=d.map(function(p){return p[0];});
+    xIdx.forEach(function(i){
+      var x=X(i);
+      ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
+    });
+    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#9aa6bc';
+    xIdx.forEach(function(i){
+      var dx=Math.max(L+30,Math.min(W-R-30,X(i)));
+      ctx.fillText(n>400?lab[i].slice(0,4):lab[i].slice(5),dx,T+ih+6);
+    });
+    /* Trace a dataset's line. spanGaps bridges nulls into one path
+       (S&P, MSTR); without it the line breaks at nulls (Gold). */
+    function traceDS(ys,spanGaps){
+      if(spanGaps){
+        var fx=[],fy=[];
+        for(var i=0;i<n;i++){if(ys[i]!=null){fx.push(xs[i]);fy.push(ys[i]);}}
+        if(fx.length<2)return;
+        ctx.beginPath();nativeTraceLine(ctx,fx,fy,.15,{l:L,t:T,r:L+iw,b:T+ih});ctx.stroke();
+      }else{
+        var run=[];
+        function flush(){
+          if(run.length>=2){ctx.beginPath();nativeTraceLine(ctx,run.map(function(p){return p.x;}),run.map(function(p){return p.y;}),.15,{l:L,t:T,r:L+iw,b:T+ih});ctx.stroke();}
+          run=[];
+        }
+        for(var j=0;j<n;j++){
+          if(ys[j]!=null)run.push({x:xs[j],y:ys[j]});
+          else flush();
+        }
+        flush();
+      }
+    }
+    /* Fill under the BTC line (non-compare, linear only — Chart.js
+       fill:!LOG in the single-dataset case, fill:false when comparing). */
+    if(!sx&&!LOG){
+      ctx.beginPath();
+      nativeTraceLine(ctx,xs,btcYs,.15,{l:L,t:T,r:L+iw,b:T+ih});
+      ctx.lineTo(xs[n-1],T+ih);ctx.lineTo(xs[0],T+ih);ctx.closePath();
+      ctx.fillStyle=nativeGradientFill(ctx,0,0,W,H);
+      ctx.fill();
+    }
+    /* Lines, in dataset order (BTC first, then comparisons on top). */
+    ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;traceDS(btcYs,true);
+    if(sx){
+      if(spxYs){ctx.strokeStyle='#c4b5fd';ctx.lineWidth=1.6;traceDS(spxYs,true);}
+      if(gldYs){ctx.strokeStyle='#facc15';ctx.lineWidth=1.6;traceDS(gldYs,false);}
+      if(mstrYs){ctx.strokeStyle='#f97316';ctx.lineWidth=1.6;traceDS(mstrYs,true);}
+    }
+    /* Live "Now" dot (4px, same as Chart.js pointRadius) on the BTC line. */
+    if(hasLive){ctx.beginPath();ctx.arc(xs[n-1],btcYs[n-1],4,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
+    /* Hovered dots (3px, same as pointHoverRadius) on every visible
+       dataset with a value at the hovered index. */
+    if(lineHover>=0&&lineHover<n){
+      var dots=[['#22d3ee',btcYs],['#c4b5fd',spxYs],['#facc15',gldYs],['#f97316',mstrYs]];
+      dots.forEach(function(dp){
+        var ys=dp[1];
+        if(ys&&ys[lineHover]!=null){ctx.beginPath();ctx.arc(xs[lineHover],ys[lineHover],3,0,Math.PI*2);ctx.fillStyle=dp[0];ctx.fill();}
+      });
+      drawDailyTooltip(ctx,lineHover,d,cmp,{btc:btcY,spx:spxY,gld:gldY,mstr:mstrY},xs,{btc:btcYs,spx:spxYs,gld:gldYs,mstr:mstrYs},W,T,ih);
+    }
+    linePts={d:d,cmp:cmp};
+    lineGeom={kind:'daily',pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,n:n,xs:xs,ys:btcYs,ysSPX:spxYs,ysGLD:gldYs,ysMSTR:mstrYs,hasLive:hasLive,sx:sx,log:LOG};
+    window.__BTC_LINE_LAYOUT={kind:'daily',w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:drawnY,xLabels:xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);}),hasLive:hasLive,livePrice:hasLive?d[n-1][1]:null,sx:sx,log:LOG};
+    window.__BTC_LINE_HOVER=lineHover;
+    nativeTooltipBind(c);
+    /* Redraw once Inter loads, so canvas text sharpens (YTD backup pattern). */
+    if(!drawDailyNative._fonts&&document.fonts&&document.fonts.load){
+      drawDailyNative._fonts=true;
+      document.fonts.load('11px Inter').then(function(){if(lineDrawn&&linePts&&linePts.d)drawDailyNative(linePts.d,linePts.cmp);}).catch(function(){});
+    }
+    return true;
+  }catch(e){
+    try{window.__BTC_DRAWERR={where:'drawDailyNative',msg:String(e&&e.message||e)};}catch(_){}
+    return false;
+  }
+}
+
+/* ===== end Stage 2 Step 2 native 1D line ===== */
+/* Stage 2 Step 2: test-only hook — lets the harness (and the console) turn the
+   native 1D line on/off without rebuilding. Not used by any live code path.
+   Step 4 decides whether it stays for the go-live. */
+P.setNativeLine=function(v){NATIVE_LINE=!!v;if(dlg&&!dlg.hidden)draw();};
+window.__BTC_SET_NATIVE_LINE=P.setNativeLine;
+
 var chartP=null;
 function needChart(){
   if(window.Chart)return Promise.resolve();
@@ -842,7 +1401,7 @@ function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&
          transform is cleared, otherwise the browser coalesces the two
          states into one frame and the grow is never seen. */
       requestAnimationFrame(function(){requestAnimationFrame(function(){dlg.style.transform='';dlg.style.borderRadius='';});});
-      var done=function(){dlg.removeEventListener('transitionend',done);dlg.classList.remove('bc-morph');if(ch&&ch.resize)ch.resize();};
+      var done=function(){dlg.removeEventListener('transitionend',done);dlg.classList.remove('bc-morph');if(ch&&ch.resize)ch.resize();nativeResize();};
       dlg.addEventListener('transitionend',done);}
     else{dlg.style.visibility='';place();}
   } else {place();}
@@ -872,7 +1431,7 @@ P.onLive=function(){if(!dlg||dlg.hidden)return;head();
     (function(el){setTimeout(function(){el.style.color='';},700);})(px);
   }
   lastPaintUsdPanel=live.usd;
-  if(ch||candViewActive())draw();};
+  if(ch||lineDrawn||candViewActive())draw();};
 P.redraw=function(){if(dlg&&!dlg.hidden)draw();};
 P.isOpen=function(){return !!dlg&&!dlg.hidden;};
 P._needChart=needChart;P.remount=mountInline;
