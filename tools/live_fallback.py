@@ -47,10 +47,15 @@ this tool and the validate gate, last in the job, so nothing
 overwrites its `alerts` field in health.json.
 
 Known limit: regular hours here are the plain 09:30-16:00 ET window —
-there is no holiday / early-close calendar in the repo, so on an
-early-close day a valid afternoon quote (after 13:00 ET) is rejected
-and the previous price is kept, labelled stale. Safe direction, and
-the same limit the site's own countdown already notes.
+there is no holiday / early-close calendar in the repo, so the tool
+cannot tell an early-close day from a regular session. A fresh
+afternoon quote on an early-close day (e.g. 14:00 ET, after the 13:00
+early close) is ACCEPTED, not rejected, as long as it passes the
+regular-hours rule (09:30-16:00 ET, same ET session, at most 30 min
+old, at most 5 min in the future) — so on an early-close day a quote
+timestamped after the market has closed can still be shown as live
+until 16:00 ET. That is the limitation to disclose, not a rejection.
+No holiday / early-close calendar is built in this pass.
 
 Stdlib only, no key (Yahoo chart is keyless). The fetcher is injectable
 so tests run offline with fixtures; the default fetcher mirrors the

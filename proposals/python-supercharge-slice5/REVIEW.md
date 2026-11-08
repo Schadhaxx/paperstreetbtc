@@ -146,10 +146,16 @@ failed run can never leave a partial file.
 
 **Known limit:** regular hours here are the plain 09:30–16:00 ET
 window — there is no holiday / early-close calendar in the repo, so
-on an early-close day a valid afternoon quote (after 13:00 ET) is
-rejected and the previous price is kept, labelled stale. Safe
-direction, and the same limit the site's own countdown already notes
-in the UI. If a calendar is ever added, only the hours check changes.
+the tool cannot tell an early-close day from a regular session. A
+fresh afternoon quote on an early-close day (e.g. 14:00 ET, after the
+13:00 early close) is ACCEPTED, not rejected, as long as it passes the
+regular-hours rule (09:30–16:00 ET, same ET session, ≤30 min old,
+≤5 min in the future) — so on such a day a quote timestamped after the
+market has closed can still be shown as live until 16:00 ET. That is
+the limitation to disclose, not a rejection. No calendar is built in
+this pass. (Corrected per Grok Bot review, 6 Nov 2026: the earlier
+wording wrongly claimed such quotes were rejected and the previous
+price kept, labelled stale.)
 
 **Call budget:** only for Finnhub-failed symbols (typically 0). Worst
 case, Finnhub fully down, 13 Yahoo calls — the same keyless endpoint
@@ -410,8 +416,11 @@ today, and the age label only appears when a price is actually stale.
 6. **~~s6.js in-page render~~ — CLOSED (round 2):** browser-checked
    8/8 (desktop + 390 px, dark + light, STALE + FRESH), including the
    mobile table fix measured at 390 px.
-7. **Early-close days:** the quote check uses the plain 09:30–16:00 ET
+7. **Early-close days (corrected 7 Nov 2026 — the earlier wording
+   was wrong):** the quote check uses the plain 09:30–16:00 ET
    window (no holiday / early-close calendar exists in the repo), so
-   a valid afternoon quote on an early-close day is rejected and the
-   previous price is kept, labelled stale. Accept that safe
-   direction, or is a holiday calendar worth adding later?
+   a fresh afternoon quote on an early-close day is ACCEPTED — the
+   tool cannot tell an early-close day from a regular session, and a
+   quote timestamped after the 13:00 early close but within the
+   regular-hours rule can be shown as live until 16:00 ET. Accept
+   that limitation, or is a holiday calendar worth adding later?

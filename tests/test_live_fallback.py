@@ -356,6 +356,25 @@ def main():
         stocks['MSTR']['c'] == 128.93
         and rep['MSTR']['source'] == 'kept', str(rep['MSTR']))
 
+    # 23. Early-close day (correction 5, Grok Bot review 6 Nov 2026):
+    #     Fri 2026-11-27 is an early-close day (market closes 13:00
+    #     ET), but the fallback has no holiday / early-close calendar,
+    #     so a FRESH afternoon quote (14:00 ET, 5 min old, same ET
+    #     session) is ACCEPTED under the plain 09:30-16:00 ET rule —
+    #     not rejected. The earlier docs wrongly claimed rejection.
+    #     Bars: Wed 2026-11-25 and Thu 2026-11-26 09:30 ET; the prior
+    #     close is the Thu bar's close (129.0), derived from timestamps.
+    stocks = good_stocks()
+    rep = fb(['MSTR'], stocks, make_fetch(
+        {'MSTR': yahoo_ok('MSTR', 130.0, 129.0, t=ep(2026, 11, 27, 14, 0),
+                          ts=[ep(2026, 11, 25, 9, 30),
+                              ep(2026, 11, 26, 9, 30)])}),
+        now=dt.datetime(2026, 11, 27, 14, 5, tzinfo=ET))
+    chk('early-close day fresh 14:00 ET quote: applied',
+        stocks['MSTR']['c'] == 130.0
+        and stocks['MSTR']['pc'] == 129.0
+        and rep['MSTR']['source'] == 'yahoo', str(rep['MSTR']))
+
     # --- r2: safe finite-only atomic writes ---
     # 21. _atomic_write_json writes valid JSON, leaves no temp files,
     #     and refuses non-finite numbers WITHOUT touching the target.
