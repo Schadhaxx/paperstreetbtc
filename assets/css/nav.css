@@ -267,3 +267,33 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .bc-veh button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
 .bc-veh button:disabled{opacity:.45;cursor:not-allowed}
 .bc-veh-nt{color:#94a3b8;font-size:.74rem;margin:-4px 0 8px}
+
+/* Menu reorg (8 Nov 2026, v3, Sunil-approved): five main tabs; Sleeves is a
+   click-to-open dropdown on desktop (>=1000px) and a tap-to-expand item in
+   the hamburger menu below 1000px. Clicking Sleeves only opens/closes its
+   menu; it never navigates. The "Sleeves" link inside each menu goes to
+   #sleeves. Breakpoint stays at 1000px as the live site does today (so
+   iPad portrait 768px keeps the hamburger). */
+/* Desktop Sleeves dropdown */
+.desk-drop{position:relative;display:flex;align-items:center}
+.desk-tab{background:none;border:0;padding:0;margin:0;color:var(--muted,#94a3b8);font:500 .95rem Outfit,Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.desk-tab:hover{color:var(--text,#e8eef7)}
+.desk-tab:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+.desk-chev{font-size:.65rem;color:#94a3b8;transition:transform .2s}
+.desk-drop.open .desk-chev{transform:rotate(180deg)}
+.desk-panel{display:none;position:absolute;top:calc(100% + 10px);left:0;width:232px;background:rgba(15,23,42,.98);border:1px solid var(--border,#1e293b);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.45);padding:6px;z-index:30}
+.desk-drop.open .desk-panel{display:block}
+.desk-panel a{display:flex;align-items:center;min-height:44px;padding:0 12px;color:var(--muted,#94a3b8);font:500 .95rem Outfit,Inter,sans-serif;text-decoration:none;border-left:2px solid rgba(34,211,238,.35);margin:2px 6px;border-radius:6px}
+.desk-panel a:hover{color:#22d3ee}
+@media (max-width:1180px){.header nav .desk-tab{font-size:.82rem}.desk-panel a{font-size:.82rem}}
+@media (prefers-reduced-motion:reduce){.desk-chev{transition:none}}
+/* Mobile Sleeves dropdown inside the hamburger menu */
+.mnav-drop{border-bottom:1px solid var(--border,#1e293b)}
+.mnav-tab{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:48px;padding:0 8px;background:none;border:0;color:var(--muted,#94a3b8);font:500 1rem Outfit,Inter,sans-serif;cursor:pointer;text-align:left}
+.mnav-tab:hover{color:#22d3ee}
+.nav-chev{font-size:.65rem;color:#94a3b8;transition:transform .2s}
+.mnav-sub{display:none;padding:2px 0 8px}
+.mnav-drop.open .mnav-sub{display:block}
+.mnav-drop.open .nav-chev{transform:rotate(180deg)}
+.mnav-sub a{display:flex;align-items:center;min-height:44px;padding:0 8px 0 24px;color:var(--muted,#94a3b8);font:500 .95rem Outfit,Inter,sans-serif;text-decoration:none;border-left:2px solid rgba(34,211,238,.35);margin-left:8px}
+.mnav-sub a:hover{color:#22d3ee}
