@@ -394,7 +394,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     }
     state.dailyLoading = true;
     state.dailyError = null;
-    fetch(cfg.dailyUrl)
+    // cache:'no-store' — the daily file is regenerated on final closes
+    // (like vehicle-daily.json, book.js B.loadVehicle), so a cached copy
+    // would draw yesterday's bands. The ?v= pin only changes on a shape
+    // change, not on each regeneration.
+    fetch(cfg.dailyUrl, { cache: 'no-store' })
       .then(function (res) { if (!res.ok) throw new Error('no daily file'); return res.json(); })
       .then(function (data) {
         state.dailyLoading = false;
