@@ -9,7 +9,7 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid var(--border);
 }
 .header-inner {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: flex-start;
   height: 72px;
 }
 .brand { display: flex; align-items: center; gap: 12px; }

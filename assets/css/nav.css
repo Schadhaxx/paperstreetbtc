@@ -1,8 +1,18 @@
 /* Site nav: 8 links on desktop, hamburger panel on phone/tablet (<=1000px), Live BTC pill + BTC chart */
 .mininav{display:none!important}
-.hdr-tick{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;margin-left:auto;margin-right:16px;background:var(--surface,#0f172a);border:1px solid var(--border,#1e293b);border-radius:999px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;color:var(--text,#e5e7eb);white-space:nowrap;cursor:pointer;line-height:1.2}
+.hdr-tick{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;margin-right:16px;background:var(--surface,#0f172a);border:1px solid var(--border,#1e293b);border-radius:999px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;color:var(--text,#e5e7eb);white-space:nowrap;cursor:pointer;line-height:1.2}
 .hdr-tick:hover,.hdr-tick[aria-expanded="true"]{border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,.18)}
 .hdr-tick:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+/* Logo-to-pill spacing (8 Nov 2026): the pill had margin-left:auto (in
+   styles.css AND nav.css), so ALL free space in the header row landed
+   between the logo and the pill (236px at 1280px, 203px at iPad 768px,
+   81px at iPhone 390px). Pack the brand + pill together on the left
+   (header-inner gap: 16px desktop/tablet, 8px phone) and push the nav /
+   hamburger right with their own auto margins instead. justify-content is
+   flex-start at the source (styles.css + header.css); the nav / hamburger
+   auto margins below keep them right-aligned. Clock + screener have no
+   .header-inner. */
+.header-inner>nav{margin-left:auto}
 .hdr-sym{color:var(--orange,#f7931a)}
 .hdr-chg{font-size:.75rem}.hdr-chg.up{color:#34d399}.hdr-chg.down{color:#ef4444}
 .lp-lab{font:700 .6rem Outfit,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;display:inline-flex;align-items:center;gap:6px}
@@ -16,7 +26,7 @@
 @media (max-width:1000px){
   .header nav{display:none!important}
   .hdr-tick{margin-right:0}
-  .mnav-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:44px;height:44px;margin-left:8px;padding:0;background:transparent;border:1px solid var(--border,#1e293b);border-radius:10px;color:var(--text,#e5e7eb);cursor:pointer}
+  .mnav-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:44px;height:44px;margin-left:auto;padding:0;background:transparent;border:1px solid var(--border,#1e293b);border-radius:10px;color:var(--text,#e5e7eb);cursor:pointer}
   .mnav-btn:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
   .mnav-bars{display:flex;flex-direction:column;gap:4px;width:18px}
   .mnav-bars span{display:block;height:2px;border-radius:2px;background:currentColor;transition:transform .2s,opacity .2s}
@@ -105,7 +115,7 @@
 .rules-benchmarks{margin-top:36px;scroll-margin-top:96px}
 .rules-benchmarks h3{font-size:1.35rem;margin:0 0 10px}
 @media (max-width:640px){.header-inner>.hdr-tick .lp-lab{display:none}}
-@media (max-width:640px){.header .header-inner{gap:8px;padding:0 14px}.mnav-btn{margin-left:2px!important}}
+@media (max-width:640px){.header .header-inner{gap:8px;padding:0 14px}.mnav-btn{margin-left:auto!important}}
 /* v5: Details + pop-up */
 .prd-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;min-width:44px;padding:0 18px;margin:4px 0 8px;border:1px solid var(--accent,#22d3ee);border-radius:10px;background:rgba(34,211,238,.08);color:var(--accent,#22d3ee);font:600 1rem Outfit,Inter,sans-serif;cursor:pointer}
 .prd-btn:hover{background:rgba(34,211,238,.16)}.prd-btn:focus-visible,.prd-x:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
@@ -298,3 +308,39 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .mnav-drop.open .nav-chev{transform:rotate(180deg)}
 .mnav-sub a{display:flex;align-items:center;min-height:44px;padding:0 8px 0 24px;color:var(--muted,#94a3b8);font:500 .95rem Outfit,Inter,sans-serif;text-decoration:none;border-left:2px solid rgba(34,211,238,.35);margin-left:8px}
 .mnav-sub a:hover{color:#22d3ee}
+/* Menu-tab vibrancy (8 Nov 2026, Sunil): "Live BTC Chart" is the most
+   vibrant tab — almost alive — and "The Desk" is a clear step below it.
+   Live gets the BTC cyan + a soft glow + a gently pulsing dot; Desk gets a
+   brighter neutral + a whisper of glow, no dot, no motion. Both sit above
+   the muted tabs. Scoped to the nav (desktop) and hamburger menu (mobile)
+   via the tab hrefs, so the popup footer links and the screener's floating
+   pill are untouched. */
+@keyframes navLivePulse{0%,100%{opacity:1;box-shadow:0 0 8px rgba(34,211,238,.9)}50%{opacity:.45;box-shadow:0 0 2px rgba(34,211,238,.35)}}
+.header nav a[href$="clock/index.html"],
+.mnav-menu a[href$="clock/index.html"]{color:#22d3ee;text-shadow:0 0 12px rgba(34,211,238,.55)}
+.header nav a[href$="clock/index.html"]{display:inline-flex;align-items:center;gap:6px}
+.mnav-menu a[href$="clock/index.html"]{gap:8px}
+.header nav a[href$="clock/index.html"]::before,
+.mnav-menu a[href$="clock/index.html"]::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 8px rgba(34,211,238,.9);animation:navLivePulse 2.2s ease-in-out infinite}
+.header nav a[href$="clock/index.html"]:hover,
+.mnav-menu a[href$="clock/index.html"]:hover{color:#a5f3fc;text-shadow:0 0 16px rgba(34,211,238,.8)}
+.header nav a[href$="screener.html"],
+.mnav-menu a[href$="screener.html"]{color:#cbd5e1;text-shadow:0 0 10px rgba(203,213,225,.28)}
+.header nav a[href$="screener.html"]:hover,
+.mnav-menu a[href$="screener.html"]:hover{color:#f1f5f9;text-shadow:0 0 12px rgba(203,213,225,.45)}
+/* Light theme: the bright cyan / light slate are unreadable on a light
+   background, so Live drops to the site's light-mode accent text (#0e7490,
+   as used for .is-active links) and Desk to near-black; the glow is
+   dropped (invisible on light) but the pulsing dot stays — it follows the
+   text colour via currentColor. These beat light.css (loaded after nav.css)
+   on specificity. */
+html[data-theme="light"] .header nav a[href$="clock/index.html"],
+html[data-theme="light"] .mnav-menu a[href$="clock/index.html"]{color:#0e7490;text-shadow:none}
+html[data-theme="light"] .header nav a[href$="clock/index.html"]:hover,
+html[data-theme="light"] .mnav-menu a[href$="clock/index.html"]:hover{color:#155e75;text-shadow:none}
+html[data-theme="light"] .header nav a[href$="screener.html"],
+html[data-theme="light"] .mnav-menu a[href$="screener.html"]{color:#0f172a;text-shadow:none}
+@media (prefers-reduced-motion:reduce){
+  .header nav a[href$="clock/index.html"]::before,
+  .mnav-menu a[href$="clock/index.html"]::before{animation:none}
+}

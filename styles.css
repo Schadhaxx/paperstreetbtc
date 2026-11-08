@@ -308,7 +308,7 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid var(--border);
 }
 .header-inner {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: flex-start;
   height: 72px;
 }
 .brand { display: flex; align-items: center; gap: 12px; }
@@ -1217,7 +1217,7 @@ h2 {
 .pf-note{font-size:.75rem;color:var(--muted);margin-top:8px}
 
 /* Header BTC ticker */
-.hdr-tick{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;margin-left:auto;margin-right:20px;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.9rem;color:var(--text);white-space:nowrap}
+.hdr-tick{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;margin-right:20px;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.9rem;color:var(--text);white-space:nowrap}
 .hdr-sym{color:var(--orange)}
 .hdr-chg{font-size:.8rem}.hdr-chg.up{color:#22c55e}.hdr-chg.down{color:#ef4444}
 @media (max-width:800px){.hdr-tick{margin-right:0;padding:4px 9px;font-size:.8rem}.hdr-chg{font-size:.72rem}}
@@ -1356,7 +1356,6 @@ h2 {
   .mnav-menu a:last-child{border-bottom:0}
   .mnav-menu a:hover,.mnav-menu a:focus-visible{color:var(--accent);background:rgba(34,211,238,.06)}
   .mnav-menu a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-  .hdr-tick{margin-left:auto}
 }
 
 /* Sticky mini-nav (mobile; lives inside the sticky header so there is one sticky bar) */
