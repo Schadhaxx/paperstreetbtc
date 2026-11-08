@@ -1,10 +1,13 @@
 /* Floating Light/Dark pill beside the Top button.
-   Only mounts on pages that have #backToTop (today: index.html). Other
-   pages keep the footer "Light version" / "Back to dark" links.
-   Opt-in only: no prefers-color-scheme. Text label only — no sun/moon icon.
-   The pill is ALWAYS visible. Top keeps its own scroll show/hide (s3.js).
-   Top is shifted right by --ps-theme-pill-slot so they sit side by side
-   when Top appears, with no layout jump while Top is hidden. */
+   Mounts on pages that include this script (index, screener, clock).
+   On the homepage it sits beside #backToTop; screener and clock have no
+   Top button, so the pill stands alone at bottom-left there. Recap does
+   not include this script (its own fabs live there), so it never mounts
+   there. Opt-in only: no prefers-color-scheme. Text label only — no
+   sun/moon icon. The pill is ALWAYS visible. Top keeps its own scroll
+   show/hide (s3.js). Top is shifted right by --ps-theme-pill-slot so
+   they sit side by side when Top appears, with no layout jump while
+   Top is hidden. */
 (function () {
   window.psC = window.psC || function (d, l) {
     return document.documentElement.getAttribute("data-theme") === "light" ? l : d;
@@ -30,8 +33,6 @@
   }
   function mount() {
     if (document.getElementById("psThemePill")) return;
-    /* Alongside Top only — do not collide with recap Home / All-recaps fabs. */
-    if (!document.getElementById("backToTop")) return;
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "ps-theme-pill";
