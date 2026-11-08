@@ -796,6 +796,57 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
     scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0,callback:function(v){var s=this.getLabelForValue(v);return n>400?s.slice(0,4):s.slice(5);}}},
       y:{type:LOG?'logarithmic':'linear',grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:yTick}}}};
   if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});}
+/* ===== Stage 2 native line renderer — Step 1 skeleton =====
+   Scaffolding only (8 Nov 2026, Step 1). The native renderer replaces
+   ONLY the two Chart.js line constructions (draw1D, drawDaily above). These
+   functions are STUBS: they do nothing yet and are NOT called by any live
+   code path (the Chart.js path stays active; NATIVE_LINE is false and
+   draw() is unchanged). Steps 2–3 implement the drawing; Step 4 verifies
+   it side-by-side against the Chart.js version. Design note (flags F1–F8):
+   ~/workspace/ps-stage2-step1/design-note.md */
+var NATIVE_LINE=false; /* Step 1: off. The Chart.js path stays active. */
+function draw1DNative(pts){
+  /* Stage 2 Step 1 — skeleton, not yet implemented (Steps 2–3).
+     Will draw the 1D intraday line natively: smooth curve (tension .15),
+     cyan gradient fill, axes, labels, live "Now" point with dot. */
+  return false;
+}
+function drawDailyNative(d,cmp){
+  /* Stage 2 Step 1 — skeleton, not yet implemented (Steps 2–3).
+     Will draw the range daily line natively: daily closes 1W–Max,
+     S&P/Gold/MSTR comparisons rebased to 100, linear/log scale. */
+  return false;
+}
+function nativeNiceTicks(min,max,n){
+  /* Stage 2 Step 1 — skeleton, not yet implemented (Steps 2–3).
+     Will return 1/2/5-step axis ticks (YTD backup niceTicks pattern). */
+  return [];
+}
+function nativeTraceLine(ctx,xs,ys,tension){
+  /* Stage 2 Step 1 — skeleton, not yet implemented (Steps 2–3).
+     Will trace a smooth line via cubic Bezier with horizontal control
+     handles (YTD backup traceLine pattern, BTC tension .15). */
+}
+function nativeGradientFill(ctx,x,y,w,h){
+  /* Stage 2 Step 1 — skeleton, not yet implemented (Steps 2–3).
+     Will return the cyan gradient (rgba(34,211,238,.28) -> transparent). */
+  return null;
+}
+function nativeTooltipBind(c){
+  /* Stage 2 Step 1 — skeleton, not yet implemented (Steps 2–3).
+     Will bind the line-view tooltip listeners (tap-sticky, dismiss on
+     scroll / same-point re-tap / empty-space tap; never touch-action none,
+     never setPointerCapture — see design note flag F3). */
+}
+function nativeTooltipHide(){
+  /* Stage 2 Step 1 — skeleton, not yet implemented (Steps 2–3). */
+}
+function nativeResize(){
+  /* Stage 2 Step 1 — skeleton, not yet implemented (Steps 2–3).
+     Will redraw the native line at the new size (Chart.js responsive:true
+     replacement — see design note flag F4). */
+}
+/* ===== end Stage 2 Step 1 skeleton ===== */
 var chartP=null;
 function needChart(){
   if(window.Chart)return Promise.resolve();
