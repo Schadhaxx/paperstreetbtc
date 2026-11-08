@@ -1,8 +1,18 @@
 /* Site nav: 8 links on desktop, hamburger panel on phone/tablet (<=1000px), Live BTC pill + BTC chart */
 .mininav{display:none!important}
-.hdr-tick{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;margin-left:auto;margin-right:16px;background:var(--surface,#0f172a);border:1px solid var(--border,#1e293b);border-radius:999px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;color:var(--text,#e5e7eb);white-space:nowrap;cursor:pointer;line-height:1.2}
+.hdr-tick{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;margin-right:16px;background:var(--surface,#0f172a);border:1px solid var(--border,#1e293b);border-radius:999px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;color:var(--text,#e5e7eb);white-space:nowrap;cursor:pointer;line-height:1.2}
 .hdr-tick:hover,.hdr-tick[aria-expanded="true"]{border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,.18)}
 .hdr-tick:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+/* Logo-to-pill spacing (8 Nov 2026): the pill had margin-left:auto (in
+   styles.css AND nav.css), so ALL free space in the header row landed
+   between the logo and the pill (236px at 1280px, 203px at iPad 768px,
+   81px at iPhone 390px). Pack the brand + pill together on the left
+   (header-inner gap: 16px desktop/tablet, 8px phone) and push the nav /
+   hamburger right with their own auto margins instead. justify-content is
+   flex-start at the source (styles.css + header.css); the nav / hamburger
+   auto margins below keep them right-aligned. Clock + screener have no
+   .header-inner. */
+.header-inner>nav{margin-left:auto}
 .hdr-sym{color:var(--orange,#f7931a)}
 .hdr-chg{font-size:.75rem}.hdr-chg.up{color:#34d399}.hdr-chg.down{color:#ef4444}
 .lp-lab{font:700 .6rem Outfit,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;display:inline-flex;align-items:center;gap:6px}
@@ -16,7 +26,7 @@
 @media (max-width:1000px){
   .header nav{display:none!important}
   .hdr-tick{margin-right:0}
-  .mnav-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:44px;height:44px;margin-left:8px;padding:0;background:transparent;border:1px solid var(--border,#1e293b);border-radius:10px;color:var(--text,#e5e7eb);cursor:pointer}
+  .mnav-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:44px;height:44px;margin-left:auto;padding:0;background:transparent;border:1px solid var(--border,#1e293b);border-radius:10px;color:var(--text,#e5e7eb);cursor:pointer}
   .mnav-btn:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
   .mnav-bars{display:flex;flex-direction:column;gap:4px;width:18px}
   .mnav-bars span{display:block;height:2px;border-radius:2px;background:currentColor;transition:transform .2s,opacity .2s}
@@ -105,7 +115,7 @@
 .rules-benchmarks{margin-top:36px;scroll-margin-top:96px}
 .rules-benchmarks h3{font-size:1.35rem;margin:0 0 10px}
 @media (max-width:640px){.header-inner>.hdr-tick .lp-lab{display:none}}
-@media (max-width:640px){.header .header-inner{gap:8px;padding:0 14px}.mnav-btn{margin-left:2px!important}}
+@media (max-width:640px){.header .header-inner{gap:8px;padding:0 14px}.mnav-btn{margin-left:auto!important}}
 /* v5: Details + pop-up */
 .prd-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;min-width:44px;padding:0 18px;margin:4px 0 8px;border:1px solid var(--accent,#22d3ee);border-radius:10px;background:rgba(34,211,238,.08);color:var(--accent,#22d3ee);font:600 1rem Outfit,Inter,sans-serif;cursor:pointer}
 .prd-btn:hover{background:rgba(34,211,238,.16)}.prd-btn:focus-visible,.prd-x:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
