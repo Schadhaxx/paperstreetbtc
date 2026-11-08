@@ -155,7 +155,8 @@ function redrawCandles(){if(!candViewActive()){hideCandPill();return;}if(CANDRAN
    on the selected candle already points at it, so the pill can float cleanly over the chart.
    The pill body does NOT intercept taps (pointer-events:none), so candles beneath it stay tappable —
    tapping a candle under the pill selects that candle instead of dismissing the pill. Dismiss is via
-   the ✕ inside the pill (the only tappable part) or by tapping the same candle again. */
+   the ✕ inside the pill (the only tappable part), tapping the same candle again, or tapping empty
+   chart space / a non-interactive part of the popover. */
 function candInfoEl(){
   var el=$('bcSel');if(el)return el;
   var box=$('bcC')&&$('bcC').parentNode;if(!box)return null;
@@ -172,10 +173,11 @@ function showCandInfo(i,geomX,geomTop){
   el.innerHTML='';
   /* pill content, centred, four short lines — no table rows, no arrow, no bottom line:
      line 1: when (small grey) · line 2: High / Low · line 3: Open / Close · line 4: Change in green/red.
-     Small ✕ sits inside the pill at the top-right; it is the pill's only tappable part — the pill
-     body lets taps through to the chart beneath, so dismiss is via this ✕ or tapping the same candle again. */
+     A ✕ sits inside the pill at the top-right (44px touch target); it is the pill's
+     only tappable part — the pill body lets taps through to the chart beneath, so
+     dismiss is via this ✕, tapping the same candle again, or tapping empty space. */
   var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
-  cl.style.cssText='pointer-events:auto;position:absolute;top:10px;right:16px;background:none;border:none;color:'+psC('#9aa6bc','#475569')+';font-size:14px;line-height:1;cursor:pointer;padding:8px;';
+  cl.style.cssText='pointer-events:auto;position:absolute;top:6px;right:12px;background:none;border:none;color:'+psC('#9aa6bc','#475569')+';font-size:18px;line-height:1;cursor:pointer;padding:12px;min-width:44px;min-height:44px;text-align:center;';
   cl.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   el.appendChild(cl);
   var tm=document.createElement('div');tm.style.cssText='color:'+psC('#9aa6bc','#475569')+';font-size:12px;';
@@ -262,22 +264,27 @@ function bindCandListeners(c){
   /* Pointer scrub (mirrors the screener): drag across the chart and the pill follows
      candle by candle. pointerdown only ARMS the scrub — it does not select: a clean tap
      still goes through the click handler below, and selecting on pointerdown would make
-     that trailing click toggle the just-selected candle straight back off. The same trap
-     applies to pointermove: a sloppy tap (finger jitter) selects via pointermove, so the
-     click that trails it must be ignored when the scrub actually CHANGED the selection
-     during this press (scrubChanged) — otherwise every jittery tap would select-then-
-     dismiss and show no pill at all. A tap that never changed the selection (clean tap,
-     or jitter inside the already-selected candle) still goes through the click handler,
-     so tapping the same candle again still dismisses. A drag's trailing click is likewise
-     ignored, so the drag ends with the pill on the final candle instead of dismissing it. */
-  var scrubbing=false,scrubChanged=false;
-  c.addEventListener('pointerdown',function(e){if(!candViewActive())return;scrubbing=true;scrubChanged=false;});
-  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive())return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+     that trailing click toggle the just-selected candle straight back off.
+     Tap-vs-scrub threshold (follow-up, 7 Nov 2026): a real finger tap always moves a
+     few pixels, and candles here are only ~7px apart — so a jittery re-tap on the
+     selected candle could cross into the next candle during pointermove, set
+     scrubChanged, and swallow the trailing click. The pill then MOVED instead of
+     dismissing, and the user could never unselect a candle without closing the
+     graph. A press now only counts as a scrub once the pointer has moved more
+     than SCRUB_PX (10px) from pointerdown; a tap's micro-movement never changes
+     the selection and its click still fires, so the same-candle re-tap dismisses.
+     A drag's trailing click is still ignored (scrubChanged), so the drag ends with
+     the pill on the final candle instead of dismissing it. */
+  var scrubbing=false,scrubChanged=false,downX=0,downY=0,SCRUB_PX=10;
+  c.addEventListener('pointerdown',function(e){if(!candViewActive())return;scrubbing=true;scrubChanged=false;downX=e.clientX;downY=e.clientY;});
+  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive())return;if(Math.max(Math.abs(e.clientX-downX),Math.abs(e.clientY-downY))<=SCRUB_PX)return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
   c.addEventListener('pointerup',function(){scrubbing=false;});
   c.addEventListener('pointercancel',function(){scrubbing=false;scrubChanged=false;});
   c.addEventListener('mousemove',function(e){if(!candViewActive())return;var i=pick(e);if(i!==CANDHOV){CANDHOV=i;redrawCandles();}});
   c.addEventListener('mouseleave',function(){if(!candViewActive())return;CANDHOV=-1;redrawCandles();});
-  c.addEventListener('click',function(e){if(!candViewActive())return;if(scrubChanged){scrubChanged=false;return;}var i=pick(e);if(i===CANDSEL){dismissCandInfo();return;}CANDSEL=i;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  /* Click: a tap on empty chart space (above the highest wick / below the lowest,
+     e.g. the label strips) dismisses the pill instead of selecting a candle. */
+  c.addEventListener('click',function(e){if(!candViewActive())return;if(scrubChanged){scrubChanged=false;return;}var r=c.getBoundingClientRect(),y=e.clientY-r.top;if(CANDGEOM.length){var pt=1e9,pb=-1e9;CANDGEOM.forEach(function(g){if(g.wickTop<pt)pt=g.wickTop;if(g.wickBot>pb)pb=g.wickBot;});if(y<pt-6||y>pb+6){dismissCandInfo();return;}}var i=pick(e);if(i===CANDSEL){dismissCandInfo();return;}CANDSEL=i;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
 }
 /* Candle ranges, Day 1: aggregate Coinbase daily candles into range candles.
    Daily mode is identity (one candle per UTC day). Weekly mode buckets by the
@@ -730,6 +737,11 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
   $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
   $('bcX').addEventListener('click',close);
+  /* Tapping a non-interactive part of the popover (header, note, gaps) dismisses
+     the candle pill — a way out of candle-select without closing the graph.
+     Canvas taps, buttons and links are excluded: the canvas has its own handler,
+     buttons/links do their own thing, and the pill ✕ stops propagation. */
+  dlg.addEventListener('click',function(e){if(!candViewActive())return;if(e.target.closest('canvas,button,a'))return;dismissCandInfo();});
   $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(INLINE||dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
