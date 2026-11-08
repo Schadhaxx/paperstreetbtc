@@ -302,27 +302,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // candles only. High/low lines use SHOWN weeks only — the shipped
   // file is YTD, so they are not a lifetime ATH or a full 52-week
   // history; the note under the chart says so plainly.
-  var ENH = { boll: false, lines: false, drawdown: false, patterns: false, volume: false, zoom: false, stats: false };
+  var ENH = { boll: false, lines: false, drawdown: false, patterns: false, volume: false, zoom: false };
   function fmtVol(v) {
     if (typeof v !== 'number' || !isFinite(v)) return '—';
     if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
     if (v >= 1e3) return Math.round(v / 1e3) + 'K';
     return String(Math.round(v));
-  }
-  function enhStats(weeks) {
-    var chgs = [], best = null, worst = null, wins = 0, i, c, m, sd;
-    for (i = 0; i < weeks.length; i++) {
-      if (!(weeks[i].open > 0)) continue;
-      c = weeks[i].close / weeks[i].open - 1; chgs.push(c);
-      if (c >= 0) wins++;
-      if (best === null || c > best.c) best = { c: c, label: weeks[i].label };
-      if (worst === null || c < worst.c) worst = { c: c, label: weeks[i].label };
-    }
-    if (!chgs.length) return null;
-    m = 0; chgs.forEach(function (x) { m += x; }); m /= chgs.length;
-    sd = 0; chgs.forEach(function (x) { sd += (x - m) * (x - m); });
-    sd = chgs.length > 1 ? Math.sqrt(sd / (chgs.length - 1)) : 0;
-    return { best: best, worst: worst, win: wins / chgs.length * 100, vol: sd * 100, n: chgs.length };
   }
   function enhBoll(weeks) {
     var sma = [], up = [], lo = [], i, j, w, m, sd, sum;
@@ -574,8 +559,8 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     ctx.clearRect(0, 0, cssW, cssH);
     // Mockup 2 zoom: when on, only the last 12 weeks are drawn.
     // Computations that need history (Bollinger) still use the full
-    // series, then are sliced to the shown window; range stats and
-    // drawdown are recomputed on the shown window, by design.
+    // series, then are sliced to the shown window; drawdown is
+    // recomputed on the shown window, by design.
     var viewStart = 0, viewWeeks = state.weeks;
     if (ENH.zoom && state.weeks.length > 12) { viewStart = state.weeks.length - 12; viewWeeks = state.weeks.slice(viewStart); }
     var hasVol = ENH.volume && viewWeeks.some(function (w) { return typeof w.volume === 'number' && w.volume > 0; });
@@ -824,7 +809,6 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       if (ENH.lines) lines.push('Highest shown ' + fmt(shownHi) + ' · lowest shown ' + fmt(shownLo) + ' — shown weeks only, not a lifetime high/low.');
       if (ENH.drawdown && ddInfo) lines.push('Max drawdown ' + (ddInfo.pct * 100).toFixed(1) + '% · ' + viewWeeks[ddInfo.peak].label + ' → ' + viewWeeks[ddInfo.trough].label + '.');
       if (ENH.patterns) lines.push(patCount ? patCount + ' pattern hint' + (patCount === 1 ? '' : 's') + ' marked (white dots). Tap a candle to see its pattern.' : 'No pattern hints on these weeks.');
-      if (ENH.stats) { var st = enhStats(viewWeeks); if (st) lines.push('Range stats (' + st.n + ' weeks): best ' + (st.best.c * 100).toFixed(2) + '% (' + st.best.label + ') · worst ' + (st.worst.c * 100).toFixed(2) + '% (' + st.worst.label + ') · up weeks ' + st.win.toFixed(0) + '% · weekly volatility ' + st.vol.toFixed(2) + '%.'); }
       if (ENH.volume) {
         if (hasVol) {
           var vs = 0, vc = 0; viewWeeks.forEach(function (w) { if (typeof w.volume === 'number' && w.volume > 0) { vs += w.volume; vc++; } });
@@ -1008,5 +992,5 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern, enhStats: enhStats, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
 })();
