@@ -38,6 +38,13 @@
   .btc-pill-row .hdr-tick { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:56px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 18px; box-shadow:0 14px 40px rgba(0,0,0,.45); color:var(--txt); font-size:27px; font-weight:850; letter-spacing:-.02em; line-height:1.1; cursor:pointer; }
   .btc-pill-row .hdr-chg { font-size:19px; font-weight:800; }
   .btc-pill-row .lp-lab { font-size:.85rem; letter-spacing:.1em; }
+  /* Chart chip, enlarged (8 Nov 2026): as big as the "Live BTC" label
+     (.85rem). Icon scaled to match the text; padding/gap grown so the
+     chip still reads as a clean pill. Desk page only — the shared pill
+     on other pages keeps the small chip. The <=420px hide rule in
+     nav.css still applies (chip hidden on the narrowest phones). */
+  .btc-pill-row .lp-cv { font-size:.85rem; padding:5px 11px; gap:6px; }
+  .btc-pill-row .lp-cv svg { width:16px; height:16px; }
   .pills { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 4px; }
   .pill { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:8px 16px; font-size:14px; }
   .pill b { color:var(--orange); }
@@ -45,7 +52,7 @@
   h2 { font-size:22px; margin:26px 2px 4px; letter-spacing:-.01em; }
   .secsub, .box-note { color:var(--mut); font-size:14px; margin:0 2px 14px; line-height:1.5; }
   .kpis { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 4px; }
-  .tile { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:20px; padding:16px; min-height:118px; }
+  .tile { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:20px; padding:16px; min-height:118px; position:relative; }
   .tile[data-symbol="GOLD"], .tile[data-symbol="WTI"], .tile[data-symbol="US10Y"], .tile[data-symbol="VIX"] { cursor:pointer; }
   .tile[data-symbol="GOLD"]:hover, .tile[data-symbol="WTI"]:hover, .tile[data-symbol="US10Y"]:hover, .tile[data-symbol="VIX"]:hover { border-color:#3b82f6; }
   /* Gold YTD weekly candle modal (30 Oct 2026): iPhone-first, one
@@ -91,7 +98,11 @@
      pure black is near-invisible — flagged in the delivery report; applied
      literally, not substituted. */
   .flat { color:#000000; }
-  .tile .u { color:var(--mut); font-size:12px; margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .tile .u { color:var(--mut); font-size:12px; margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-right:28px; }
+  .tile-chart { position:absolute; right:16px; bottom:16px; color:#22d3ee; pointer-events:none; display:inline-flex; line-height:0; }
+  .tile-chart svg { width:16px; height:16px; display:block; }
+  .card-chart { color:#22d3ee; display:inline-flex; line-height:0; flex:0 0 auto; }
+  .card-chart svg { width:16px; height:16px; display:block; }
   .controls { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 12px; align-items:center; }
   .controls input { flex:1; min-width:0; height:48px; border-radius:14px; border:1px solid var(--line); background:#0b1226; color:var(--txt); padding:0 16px; font-size:16px; outline:none; }
   .controls input:focus { border-color:var(--cyan); }
@@ -114,9 +125,6 @@
   .meta { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.07); }
   .ytd { font-size:15px; } .ytd b { font-size:16px; }
   .ytd .row-note { color:var(--mut); font-size:13px; margin-top:4px; }
-  .move { display:flex; align-items:center; gap:8px; color:var(--mut); font-size:13px; }
-  .bar { width:72px; height:8px; border-radius:99px; background:#1e293b; overflow:hidden; }
-  .bar i { display:block; height:100%; border-radius:99px; }
   .note-btn { width:44px; height:44px; min-width:44px; border-radius:50%; border:1px solid #475569; background:#1e293b; color:#fff; font-size:20px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
   .note-btn:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
   .note-pill { position:fixed; z-index:50; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px 20px; font-size:15px; line-height:1.55; color:var(--txt); text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.6); cursor:pointer; }
@@ -324,7 +332,7 @@
     <button type="button" class="btn" id="ind-retry">Retry</button>
   </div>
 </div>
-<script src="assets/js/screener.js?v=scr1"></script>
+<script src="assets/js/screener.js?v=scr2"></script>
 <script src="assets/js/screener-indicator-chart.js?v=stocks9"></script>
 <script src="assets/js/screener-chart.js?v=cmp6"></script>
 <script src="assets/js/et.js?v=et2"></script>
