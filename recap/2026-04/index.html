@@ -43,26 +43,38 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:6px 4px;b
     </div>
     <button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button>
     <nav>
-      <a href="../../index.html#principles">Principles</a>
-      <a href="../../index.html#sleeves">Sleeves</a>
-      <a href="../../index.html#tracker">Tracker</a>
-      <a href="../../index.html#rules">Rules</a>
+      <div class="desk-drop">
+        <button type="button" class="desk-tab" aria-expanded="false" aria-haspopup="true">Sleeves <span class="desk-chev">▾</span></button>
+        <div class="desk-panel">
+          <a href="../../index.html#principles">Principles</a>
+          <a href="../../index.html#sleeves">Sleeves</a>
+          <a href="../../index.html#tracker">Sleeve tracker</a>
+          <a href="../../index.html#rules">Rules</a>
+          <a href="../../recap/index.html">Monthly Recap</a>
+        </div>
+      </div>
+      <a href="../../compare/index.html">Portfolio Lab</a>
+      <a href="../../clock/index.html">Live BTC Chart</a>
+      <a href="../../screener.html">The Desk</a>
       <a href="../../index.html#articles">Articles</a>
-      <a href="../../compare/index.html">Compare</a>
-      <a href="../../custom/index.html">Tools</a>
-      <a href="../../recap/index.html">Monthly recap</a>
     </nav>
     <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
   </div>
   <div class="mnav-menu" id="mnavMenu" hidden>
-    <a href="../../index.html#principles">Principles</a>
-    <a href="../../index.html#sleeves">Sleeves</a>
-    <a href="../../index.html#tracker">Tracker</a>
-    <a href="../../index.html#rules">Rules</a>
+    <div class="mnav-drop">
+      <button type="button" class="mnav-tab" aria-expanded="false">Sleeves <span class="nav-chev">▾</span></button>
+      <div class="mnav-sub">
+        <a href="../../index.html#principles">Principles</a>
+        <a href="../../index.html#sleeves">Sleeves</a>
+        <a href="../../index.html#tracker">Sleeve tracker</a>
+        <a href="../../index.html#rules">Rules</a>
+        <a href="../../recap/index.html">Monthly Recap</a>
+      </div>
+    </div>
+    <a href="../../compare/index.html">Portfolio Lab</a>
+    <a href="../../clock/index.html">Live BTC Chart</a>
+    <a href="../../screener.html">The Desk</a>
     <a href="../../index.html#articles">Articles</a>
-    <a href="../../compare/index.html">Compare</a>
-    <a href="../../custom/index.html">Tools</a>
-    <a href="../../recap/index.html">Monthly recap</a>
   </div>
 </header>
 <div class="ticker"><div class="c" id="ticker"></div></div>
@@ -117,4 +129,4 @@ let live=null,lastT='';rT(null);pollPX();setInterval(pollPX,300000);
 async function poll(){try{const r=await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');const j=await r.json();live=+j.data.amount;rT(live,lastT=ET.time(new Date(),true))}catch(e){rT(null)}}
 poll();setInterval(poll,15000);
 </script><a href="../../index.html" style="position:fixed;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25);left:18px;background:#f7931a;color:#111">&larr; Home</a><a href="../index.html" style="position:fixed;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25);left:120px;background:#22d3ee;color:#04121a">All recaps</a>
-<script src="../../assets/js/s7.js"></script><script src="../../assets/js/btcchart.js?v=et19"></script></body></html>
+<script src="../../assets/js/s7.js"></script><script src="../../assets/js/btcchart.js?v=et22"></script></body></html>

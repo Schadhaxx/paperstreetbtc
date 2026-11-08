@@ -1,10 +1,10 @@
-<!doctype html><html lang="en"><head><script>(function(){var q=null,s=null;try{q=new URLSearchParams(location.search).get("theme")}catch(e){}try{s=localStorage.getItem("ps-theme")}catch(e){}var on=q==="light"||(q!=="dark"&&s==="light");if(on)document.documentElement.setAttribute("data-theme","light");try{if(q==="light")localStorage.setItem("ps-theme","light");else if(q==="dark"||(s!==null&&s!=="light"))localStorage.removeItem("ps-theme")}catch(e){}})();window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Compare &amp; Tools · Paperstreet BTC</title>
-<meta name="description" content="Compare the four PaperStreet sleeves against spot BTC, gold, and MSTR — and draw your own sleeve on the chart. Not financial advice.">
+<!doctype html><html lang="en"><head><script>(function(){var q=null,s=null;try{q=new URLSearchParams(location.search).get("theme")}catch(e){}try{s=localStorage.getItem("ps-theme")}catch(e){}var on=q==="light"||(q!=="dark"&&s==="light");if(on)document.documentElement.setAttribute("data-theme","light");try{if(q==="light")localStorage.setItem("ps-theme","light");else if(q==="dark"||(s!==null&&s!=="light"))localStorage.removeItem("ps-theme")}catch(e){}})();window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Portfolio Lab · Paperstreet BTC</title>
+<meta name="description" content="Track the four PaperStreet sleeves against spot BTC, gold, and MSTR — and draw your own sleeve on the chart. Not financial advice.">
 <link rel="canonical" href="https://paperstreetbtc.com/compare/">
 <link rel="icon" href="../favicon.ico" sizes="any">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
-<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../assets/css/nav.css?v=cr022">
+<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../assets/css/nav.css?v=cr023">
 <style>
 .pv .pill{display:inline-flex;flex-wrap:wrap;gap:6px}.pv .controls{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin:18px 0 12px}
 .pv .chartbox{position:relative;height:380px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
@@ -30,6 +30,8 @@
 .pv-badge{display:inline-block;background:rgba(34,211,238,.12);color:var(--accent);border:1px solid rgba(34,211,238,.35);border-radius:999px;padding:4px 10px;font-size:.8rem;margin:0 6px 6px 0}
 .pv-pulse-ctx{font-size:.9rem;line-height:1.7;margin:14px 0}
 .pv-div-cal{font-size:.9rem;line-height:1.6;margin:14px 0}
+/* Portfolio Lab h1 spacing (8 Nov 2026): at <=480px the hamburger button floats below the sticky header (top-left, nav.css) and its bottom edge overlapped the h1 by 13px. Push the h1 down 30px on phones so it clears the floater with room to spare. Desktop untouched. */
+@media(max-width:480px){#compare h1{margin-top:30px}}
 </style><link rel="stylesheet" href="../assets/css/xfollow.css">
 <style>.wt-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.wt-foot{margin:16px 0 14px}@media(max-width:700px){.wt-cards{grid-template-columns:1fr}}</style><style>.pvx{border:1px solid var(--border,#1e293b);border-radius:10px;padding:10px 12px;margin:4px 0 0;min-width:0}.pvx legend{padding:0 6px;font-weight:600}.pvx-row{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;align-items:end;margin:8px 0}.pvx-row label{min-width:0}.pvx-row input{width:100%;box-sizing:border-box}.pvx-rm{width:44px;height:44px;border-radius:10px;border:1px solid var(--border,#1e293b);background:transparent;color:#cbd5e1;cursor:pointer}.pvx-n{grid-column:1/-1;margin:0}#pvXAdd{min-height:44px}</style>
 <link rel="stylesheet" href="../light.css?v=lm4">
@@ -43,29 +45,43 @@
     </div>
     <button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button>
     <nav>
-      <a href="../index.html#principles">Principles</a>
-      <a href="../index.html#sleeves">Sleeves</a>
-      <a href="../index.html#tracker">Tracker</a>
-      <a href="../index.html#rules">Rules</a>
+      <div class="desk-drop">
+        <button type="button" class="desk-tab" aria-expanded="false" aria-haspopup="true">Sleeves <span class="desk-chev">▾</span></button>
+        <div class="desk-panel">
+          <a href="../index.html#principles">Principles</a>
+          <a href="../index.html#sleeves">Sleeves</a>
+          <a href="../index.html#tracker">Sleeve tracker</a>
+          <a href="../index.html#rules">Rules</a>
+          <a href="../recap/index.html">Monthly Recap</a>
+        </div>
+      </div>
+      <a href="../compare/index.html">Portfolio Lab</a>
+      <a href="../clock/index.html">Live BTC Chart</a>
+      <a href="../screener.html">The Desk</a>
       <a href="../index.html#articles">Articles</a>
-          <a href="../compare/index.html">Compare &amp; Tools</a>
-      <a href="../recap/index.html">Monthly recap</a>
     </nav>
     <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
   </div>
   <div class="mnav-menu" id="mnavMenu" hidden>
-    <a href="../index.html#principles">Principles</a>
-    <a href="../index.html#sleeves">Sleeves</a>
-    <a href="../index.html#tracker">Tracker</a>
-    <a href="../index.html#rules">Rules</a>
+    <div class="mnav-drop">
+      <button type="button" class="mnav-tab" aria-expanded="false">Sleeves <span class="nav-chev">▾</span></button>
+      <div class="mnav-sub">
+        <a href="../index.html#principles">Principles</a>
+        <a href="../index.html#sleeves">Sleeves</a>
+        <a href="../index.html#tracker">Sleeve tracker</a>
+        <a href="../index.html#rules">Rules</a>
+        <a href="../recap/index.html">Monthly Recap</a>
+      </div>
+    </div>
+    <a href="../compare/index.html">Portfolio Lab</a>
+    <a href="../clock/index.html">Live BTC Chart</a>
+    <a href="../screener.html">The Desk</a>
     <a href="../index.html#articles">Articles</a>
-<a href="../compare/index.html">Compare &amp; Tools</a>
-    <a href="../recap/index.html">Monthly recap</a>
   </div>
 </header>
 <main><section id="compare" class="section pv" style="padding-top:40px">
   <div class="container">
-    <h1 style="margin-bottom:8px">Compare &amp; Tools</h1>
+    <h1 style="margin-bottom:8px">Portfolio Lab</h1>
     <p class="section-lead">Sleeves against Spot BTC, Gold (GLD), MSTR, Berkshire (BRK-B), and S&amp;P 500 (SPY) and QQQ as total return (dividends reinvested). Toggle series, pick a range, hover for exact values. Below, the calculator draws your sleeve on this chart.</p>
     <div class="controls"><div class="pill" id="pvSeries"></div><div class="pill" id="pvRange"></div><button type="button" class="bench-btn" id="pvRefresh">Refresh</button></div>
     <div class="chartbox"><canvas id="pvChart"></canvas></div>
@@ -143,4 +159,4 @@ Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the
 </main>
 <script src="../assets/js/et.js?v=et2"></script><script src="../assets/vendor/chart.umd.min.js"></script>
 <script src="../assets/js/compare.js?v=et6"></script><script src="../assets/js/stats-display.js?v=sd2"></script><script src="../assets/js/s4.js"></script>
-<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=et19"></script></body></html>
+<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=et22"></script></body></html>
