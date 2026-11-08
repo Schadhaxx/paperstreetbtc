@@ -38,14 +38,78 @@ jobs:
           for wait in 0 5 15 30; do sleep $wait; if git fetch -q --depth 1 origin data; then git checkout -q -b data FETCH_HEAD; exit 0; fi; echo "fetch failed, retrying"; done
           # only start a fresh branch if the remote really has no data branch (never on a transient 5xx)
           if [ -z "$(git ls-remote --heads origin data)" ] && git ls-remote -q origin >/dev/null; then git checkout -q --orphan data; else echo "could not fetch data branch"; exit 1; fi
+      - name: Checkout main tools (isolated extract; data worktree untouched)
+        if: success() && steps.gate.outputs.run == '1'
+        run: |
+          SRC="${RUNNER_TEMP:-/tmp}/src"
+          mkdir -p "$SRC/tools"
+          git -C work fetch -q --depth 1 origin main
+          for f in validate.py tiingo_unstall.py stats.py anomaly.py live_fallback.py stall_alert.py backtest.py; do
+            git -C work show FETCH_HEAD:tools/"$f" > "$SRC/tools/$f"
+          done
+          git -C work show FETCH_HEAD:assets/js/ledger.js > "$SRC/ledger.js"
+          git -C work show FETCH_HEAD:assets/data/opens.json > "$SRC/opens.json"
+          echo "SRC=$SRC" >> "$GITHUB_ENV"
+      - name: Stage isolated candidate from published HEAD
+        if: success() && steps.gate.outputs.run == '1'
+        run: |
+          CANDIDATE="${RUNNER_TEMP:-/tmp}/candidate"
+          PREV="${RUNNER_TEMP:-/tmp}/prev"
+          mkdir -p "$CANDIDATE" "$PREV"
+          for f in history.json prices.json; do
+            if git -C work show "HEAD:$f" > "$PREV/$f" 2>/dev/null; then
+              cp "$PREV/$f" "$CANDIDATE/$f"
+            elif [ -f "work/$f" ]; then
+              cp "work/$f" "$PREV/$f"
+              cp "work/$f" "$CANDIDATE/$f"
+            fi
+          done
+          cat > "${RUNNER_TEMP:-/tmp}/push_data.sh" <<'SH'
+          #!/bin/sh
+          set -e
+          workdir=$1
+          cd "$workdir"
+          echo 'runlog.jsonl merge=union' >> .git/info/attributes
+          for wait in 0 5 15 30; do
+            sleep "$wait"
+            if git push -q origin HEAD:data; then
+              exit 0
+            fi
+            echo "push rejected, rebasing (refusing unvalidated snapshot merges)"
+            if git pull -q --rebase origin data; then
+              continue
+            fi
+            conflicts=$(git diff --name-only --diff-filter=U || true)
+            echo "$conflicts" | grep -E '^(history|prices|health)\.json$' >/dev/null 2>&1 && {
+              echo "::error::rebase conflict on validated snapshot file(s); refusing unvalidated merge"
+              git rebase --abort || true
+              exit 1
+            }
+            echo "$conflicts" | while IFS= read -r f; do
+              [ -n "$f" ] && git add -- "$f"
+            done
+            if GIT_EDITOR=true git rebase --continue; then
+              continue
+            fi
+            git rebase --abort || true
+            echo "rebase failed"
+            exit 1
+          done
+          echo "data push failed after 4 tries"
+          exit 1
+          SH
+          chmod +x "${RUNNER_TEMP:-/tmp}/push_data.sh"
+          echo "CANDIDATE=$CANDIDATE" >> "$GITHUB_ENV"
+          echo "PREV=$PREV" >> "$GITHUB_ENV"
+          echo "HEAD_BEFORE=$(git -C work rev-parse HEAD 2>/dev/null || echo none)" >> "$GITHUB_ENV"
       - name: Fetch prices
-        if: steps.gate.outputs.run == '1'
+        if: success() && steps.gate.outputs.run == '1'
         env:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}   # TG: this step ONLY (not the weekend stall job, not recap)
           EVT: ${{ github.event_name }}
         run: |
-          cd work
+          cd "$CANDIDATE"
           python3 - <<'PY'
           import json, os, urllib.request, datetime, math
           def get(u, tries=3):
@@ -65,13 +129,16 @@ jobs:
           out = {'updated': now, 'btc': old.get('btc'), 'stocks': dict(old.get('stocks') or {})}
           key = os.environ.get('FINNHUB_API_KEY', '')
           ok = 0
+          finnhub_failed = []
           for s in ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD','IBIT','FBTC','MU','META','SPCX']:
               try:
                   q = get(f'https://finnhub.io/api/v1/quote?symbol={s}&token={key}')
                   if isinstance(q.get('c'), (int, float)) and q['c'] > 0:
                       out['stocks'][s] = {'c': q['c'], 'pc': q.get('pc'), 't': q.get('t')}; ok += 1
-                  else: print(s, 'bad data, keeping previous')
-              except Exception as e: print(s, 'failed, keeping previous:', type(e).__name__)
+                  else:
+                      finnhub_failed.append(s); print(s, 'bad data, keeping previous')
+              except Exception as e:
+                  finnhub_failed.append(s); print(s, 'failed, keeping previous:', type(e).__name__)
           # --- market indicators (Yahoo chart, keyless) ---
           # Finnhub /quote is US-stocks-only, so it cannot carry these.
           # Yahoo chart meta is the same source the history rebuild uses.
@@ -448,23 +515,100 @@ jobs:
           if TG_NEW: rec['tiingo_flags'] = TG_NEW                                            # TG: durable copy of new cross-check flags
           if NEW_REVS: rec['revisions_ignored'] = NEW_REVS                                        # durable, append-only copy of every ignored revision
           open('runlog.jsonl', 'a').write(json.dumps(rec) + '\n')
+          open('finnhub_failed.txt', 'w').write(','.join(finnhub_failed))
           PY
+      - name: Tiingo un-stall (slice 2)
+        if: success() && steps.gate.outputs.run == '1'
+        env:
+          TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
+        run: |
+          if [ ! -f "$CANDIDATE/history.json" ]; then
+            echo "no candidate history.json; skipping un-stall"
+            exit 0
+          fi
+          if [ -f "$PREV/history.json" ]; then
+            python3 "$SRC/tools/tiingo_unstall.py" \
+              --history "$CANDIDATE/history.json" \
+              --prev-history "$PREV/history.json" \
+              --out "$CANDIDATE/history.json" \
+              || echo "::warning::tiingo-unstall failed; candidate history unchanged, recap stays stalled as today"
+          else
+            python3 "$SRC/tools/tiingo_unstall.py" \
+              --history "$CANDIDATE/history.json" \
+              --out "$CANDIDATE/history.json" \
+              || echo "::warning::tiingo-unstall failed; candidate history unchanged, recap stays stalled as today"
+          fi
+      - name: Live-stock fallback (slice 5)
+        if: success() && steps.gate.outputs.run == '1'
+        run: |
+          FAILED=""
+          [ -f "$CANDIDATE/finnhub_failed.txt" ] && FAILED=$(cat "$CANDIDATE/finnhub_failed.txt")
+          if [ -z "$FAILED" ]; then
+            echo "no Finnhub failures; skipping live fallback"
+            exit 0
+          fi
+          python3 "$SRC/tools/live_fallback.py" \
+            --prices "$CANDIDATE/prices.json" \
+            --failed "$FAILED" \
+            --out "$CANDIDATE/prices.json" \
+            || echo "::warning::live-fallback failed; candidate prices unchanged, keep-last-price as today"
+      - name: Validate and publish one snapshot (or health-only on hold)
+        id: validate
+        if: success() && steps.gate.outputs.run == '1'
+        run: |
+          set -e
+          git -C work config user.name "github-actions[bot]"
+          git -C work config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git -C work status --porcelain)" ]; then
+            echo "::error::publish checkout is dirty before validate; refusing to publish"
+            git -C work status --porcelain
+            exit 1
+          fi
+          vcmd=(python3 "$SRC/tools/validate.py"
+            --history "$CANDIDATE/history.json"
+            --prices "$CANDIDATE/prices.json"
+            --ledger "$SRC/ledger.js"
+            --out-health "${RUNNER_TEMP:-/tmp}/health.json"
+            --publish-to work)
+          [ -f "$PREV/history.json" ] && vcmd+=(--prev-history "$PREV/history.json")
+          [ -f "$PREV/prices.json" ] && vcmd+=(--prev-prices "$PREV/prices.json")
+          set +e
+          "${vcmd[@]}"
+          rc=$?
+          set -e
+          echo "validate_exit=$rc" >> "$GITHUB_OUTPUT"
+          if [ "$rc" -eq 0 ]; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$rc" -eq 1 ]; then
+            echo "result=hold_or_publish_error" >> "$GITHUB_OUTPUT"
+            now_head=$(git -C work rev-parse HEAD 2>/dev/null || echo none)
+            if [ "$now_head" != "${HEAD_BEFORE:-none}" ]; then
+              echo "hold: pushing health-only commit so the hold is visible"
+              sh "${RUNNER_TEMP:-/tmp}/push_data.sh" work || echo "::error::hold health push failed"
+            else
+              echo "validate exited 1 and HEAD did not move (publish error or no-op); not pushing"
+            fi
+            exit 1
+          fi
+          echo "result=error" >> "$GITHUB_OUTPUT"
+          exit "$rc"
       - name: Final-close check (decides whether the recap job runs)
         id: finalc
-        if: steps.gate.outputs.run == '1'
+        if: success() && steps.gate.outputs.run == '1'
         run: |
-          cd work
-          git show HEAD:history.json > /tmp/hist_old.json 2>/dev/null || echo '{}' > /tmp/hist_old.json
           curl -fsS --retry 3 --retry-delay 5 "https://raw.githubusercontent.com/${{ github.repository }}/main/recap/months.js?t=$(date +%s)" -o /tmp/months.js || echo "" > /tmp/months.js
           curl -fsS --retry 3 --retry-delay 5 "https://raw.githubusercontent.com/${{ github.repository }}/main/assets/data/btc-daily.json?t=$(date +%s)" | python3 -c "import json,sys;print(json.load(sys.stdin)['end'])" > /tmp/bd_end || echo "" > /tmp/bd_end
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json, re, datetime as dt
+          import json, re, datetime as dt, os
           def lastf(p):
               try:
                   h = json.load(open(p)); pv = set(h.get('btc_provisional') or [])
-                  return max(d for d in h['closes'] if d not in pv)
+                  tf = set((h.get('tiingo_final') or {}).keys())
+                  return max(d for d in h['closes'] if d not in pv or d in tf)
               except Exception: return ''
-          old, new = lastf('/tmp/hist_old.json'), lastf('history.json')
+          old, new = lastf(os.path.join(os.environ.get('PREV', '/tmp'), 'history.json')), lastf('work/history.json')
           mj = open('/tmp/months.js').read()
           e = re.search(r"\{slug:'%s',title:'([^']*)'" % new[:7], mj) if new else None
           t = re.search(r'through ([A-Z][a-z]{2} \d+, \d{4})', e.group(1)) if e else None
@@ -477,55 +621,80 @@ jobs:
           print('final_close=' + flag)
           import sys; print(f'newest final close: before {old or "-"}, now {new or "-"}; recap lagging: {lag}; btc-daily end {bd_end} lagging: {bd_lag}; final_close={flag}', file=sys.stderr)
           PY
-      - name: Commit
-        if: steps.gate.outputs.run == '1'
+      - name: Stats + CSV (only when validated history changed)
+        id: stats
+        if: success() && steps.gate.outputs.run == '1'
         run: |
-          cd work
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add prices.json runlog.jsonl history.json
-          git commit -q -m "prices $(date -u +%FT%TZ)" || { echo nothing; exit 0; }
-          echo 'runlog.jsonl merge=union' >> .git/info/attributes
-          for wait in 0 5 15 30; do
-            sleep $wait
-            if git push -q origin HEAD:data; then exit 0; fi
-            echo "push rejected, rebasing and retrying (next wait after ${wait}s)"
-            if ! git pull -q --rebase origin data; then
-              # newest prices.json (this run) wins; runlog.jsonl keeps both lines via union merge
-              # prices.json: this run's snapshot wins. history.json: merge by date (newer 'updated' wins per date, union of dates).
-              git checkout --theirs prices.json
-              if git ls-files -u history.json | grep -q .; then
-                git show :2:history.json > /tmp/h_up.json && git show :3:history.json > /tmp/h_me.json && python3 - <<'PY'
-          import json
-          a, b = json.load(open('/tmp/h_up.json')), json.load(open('/tmp/h_me.json'))
-          new, old = (b, a) if b.get('updated', '') >= a.get('updated', '') else (a, b)
-          m = dict(new); m['closes'] = {**old.get('closes', {}), **new.get('closes', {})}
-          m['divs'] = {k: {**old.get('divs', {}).get(k, {}), **v} for k, v in new.get('divs', {}).items()}
-          NC = new.get('closes', {})
-          # R-t: a date that exists only in the old copy keeps its provisional mark (never dropped by a push race)
-          m['btc_provisional'] = sorted(set(d for d in new.get('btc_provisional', []) if d in m['closes']) | set(d for d in old.get('btc_provisional', []) if d in m['closes'] and d not in NC))
-          # R-t: an old source tag is dropped ONLY if the new run has that (date, symbol) AND its source there is primary (no tag of its own);
-          # otherwise the old value won the merge and keeps its tag (a fallback never silently becomes primary and freezes)
-          fs = {}
-          for d, s in (old.get('fallback_sources') or {}).items():
-              for k, t in s.items():
-                  if d in m['closes'] and not (d in NC and k in NC[d]): fs.setdefault(d, {})[k] = t
-          for d, s in (new.get('fallback_sources') or {}).items():
-              if d in m['closes']: fs.setdefault(d, {}).update(s)
-          m['fallback_sources'] = {d: {k: t for k, t in s.items() if k in m['closes'].get(d, {})} for d, s in fs.items()}   # a tag only describes a value that exists
-          m['fallback_sources'] = {d: s for d, s in m['fallback_sources'].items() if s}
-          seen, rv = set(), []
-          for r in (old.get('revisions_ignored') or []) + (new.get('revisions_ignored') or []):
-              key = json.dumps(r, sort_keys=True)
-              if key not in seen: seen.add(key); rv.append(r)
-          m['revisions_ignored'] = rv[-500:]
-          json.dump(m, open('history.json', 'w'), separators=(',', ':'), allow_nan=False)
-          PY
-              fi
-              git add prices.json runlog.jsonl history.json && GIT_EDITOR=true git rebase --continue || { git rebase --abort; echo "rebase failed"; }
+          if [ ! -f work/history.json ]; then
+            echo "hist_changed=0" >> "$GITHUB_OUTPUT"
+            echo "no published history.json; skipping stats"
+            exit 0
+          fi
+          if [ -f "$PREV/history.json" ] && cmp -s "$PREV/history.json" work/history.json; then
+            echo "hist_changed=0" >> "$GITHUB_OUTPUT"
+            echo "validated history unchanged; skipping stats + CSV"
+            exit 0
+          fi
+          echo "hist_changed=1" >> "$GITHUB_OUTPUT"
+          python3 "$SRC/tools/stats.py" \
+            --history work/history.json \
+            --ledger "$SRC/ledger.js" \
+            --out-stats work/stats.json \
+            --out-csv work/history.csv \
+            || echo "::warning::stats failed; snapshot will still publish without stats.json/history.csv"
+      - name: Anomaly report (report-only; same cadence as history change)
+        if: success() && steps.gate.outputs.run == '1' && steps.stats.outputs.hist_changed == '1'
+        run: |
+          python3 "$SRC/tools/anomaly.py" \
+            --history work/history.json \
+            --ledger "$SRC/ledger.js" \
+            --prices work/prices.json \
+            --out work/anomaly-report.json \
+            || echo "::warning::anomaly scan failed; snapshot will still publish without anomaly-report.json"
+      - name: Backtest Spot baseline (report-only; same cadence as history change)
+        if: success() && steps.gate.outputs.run == '1' && steps.stats.outputs.hist_changed == '1'
+        run: |
+          python3 "$SRC/tools/backtest.py" \
+            --history work/history.json \
+            --ledger "$SRC/ledger.js" \
+            --opens "$SRC/opens.json" \
+            --out work/backtest-report.json \
+            || echo "::warning::backtest failed; snapshot will still publish without backtest-report.json"
+      - name: Stall alerts (last health merge)
+        if: success() && steps.gate.outputs.run == '1'
+        run: |
+          python3 "$SRC/tools/stall_alert.py" \
+            --history work/history.json \
+            --prices work/prices.json \
+            --health work/health.json \
+            --out-health work/health.json \
+            || echo "::warning::stall-alert failed; health.json left as the validated snapshot wrote it"
+      - name: Commit derived files and push data
+        if: success() && steps.gate.outputs.run == '1'
+        run: |
+          if [ -f "$CANDIDATE/runlog.jsonl" ]; then
+            if [ -f work/runlog.jsonl ]; then
+              cat "$CANDIDATE/runlog.jsonl" >> work/runlog.jsonl
+            else
+              cp "$CANDIDATE/runlog.jsonl" work/runlog.jsonl
             fi
+          fi
+          cd work
+          dirty=$(git diff --name-only -- history.json prices.json || true)
+          if [ -n "$dirty" ]; then
+            echo "::error::post-validate step mutated snapshot file(s): $dirty; refusing to publish mutated files"
+            git checkout -- history.json prices.json
+            exit 1
+          fi
+          for f in health.json runlog.jsonl stats.json history.csv anomaly-report.json backtest-report.json; do
+            [ -e "$f" ] && git add -- "$f"
           done
-          echo "data push failed after 4 tries"; exit 1
+          if git diff --cached --quiet; then
+            echo "no derived changes"
+          else
+            git commit -q -m "prices derived $(date -u +%FT%TZ)"
+          fi
+          sh "${RUNNER_TEMP:-/tmp}/push_data.sh" .
   btcd-stall-check:
     # BP: weekend 48 h stall alarm for btc-daily. Read-only token, no commit/push step: it can never write prices.json, history.json or btc-daily.json.
     if: github.event.schedule == '17 15 * * 0,6'
