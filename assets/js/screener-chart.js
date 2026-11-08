@@ -435,7 +435,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
           border: { display: false },
           ticks: {
             color: '#94a3b8', maxTicksLimit: 6,
-            callback: function (v) { return (v > 0 ? '+' : '') + v + '%'; }
+            callback: function (v) { return CmpMath.fmtPct(v); }
           }
         }
       },
@@ -495,7 +495,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         x: {
           grid: { display: false },
           border: { display: false },
-          ticks: { color: '#94a3b8', callback: function (v) { return (v > 0 ? '+' : '') + v + '%'; } }
+          ticks: { color: '#94a3b8', callback: function (v) { return CmpMath.fmtPct(v); } }
         },
         y: { grid: { display: false }, border: { display: false }, ticks: { color: '#eef2fb', font: { weight: 700 } } }
       },

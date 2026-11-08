@@ -50,7 +50,7 @@ R.append(('ledger', 'DIV-NOV', 'Oct 15 record still pays $0.50/sh at the Nov 2 c
 NM = {SL[k][0]: k for k in SL}
 S = {n: VAL[k] for n, k in NM.items()}; S['Spot BTC'] = {d: C[d]['BTC'] for d in D}
 num = lambda s: float(re.sub(r'[^\d.\-]', '', s.replace('−', '-'))) if s and re.search(r'\d', s) else None
-months = expected_months(C, H.get('btc_provisional'))
+months = expected_months(C, H.get('btc_provisional'), set(H.get('tiingo_final') or {}))
 fails = []
 exe = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
 with sync_playwright() as p:
