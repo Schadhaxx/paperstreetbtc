@@ -38,6 +38,11 @@
   var packIndicators = [];
   var packAsOf = PACK_ASOF;
   var rows = [];
+  // Icon-only chart cue (same ↗ SVG as the BTC pill's lp-cv chip in
+  // btcchart.js, sized 16px via CSS, cyan). No "Chart" text. Used on the
+  // indicator tiles (bottom-right corner) and the stock cards (in place
+  // of the removed "Day move only" bar).
+  var CHART_ICON = '<svg viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 10.5L5 7L8 8.5L12 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="3.5" r="1.4" fill="currentColor"/></svg>';
   var indRows = [];
   var pricesFailed = false;
   var noteBySymbol = {};
@@ -294,14 +299,10 @@
     if (body) {
       var list = visible();
       noteBySymbol = {};
-      var maxAbs = 0;
-      list.forEach(function (r) { if (r.dayChangePct !== null && r.dayChangePct !== undefined) maxAbs = Math.max(maxAbs, Math.abs(r.dayChangePct)); });
       body.innerHTML = list.map(function (r) {
         if (r.note) noteBySymbol[r.symbol] = r.note;
         var noteBtn = r.note ? ' <button type="button" class="note-btn" data-symbol="' + escapeHtml(r.symbol) + '" aria-label="More about ' + escapeHtml(r.symbol) + '">+</button>' : '';
         var cls = signCls(r.dayChangePct);
-        var barW = maxAbs ? Math.round(Math.abs(r.dayChangePct || 0) / maxAbs * 100) : 0;
-        var barCol = cls === 'up' ? '#22c55e' : (cls === 'down' ? '#ef4444' : '#94a3b8');
         var chartLabel = (r.ytdBasis === 'listing')
           ? ('Open ' + r.symbol + ' chart since listing')
           : ('Open ' + r.symbol + ' YTD chart');
@@ -310,7 +311,7 @@
           + '<div><div class="price">' + money(r.price) + '</div><span class="day-pill ' + cls + '">' + dayText(r) + '</span></div></div>'
           + '<div class="meta"><span class="ytd">' + (r.ytdBasis === 'listing' ? 'Since listing' : 'YTD') + ' <b class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + '</b>'
           + (r.ytdBasis === 'listing' ? '<div class="row-note">Since listing 12 Jun 2026</div>' : '') + '</span>'
-          + '<span class="move">Day move only <span class="bar"><i style="width:' + barW + '%;background:' + barCol + '"></i></span></span></div></article>';
+          + '<span class="card-chart" aria-hidden="true">' + CHART_ICON + '</span></div></article>';
       }).join('');
       var count = document.getElementById('screener-count');
       if (count) count.textContent = list.length + ' of ' + rows.length + ' shown';
@@ -323,7 +324,8 @@
         var cls = signCls(r.dayChangePct);
         return '<div class="tile" data-symbol="' + escapeHtml(r.symbol) + '"><div class="k">' + escapeHtml(r.name) + ' · ' + unitLabel(r) + '</div>'
           + '<div class="v">' + formatValue(r) + '</div><div class="d ' + cls + '">' + dayText(r) + '</div>'
-          + '<div class="u">' + unitLabel(r) + ' ' + noteBtn + '</div></div>';
+          + '<div class="u">' + unitLabel(r) + ' ' + noteBtn + '</div>'
+          + '<span class="tile-chart" aria-hidden="true">' + CHART_ICON + '</span></div>';
       }).join('');
     }
     updatePills();
