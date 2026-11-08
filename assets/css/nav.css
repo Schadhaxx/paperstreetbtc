@@ -101,6 +101,7 @@
 }
 .bc-nt{color:#94a3b8;font-size:.74rem;margin-top:8px;line-height:1.4}
 .bc-cl{display:inline-block;margin-top:10px;color:#22d3ee;font:600 .9rem Outfit,sans-serif;text-decoration:none}
+.bc-cl+.bc-cl{margin-left:18px} /* menu reorg 8 Nov 2026: popup footer now has two links (Live BTC chart + The Desk) */
 .rules-benchmarks{margin-top:36px;scroll-margin-top:96px}
 .rules-benchmarks h3{font-size:1.35rem;margin:0 0 10px}
 @media (max-width:640px){.header-inner>.hdr-tick .lp-lab{display:none}}
