@@ -153,14 +153,16 @@ function redrawCandles(){if(!candViewActive()){hideCandPill();return;}if(CANDRAN
 /* True pill bubble for a selected candle (v5, user: "more like a pill"):
    fully rounded ends (999px radius), centred text, compact, no arrow — the white outline + dashed guide
    on the selected candle already points at it, so the pill can float cleanly over the chart.
-   Tapping the pill itself also dismisses it, so the ✕ is a small circle inside the pill, not a corner button. */
+   The pill body does NOT intercept taps (pointer-events:none), so candles beneath it stay tappable —
+   tapping a candle under the pill selects that candle instead of dismissing the pill. Dismiss is via
+   the ✕ inside the pill (the only tappable part), tapping the same candle again, or tapping empty
+   chart space / a non-interactive part of the popover. */
 function candInfoEl(){
   var el=$('bcSel');if(el)return el;
   var box=$('bcC')&&$('bcC').parentNode;if(!box)return null;
   el=document.createElement('div');el.id='bcSel';
-  el.style.cssText='display:none;position:absolute;z-index:5;width:280px;max-width:calc(100% - 24px);background:'+psC('linear-gradient(180deg,#0e1730,#0a1122)','#ffffff')+';border:1px solid '+psC('rgba(34,211,238,.30)','#e2e8f0')+';border-radius:999px;padding:16px 24px;color:'+psC('#e8eef7','#0f172a')+';font:13px/1.5 Inter, sans-serif;text-align:center;box-shadow:'+psC('0 20px 50px rgba(0,0,0,.6)','0 12px 32px rgba(15,23,42,.12)')+';pointer-events:auto;cursor:pointer;';
+  el.style.cssText='display:none;position:absolute;z-index:5;width:280px;max-width:calc(100% - 24px);background:'+psC('linear-gradient(180deg,#0e1730,#0a1122)','#ffffff')+';border:1px solid '+psC('rgba(34,211,238,.30)','#e2e8f0')+';border-radius:999px;padding:16px 24px;color:'+psC('#e8eef7','#0f172a')+';font:13px/1.5 Inter, sans-serif;text-align:center;box-shadow:'+psC('0 20px 50px rgba(0,0,0,.6)','0 12px 32px rgba(15,23,42,.12)')+';pointer-events:none;';
   box.style.position='relative';box.appendChild(el);
-  el.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   return el;
 }
 function showCandInfo(i,geomX,geomTop){
@@ -171,12 +173,18 @@ function showCandInfo(i,geomX,geomTop){
   el.innerHTML='';
   /* pill content, centred, four short lines — no table rows, no arrow, no bottom line:
      line 1: when (small grey) · line 2: High / Low · line 3: Open / Close · line 4: Change in green/red.
-     Small ✕ sits inside the pill at the top-right; tapping the pill itself also closes it. */
+     A ✕ sits inside the pill at the top-right (44px touch target); it is the pill's
+     only tappable part — the pill body lets taps through to the chart beneath, so
+     dismiss is via this ✕, tapping the same candle again, or tapping empty space.
+     Round 2 (8 Nov 2026): Sunil could not SEE the ✕ — it was a small muted-grey
+     glyph with no background, invisible against the pill. It is now a solid
+     cyan circle with a bold dark ✕: unmistakable as a close button in both
+     themes. The date line gets right padding so its text never runs under it. */
   var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
-  cl.style.cssText='position:absolute;top:10px;right:16px;background:none;border:none;color:'+psC('#9aa6bc','#475569')+';font-size:14px;line-height:1;cursor:pointer;padding:8px;';
+  cl.style.cssText='pointer-events:auto;position:absolute;top:8px;right:8px;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:none;border-radius:50%;background:#22d3ee;color:#0a1122;font-size:22px;font-weight:700;line-height:44px;cursor:pointer;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.4);';
   cl.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   el.appendChild(cl);
-  var tm=document.createElement('div');tm.style.cssText='color:'+psC('#9aa6bc','#475569')+';font-size:12px;';
+  var tm=document.createElement('div');tm.style.cssText='color:'+psC('#9aa6bc','#475569')+';font-size:12px;padding-right:48px;';
   /* Fix 29 Oct 2026 (browser test, Day 2): range candles are UTC days /
      weeks / months, so their labels must be UTC too. ET formatting shifted
      every UTC-midnight timestamp back a day — and a month-boundary candle
@@ -257,9 +265,50 @@ function bindCandListeners(c){
   /* Guard: in a line view this canvas is a Chart.js line chart, not candles.
      Without the guard, hover/click here used stale CANDGEOM and repainted
      old candles over the line chart. */
+  /* Pointer scrub (mirrors the screener): drag across the chart and the pill follows
+     candle by candle. pointerdown only ARMS the scrub — it does not select: a clean tap
+     still goes through the press-end handler below, and selecting on pointerdown would make
+     that trailing press toggle the just-selected candle straight back off.
+     Tap-vs-scrub, round 3 (8 Nov 2026): rounds 1-2 put the dismiss in the
+     CLICK handler, but a diagnostic (diag_touch_events.py) proved the click
+     often NEVER FIRES for a real finger tap: a diagonal/vertical tap of
+     ~12px+ makes the browser take the gesture over as a scroll
+     (touch-action: pan-y) and fire pointercancel with no click, and a
+     horizontal tap of ~20px+ gets pointerup but no click either. So the pill
+     could never dismiss however the thresholds were tuned — the handler
+     simply never ran. The tap logic now runs on PRESS END (pointerup AND
+     pointercancel), using the pointerdown position (downCandle — where the
+     finger LANDED, the best signal of intent) and the max movement during
+     the press (maxMove). A press only counts as a drag/scroll when it moved
+     more than SCRUB_PX (24px) or the scrub actually moved the selection;
+     anything less is a tap and dismisses (same candle) or selects (another
+     candle). The click handler is now only a fallback for clicks with no
+     preceding pointer press, suppressed whenever a press-end already handled
+     the press (pressDone). A real drag still ends with the pill on the final
+     candle instead of dismissing it. */
+  var scrubbing=false,scrubChanged=false,downX=0,downY=0,downCandle=-1,maxMove=0,pressDone=false,SCRUB_PX=24;
+  function endPress(){
+    if(!candViewActive())return;
+    var isDrag=maxMove>SCRUB_PX||scrubChanged;
+    scrubChanged=false;pressDone=true;
+    if(isDrag)return;
+    var r=c.getBoundingClientRect(),y=downY-r.top;
+    if(CANDGEOM.length){var pt=1e9,pb=-1e9;CANDGEOM.forEach(function(g){if(g.wickTop<pt)pt=g.wickTop;if(g.wickBot>pb)pb=g.wickBot;});if(y<pt-6||y>pb+6){dismissCandInfo();return;}}
+    if(downCandle>=0){if(downCandle===CANDSEL){dismissCandInfo();return;}CANDSEL=downCandle;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);return;}
+  }
+  c.addEventListener('pointerdown',function(e){if(!candViewActive())return;scrubbing=true;scrubChanged=false;pressDone=false;downX=e.clientX;downY=e.clientY;downCandle=pick(e);maxMove=0;});
+  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive())return;var d=Math.max(Math.abs(e.clientX-downX),Math.abs(e.clientY-downY));if(d>maxMove)maxMove=d;if(d<=SCRUB_PX)return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  c.addEventListener('pointerup',function(){scrubbing=false;endPress();});
+  c.addEventListener('pointercancel',function(){scrubbing=false;endPress();});
   c.addEventListener('mousemove',function(e){if(!candViewActive())return;var i=pick(e);if(i!==CANDHOV){CANDHOV=i;redrawCandles();}});
   c.addEventListener('mouseleave',function(){if(!candViewActive())return;CANDHOV=-1;redrawCandles();});
-  c.addEventListener('click',function(e){if(!candViewActive())return;var i=pick(e);if(i===CANDSEL){dismissCandInfo();return;}CANDSEL=i;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  /* Click fallback only: a click with no preceding pointer press (e.g. a
+     keyboard/synthetic click). Normal presses are already handled by the
+     press-end handler above, and their click is suppressed via pressDone so
+     the tap is never applied twice. A tap on empty chart space (above the
+     highest wick / below the lowest, e.g. the label strips) dismisses the
+     pill instead of selecting a candle. */
+  c.addEventListener('click',function(e){if(!candViewActive())return;if(pressDone){pressDone=false;return;}var r=c.getBoundingClientRect(),y=e.clientY-r.top;if(CANDGEOM.length){var pt=1e9,pb=-1e9;CANDGEOM.forEach(function(g){if(g.wickTop<pt)pt=g.wickTop;if(g.wickBot>pb)pb=g.wickBot;});if(y<pt-6||y>pb+6){dismissCandInfo();return;}}var i=pick(e);if(i===CANDSEL){dismissCandInfo();return;}CANDSEL=i;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
 }
 /* Candle ranges, Day 1: aggregate Coinbase daily candles into range candles.
    Daily mode is identity (one candle per UTC day). Weekly mode buckets by the
@@ -712,14 +761,19 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
   $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
   $('bcX').addEventListener('click',close);
+  /* Tapping a non-interactive part of the popover (header, note, gaps) dismisses
+     the candle pill — a way out of candle-select without closing the graph.
+     Canvas taps, buttons and links are excluded: the canvas has its own handler,
+     buttons/links do their own thing, and the pill ✕ stops propagation. */
+  dlg.addEventListener('click',function(e){if(!candViewActive())return;if(e.target.closest('canvas,button,a'))return;dismissCandInfo();});
   $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(INLINE||dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
   dlg.addEventListener('touchend',function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>80)close();y0=null;},{passive:true});
-  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
+  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
 function place(){if(INLINE)return;var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
-  if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),w=Math.min(640,window.innerWidth-32);dlg.style.top=(r.bottom+10)+'px';dlg.style.left=Math.max(16,Math.min(r.left-20,window.innerWidth-w-16))+'px';}}
+  if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),wCap=(window.innerWidth>window.innerHeight&&window.innerWidth>=900)?900:640,w=Math.min(wCap,window.innerWidth-32);dlg.style.top=(r.bottom+10)+'px';dlg.style.left=Math.max(16,Math.min(r.left-20,window.innerWidth-w-16))+'px';}}
 function head(){$('bcPx').textContent=live.usd!=null?fmt(live.usd):'—';var c=$('bcChg');c.textContent=typeof live.chg==='number'?(live.chg>=0?'+':'')+live.chg.toFixed(1)+'% 24h':'';c.className='hdr-chg '+(live.chg>=0?'up':'down');}
 function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   if(live.usd!=null){if(d.length&&d[d.length-1][0]>=today)d.pop();d.push([today,live.usd]);}
