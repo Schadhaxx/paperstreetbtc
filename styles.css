@@ -1199,9 +1199,19 @@ h2 {
 .pf-val{font-family:'Outfit',sans-serif;font-weight:700;font-size:1.2rem;color:var(--text)}
 .pf-sub{width:100%;font-size:.8rem;color:var(--muted)}
 .pf-sub .up,.pf-tbl .up{color:#22c55e}.pf-sub .down{color:#ef4444}
-.pf-tbl{display:none;width:100%;margin-top:10px;border-collapse:collapse;font-size:.78rem;color:var(--muted)}
-.pf-card.open .pf-tbl{display:table}
-.pf-tbl th,.pf-tbl td{text-align:right;padding:3px 4px;border-top:1px solid var(--border)}
+.pf-tbl{display:table;width:100%;margin-top:10px;border-collapse:collapse;font-size:.78rem;color:var(--muted)}
+/* Slice 5 r2: the holdings table lives inside a contained scroll box so
+   a long per-stock label (e.g. a stale quote's "cached … (stale, 42 min
+   ago)") can never push the Value / Original / Live columns past the
+   card's edge. The box scrolls horizontally INSIDE the card when the
+   table is wider than the card, and the label text itself wraps (see
+   .pf-tbl em below), so at phone width the table usually fits outright
+   and scrolls only as a backstop. The open/close toggle moved to the
+   wrapper: the table is always display:table, the wrapper is hidden
+   until the card opens. */
+.pf-tbl-wrap{display:none;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+.pf-card.open .pf-tbl-wrap{display:block}
+.pf-tbl th,.pf-tbl td{text-align:right;padding:3px 4px;border-top:1px solid var(--border);overflow-wrap:break-word}
 .pf-tbl th:first-child,.pf-tbl td:first-child{text-align:left}
 .pf-tbl em{font-style:normal;opacity:.7;font-size:.7rem}
 .pf-note{font-size:.75rem;color:var(--muted);margin-top:8px}
@@ -1237,7 +1247,11 @@ h2 {
 .pf-card.open .pf-start{display:block}
 .pf-grid{align-items:start}
 .pf-card.open{grid-column:1/-1}
-.pf-tbl em{white-space:nowrap}
+/* Slice 5 r2: the per-stock source/stale label must wrap instead of
+   forcing the table wider than the card (it used to be nowrap, which
+   at 390 px in the stale state widened the table to ~448 px inside a
+   ~340 px card and clipped the Value / Original / Live columns). */
+.pf-tbl em{white-space:normal;overflow-wrap:break-word}
 
 /* ===== Articles restyle (X-article quality) ===== */
 #articles .articles{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}

@@ -10,6 +10,7 @@
 .pv .chartbox{position:relative;height:380px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
 .pv .note{font-size:.8rem;color:var(--muted)}.pv .prov{color:var(--orange)}.pv .pos{color:#34d399}.pv .neg{color:#f87171}
 .pv .bench-btn.on{background:var(--accent);color:#04121a;border-color:var(--accent);font-weight:600}
+.pv-veh{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 14px}.pv-veh .bench-btn:disabled{opacity:.45;cursor:not-allowed}.pv-veh .note{margin:0}
 .pv-calc{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:18px;align-items:start}
 .pv form{display:grid;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
 .pv label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
@@ -18,6 +19,17 @@
 .pv .res{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pv .res>div{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
 .pv .big{font-size:1.6rem;font-weight:600}
 @media(max-width:700px){.pv .chartbox{height:300px}.pv-calc,.pv .res{grid-template-columns:1fr}}
+.pv-stats-scroll{overflow-x:auto;margin:14px 0 4px}
+.pv-stats{border-collapse:collapse;width:100%;font-size:.85rem;white-space:nowrap}
+.pv-stats th,.pv-stats td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--border)}
+.pv-stats th:first-child,.pv-stats td:first-child{text-align:left}
+.pv-stats th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}
+.pv-stats td.pv-sname{font-weight:600;text-align:left}
+.pv-stats-badges{margin:14px 0 0}
+.pv-spot-note{font-weight:600;margin:14px 0 4px}
+.pv-badge{display:inline-block;background:rgba(34,211,238,.12);color:var(--accent);border:1px solid rgba(34,211,238,.35);border-radius:999px;padding:4px 10px;font-size:.8rem;margin:0 6px 6px 0}
+.pv-pulse-ctx{font-size:.9rem;line-height:1.7;margin:14px 0}
+.pv-div-cal{font-size:.9rem;line-height:1.6;margin:14px 0}
 </style><link rel="stylesheet" href="../assets/css/xfollow.css">
 <style>.wt-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.wt-foot{margin:16px 0 14px}@media(max-width:700px){.wt-cards{grid-template-columns:1fr}}</style><style>.pvx{border:1px solid var(--border,#1e293b);border-radius:10px;padding:10px 12px;margin:4px 0 0;min-width:0}.pvx legend{padding:0 6px;font-weight:600}.pvx-row{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;align-items:end;margin:8px 0}.pvx-row label{min-width:0}.pvx-row input{width:100%;box-sizing:border-box}.pvx-rm{width:44px;height:44px;border-radius:10px;border:1px solid var(--border,#1e293b);background:transparent;color:#cbd5e1;cursor:pointer}.pvx-n{grid-column:1/-1;margin:0}#pvXAdd{min-height:44px}</style>
 <link rel="stylesheet" href="../light.css?v=lm4">
@@ -58,6 +70,7 @@
     <div class="controls"><div class="pill" id="pvSeries"></div><div class="pill" id="pvRange"></div><button type="button" class="bench-btn" id="pvRefresh">Refresh</button></div>
     <div class="chartbox"><canvas id="pvChart"></canvas></div>
     <p class="note" id="pvChartNote" style="margin-top:8px"></p>
+    <div id="pvStats"></div>
     <div id="pvCandWrap" style="margin-top:24px">
       <h2 style="margin-bottom:8px">Sleeve candles</h2>
       <p class="note">Weekly candles of one sleeve's value over the range above, built from the same daily sleeve values as the line chart. Tap a candle for its week.</p>
@@ -72,8 +85,9 @@
   <div class="container">
     <h2>Calculator</h2>
     <p class="section-lead">Pick a sleeve, a start date and an amount. See what it is worth today against spot BTC. Computed from the site's daily closes and dividend ledger.</p>
+    <div class="pv-veh" id="pvVeh"><span class="bench-label">Bitcoin vehicle for your sleeve</span><div class="pill" role="group" aria-label="Bitcoin vehicle for your sleeve"><button type="button" class="bench-btn on" data-pvveh="SPOT" aria-pressed="true">Spot BTC</button><button type="button" class="bench-btn" data-pvveh="IBIT" aria-pressed="false" disabled title="Loading vehicle data…">IBIT</button><button type="button" class="bench-btn" data-pvveh="FBTC" aria-pressed="false" disabled title="Loading vehicle data…">FBTC</button></div><p class="note" id="pvVehNote" aria-live="polite">Loading vehicle data…</p></div>
     <div class="pv-calc">
-      <form id="pvCalc"><label>Sleeve<select id="pvS"></select></label><label>Start date (Jan 1, 2026 or later)<input type="date" id="pvD" min="2026-01-01" value="2026-01-01"></label><label>Amount (USD)<input type="number" id="pvA" min="1" step="1" value="10000"></label><fieldset class="pvx"><legend>Extra contributions (optional)</legend><p class="note">Each one buys the sleeve at its target weights at that trading day's 9:30 AM ET open (BTC too). Weekend or holiday dates buy at the next trading day's open.</p><div id="pvX"></div><button type="button" class="bench-btn" id="pvXAdd">+ Add contribution</button></fieldset></form>
+      <form id="pvCalc"><label>Sleeve<select id="pvS"></select></label><label>Start date (Jan 1, 2026 or later)<input type="date" id="pvD" min="2026-01-01" value="2026-01-01"></label><label>Amount (USD)<input type="number" id="pvA" min="1" step="1" value="10000"></label><fieldset class="pvx"><legend>Extra contributions (optional)</legend><p class="note">Each one buys the sleeve at its target weights at that trading day's 9:30 AM ET open (BTC too). In ETF mode the BTC leg buys at the vehicle close, since no vehicle opens exist. Weekend or holiday dates buy at the next trading day's open.</p><div id="pvX"></div><button type="button" class="bench-btn" id="pvXAdd">+ Add contribution</button></fieldset></form>
       <div><div class="res"><div><div class="note">Sleeve today</div><div class="big" id="pvRS">–</div><div id="pvRSp" class="note"></div></div><div><div class="note">Spot BTC today</div><div class="big" id="pvRB">–</div><div id="pvRBp" class="note"></div></div></div><p class="note" id="pvRN" style="margin-top:8px"></p></div>
     </div>
   </div>
@@ -128,5 +142,5 @@ Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the
 <p class="xsub"><a href="https://x.com/PaperstreetBTC" target="_blank" rel="noreferrer noopener" aria-label="Follow @PaperstreetBTC on X"><span class="xsub-i"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>Follow @PaperstreetBTC on X</a></p>
 </main>
 <script src="../assets/js/et.js?v=et2"></script><script src="../assets/vendor/chart.umd.min.js"></script>
-<script src="../assets/js/compare.js?v=et4"></script><script src="../assets/js/s4.js"></script>
-<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=et15"></script><p class="ps-theme-alt"><a class="ps-to-light" href="?theme=light">Light version</a><a class="ps-to-dark" href="?theme=dark">Back to dark</a></p></body></html>
+<script src="../assets/js/compare.js?v=et6"></script><script src="../assets/js/stats-display.js?v=sd2"></script><script src="../assets/js/s4.js"></script>
+<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=et16"></script><p class="ps-theme-alt"><a class="ps-to-light" href="?theme=light">Light version</a><a class="ps-to-dark" href="?theme=dark">Back to dark</a></p></body></html>

@@ -33,6 +33,60 @@ SER.SPY={n:'S&P 500 (SPY, total return)',v:tr('SPY')};SER.QQQ={n:'QQQ (total ret
 /* BRK-B pays no dividend, so its price is its total return */
 SER['BRK-B']={n:'Berkshire (BRK-B)',v:Object.fromEntries(D.filter(d=>BX[d]&&BX[d]['BRK.B']!=null).map(d=>[d,BX[d]['BRK.B']]))};
 const pct=(a,b)=>(b/a-1)*100,fp=x=>(x>=0?'+':'')+x.toFixed(2)+'%',cls=x=>x>=0?'pos':'neg',usd=(x,m=0)=>(typeof x!=='number'||!isFinite(x))?'—':(x<0?'-$':'$')+Math.abs(x).toLocaleString('en-US',{minimumFractionDigits:m,maximumFractionDigits:m});
+/* Vehicle mode, shared by the chart and the calculator (Day 3):
+   VEH is the session mode (SPOT/IBIT/FBTC); VEHD is
+   vehicle-daily.json once loaded and validated; VEHMAP is the current
+   vehicle's date→close map (null in Spot mode). The custom line and the
+   calculator read these so they follow the vehicle exactly like
+   the sleeve lines do. vehicle-daily carries closes only, no
+   vehicle opens — so in ETF mode the BTC leg of any open-priced
+   buy is priced at the vehicle close, the same close-based
+   treatment vehicleVals already uses for the sleeve lines. No
+   vehicle price is ever synthesised from spot opens.
+   Missing prices, book rule (book.js loadVehicleData, VEHICLE_MAX_LAG=1):
+   a session missing from a vehicle series is filled with that vehicle's
+   prior close ONLY if the prior close is at most 1 session older.
+   A non-positive/non-finite value, a vehicle starting after the base
+   session, an interior gap of 2+ sessions, or a tail lag of 2+ sessions
+   rejects the whole file — Compare stays Spot and says why, exactly as
+   vehicle.js does on the homepage. The validated map below covers every
+   session in D, so vehPx is a plain lookup: it never carries a stale
+   close forward unboundedly, and it never falls back to a spot price
+   while in ETF mode. */
+let VEH='SPOT', VEHD=null, VEHFAIL=false, VEHMAP=null, VEHMAPS=null, VEHSTAT=null, VEHERR=null, VEHLOAD=false, VEHPEND=null, VEHGAP=null;
+const VEHICLE_MAX_LAG=1;
+function validateVehData(VD){ if(!VD||!VD.vehicles) throw new Error('vehicle data missing');
+ const status={end:null,lag:0,filled:{},ends:{}},maps={};
+ for(const veh of ['IBIT','FBTC']){ const raw={};(VD.vehicles[veh]||[]).forEach(p=>{const x=p[1];if(typeof x!=='number'||!isFinite(x)||!(x>0))throw new Error('vehicle '+veh+' bad value on '+p[0]);raw[p[0]]=x;});
+  const rawDates=Object.keys(raw).sort(); if(!rawDates.length) throw new Error('vehicle '+veh+' empty');
+  const vEnd=rawDates[rawDates.length-1]; status.ends[veh]=vEnd;
+  const tailLag=D.filter(d=>d>vEnd).length;
+  if(tailLag>VEHICLE_MAX_LAG){const e=new Error('vehicle '+veh+' stale: last close '+vEnd+', '+tailLag+' sessions behind Spot');e.stale=true;e.end=vEnd;e.lag=tailLag;throw e;}
+  if(!status.end||vEnd<status.end)status.end=vEnd; if(tailLag>status.lag)status.lag=tailLag;
+  let j=-1,gap=0;const m={},filled=[];
+  D.forEach(d=>{ while(j+1<rawDates.length&&rawDates[j+1]<=d)j++;
+   if(j<0) throw new Error('vehicle '+veh+' missing session '+d+' (no prior close)');
+   gap=(rawDates[j]===d)?0:gap+1;
+   if(gap>VEHICLE_MAX_LAG) throw new Error('vehicle '+veh+' missing '+gap+' sessions up to '+d);
+   if(rawDates[j]!==d)filled.push(d); m[d]=raw[rawDates[j]]; });
+  status.filled[veh]=filled; maps[veh]=m; }
+ return {status,maps}; }
+function buildVehMap(VD,veh){ if(VEHMAPS&&VEHMAPS[veh]) return VEHMAPS[veh]; if(!VD||!VD.vehicles||!VD.vehicles[veh]) return null; const VM={}; VD.vehicles[veh].forEach(p=>{VM[p[0]]=p[1];}); return VM; }
+function vehPx(d){ if(!VEHMAP) return null; return VEHMAP[d]!=null?VEHMAP[d]:null; }
+function vehAsOf(){ if(!VEHSTAT||!VEHSTAT.end) return LAST; return VEHSTAT.end<=LAST?VEHSTAT.end:LAST; }
+function vehFillText(veh){ const f=VEHSTAT&&VEHSTAT.filled&&VEHSTAT.filled[veh]; if(!f||!f.length) return '';
+ if(f.length===1) return fmtDate(f[0])+' uses the prior close (one session carried forward)';
+ return f.length+' sessions use the prior close (one session carried forward each)'; }
+function vehModeText(){ if(VEHLOAD) return 'Loading vehicle data…';
+ if(VEHFAIL) return VEHERR&&VEHERR.stale?('Vehicle data is out of date (last close '+fmtDate(VEHERR.end)+') — showing Spot BTC'):VEHERR?('Vehicle data unavailable — '+VEHERR.message+' — showing Spot BTC'):'Vehicle data unavailable — showing Spot BTC';
+ if(VEH==='SPOT') return 'Spot BTC — the hurdle';
+ let t='You are in '+VEH+' mode · ETF prices as of the '+fmtDate(vehAsOf())+' close';
+ if(VEHSTAT&&VEHSTAT.lag) t+=' (latest session uses that close until tonight\u2019s update)';
+ const fl=vehFillText(VEH); if(fl) t+=' · '+fl; return t; }
+function syncVehSel(){ const w=document.getElementById('pvVeh'); if(!w) return;
+ w.querySelectorAll('[data-pvveh]').forEach(b=>{const on=b.dataset.pvveh===VEH;b.classList.toggle('on',on);b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false');
+  if(b.dataset.pvveh!=='SPOT'){const dis=VEHLOAD||VEHFAIL||!VEHD;b.disabled=dis;b.title=dis?(VEHFAIL?'Vehicle data unavailable':'Loading vehicle data…'):'';}});
+ const n=document.getElementById('pvVehNote'); if(n) n.textContent=vehModeText(); }
 
 
 /* Deep combined page (test branch, Nov 2026): the calculator's sleeve
@@ -41,24 +95,34 @@ const pct=(a,b)=>(b/a-1)*100,fp=x=>(x>=0?'+':'')+x.toFixed(2)+'%',cls=x=>x>=0?'p
    opens, same per-sleeve routes) but snapshots the value at every
    session close instead of returning only today's value, so the
    line's final point equals the calculator's sleeve-today number.
-   Vehicle note: vehicle-daily carries closes only, no vehicle
-   opens, so an open-priced vehicle buy cannot be computed exactly
-   — the custom line is therefore Spot-based and does not follow
-   the vehicle toggle yet (stated in the chart note). */
+   Vehicle: the custom line follows the vehicle toggle like the
+   sleeve lines do (SER values, re-based to $100,000 at 31 Dec
+   2025). vehicle-daily carries closes only, no vehicle opens, so
+   in ETF mode the BTC leg of extra contributions and dividend
+   buys is priced at the vehicle close — the same close-based
+   treatment vehicleVals uses for the sleeve lines. No vehicle
+   price is ever synthesised from spot opens. Missing vehicle
+   prices follow the book's one-session carry-forward
+   (validateVehData); a longer gap rejects the vehicle file, and a
+   price still missing in ETF mode throws here instead of falling
+   back to spot — the caller skips that contribution in both the
+   line and the calculator, so the two stay in agreement. */
 function lumpSeries(k,d,c){const s=L.sleeves[k],h={};const op=(dd,a)=>{const o=OP&&OP[dd]&&OP[dd][a],cl=CL[dd]&&CL[dd][a];return (typeof o==='number'&&isFinite(o)&&o>0&&!(cl>0&&Math.abs(o/cl-1)>.25))?o:cl};
- for(const a in s.w)h[a]=c*s.w[a]/op(d,a);let rec=[];const out={};
+ const bpx=(dd,a)=>{if(a==='BTC'&&VEHMAP){const vp=vehPx(dd);if(vp==null){VEHGAP=dd;throw new Error('vehicle '+VEH+' price missing for '+dd);}return vp;}return op(dd,a)};
+ const vpx=(x,a)=>{if(a==='BTC'&&VEHMAP){const vp=vehPx(x);if(vp==null){VEHGAP=x;throw new Error('vehicle '+VEH+' price missing for '+x);}return vp;}return CL[x][a];};
+ for(const a in s.w)h[a]=c*s.w[a]/bpx(d,a);let rec=[];const out={};
  const evs=L.strc.map(([ex,pay,amt])=>({ex:firstOn(ex),pay:firstOn(pay),amt})).filter(e=>e.ex&&e.ex>d&&e.ex<=LAST);
  for(const x of D){if(x<d)continue;for(const e of evs)if(e.ex===x){e.cash=h.STRC*e.amt;rec.push(e)}
-  rec=rec.filter(e=>{if(e.pay&&e.pay===x){for(const a in s.div)h[a]=(h[a]||0)+e.cash*s.div[a]/op(x,a);return false}return true});
-  let t=rec.reduce((y,e)=>y+e.cash,0);for(const a in h)t+=h[a]*CL[x][a];out[x]=t}
+  rec=rec.filter(e=>{if(e.pay&&e.pay===x){for(const a in s.div)h[a]=(h[a]||0)+e.cash*s.div[a]/bpx(x,a);return false}return true});
+  let t=rec.reduce((y,e)=>y+e.cash,0);for(const a in h)t+=h[a]*vpx(x,a);out[x]=t}
  return out}
 function customVals(){const cS=document.getElementById('pvS');if(!cS||!document.getElementById('pvCalc'))return null;
  const k=cS.value;if(!L.sleeves[k])return null;let a=+document.getElementById('pvA').value||0;if(!(a>0))return null;
  let d=document.getElementById('pvD').value||'2026-01-01';if(d<'2026-01-01')d='2026-01-01';
- const s0=d==='2026-01-01'?L.base:(lastOn(d)||L.base);const v=VAL[k];const out={};
+ const s0=d==='2026-01-01'?L.base:(lastOn(d)||L.base);const v=SER[k].v;const out={};
  for(const t of D){if(t<s0)continue;out[t]=a*v[t]/v[s0]}
  document.querySelectorAll('#pvX .pvx-row').forEach(r=>{const c=+r.querySelector('.pvx-a').value||0,dd=r.querySelector('.pvx-d').value;
-  if(!(c>0)||!dd||dd<'2026-01-01')return;const bd=firstOn(dd);if(!bd)return;const ls=lumpSeries(k,bd,c);
+  if(!(c>0)||!dd||dd<'2026-01-01')return;const bd=firstOn(dd);if(!bd)return;let ls;try{ls=lumpSeries(k,bd,c)}catch(e){return;}
   for(const t in ls){if(t<s0)continue;out[t]=(out[t]||0)+ls[t]}});
  return out}
 
@@ -74,13 +138,12 @@ if(!pvOn)pvOn=new Set(['hodlr','BTC','GLD','MSTR','CUSTOM']);let on=pvOn,rng=pvR
    ETF mode. Benchmarks (incl. Spot BTC) are untouched. Until the
    prices.yml live-quote change lands, vehicle prices are latest
    closes from vehicle-daily.json. */
-let VEH='SPOT', VEHD=null, VEHFAIL=false;
-function vehicleVals(VD,veh){const VM={};VD.vehicles[veh].forEach(p=>{VM[p[0]]=p[1];});const out={};
+function vehicleVals(VD,veh){const VM=buildVehMap(VD,veh);if(!VM)throw new Error('vehicle '+veh+' not loaded');if(VM[L.base]==null)throw new Error('vehicle '+veh+' missing base session '+L.base);const out={};
  for(const k in L.sleeves){const sl=L.sleeves[k],h={},b=CL[L.base];for(const a in sl.w)h[a]=a==='BTC'?L.start*sl.w[a]/VM[L.base]:L.start*sl.w[a]/b[a];let rec=[];const v={};
   const evs=L.strc.map(([ex,pay,amt])=>({ex:firstOn(ex),pay:firstOn(pay),payS:pay,amt})).filter(e=>e.ex&&e.ex<=LAST);
   for(const d of D){for(const e of evs){if(e.ex===d){e.cash=h.STRC*e.amt;e.sh=h.STRC;rec.push(e)}}
-   rec=rec.filter(e=>{if(e.pay&&e.pay===d){e.buys={};for(const a in sl.div){const px=a==='BTC'?(VM[d]!=null?VM[d]:VM[lastOn(d)]):CL[d][a];const q=e.cash*sl.div[a]/px;h[a]=(h[a]||0)+q;e.buys[a]=q}return false}return true});
-   let t=rec.reduce((x,e)=>x+e.cash,0);for(const a in h)t+=h[a]*(a==='BTC'?(VM[d]!=null?VM[d]:VM[lastOn(d)]):CL[d][a]);v[d]=t}out[k]=v}return out;}
+   rec=rec.filter(e=>{if(e.pay&&e.pay===d){e.buys={};for(const a in sl.div){const px=a==='BTC'?VM[d]:CL[d][a];if(px==null)throw new Error('vehicle '+veh+' price missing for '+d);const q=e.cash*sl.div[a]/px;h[a]=(h[a]||0)+q;e.buys[a]=q}return false}return true});
+   let t=rec.reduce((x,e)=>x+e.cash,0);for(const a in h){const px=a==='BTC'?VM[d]:CL[d][a];if(px==null)throw new Error('vehicle '+veh+' price missing for '+d);t+=h[a]*px}v[d]=t}out[k]=v}return out;}
 function dates(){const n=D.length;if(rng==='1W')return D.slice(n-6);if(rng==='1M')return D.slice(n-22);if(rng==='3M'||rng==='6M'||rng==='1Y'){const mo=rng==='3M'?3:(rng==='6M'?6:12);const t=new Date(D[n-1]+'T00:00:00Z');t.setUTCMonth(t.getUTCMonth()-mo);const st=t.toISOString().slice(0,10);let i=0;while(i<n-1&&D[i+1]<=st)i++;return D.slice(i)}return D}
 const sp=document.getElementById('pvSeries');sp.innerHTML=Object.keys(SER).map(k=>`<button class="bench-btn" data-k="${k}">${SER[k].n}</button>`).join('')+`<button class="bench-btn" data-k="CUSTOM">Your sleeve</button>`;
 const rp=document.getElementById('pvRange');rp.innerHTML=['1W','1M','3M','6M','YTD','1Y'].map(r=>`<button class="bench-btn" data-r="${r}">${r}</button>`).join('');
@@ -89,14 +152,14 @@ const ch=new Chart(document.getElementById('pvChart'),{type:'line',data:{labels:
  plugins:{legend:{labels:{color:psC('#9aa6bc','#475569')}},tooltip:{bodyFont:{size:innerWidth<520?10:12},titleFont:{size:innerWidth<520?11:12},padding:innerWidth<520?6:8,boxWidth:innerWidth<520?8:12,boxHeight:innerWidth<520?8:12,callbacks:{label:c=>{const ds=c.dataset,raw=ds.raw[c.dataIndex];if(innerWidth<520)return `${ds.label.replace(/ \(close (?:provisional until [^)]*|from backup source until Yahoo's final bar)\)/,'')}: ${fp(c.parsed.y)}`;return `${ds.label}: ${usd(raw,2)} (${fp(c.parsed.y)} vs range start)`}}}},
  scales:{x:{ticks:{color:psC('#9aa6bc','#475569'),maxTicksLimit:8},grid:{color:psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)')}},y:{ticks:{color:psC('#9aa6bc','#475569'),callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.05)'}}}}});
 pvChartObj=ch;
-function draw(){const ds=dates(),fd=fbDate();ch.data.labels=ds;ch.data.datasets=[...on].filter(k=>k!=='CUSTOM').map(k=>{const v=ds.map(d=>SER[k].v[d]);const isB=k==='BTC';
+function draw(){VEHGAP=null;syncVehSel();const ds=dates(),fd=fbDate();ch.data.labels=ds;ch.data.datasets=[...on].filter(k=>k!=='CUSTOM').map(k=>{const v=ds.map(d=>SER[k].v[d]);const isB=k==='BTC';
  return{label:isB&&fd?BACKUP_LBL:(isB&&prov()?'Spot BTC (close provisional until '+ET.btcCloseLabel(LAST)+')':SER[k].n),raw:v,data:v.map(x=>pct(v[0],x)),borderColor:COL[k],backgroundColor:COL[k],borderWidth:isB?2.5:2,pointRadius:ds.length<10?3:0,tension:.2}});
 const cv=on.has('CUSTOM')?customVals():null;
 if(cv){const f=ds.findIndex(d=>cv[d]!=null);if(f>=0){const vals=ds.map(d=>cv[d]==null?null:cv[d]);ch.data.datasets.push({label:'Your sleeve',raw:vals,data:vals.map(x=>x==null?null:pct(vals[f],x)),borderColor:psC('#ffffff','#0f172a'),backgroundColor:psC('#ffffff','#0f172a'),borderWidth:2.5,pointRadius:ds.length<10?3:0,tension:.2});}}
 ch.update();
  sp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',on.has(b.dataset.k)));rp.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.r===rng));
- const customNote=!on.has('CUSTOM')||!document.getElementById('pvCalc')?'':(cv?' Your sleeve line: starting amount follows the sleeve daily closes; extra contributions buy at opens, as in the calculator. Spot-based — the vehicle toggle does not apply to your line yet.':' Your sleeve line needs an amount above $0 and a valid start date.');
- document.getElementById('pvChartNote').innerHTML=`Data as of ${fmtDate(LAST)} close. % change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(fd?'<span class="prov">BTC close '+fd+' from backup source until Yahoo\'s final bar.</span>':(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`))+(VEHFAIL?` Vehicle data unavailable — showing Spot BTC.`:'')+(VEH!=='SPOT'?` You are in ${VEH} mode — BTC sleeve priced in ${VEH} at its latest close. Spot BTC remains the hurdle.`:'')+customNote+(refreshMsg?` ${refreshMsg}`:'');if(document.getElementById('pvCandles'))drawCandles();}
+ const customNote=!on.has('CUSTOM')||!document.getElementById('pvCalc')?'':(cv?' Your sleeve line: starting amount follows the sleeve daily closes; extra contributions buy at opens, as in the calculator.'+(VEH!=='SPOT'?` In ${VEH} mode the line follows the ${VEH} vehicle — the BTC leg is priced at vehicle closes, since no vehicle opens exist.`:''):' Your sleeve line needs an amount above $0 and a valid start date.');
+ document.getElementById('pvChartNote').innerHTML=`Data as of ${fmtDate(LAST)} close. % change from the first close in range. Daily closes; ${rng} = ${ds[0]} → ${ds[ds.length-1]}. `+(fd?'<span class="prov">BTC close '+fd+' from backup source until Yahoo\'s final bar.</span>':(prov()?'<span class="prov">BTC close provisional until '+ET.btcCloseLabel(LAST)+'.</span>':`Latest BTC close ${LAST} is final.`))+(VEHFAIL?(VEHERR&&VEHERR.stale?` Vehicle data is out of date (last close ${fmtDate(VEHERR.end)}) — showing Spot BTC.`:(VEHERR?` Vehicle data unavailable — ${VEHERR.message} — showing Spot BTC.`:` Vehicle data unavailable — showing Spot BTC.`)):'')+(VEH!=='SPOT'?` You are in ${VEH} mode — BTC sleeve priced in ${VEH} at its latest close${VEHSTAT&&VEHSTAT.end?` (as of the ${fmtDate(vehAsOf())} close)`:''}${VEHSTAT&&VEHSTAT.lag?` — the latest session uses that close until tonight's update`:''}${vehFillText(VEH)?` · ${vehFillText(VEH)}`:''}. Spot BTC remains the hurdle.`:'')+customNote+(VEHGAP?` A contribution could not be priced in ${VEH} mode (vehicle price missing for ${VEHGAP}) and was left out of the line.`:'')+(refreshMsg?` ${refreshMsg}`:'');if(document.getElementById('pvCandles'))drawCandles();}
 sp.onclick=e=>{const k=e.target.dataset.k;if(!k)return;on.has(k)?(on.size>1&&on.delete(k)):on.add(k);draw()};rp.onclick=e=>{if(e.target.dataset.r){rng=pvRng=e.target.dataset.r;draw()}};
 if(document.getElementById('pvRefresh')&&!refreshWired){refreshWired=true;document.getElementById('pvRefresh').onclick=()=>{const btn=document.getElementById('pvRefresh');if(!btn||btn.disabled)return;const oldLast=LAST;btn.disabled=true;refreshMsg='Refreshing…';draw();loadHistory().then(ok=>{if(ok){const nl=Object.keys(CL).sort().pop();if(nl&&nl!==oldLast){refreshMsg='Updated '+etTime()+' · Data as of '+fmtDate(nl)+' close.';run();}else{refreshMsg='Already up to date · Data as of '+fmtDate(oldLast)+' close.';draw();}}else{refreshMsg='Couldn\'t refresh — showing '+fmtDate(oldLast)+' close.';draw();}btn.disabled=false;});};}
 // Sleeve candles (mockup 11, test branch 4 Nov 2026): weekly candles of
@@ -150,42 +213,59 @@ if(cvEl)cvEl.addEventListener('click',e=>{
  if(idx<0||idx>=candWeeks.length)return;candSel=idx;
  drawCandles();});
 draw();window.__psRedraw=draw;
-function vehApply(m){VEH=m;if(m==='SPOT'){for(const k in L.sleeves)SER[k].v=VAL[k];draw();return;}
- if(VEHD){const VV=vehicleVals(VEHD,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();return;}
- fetch('../assets/data/vehicle-daily.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{VEHD=j;VEHFAIL=false;const VV=vehicleVals(j,m);for(const k in L.sleeves)SER[k].v=VV[k];draw();}).catch(e=>{console.warn('vehicle data unavailable, Compare stays Spot',e);VEH='SPOT';VEHFAIL=true;try{sessionStorage.setItem('psVehicle','SPOT');}catch(_){}for(const k in L.sleeves)SER[k].v=VAL[k];draw();});}
+function vehFail(e){console.warn('vehicle data unavailable, Compare stays Spot',e);VEH='SPOT';VEHFAIL=true;VEHERR=e;VEHMAP=null;try{sessionStorage.setItem('psVehicle','SPOT');}catch(_){}for(const k in L.sleeves)SER[k].v=VAL[k];syncVehSel();draw();if(window.__psCalc)window.__psCalc();}
+function vehApply(m){if(m!=='SPOT'&&m!=='IBIT'&&m!=='FBTC')m='SPOT';try{sessionStorage.setItem('psVehicle',m);}catch(_){}
+ if(m==='SPOT'){VEH='SPOT';VEHMAP=null;VEHFAIL=false;VEHERR=null;for(const k in L.sleeves)SER[k].v=VAL[k];syncVehSel();draw();if(window.__psCalc)window.__psCalc();return;}
+ if(VEHD){try{VEH=m;VEHMAP=buildVehMap(VEHD,m);const VV=vehicleVals(VEHD,m);for(const k in L.sleeves)SER[k].v=VV[k];VEHFAIL=false;VEHERR=null;}catch(e){vehFail(e);return;}syncVehSel();draw();if(window.__psCalc)window.__psCalc();return;}
+ if(VEHLOAD){VEHPEND=m;syncVehSel();return;}
+ VEHLOAD=true;syncVehSel();
+ fetch('../assets/data/vehicle-daily.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{const chk=validateVehData(j);VEHD=j;VEHSTAT=chk.status;VEHMAPS=chk.maps;VEHFAIL=false;VEHERR=null;VEHLOAD=false;VEH=m;VEHMAP=buildVehMap(j,m);const VV=vehicleVals(j,m);for(const k in L.sleeves)SER[k].v=VV[k];syncVehSel();draw();if(window.__psCalc)window.__psCalc();}).catch(e=>{VEHLOAD=false;VEHD=null;vehFail(e);});}
+function vehInit(){if(VEHD||VEHLOAD)return;VEHLOAD=true;syncVehSel();
+ fetch('../assets/data/vehicle-daily.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>{const chk=validateVehData(j);VEHD=j;VEHSTAT=chk.status;VEHMAPS=chk.maps;VEHFAIL=false;VEHERR=null;VEHLOAD=false;const pend=VEHPEND;VEHPEND=null;syncVehSel();try{const m=pend||sessionStorage.getItem('psVehicle');if(m==='IBIT'||m==='FBTC')vehApply(m);}catch(e){}}).catch(e=>{VEHLOAD=false;VEHD=null;VEHPEND=null;VEHFAIL=true;VEHERR=e;syncVehSel();});}
+/* Scoped vehicle selector (calculator/custom-line area only): three buttons
+   that drive the same session mode (sessionStorage 'psVehicle') as the
+   homepage toggle, without touching it — the homepage toggle (vehicle.js)
+   is not loaded on this page and this selector never dispatches
+   'psvehicle' itself, so the two controls cannot fight. ETF buttons stay
+   disabled until the vehicle file has loaded and passed validation, so a
+   vehicle can never be selected with no data behind it. */
+const pvVeh=document.getElementById('pvVeh');
+if(pvVeh)pvVeh.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-pvveh]');if(!b||b.disabled)return;vehApply(b.dataset.pvveh);});
 window.addEventListener('psvehicle',e=>vehApply(e.detail.vehicle||'SPOT'));
-try{const m=sessionStorage.getItem('psVehicle');if(m==='IBIT'||m==='FBTC')vehApply(m);}catch(e){}
+vehInit();
 }
 if(document.getElementById('pvCalc')){
 // calculator
 const cS=document.getElementById('pvS');cS.innerHTML=Object.keys(L.sleeves).map(k=>`<option value="${k}">${L.sleeves[k].n}</option>`).join('');document.getElementById('pvD').max=LAST;
-/* CR-005: extra lump-sum contributions, each bought at its trading day's 9:30 AM ET OPEN (assets/data/opens.json; BTC = Coinbase 9:30 AM ET price) at the sleeve's target weights; weekend/holiday dates are held to the next trading day's open; STRC dividends on those shares are reinvested at the pay day's open. A missing/bad open falls back to that day's close and the row says so. */
+/* CR-005: extra lump-sum contributions, each bought at its trading day's 9:30 AM ET OPEN (assets/data/opens.json; BTC = Coinbase 9:30 AM ET price) at the sleeve's target weights; weekend/holiday dates are held to the next trading day's open; STRC dividends on those shares are reinvested at the pay day's open. A missing/bad open falls back to that day's close and the row says so. In ETF mode the BTC leg buys at the vehicle close (no vehicle opens exist) — disclosed in the fieldset note, the row note and the summary line. A vehicle price still missing in ETF mode throws instead of falling back to spot; the row is then excluded here and from the line, so the two stay in agreement. */
 const cW=document.getElementById('pvX'),cAdd=document.getElementById('pvXAdd');
 let LFB=0;const opx=(d,a)=>{const o=OP&&OP[d]&&OP[d][a],c=CL[d]&&CL[d][a];if(typeof o==='number'&&isFinite(o)&&o>0&&!(c>0&&Math.abs(o/c-1)>.25))return o;LFB++;return c};
-function lumpVal(k,d,c){const s=L.sleeves[k],h={};for(const a in s.w)h[a]=c*s.w[a]/opx(d,a);let rec=[];
+function lumpVal(k,d,c){const s=L.sleeves[k],h={};const bpx=(dd,a)=>{if(a==='BTC'&&VEHMAP){const vp=vehPx(dd);if(vp==null){VEHGAP=dd;throw new Error('vehicle '+VEH+' price missing for '+dd);}return vp;}return opx(dd,a)};const vpx=(a)=>{if(a==='BTC'&&VEHMAP){const vp=vehPx(LAST);if(vp==null){VEHGAP=LAST;throw new Error('vehicle '+VEH+' price missing for '+LAST);}return vp;}return CL[LAST][a];};for(const a in s.w)h[a]=c*s.w[a]/bpx(d,a);let rec=[];
  const evs=L.strc.map(([ex,pay,amt])=>({ex:firstOn(ex),pay:firstOn(pay),amt})).filter(e=>e.ex&&e.ex>d&&e.ex<=LAST);
  for(const x of D){if(x<=d)continue;for(const e of evs)if(e.ex===x){e.cash=h.STRC*e.amt;rec.push(e)}
-  rec=rec.filter(e=>{if(e.pay&&e.pay===x){for(const a in s.div)h[a]=(h[a]||0)+e.cash*s.div[a]/opx(x,a);return false}return true})}
- let t=rec.reduce((y,e)=>y+e.cash,0);for(const a in h)t+=h[a]*CL[LAST][a];return t}
+  rec=rec.filter(e=>{if(e.pay&&e.pay===x){for(const a in s.div)h[a]=(h[a]||0)+e.cash*s.div[a]/bpx(x,a);return false}return true})}
+ let t=rec.reduce((y,e)=>y+e.cash,0);for(const a in h)t+=h[a]*vpx(a);return t}
 function addRow(amt,dt){const r=document.createElement('div');r.className='pvx-row';
  r.innerHTML='<label>Amount (USD)<input type="number" class="pvx-a" min="1" step="1" inputmode="numeric" value="'+(amt||1000)+'"></label><label>Date<input type="date" class="pvx-d" min="2026-01-01" max="'+LAST+'" value="'+(dt||LAST)+'"></label><button type="button" class="pvx-rm" aria-label="Remove contribution">✕</button><p class="note pvx-n"></p>';
  r.querySelector('.pvx-rm').onclick=()=>{r.remove();calc()};r.querySelectorAll('input').forEach(i=>i.oninput=calc);cW.appendChild(r);calc()}
 cAdd.onclick=()=>addRow();
-function calc(e){e&&e.preventDefault();const k=cS.value;let a=+document.getElementById('pvA').value||0;let d=document.getElementById('pvD').value||'2026-01-01';if(d<'2026-01-01')d='2026-01-01';
- const s0=d==='2026-01-01'?L.base:(lastOn(d)||L.base);const v=VAL[k];let sv=a*v[LAST]/v[s0],bv=a*CL[LAST].BTC/CL[s0].BTC,inv=a,nx=0;
+function calc(e){e&&e.preventDefault();VEHGAP=null;const k=cS.value;let a=+document.getElementById('pvA').value||0;let d=document.getElementById('pvD').value||'2026-01-01';if(d<'2026-01-01')d='2026-01-01';
+ const s0=d==='2026-01-01'?L.base:(lastOn(d)||L.base);const v=SER[k].v;let sv=a*v[LAST]/v[s0],bv=a*CL[LAST].BTC/CL[s0].BTC,inv=a,nx=0;
  cW.querySelectorAll('.pvx-row').forEach(r=>{const c=+r.querySelector('.pvx-a').value||0,dd=r.querySelector('.pvx-d').value,n=r.querySelector('.pvx-n');
   if(!(c>0)){n.textContent='Enter an amount above $0 to include this contribution.';return}
   if(!dd){n.textContent='Pick a date to include this contribution.';return}
   if(dd<'2026-01-01'){n.textContent='Data starts Jan 1, 2026; pick a later date. Not included.';return}
   const bd=firstOn(dd);if(!bd){n.textContent='No trading day in the data yet for '+dd+' (latest is '+LAST+'). Not included.';return}
-  LFB=0;const lv=lumpVal(k,bd,c);const bo=opx(bd,'BTC');sv+=lv;bv+=c*CL[LAST].BTC/bo;inv+=c;nx++;
-  n.textContent=(bd!==dd?dd+' is not a trading day (market closed); bought at the next trading day\'s open, '+bd+'. ':'Bought at the '+bd+' open. ')+(LFB?'Open price missing for part of this buy, so that part uses the close. ':'')+'Worth '+usd(lv)+' today.'});
+  LFB=0;let lv;try{lv=lumpVal(k,bd,c)}catch(e){n.textContent='Cannot price this contribution in '+VEH+' mode — vehicle price missing for '+(VEHGAP||bd)+'. Not included.';return}
+  const bo=opx(bd,'BTC');sv+=lv;bv+=c*CL[LAST].BTC/bo;inv+=c;nx++;
+  n.textContent=(bd!==dd?dd+' is not a trading day (market closed); bought at the next trading day\'s open, '+bd+'. ':'Bought at the '+bd+' open. ')+(VEH!=='SPOT'?'BTC leg at the '+VEH+' close (no vehicle opens exist). ':'')+(LFB?'Open price missing for part of this buy, so that part uses the close. ':'')+'Worth '+usd(lv)+' today.'});
  a=inv;
  document.getElementById('pvRS').textContent=usd(sv);document.getElementById('pvRSp').innerHTML=`<span class="${cls(sv-a)}">${fp(pct(a,sv))}</span>`;
  document.getElementById('pvRB').textContent=usd(bv);document.getElementById('pvRBp').innerHTML=`<span class="${cls(bv-a)}">${fp(pct(a,bv))}</span>`;
- document.getElementById('pvRN').textContent=`Bought at the ${s0} close${nx?` plus ${nx} extra contribution${nx>1?'s':''} (each at its trading day's open, target weights), total invested ${usd(inv)}`:''}, valued at the ${LAST} close. ${sv>=bv?'Beat':'Trailed'} spot BTC by ${usd(Math.abs(sv-bv))}.`
+ const openTxt=VEH!=='SPOT'?` (each at its trading day's open, target weights; in ${VEH} mode the BTC leg is priced at the vehicle close, since no vehicle opens exist)`:` (each at its trading day's open, target weights)`;
+ document.getElementById('pvRN').textContent=`Bought at the ${s0} close${nx?` plus ${nx} extra contribution${nx>1?'s':''}${openTxt}, total invested ${usd(inv)}`:''}, valued at the ${LAST} close. ${sv>=bv?'Beat':'Trailed'} spot BTC by ${usd(Math.abs(sv-bv))}.`
  if(document.getElementById('pvChart')&&window.__psRedraw)window.__psRedraw();}
-document.getElementById('pvCalc').onsubmit=calc;['pvS','pvD','pvA'].forEach(i=>document.getElementById(i).oninput=calc);calc();
+window.__psCalc=calc;document.getElementById('pvCalc').onsubmit=calc;['pvS','pvD','pvA'].forEach(i=>document.getElementById(i).oninput=calc);calc();
 
 }
 }
