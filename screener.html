@@ -28,7 +28,7 @@
      floating theme pill's glow): theme-aware via the --card/--txt
      variables light.css redefines, so it reads as a white pill in
      light mode and a navy pill in dark mode. Body padding-bottom
-     (above) keeps the footer "Light version" link clear of it. */
+     (above) keeps the footer clear of it. */
   .clock-float{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));z-index:55;display:inline-flex;align-items:center;gap:9px;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,0) 42%),linear-gradient(180deg,var(--card2),var(--card));border:1px solid rgba(34,211,238,.55);border-radius:999px;padding:11px 20px;color:var(--txt);font-weight:800;font-size:15px;text-decoration:none;white-space:nowrap;box-shadow:0 14px 40px rgba(15,23,42,.35),0 0 28px rgba(34,211,238,.20);overflow:hidden;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
   .clock-float svg{width:16px;height:16px;flex:0 0 auto;display:block;color:var(--cyan)}
   .clock-float::before{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.22) 50%,transparent 58%);transform:translateX(-130%);transition:transform .6s ease;pointer-events:none}
@@ -67,7 +67,7 @@
   #ind-cardline { display:none; margin:2px 0 8px; font-size:15px; font-weight:800; letter-spacing:-.01em; line-height:1.35; }
   #ind-pill { display:none; margin-top:12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:14px; line-height:1.55; text-align:center; cursor:pointer; }
   #ind-status { color:var(--mut); font-size:13px; line-height:1.55; margin-top:12px; }
-  .ind-exp { display:inline-block; background:#7c2d12; color:#fdba74; border:1px solid #f97316; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700; margin-left:8px; vertical-align:middle; }
+  .ind-beta { display:inline-block; background:#7c2d12; color:#fdba74; border:1px solid #f97316; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700; margin-left:8px; vertical-align:middle; }
   #ind-liveprice { display:none; font-size:15px; font-weight:800; margin-left:8px; }
   .ind-enh-btn { height:36px; padding:0 12px; font-size:13px; }
   .ind-enh-btn[aria-pressed="true"] { border-color:var(--cyan); color:var(--cyan); }
@@ -294,7 +294,7 @@
 <script src="assets/vendor/chart.umd.min.js"></script>
 <div class="ind-modal" id="ind-modal" aria-hidden="true" role="dialog" aria-label="Indicator YTD weekly candle chart">
   <div class="ind-dialog">
-    <div class="ind-head"><h3 id="ind-title">Gold — YTD weekly candles</h3><span><span class="ind-exp">EXPERIMENTAL</span><span id="ind-liveprice"></span></span><span style="display:flex;gap:8px;"><button type="button" class="ind-info-btn" id="ind-info-top" aria-label="About this chart">+</button><button type="button" class="btn" id="ind-close" aria-label="Close indicator chart">✕</button></span></div>
+    <div class="ind-head"><h3 id="ind-title">Gold — YTD weekly candles</h3><span><span class="ind-beta">BETA</span><span id="ind-liveprice"></span></span><span style="display:flex;gap:8px;"><button type="button" class="ind-info-btn" id="ind-info-top" aria-label="About this chart">+</button><button type="button" class="btn" id="ind-close" aria-label="Close indicator chart">✕</button></span></div>
     <p class="ind-sub" id="ind-sub" hidden></p>
     <div id="ind-info-pill" role="note" tabindex="0"><button type="button" id="ind-info-x" aria-label="Dismiss">✕</button><span id="ind-info-text"></span></div>
     <p id="ind-cardline"></p>
@@ -306,7 +306,6 @@
       <button type="button" class="btn ind-enh-btn" data-enh="patterns" aria-pressed="false">Pattern hints</button>
       <button type="button" class="btn ind-enh-btn" data-enh="volume" aria-pressed="false">Volume</button>
       <button type="button" class="btn ind-enh-btn" data-enh="zoom" aria-pressed="false">Zoom: last 12 wks</button>
-      <button type="button" class="btn ind-enh-btn" data-enh="stats" aria-pressed="false">Range stats</button>
     </div>
     <p id="ind-enh-note" style="display:none;color:var(--mut);font-size:13px;line-height:1.55;margin-top:10px;"></p>
     <div id="ind-pill" role="button" tabindex="0"></div>
@@ -315,11 +314,9 @@
   </div>
 </div>
 <script src="assets/js/screener.js?v=scr1"></script>
-<script src="assets/js/screener-indicator-chart.js?v=stocks7"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks8"></script>
 <script src="assets/js/screener-chart.js?v=cmp6"></script>
 <script src="assets/js/et.js?v=et2"></script>
 <script src="assets/js/btcchart.js?v=et16"></script>
-<p class="ps-theme-alt"><a class="ps-to-light" href="?theme=light">Light version</a><a class="ps-to-dark" href="?theme=dark">Back to dark</a></p>
-<a class="clock-float" href="clock/index.html"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.4 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>PaperstreetBTC clock</a>
-</body>
-</html>
+<script src="assets/js/theme-pill.js?v=lm3" defer></script>
+
