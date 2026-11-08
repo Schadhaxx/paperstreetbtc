@@ -175,12 +175,16 @@ function showCandInfo(i,geomX,geomTop){
      line 1: when (small grey) · line 2: High / Low · line 3: Open / Close · line 4: Change in green/red.
      A ✕ sits inside the pill at the top-right (44px touch target); it is the pill's
      only tappable part — the pill body lets taps through to the chart beneath, so
-     dismiss is via this ✕, tapping the same candle again, or tapping empty space. */
+     dismiss is via this ✕, tapping the same candle again, or tapping empty space.
+     Round 2 (8 Nov 2026): Sunil could not SEE the ✕ — it was a small muted-grey
+     glyph with no background, invisible against the pill. It is now a solid
+     cyan circle with a bold dark ✕: unmistakable as a close button in both
+     themes. The date line gets right padding so its text never runs under it. */
   var cl=document.createElement('button');cl.type='button';cl.textContent='✕';cl.setAttribute('aria-label','Close candle details');
-  cl.style.cssText='pointer-events:auto;position:absolute;top:6px;right:12px;background:none;border:none;color:'+psC('#9aa6bc','#475569')+';font-size:18px;line-height:1;cursor:pointer;padding:12px;min-width:44px;min-height:44px;text-align:center;';
+  cl.style.cssText='pointer-events:auto;position:absolute;top:8px;right:8px;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:none;border-radius:50%;background:#22d3ee;color:#0a1122;font-size:22px;font-weight:700;line-height:44px;cursor:pointer;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.4);';
   cl.addEventListener('click',function(ev){ev.stopPropagation();dismissCandInfo();});
   el.appendChild(cl);
-  var tm=document.createElement('div');tm.style.cssText='color:'+psC('#9aa6bc','#475569')+';font-size:12px;';
+  var tm=document.createElement('div');tm.style.cssText='color:'+psC('#9aa6bc','#475569')+';font-size:12px;padding-right:48px;';
   /* Fix 29 Oct 2026 (browser test, Day 2): range candles are UTC days /
      weeks / months, so their labels must be UTC too. ET formatting shifted
      every UTC-midnight timestamp back a day — and a month-boundary candle
@@ -263,28 +267,48 @@ function bindCandListeners(c){
      old candles over the line chart. */
   /* Pointer scrub (mirrors the screener): drag across the chart and the pill follows
      candle by candle. pointerdown only ARMS the scrub — it does not select: a clean tap
-     still goes through the click handler below, and selecting on pointerdown would make
-     that trailing click toggle the just-selected candle straight back off.
-     Tap-vs-scrub threshold (follow-up, 7 Nov 2026): a real finger tap always moves a
-     few pixels, and candles here are only ~7px apart — so a jittery re-tap on the
-     selected candle could cross into the next candle during pointermove, set
-     scrubChanged, and swallow the trailing click. The pill then MOVED instead of
-     dismissing, and the user could never unselect a candle without closing the
-     graph. A press now only counts as a scrub once the pointer has moved more
-     than SCRUB_PX (10px) from pointerdown; a tap's micro-movement never changes
-     the selection and its click still fires, so the same-candle re-tap dismisses.
-     A drag's trailing click is still ignored (scrubChanged), so the drag ends with
-     the pill on the final candle instead of dismissing it. */
-  var scrubbing=false,scrubChanged=false,downX=0,downY=0,SCRUB_PX=10;
-  c.addEventListener('pointerdown',function(e){if(!candViewActive())return;scrubbing=true;scrubChanged=false;downX=e.clientX;downY=e.clientY;});
-  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive())return;if(Math.max(Math.abs(e.clientX-downX),Math.abs(e.clientY-downY))<=SCRUB_PX)return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
-  c.addEventListener('pointerup',function(){scrubbing=false;});
-  c.addEventListener('pointercancel',function(){scrubbing=false;scrubChanged=false;});
+     still goes through the press-end handler below, and selecting on pointerdown would make
+     that trailing press toggle the just-selected candle straight back off.
+     Tap-vs-scrub, round 3 (8 Nov 2026): rounds 1-2 put the dismiss in the
+     CLICK handler, but a diagnostic (diag_touch_events.py) proved the click
+     often NEVER FIRES for a real finger tap: a diagonal/vertical tap of
+     ~12px+ makes the browser take the gesture over as a scroll
+     (touch-action: pan-y) and fire pointercancel with no click, and a
+     horizontal tap of ~20px+ gets pointerup but no click either. So the pill
+     could never dismiss however the thresholds were tuned — the handler
+     simply never ran. The tap logic now runs on PRESS END (pointerup AND
+     pointercancel), using the pointerdown position (downCandle — where the
+     finger LANDED, the best signal of intent) and the max movement during
+     the press (maxMove). A press only counts as a drag/scroll when it moved
+     more than SCRUB_PX (24px) or the scrub actually moved the selection;
+     anything less is a tap and dismisses (same candle) or selects (another
+     candle). The click handler is now only a fallback for clicks with no
+     preceding pointer press, suppressed whenever a press-end already handled
+     the press (pressDone). A real drag still ends with the pill on the final
+     candle instead of dismissing it. */
+  var scrubbing=false,scrubChanged=false,downX=0,downY=0,downCandle=-1,maxMove=0,pressDone=false,SCRUB_PX=24;
+  function endPress(){
+    if(!candViewActive())return;
+    var isDrag=maxMove>SCRUB_PX||scrubChanged;
+    scrubChanged=false;pressDone=true;
+    if(isDrag)return;
+    var r=c.getBoundingClientRect(),y=downY-r.top;
+    if(CANDGEOM.length){var pt=1e9,pb=-1e9;CANDGEOM.forEach(function(g){if(g.wickTop<pt)pt=g.wickTop;if(g.wickBot>pb)pb=g.wickBot;});if(y<pt-6||y>pb+6){dismissCandInfo();return;}}
+    if(downCandle>=0){if(downCandle===CANDSEL){dismissCandInfo();return;}CANDSEL=downCandle;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);return;}
+  }
+  c.addEventListener('pointerdown',function(e){if(!candViewActive())return;scrubbing=true;scrubChanged=false;pressDone=false;downX=e.clientX;downY=e.clientY;downCandle=pick(e);maxMove=0;});
+  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive())return;var d=Math.max(Math.abs(e.clientX-downX),Math.abs(e.clientY-downY));if(d>maxMove)maxMove=d;if(d<=SCRUB_PX)return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  c.addEventListener('pointerup',function(){scrubbing=false;endPress();});
+  c.addEventListener('pointercancel',function(){scrubbing=false;endPress();});
   c.addEventListener('mousemove',function(e){if(!candViewActive())return;var i=pick(e);if(i!==CANDHOV){CANDHOV=i;redrawCandles();}});
   c.addEventListener('mouseleave',function(){if(!candViewActive())return;CANDHOV=-1;redrawCandles();});
-  /* Click: a tap on empty chart space (above the highest wick / below the lowest,
-     e.g. the label strips) dismisses the pill instead of selecting a candle. */
-  c.addEventListener('click',function(e){if(!candViewActive())return;if(scrubChanged){scrubChanged=false;return;}var r=c.getBoundingClientRect(),y=e.clientY-r.top;if(CANDGEOM.length){var pt=1e9,pb=-1e9;CANDGEOM.forEach(function(g){if(g.wickTop<pt)pt=g.wickTop;if(g.wickBot>pb)pb=g.wickBot;});if(y<pt-6||y>pb+6){dismissCandInfo();return;}}var i=pick(e);if(i===CANDSEL){dismissCandInfo();return;}CANDSEL=i;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  /* Click fallback only: a click with no preceding pointer press (e.g. a
+     keyboard/synthetic click). Normal presses are already handled by the
+     press-end handler above, and their click is suppressed via pressDone so
+     the tap is never applied twice. A tap on empty chart space (above the
+     highest wick / below the lowest, e.g. the label strips) dismisses the
+     pill instead of selecting a candle. */
+  c.addEventListener('click',function(e){if(!candViewActive())return;if(pressDone){pressDone=false;return;}var r=c.getBoundingClientRect(),y=e.clientY-r.top;if(CANDGEOM.length){var pt=1e9,pb=-1e9;CANDGEOM.forEach(function(g){if(g.wickTop<pt)pt=g.wickTop;if(g.wickBot>pb)pb=g.wickBot;});if(y<pt-6||y>pb+6){dismissCandInfo();return;}}var i=pick(e);if(i===CANDSEL){dismissCandInfo();return;}CANDSEL=i;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
 }
 /* Candle ranges, Day 1: aggregate Coinbase daily candles into range candles.
    Daily mode is identity (one candle per UTC day). Weekly mode buckets by the
