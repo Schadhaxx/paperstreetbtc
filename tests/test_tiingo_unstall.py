@@ -298,6 +298,14 @@ if validate:
           'tiingo_final': {tf_date: {'BTC': tf_val, 'tiingo': round(tf_val * 1.001, 6),
                                      'diff_pct': 0.1,
                                      'confirmed': '2026-11-06T23:30:00Z'}},
+          # Grok Bot fix 3 (Nov 2026): a tiingo_final entry must have its
+          # companion tiingo_ref BTC entry — the un-stall tool always
+          # writes both together, and a lone tiingo_final now FAILS the
+          # gate. The paired record below is what the tool actually
+          # writes (see 17b); the lone-final case is covered by the
+          # negative 'tiingo_final orphan' checks in test_validate.py.
+          'tiingo_ref': {tf_date: {'BTC': {'v': round(tf_val * 1.001, 6),
+                                           't': '2026-11-06T23:30:00Z'}}},
           'revisions_ignored': []}
     vhp = os.path.join(tmp, 'v_hist.json')
     json.dump(vh, open(vhp, 'w'))

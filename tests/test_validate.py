@@ -473,6 +473,51 @@ def main():
         raised = True
     chk('single-commit publish: non-git publish dir fails closed', raised)
 
+    # 8c. Grok Bot fix 2 (success control): a clean index publishes, and
+    # the new commit contains exactly the snapshot files.
+    pubdir4 = make_pub_repo('pub-clean-index', prev_h_bytes, prev_p_bytes,
+                            prev_health_bytes)
+    names, committed = V.publish_snapshot([(hp2, 'history.json'), (pp2, 'prices.json'),
+                                           (hh2, 'health.json')], pubdir4,
+                                          message='test snapshot')
+    chk('single-commit publish: clean index publishes the snapshot (8c)',
+        committed is True and names == ['history.json', 'prices.json', 'health.json'])
+    chk('single-commit publish: clean index publish adds exactly one commit (8c)',
+        git_head_count(pubdir4) == 2)
+    chk('single-commit publish: clean index commit lists only the snapshot files (8c)',
+        set(git_out(pubdir4, 'show', '--name-only', '--format=', 'HEAD').stdout.split())
+        == {'history.json', 'prices.json', 'health.json'})
+
+    # 8d. Grok Bot fix 2 (failure): an index that already has an unrelated
+    # staged file is REJECTED before anything changes — no new commit, the
+    # unrelated file stays staged, and the working-tree bytes are untouched.
+    pubdir5 = make_pub_repo('pub-prestaged', prev_h_bytes, prev_p_bytes,
+                            prev_health_bytes)
+    open(os.path.join(pubdir5, 'unrelated.txt'), 'w').write('not part of the snapshot\n')
+    subprocess.run(['git', '-C', pubdir5, 'add', 'unrelated.txt'],
+                   check=True, capture_output=True)
+    before_count = git_head_count(pubdir5)
+    before_bytes = {n: open(os.path.join(pubdir5, n), 'rb').read()
+                    for n in ('history.json', 'prices.json', 'health.json')}
+    try:
+        V.publish_snapshot([(hp2, 'history.json'), (pp2, 'prices.json'),
+                            (hh2, 'health.json')], pubdir5,
+                           message='test snapshot')
+        raised = False
+    except V.PublishError:
+        raised = True
+    chk('single-commit publish: pre-staged index raises PublishError (8d)', raised)
+    chk('single-commit publish: no new commit when the index is pre-staged (8d)',
+        git_head_count(pubdir5) == before_count)
+    chk('single-commit publish: unrelated staged file remains staged (8d)',
+        git_out(pubdir5, 'diff', '--cached', '--name-only').stdout.split()
+        == ['unrelated.txt'])
+    chk('single-commit publish: working-tree bytes unchanged when rejected (8d)',
+        all(open(os.path.join(pubdir5, n), 'rb').read() == before_bytes[n]
+            for n in before_bytes)
+        and open(os.path.join(pubdir5, 'unrelated.txt')).read()
+        == 'not part of the snapshot\n')
+
     # 8b. Safe health writes: a failure mid-write leaves the previous health intact.
     hh = os.path.join(tmp, 'health-safe.json')
     V.atomic_write(hh, b'{"status": "ok"}\n')
@@ -747,6 +792,45 @@ def main():
         'exit=%s status=%s tiingo=%s' % (code, health['status'], tg['status']))
     chk('narrow rule (main): frozen history published',
         json.load(open(os.path.join(pubdir, 'history.json')))['tiingo_final']['2026-11-06']['BTC'] == pub)
+
+    # 8i. Grok Bot fix 3: EVERY tiingo_final entry is validated, including
+    # entries the tiingo_ref loop never looked at. A tiingo_final entry
+    # with NO companion tiingo_ref BTC entry for that date is inconsistent
+    # (the un-stall tool always writes both together) and FAILS.
+    r = V.check_tiingo(tg_freeze_hist(lambda h: h.pop('tiingo_ref')))
+    chk('tiingo_final orphan: no tiingo_ref at all fails',
+        r['status'] == 'fail', '%s %s' % (r['status'], r['detail']))
+    r = V.check_tiingo(tg_freeze_hist(
+        lambda h: h['tiingo_final'].update(
+            {'2026-11-05': {'BTC': 75600.0, 'tiingo': 75675.6, 'diff_pct': 0.1,
+                            'confirmed': '2026-11-06T00:20:24Z'}})))
+    chk('tiingo_final orphan: valid-looking entry for a date with no ref fails',
+        r['status'] == 'fail', '%s %s' % (r['status'], r['detail']))
+    # Positive control: a fully valid tiingo_final WITH its companion ref,
+    # on a FINAL date (not provisional), still passes — the new loop must
+    # not fail records the ref loop never fully validated.
+    r = V.check_tiingo(tg_freeze_hist(
+        lambda h: (h['tiingo_ref'].update(
+                       {'2026-11-05': {'BTC': {'v': 75675.6,
+                                               't': '2026-11-06T00:20:24Z'}}}),
+                   h['tiingo_final'].update(
+                       {'2026-11-05': {'BTC': 75600.0, 'tiingo': 75675.6,
+                                       'diff_pct': 0.1,
+                                       'confirmed': '2026-11-06T00:20:24Z'}}))))
+    chk('tiingo_final with ref: valid final-date pair still passes',
+        r['status'] == 'pass', '%s %s' % (r['status'], r['detail']))
+    # End to end: an orphan tiingo_final fails the whole gate, exit 1.
+    h = copy.deepcopy(gh)
+    pub = h['closes']['2026-11-06']['BTC']
+    h['tiingo_final'] = {'2026-11-06': {'BTC': pub, 'tiingo': round(pub * 1.001, 2),
+                                        'diff_pct': 0.1,
+                                        'confirmed': '2026-11-06T23:30:00Z'}}
+    code, health, _ = run_cli(tmp, h, gp, ledger=GOOD_LEDGER,
+                              prev_hist=gh, prev_prices=gp)
+    tg = [r for r in health['validation'] if r['check'] == 'tiingo'][0]
+    chk('tiingo_final orphan (main): fails the whole gate, exit 1',
+        code == 1 and health['status'] == 'held' and tg['status'] == 'fail',
+        'exit=%s status=%s tiingo=%s' % (code, health['status'], tg['status']))
 
     bad = [x for x in R if not x[1]]
     print('\n%d checks, %d failed' % (len(R), len(bad)))

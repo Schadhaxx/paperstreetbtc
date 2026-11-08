@@ -406,6 +406,16 @@ def check_tiingo(hist, prev_hist=None):
         design. A missing tiingo_final record, a recorded miss (v null),
         or any failed validation sub-check FAILS; a fully validated freeze
         falls through to the normal comparison below.
+      - EVERY tiingo_final entry is validated too (Grok Bot fix 3):
+        downstream code trusts any tiingo_final entry as a validated
+        confirmation, so an entry with no companion tiingo_ref BTC entry
+        for that date — the un-stall tool always writes both together —
+        FAILS as inconsistent, and every entry must pass the same full
+        validation as _validated_freeze (dict; date with a published BTC
+        close; BTC exactly the published close; tiingo finite positive
+        and matching the cached reference; agreement within 0.3%; valid
+        confirmed timestamp; finite diff_pct if present; Tiingo value
+        inside the sanity band vs the previous session's close).
     Each confirmation is validated against the published BTC value (the
     candidate close) at the reference tolerance; when the candidate value
     for a date changed vs the previously published file (a Yahoo final bar
@@ -416,7 +426,11 @@ def check_tiingo(hist, prev_hist=None):
     calls, or unconfigured, and the pipeline explicitly never blocks on it.
     """
     ref = (hist or {}).get('tiingo_ref') or {}
-    if not ref:
+    tf = (hist or {}).get('tiingo_final') or {}
+    # Skip only when there is nothing to check at all: a tiingo_final
+    # entry with no tiingo_ref must still reach the tiingo_final loop
+    # below (a lone tiingo_final is a failure, not a skip).
+    if not ref and not tf:
         return _result('tiingo', 'skip', 'no tiingo_ref in candidate')
     closes = (hist or {}).get('closes') or {}
     prov = set((hist or {}).get('btc_provisional') or [])
@@ -479,6 +493,38 @@ def check_tiingo(hist, prev_hist=None):
                            ' — stale after a Yahoo replacement)'
                 flags.append('%s %s site=%s tiingo=%s (%+.3f%%)%s'
                              % (d, s, site, v, (v / site - 1) * 100, note))
+    # Grok Bot fix 3: validate EVERY tiingo_final entry, not only the
+    # ones a tiingo_ref entry points at. The ref loop above never
+    # iterates tiingo_final, so a tiingo_final entry with no companion
+    # tiingo_ref used to escape validation entirely while downstream
+    # code (recap_gen etc.) trusts any tiingo_final entry as a validated
+    # confirmation. The un-stall tool always writes tiingo_final and
+    # tiingo_ref together, so a lone tiingo_final entry is inconsistent
+    # and FAILS. Entries WITH a companion ref are fully validated here
+    # with _validated_freeze — the same checks the ref loop applies on
+    # provisional dates — so this loop is also the safety net for any
+    # record the ref loop did not cover (e.g. a final-date entry whose
+    # cached value drifted from the frozen one).
+    if not isinstance(tf, dict):
+        problems.append('tiingo_final: not an object')
+    else:
+        for d in sorted(tf):
+            rec = tf[d]
+            if not isinstance(rec, dict):
+                problems.append('tiingo_final %s: not an object' % d)
+                continue
+            if _parse_date(d) is None:
+                problems.append('tiingo_final %s: bad date' % d)
+                continue
+            ref_entries = ref.get(d) if isinstance(ref, dict) else None
+            btc_ref = ref_entries.get('BTC') if isinstance(ref_entries, dict) else None
+            if not isinstance(btc_ref, dict):
+                problems.append('tiingo_final %s: no companion tiingo_ref BTC entry '
+                                'for that date — a lone tiingo_final is not trusted' % d)
+                continue
+            reason = _validated_freeze(hist, d, btc_ref.get('v'), btc_ref.get('t'))
+            if reason is not None:
+                problems.append('tiingo_final %s: not fully validated (%s)' % (d, reason))
     if problems:
         return _result('tiingo', 'fail', '; '.join(problems[:10]))
     if flags:
@@ -851,6 +897,16 @@ def publish_snapshot(files, publish_dir, message=None):
     already-published with NO empty commit. Returns (names, committed):
     the published names, and whether a new commit was made.
 
+    The index must be CLEAN when publish runs: the plain `git commit`
+    below commits EVERYTHING staged, so a file staged before this publish
+    ran would be swept into the snapshot commit. Before reading or
+    writing any file, the index is checked (`git diff --cached --quiet`);
+    if anything is already staged, the publish is REJECTED with
+    PublishError and nothing is changed — no file read or written, no
+    commit made. Consistency covers COMMITTED snapshots, not intermediate
+    working files: a publish either lands one complete generation as one
+    commit on a clean index, or it does not run at all.
+
     On any failure before the commit, the working tree is restored to its
     previous bytes and the index reset, and PublishError is raised — the
     published snapshot stays the old generation. KeyboardInterrupt /
@@ -869,6 +925,21 @@ def publish_snapshot(files, publish_dir, message=None):
     r = _run_git(['rev-parse', '--is-bare-repository'], publish_dir)
     if r.returncode != 0 or (r.stdout or '').strip() != 'false':
         raise PublishError('publish_dir is not a git working tree: %s' % publish_dir)
+    # Grok Bot fix 2: reject an already-staged index BEFORE changing
+    # anything (before reading/writing any file). A plain `git commit`
+    # commits everything staged, so unrelated files staged before this
+    # publish ran would be swept into the snapshot commit. `git diff
+    # --cached --quiet` exits 0 when the index is clean, 1 when staged
+    # changes are present; any other exit code is a git failure.
+    try:
+        r = _run_git(['diff', '--cached', '--quiet'], publish_dir)
+    except OSError as e:
+        raise PublishError('git diff --cached failed: %s' % e)
+    if r.returncode == 1:
+        raise PublishError('git index already has staged changes; refusing to publish '
+                           'into a dirty index: %s' % publish_dir)
+    if r.returncode != 0:
+        raise PublishError('git diff --cached failed: %s' % (r.stderr or r.stdout).strip())
     staged = []  # (dest_name, new_bytes, old_bytes_or_None)
     for src, name in files:
         with open(src, 'rb') as f:
