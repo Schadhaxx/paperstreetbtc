@@ -54,6 +54,12 @@
   .ind-modal.open { display:flex; }
   .ind-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.6); }
   @media (orientation:landscape) and (min-width:700px){ .ind-dialog{ max-width:920px; } }
+  /* Short landscape (iPhone landscape 844x390, 8 Nov 2026, round 3):
+     the dialog is bottom-anchored and only ~227px of the 280px canvas
+     was visible. Raising max-height to the full viewport (minus 24px)
+     gives the canvas room to fit; the canvas height itself drops to
+     240px in this mode (see screener-indicator-chart.js). */
+  @media (orientation:landscape) and (max-height:500px){ .ind-dialog{ max-height:calc(100vh - 24px); } }
   .ind-dialog h3 { margin:0 0 4px; font-size:19px; }
   .ind-dialog .ind-sub { display:none; }
   /* Gold modal info "+" buttons (30 Oct 2026): same pill style as the
@@ -322,7 +328,7 @@
 <script src="assets/js/screener-indicator-chart.js?v=stocks9"></script>
 <script src="assets/js/screener-chart.js?v=cmp6"></script>
 <script src="assets/js/et.js?v=et2"></script>
-<script src="assets/js/btcchart.js?v=et18"></script>
+<script src="assets/js/btcchart.js?v=et19"></script>
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>
 
 <a class="clock-float" href="clock/index.html"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.4 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Live BTC Chart</a>

@@ -77,6 +77,28 @@
 .bc-sc button.on{background:rgba(34,211,238,.15)!important;color:#22d3ee!important}
 .bc-box{position:relative;height:300px}#bcC{touch-action:pan-y}.bc-w.sheet .bc-box{height:min(380px,48vh)}
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){.bc-box{height:380px;}}
+/* Short landscape (iPhone landscape 844x390, 8 Nov 2026, round 3):
+   the viewport is wide but only ~390px tall. The popover goes full
+   width (up to 900px) to take advantage of the wide screen, and its
+   chrome compacts so the chart fits without scrolling: the range
+   summary line is hidden (price + 24h change stay in the header),
+   the range/legend buttons drop to 32px, and the chart box is 165px.
+   The note + Compare link below the chart stay scrollable. Only
+   applies when the viewport is short (<500px tall), so iPad/desktop
+   landscape and portrait are untouched. */
+@media (orientation:landscape) and (max-height:500px){
+  .bc-w.pop{width:min(900px,calc(100vw - 32px));padding:12px 20px 8px;}
+  .bc-w.pop .bc-box{height:165px;}
+  .bc-w.pop .bc-px{font-size:1.4rem;}
+  .bc-w.pop .bc-rr{display:none;}
+  .bc-w.pop .bc-rg{margin:8px 0 6px;}
+  .bc-w.pop .bc-rgs button{min-height:32px;}
+  .bc-w.pop .bc-sc button{min-height:32px;}
+  .bc-w.pop .bc-rg-hint{display:none;}
+  .bc-w.pop .bc-lg{margin:0 0 6px;}
+  .bc-w.pop .bc-k-spx{min-height:32px;}
+  .bc-w.pop .bc-ct{margin:0 0 6px;}
+}
 .bc-nt{color:#94a3b8;font-size:.74rem;margin-top:8px;line-height:1.4}
 .bc-cl{display:inline-block;margin-top:10px;color:#22d3ee;font:600 .9rem Outfit,sans-serif;text-decoration:none}
 .rules-benchmarks{margin-top:36px;scroll-margin-top:96px}

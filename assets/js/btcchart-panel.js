@@ -226,27 +226,55 @@ function bindCandListeners(c){
      simply never ran. The tap logic now runs on PRESS END (pointerup AND
      pointercancel), using the pointerdown position (downCandle — where the
      finger LANDED, the best signal of intent) and the max movement during
-     the press (maxMove). A press only counts as a drag/scroll when it moved
-     more than SCRUB_PX (24px) or the scrub actually moved the selection;
-     anything less is a tap and dismisses (same candle) or selects (another
-     candle). The click handler is now only a fallback for clicks with no
+     the press (maxMove). (Round 2's rule was that a press only counts as
+     a drag/scroll when it moved more than SCRUB_PX (24px) or the scrub
+     actually moved the selection; anything less is a tap and dismisses
+     (same candle) or selects (another candle). Round 3 below changed
+     that rule — see below.) The click handler is now only a fallback for clicks with no
      preceding pointer press, suppressed whenever a press-end already handled
      the press (pressDone). A real drag still ends with the pill on the final
-     candle instead of dismissing it. */
-  var scrubbing=false,scrubChanged=false,downX=0,downY=0,downCandle=-1,maxMove=0,pressDone=false,SCRUB_PX=24;
+     candle instead of dismissing it.
+     Round 3 (8 Nov 2026): the press-end fix STILL failed on Sunil's real
+     iPhone — re-tapping the selected candle did not dismiss, though the
+     pill tap and the X did. A diagnostic (probe_round3_diag.py) proved
+     two things on the live code. (1) Re-taps with 25-40px of finger
+     movement dismiss only 3/6: endPress classified them as drags because
+     maxMove exceeded SCRUB_PX (24px), and no click ever fired to rescue
+     them. Real finger taps move that far; the probe had only tested up
+     to 20px. (2) The tap logic ran only on pointerup/pointercancel/click,
+     all of which iOS Safari can swallow for a real finger tap. So round 3
+     changes the dismiss in three ways, none of them a threshold tune:
+     (a) a press counts as a drag ONLY when the scrub actually moved the
+     selection (scrubChanged) — how far the finger moved no longer
+     matters, so a tap that moves 40px but stays on one candle still
+     dismisses; (b) the tap logic now also runs on touchend AND
+     touchcancel (the Touch Events API, iOS Safari's native one, which
+     always fires), plus the pointer events, so at least one press-end
+     path runs; (c) endPress is idempotent (pressDone guard at entry) so
+     the tap is never applied twice when several press-end events fire
+     for one press. The press is also armed on touchstart as well as
+     pointerdown, so the down position is recorded even if pointerdown
+     is ever dropped. */
+  var scrubbing=false,scrubChanged=false,downX=0,downY=0,downCandle=-1,pressDone=false,SCRUB_PX=24;
   function endPress(){
+    if(pressDone)return;
     if(!candViewActive())return;
-    var isDrag=maxMove>SCRUB_PX||scrubChanged;
-    scrubChanged=false;pressDone=true;
+    pressDone=true;
+    var isDrag=scrubChanged;
+    scrubChanged=false;
     if(isDrag)return;
     var r=c.getBoundingClientRect(),y=downY-r.top;
     if(CANDGEOM.length){var pt=1e9,pb=-1e9;CANDGEOM.forEach(function(g){if(g.wickTop<pt)pt=g.wickTop;if(g.wickBot>pb)pb=g.wickBot;});if(y<pt-6||y>pb+6){dismissCandInfo();return;}}
     if(downCandle>=0){if(downCandle===CANDSEL){dismissCandInfo();return;}CANDSEL=downCandle;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);return;}
   }
-  c.addEventListener('pointerdown',function(e){if(!candViewActive())return;scrubbing=true;scrubChanged=false;pressDone=false;downX=e.clientX;downY=e.clientY;downCandle=pick(e);maxMove=0;});
-  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive())return;var d=Math.max(Math.abs(e.clientX-downX),Math.abs(e.clientY-downY));if(d>maxMove)maxMove=d;if(d<=SCRUB_PX)return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  function armPress(x,y){if(!candViewActive())return;scrubbing=true;scrubChanged=false;pressDone=false;downX=x;downY=y;downCandle=pick({clientX:x});}
+  c.addEventListener('pointerdown',function(e){armPress(e.clientX,e.clientY);});
+  c.addEventListener('touchstart',function(e){if(!e.touches||!e.touches.length)return;var t=e.touches[0];armPress(t.clientX,t.clientY);},{passive:true});
+  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive())return;var d=Math.max(Math.abs(e.clientX-downX),Math.abs(e.clientY-downY));if(d<=SCRUB_PX)return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
   c.addEventListener('pointerup',function(){scrubbing=false;endPress();});
   c.addEventListener('pointercancel',function(){scrubbing=false;endPress();});
+  c.addEventListener('touchend',function(){scrubbing=false;endPress();},{passive:true});
+  c.addEventListener('touchcancel',function(){scrubbing=false;endPress();},{passive:true});
   c.addEventListener('mousemove',function(e){if(!candViewActive())return;var i=pick(e);if(i!==CANDHOV){CANDHOV=i;redrawCandles();}});
   c.addEventListener('mouseleave',function(){if(!candViewActive())return;CANDHOV=-1;redrawCandles();});
   /* Click fallback only: a click with no preceding pointer press (e.g. a
@@ -720,7 +748,14 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
   dlg.addEventListener('touchend',function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>80)close();y0=null;},{passive:true});
   window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
 function place(){if(INLINE)return;var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
-  if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),wCap=(window.innerWidth>window.innerHeight&&window.innerWidth>=900)?900:640,w=Math.min(wCap,window.innerWidth-32);dlg.style.top=(r.bottom+10)+'px';dlg.style.left=Math.max(16,Math.min(r.left-20,window.innerWidth-w-16))+'px';}}
+  if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),isLand=window.innerWidth>window.innerHeight,shortLand=isLand&&window.innerHeight<500,wide=isLand&&(window.innerWidth>=900||window.innerHeight<500),wCap=wide?900:640,w=Math.min(wCap,window.innerWidth-32);
+  /* Short landscape (iPhone landscape, viewport <500px tall, 8 Nov 2026,
+     round 3): the popover goes full width and docks to the top of the
+     viewport (12px) instead of anchoring below the pill, so the wide
+     chart fits without scrolling. The width cap (900px) matches the CSS:
+     wide when landscape and (width>=900 or height<500). */
+  if(shortLand){dlg.style.top='12px';dlg.style.left=Math.max(16,(window.innerWidth-w)/2)+'px';}
+  else{dlg.style.top=(r.bottom+10)+'px';dlg.style.left=Math.max(16,Math.min(r.left-20,window.innerWidth-w-16))+'px';}}}
 function head(){$('bcPx').textContent=live.usd!=null?fmt(live.usd):'—';var c=$('bcChg');c.textContent=typeof live.chg==='number'?(live.chg>=0?'+':'')+live.chg.toFixed(1)+'% 24h':'';c.className='hdr-chg '+(live.chg>=0?'up':'down');}
 function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   if(live.usd!=null){if(d.length&&d[d.length-1][0]>=today)d.pop();d.push([today,live.usd]);}
