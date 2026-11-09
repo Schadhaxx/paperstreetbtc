@@ -973,7 +973,7 @@ function nativeXLabels(ctx,texts,xs,L,R,W,y){
      (or last) label would run into its neighbour, it moves back toward its
      tick as Chart.js places it (staying on the canvas); any label that
      still overlaps the previous one is skipped. */
-  var m=texts.length,pos=[],w=[],GAP=3,k; /* 3px = Chart.js autoSkipPadding */
+  var m=texts.length,pos=[],w=[],GAP=1,k; /* skip only labels that would touch or overlap */
   for(k=0;k<m;k++){w[k]=ctx.measureText(texts[k]).width;pos[k]=Math.max(L+30,Math.min(W-R-30,xs[k]));}
   if(m>1&&pos[0]+w[0]/2+GAP>pos[1]-w[1]/2)pos[0]=Math.max(w[0]/2+2,Math.min(pos[0],xs[0]));
   if(m>1&&pos[m-1]-w[m-1]/2-GAP<pos[m-2]+w[m-2]/2)pos[m-1]=Math.min(W-w[m-1]/2-2,Math.max(pos[m-1],xs[m-1]));
