@@ -8,13 +8,17 @@ only — never advances past it. The weekend stall alarm (tools/btc_daily.py,
 exit 3) fires after 48 h, but nothing moves. The manual way out was a
 reviewed PR; this tool is the automated, Tiingo-confirmed version of it.
 
-What this tool does. For each BTC date that is still provisional more than
-48 h after its UTC day ended (the same clock btc_daily.py uses — strictly
-more than 48 h: exactly 48 h does NOT freeze), it fetches the Tiingo close
-for that date ONLY and checks it against the value already published (the
-fallback value). If Tiingo agrees within the BTC tolerance (0.3%, the same
-threshold the reference cross-check uses), the date is recorded as
-Tiingo-confirmed in a new top-level field:
+What this tool does. For each BTC date that is stalled more than 48 h after
+its UTC day ended (the same clock btc_daily.py uses — strictly more than
+48 h: exactly 48 h does NOT freeze) — whether it is still provisional, or
+it is a final date whose published close comes from a fallback source
+(Coinbase/CoinGecko) — it fetches the Tiingo close for that date ONLY and
+checks it against the value already published (the fallback value). A final
+date is never in btc_provisional (its UTC day has ended), so the
+provisional list alone misses exactly the dates btc_daily.py stalls on;
+the fallback list closes that gap. If Tiingo agrees within the BTC
+tolerance (0.3%, the same threshold the reference cross-check uses), the
+date is recorded as Tiingo-confirmed in a new top-level field:
 
     "tiingo_final": {"2026-11-02": {"BTC": 75799.14, "tiingo": 75801.55,
                                      "diff_pct": 0.0032,
@@ -192,16 +196,29 @@ def unstall(hist, prev_hist, getter, now, max_calls=MAX_CALLS, stall_hours=STALL
     """
     closes = (hist or {}).get('closes') or {}
     prov = set((hist or {}).get('btc_provisional') or [])
+    fsrc = (hist or {}).get('fallback_sources') or {}
     prev_tf = ((prev_hist or {}).get('tiingo_final') or {})
     new_tf = {}
     report = {'stalled': [], 'frozen': [], 'carried': [], 'skipped': [],
               'disagreements': [], 'calls': 0}
     ref = {d: dict(v) for d, v in ((hist.get('tiingo_ref') or {}).items())}
     now_s = now.strftime('%Y-%m-%dT%H:%M:%SZ')
-    stalled = sorted(d for d in prov
-                     if DATE_RE.match(d) and d in closes
-                     and _is_num(closes[d].get('BTC'))
-                     and now > stall_cutoff(d, stall_hours))   # strictly more than 48 h: exactly 48 h is NOT stalled
+    # Stalled = provisional dates > 48 h (as before) PLUS fallback-sourced
+    # FINAL dates > 48 h. A fallback final date is never in btc_provisional
+    # (its UTC day has ended), so the old provisional-only list missed
+    # exactly the dates btc_daily.py stalls on (it reads fallback_sources,
+    # not provisional). Both classes are Tiingo-confirmed the same way;
+    # 'ffill' is excluded (a forward-fill is not a real close for the date).
+    fb_stalled = sorted(d for d, s in fsrc.items()
+                        if DATE_RE.match(d) and d in closes
+                        and _is_num(closes[d].get('BTC'))
+                        and (s.get('BTC', 'yahoo').split('-')[0]
+                             not in ('yahoo', 'ffill'))
+                        and now > stall_cutoff(d, stall_hours))
+    stalled = sorted(set(d for d in prov
+                         if DATE_RE.match(d) and d in closes
+                         and _is_num(closes[d].get('BTC'))
+                         and now > stall_cutoff(d, stall_hours)) | set(fb_stalled))
     report['stalled'] = stalled
     for d in stalled:
         published = closes[d]['BTC']

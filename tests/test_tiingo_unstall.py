@@ -95,6 +95,63 @@ chk('frozen: fetch cached in tiingo_ref for the reference check',
     h['tiingo_ref'][D_STALLED]['BTC'] == {'v': 75010.0, 't': '2026-11-06T23:30:00Z'},
     h.get('tiingo_ref'))
 
+# 3b. Fallback FINAL date (not provisional) > 48 h — the Nov 6 gap.
+# A final date whose published close comes from a fallback (Coinbase) is
+# never in btc_provisional (its UTC day has ended), so the old
+# provisional-only list missed exactly the dates btc_daily.py stalls on.
+# It must be frozen the same way when Tiingo agrees.
+h = hist(prov=(), fs={D_STALLED: {'BTC': 'coinbase'}})
+c = []
+r = tu.unstall(h, None, stub({D_STALLED: 75010.0}, c), NOW)
+chk('fallback final (>48h, not provisional): frozen, 1 call',
+    r['calls'] == 1 and r['frozen'] == [D_STALLED] and c == [D_STALLED]
+    and D_STALLED in r['stalled'], r)
+chk('fallback final: value unchanged (Tiingo confirms, never replaces)',
+    h['closes'][D_STALLED]['BTC'] == 75000.0, h['closes'][D_STALLED])
+chk('fallback final: NOT added to btc_provisional (it is final, not provisional)',
+    D_STALLED not in h['btc_provisional'], h['btc_provisional'])
+chk('fallback final: fallback_sources tag untouched (still coinbase)',
+    h['fallback_sources'][D_STALLED] == {'BTC': 'coinbase'}, h['fallback_sources'])
+chk('fallback final: tiingo_final record carries value + tiingo + diff + confirmed',
+    h['tiingo_final'][D_STALLED]['BTC'] == 75000.0
+    and h['tiingo_final'][D_STALLED]['tiingo'] == 75010.0
+    and abs(h['tiingo_final'][D_STALLED]['diff_pct'] - 0.0133) < 0.001
+    and h['tiingo_final'][D_STALLED]['confirmed'] == '2026-11-06T23:30:00Z',
+    h.get('tiingo_final'))
+
+# 3c. Fallback final date, Tiingo disagrees > 0.3% -> NOT frozen.
+h = hist(prov=(), fs={D_STALLED: {'BTC': 'coinbase'}})
+r = tu.unstall(h, None, stub({D_STALLED: 76000.0}, []), NOW)
+chk('fallback final disagree +1.33%: NOT frozen, disagreement recorded',
+    r['frozen'] == [] and len(r['disagreements']) == 1
+    and r['disagreements'][0]['date'] == D_STALLED
+    and 'tiingo_final' not in h, r)
+
+# 3d. Fallback final date < 48 h -> NOT frozen, no call.
+h = hist(prov=(), fs={D_FRESH: {'BTC': 'coinbase'}})
+c = []
+r = tu.unstall(h, None, stub({D_FRESH: 77000.0}, c), NOW)
+chk('fallback final (<48h): not frozen, no call',
+    r['calls'] == 0 and 'tiingo_final' not in h and D_FRESH not in r['stalled'], r)
+
+# 3e. 'ffill' date > 48 h -> NOT frozen (a forward-fill is not a real close).
+h = hist(prov=(), fs={D_STALLED: {'BTC': 'ffill-not-listed'}})
+c = []
+r = tu.unstall(h, None, stub({D_STALLED: 75010.0}, c), NOW)
+chk('ffill date (>48h): not frozen, no call (not a real close)',
+    r['calls'] == 0 and 'tiingo_final' not in h and D_STALLED not in r['stalled'], r)
+
+# 3f. Fallback final date already frozen -> carried forward, 0 calls.
+prev_tf = {D_STALLED: {'BTC': 75000.0, 'tiingo': 75010.0, 'diff_pct': 0.0133,
+                       'confirmed': '2026-11-05T23:30:00Z'}}
+h = hist(prov=(), fs={D_STALLED: {'BTC': 'coinbase'}})
+prev = hist(prov=(), fs={D_STALLED: {'BTC': 'coinbase'}}, tf=prev_tf)
+c = []
+r = tu.unstall(h, prev, stub({D_STALLED: 75010.0}, c), NOW)
+chk('fallback final already frozen: carried forward, 0 calls',
+    r['calls'] == 0 and r['carried'] == [D_STALLED]
+    and h['tiingo_final'][D_STALLED]['BTC'] == 75000.0, r)
+
 # 4. Exactly at the 0.3% threshold -> frozen (strictly greater disagrees).
 h = hist(prov=(D_STALLED,), fs={D_STALLED: {'BTC': 'coinbase'}})
 r = tu.unstall(h, None, stub({D_STALLED: 75000.0 * 1.003}, []), NOW)
