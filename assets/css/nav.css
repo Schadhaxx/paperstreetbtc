@@ -30,15 +30,60 @@
   .mnav-btn:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
   .mnav-bars{display:flex;flex-direction:column;gap:4px;width:18px}
   .mnav-bars span{display:block;height:2px;border-radius:2px;background:currentColor;transition:transform .2s,opacity .2s}
-  .mnav-btn[aria-expanded="true"]{border-color:#22d3ee;color:#22d3ee}
+  .mnav-btn[aria-expanded="true"]{border-color:#22d3ee;color:#22d3ee;box-shadow:0 0 0 4px rgba(34,211,238,.14),0 0 18px rgba(34,211,238,.35)}
   .mnav-btn[aria-expanded="true"] .mnav-bars span:nth-child(1){transform:translateY(6px) rotate(45deg)}
   .mnav-btn[aria-expanded="true"] .mnav-bars span:nth-child(2){opacity:0}
   .mnav-btn[aria-expanded="true"] .mnav-bars span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
-  .mnav-menu{display:flex;flex-direction:column;position:absolute;left:0;right:0;top:100%;padding:8px 16px 14px;background:rgba(7,11,24,.97);border-bottom:1px solid var(--border,#1e293b);box-shadow:0 12px 30px rgba(0,0,0,.45);z-index:25}
+  .mnav-menu{display:flex;flex-direction:column;position:absolute;left:0;right:0;top:100%;z-index:25;
+    height:calc(100dvh - 72px - env(safe-area-inset-top));
+    padding:18px 16px calc(16px + env(safe-area-inset-bottom));
+    overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+    border:0;border-radius:26px 26px 0 0;
+    background:
+      linear-gradient(90deg,#f7931a,#22d3ee 42%,#fbbf24 70%,#22d3ee) top / 100% 2px no-repeat,
+      radial-gradient(120% 70% at 100% -10%,rgba(34,211,238,.22),transparent 52%),
+      radial-gradient(90% 55% at -15% 105%,rgba(247,147,26,.16),transparent 50%),
+      linear-gradient(180deg,#0a1020 0%,#070b18 38%,#070b18 100%);
+    box-shadow:0 -24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    animation:mnavSheet .46s cubic-bezier(.16,1,.3,1)}
   .mnav-menu[hidden]{display:none}
-  .mnav-menu>a{display:flex;align-items:center;min-height:48px;padding:0 8px;color:var(--muted,#94a3b8);font-weight:500;font-size:1rem;border-bottom:1px solid var(--border,#1e293b);border-radius:6px;text-decoration:none}
-  .mnav-menu>a:last-child{border-bottom:0}
-  .mnav-menu>a:hover,.mnav-menu>a:focus-visible,.mnav-menu>a.is-active{color:#22d3ee}
+  .header>.mnav-menu::before{content:"₿   The book";display:block;flex:0 0 auto;
+    font:700 .72rem/1 Outfit,Inter,sans-serif;letter-spacing:.28em;text-transform:uppercase;color:#22d3ee;
+    padding:8px 6px 14px;animation:mnavRise .5s cubic-bezier(.16,1,.3,1) both}
+  .header>.mnav-menu::after{content:"Spot BTC is the hurdle  ·  Not financial advice";display:block;margin-top:auto;flex:0 0 auto;
+    padding:18px 6px 4px;font:600 .66rem/1.45 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;
+    animation:mnavRise .55s cubic-bezier(.16,1,.3,1) .28s both}
+  .header>.mnav-menu>.mnav-drop,
+  .header>.mnav-menu>a{position:relative;flex:0 0 auto;margin:0 0 10px;border:1px solid rgba(148,163,184,.18);border-radius:18px;
+    background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 10px 24px rgba(0,0,0,.18);
+    animation:mnavRise .52s cubic-bezier(.16,1,.3,1) both}
+  .header>.mnav-menu>.mnav-drop{animation-delay:.05s}
+  .header>.mnav-menu>a:nth-child(2){animation-delay:.1s}
+  .header>.mnav-menu>a:nth-child(3){animation-delay:.15s}
+  .header>.mnav-menu>a:nth-child(4){animation-delay:.2s}
+  .header>.mnav-menu>a:nth-child(5){animation-delay:.25s}
+  .header>.mnav-menu{counter-reset:mnav}
+  .header>.mnav-menu>.mnav-drop,
+  .header>.mnav-menu>a{counter-increment:mnav}
+  .header>.mnav-menu>a{display:flex;align-items:center;gap:12px;min-height:64px;padding:0 16px 0 14px;
+    color:#e8eef7;font:600 1.12rem/1.2 Outfit,Inter,sans-serif;letter-spacing:-.02em;text-decoration:none;-webkit-tap-highlight-color:transparent}
+  .header>.mnav-menu>a::after,
+  .header>.mnav-menu .mnav-tab::after{content:counter(mnav,decimal-leading-zero);order:-1;flex:0 0 auto;
+    font:700 .68rem/1 Outfit,Inter,sans-serif;letter-spacing:.14em;color:#22d3ee;width:1.8rem}
+  .header>.mnav-menu>a:hover,
+  .header>.mnav-menu>a:focus-visible,
+  .header>.mnav-menu>a.is-active{color:#f8fafc;border-color:rgba(34,211,238,.55);
+    background:linear-gradient(180deg,rgba(34,211,238,.16),rgba(255,255,255,.03))}
+  .header>.mnav-menu>a:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+  .header>.mnav-menu>a:active{transform:scale(.985)}
+  .header>.mnav-menu>a[href$="clock/index.html"]{color:#ecfeff;text-shadow:none;
+    border-color:rgba(34,211,238,.55);
+    background:linear-gradient(180deg,rgba(34,211,238,.2),rgba(34,211,238,.05));
+    box-shadow:0 0 0 1px rgba(34,211,238,.18), 0 12px 32px rgba(34,211,238,.12), inset 0 1px 0 rgba(255,255,255,.1)}
+  .header>.mnav-menu>a[href$="clock/index.html"]:hover{color:#fff;text-shadow:none}
+  .header>.mnav-menu>a[href$="screener.html"]{color:#e0f2fe;text-shadow:none;border-color:rgba(34,211,238,.32)}
+  .header>.mnav-menu>a[href$="screener.html"]:hover{color:#fff;text-shadow:none}
 }
 @media (max-width:480px){
   .header>.header-inner>.hdr-tick{padding:4px 8px;font-size:.78rem}
@@ -50,7 +95,8 @@
      button stays visible and tappable to close.
      480px covers all phones incl. Sunil's 430px Pro Max; tablets are >=768px. */
   .header>.header-inner>.mnav-btn{position:absolute;top:calc(100% + 10px);left:14px;margin:0!important;z-index:30;background:var(--surface,#0f172a);box-shadow:0 4px 16px rgba(0,0,0,.35)}
-  .header>.mnav-menu{top:calc(100% + 62px)}
+  .header>.header-inner>.mnav-btn[aria-expanded="true"]{border-color:#22d3ee;color:#22d3ee;background:#071018;box-shadow:0 0 0 6px rgba(34,211,238,.16),0 0 22px rgba(34,211,238,.5),0 8px 24px rgba(0,0,0,.45)}
+  .header>.mnav-menu{top:calc(100% + 62px);height:calc(100dvh - 72px - env(safe-area-inset-top) - 62px)}
 }
 /* Chart chip (6 Nov 2026 evening): hide the chip only at <=420px.
    It was hidden at <=480px, which also hid it on Sunil's 430px Pro Max —
@@ -298,16 +344,24 @@ html.prd-lock,html.prd-lock body{overflow:hidden}
 .desk-panel a:hover{color:#22d3ee}
 @media (max-width:1180px){.header nav .desk-tab{font-size:.82rem}.desk-panel a{font-size:.82rem}}
 @media (prefers-reduced-motion:reduce){.desk-chev{transition:none}}
-/* Mobile Sleeves dropdown inside the hamburger menu */
-.mnav-drop{border-bottom:1px solid var(--border,#1e293b)}
-.mnav-tab{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:48px;padding:0 8px;background:none;border:0;color:var(--muted,#94a3b8);font:500 1rem Inter,system-ui,-apple-system,sans-serif;cursor:pointer;text-align:left}
-.mnav-tab:hover{color:#22d3ee}
-.nav-chev{font-size:.65rem;color:#94a3b8;transition:transform .2s}
-.mnav-sub{display:none;padding:2px 0 8px}
-.mnav-drop.open .mnav-sub{display:block}
-.mnav-drop.open .nav-chev{transform:rotate(180deg)}
-.mnav-sub a{display:flex;align-items:center;min-height:44px;padding:0 8px 0 24px;color:var(--muted,#94a3b8);font:500 .95rem Inter,system-ui,-apple-system,sans-serif;text-decoration:none;border-left:2px solid rgba(34,211,238,.35);margin-left:8px}
-.mnav-sub a:hover{color:#22d3ee}
+/* Mobile Sleeves dropdown inside the phone sheet (cr028) */
+.mnav-drop{border:0;background:transparent}
+.mnav-tab{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;min-height:64px;padding:0 16px 0 14px;background:none;border:0;border-radius:18px;color:#e8eef7;font:600 1.12rem/1.2 Outfit,Inter,sans-serif;letter-spacing:-.02em;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
+.mnav-tab:hover,.mnav-tab[aria-expanded="true"]{color:#fff}
+.mnav-tab:focus-visible{outline:2px solid #22d3ee;outline-offset:-4px}
+.nav-chev{margin-left:auto;width:9px;height:9px;font-size:0;color:#22d3ee;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .35s cubic-bezier(.16,1,.3,1)}
+.mnav-sub{display:block;max-height:0;overflow:hidden;opacity:0;padding:0 10px;transition:max-height .42s cubic-bezier(.16,1,.3,1),opacity .28s ease,padding .32s ease}
+.mnav-drop.open .mnav-sub{max-height:380px;opacity:1;padding:0 10px 12px}
+.mnav-drop.open .nav-chev{transform:rotate(225deg) translateY(-1px)}
+.mnav-sub a{display:flex;align-items:center;min-height:48px;margin:0 0 6px;padding:0 14px;color:#d5e2f2;font:550 .98rem/1.2 Outfit,Inter,sans-serif;letter-spacing:-.01em;text-decoration:none;border:1px solid rgba(148,163,184,.14);border-left:1px solid rgba(148,163,184,.14);border-radius:12px;background:rgba(2,6,18,.35)}
+.mnav-sub a:last-child{margin-bottom:0}
+.mnav-sub a:hover,.mnav-sub a:focus-visible,.mnav-sub a.is-active{color:#22d3ee;border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
+.mnav-drop.open .mnav-sub a{animation:mnavRise .4s cubic-bezier(.16,1,.3,1) both}
+.mnav-drop.open .mnav-sub a:nth-child(1){animation-delay:.04s}
+.mnav-drop.open .mnav-sub a:nth-child(2){animation-delay:.08s}
+.mnav-drop.open .mnav-sub a:nth-child(3){animation-delay:.12s}
+.mnav-drop.open .mnav-sub a:nth-child(4){animation-delay:.16s}
+.mnav-drop.open .mnav-sub a:nth-child(5){animation-delay:.2s}
 /* Menu-tab vibrancy (8 Nov 2026, Sunil): "Live BTC Chart" and "The Desk"
    share the BTC cyan — Desk now matches Live's colour. Live is still the
    most alive tab: it alone gets the gently pulsing dot (plus a stronger
@@ -354,4 +408,56 @@ html[data-theme="light"] .mnav-sub a:hover{color:#0e7490}
 @media (prefers-reduced-motion:reduce){
   .header nav a[href$="clock/index.html"]::before,
   .mnav-menu a[href$="clock/index.html"]::before{animation:none}
+  .header>.mnav-menu,
+  .header>.mnav-menu::before,
+  .header>.mnav-menu::after,
+  .header>.mnav-menu>.mnav-drop,
+  .header>.mnav-menu>a,
+  .mnav-drop.open .mnav-sub a{animation:none}
+  .nav-chev,.mnav-sub{transition:none}
+}
+
+/* Phone sheet, light mode. Beats light.css (loaded later) via the extra .header. */
+html[data-theme="light"] .header>.mnav-menu{
+  background:
+    linear-gradient(90deg,#c2410c,#0891b2 46%,#f59e0b 72%,#0891b2) top / 100% 2px no-repeat,
+    radial-gradient(120% 70% at 100% -10%,rgba(34,211,238,.2),transparent 52%),
+    linear-gradient(180deg,#f8fafc 0%,#eef6fb 100%);
+  box-shadow:0 -18px 50px rgba(15,23,42,.12), inset 0 1px 0 #fff;
+}
+html[data-theme="light"] .header>.mnav-menu::before{color:#0e7490}
+html[data-theme="light"] .header>.mnav-menu::after{color:#64748b}
+html[data-theme="light"] .header>.mnav-menu>.mnav-drop,
+html[data-theme="light"] .header>.mnav-menu>a{
+  background:linear-gradient(180deg,#fff,#f8fafc);
+  border-color:#e2e8f0;
+  box-shadow:0 8px 20px rgba(15,23,42,.05), inset 0 1px 0 #fff;
+  color:#0f172a;
+}
+html[data-theme="light"] .mnav-tab{color:#0f172a}
+html[data-theme="light"] .mnav-tab:hover,
+html[data-theme="light"] .mnav-tab[aria-expanded="true"]{color:#0e7490}
+html[data-theme="light"] .header>.mnav-menu>a::after,
+html[data-theme="light"] .header>.mnav-menu .mnav-tab::after{color:#0e7490}
+html[data-theme="light"] .mnav-sub a{color:#334155;background:#fff;border-color:#e2e8f0}
+html[data-theme="light"] .mnav-sub a:hover,
+html[data-theme="light"] .mnav-sub a:focus-visible,
+html[data-theme="light"] .mnav-sub a.is-active{color:#0e7490;background:rgba(34,211,238,.1);border-color:rgba(14,116,144,.35)}
+html[data-theme="light"] .header>.mnav-menu>a:hover,
+html[data-theme="light"] .header>.mnav-menu>a:focus-visible,
+html[data-theme="light"] .header>.mnav-menu>a.is-active{color:#0f172a;border-color:rgba(14,116,144,.45);background:linear-gradient(180deg,#fff,#ecfeff)}
+html[data-theme="light"] .header>.mnav-menu>a[href$="clock/index.html"],
+html[data-theme="light"] .header>.mnav-menu>a[href$="screener.html"]{color:#0e7490;text-shadow:none;border-color:rgba(14,116,144,.35);background:linear-gradient(180deg,#fff,#ecfeff)}
+html[data-theme="light"] .header>.mnav-menu>a[href$="clock/index.html"]:hover,
+html[data-theme="light"] .header>.mnav-menu>a[href$="screener.html"]:hover{color:#155e75;text-shadow:none}
+html[data-theme="light"] .header>.header-inner>.mnav-btn[aria-expanded="true"]{background:#fff;color:#0e7490;border-color:#22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.2),0 8px 24px rgba(15,23,42,.12)}
+body.mnav-open,html.mnav-open{overflow:hidden}
+@keyframes mnavSheet{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+@keyframes mnavRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (max-width:1000px) and (orientation:landscape) and (max-height:500px){
+  .header>.mnav-menu{padding-top:10px;padding-bottom:8px}
+  .header>.mnav-menu::before{padding-bottom:8px}
+  .header>.mnav-menu::after{display:none}
+  .header>.mnav-menu>a,.mnav-tab{min-height:48px}
+  .header>.mnav-menu>.mnav-drop,.header>.mnav-menu>a{margin-bottom:6px}
 }
