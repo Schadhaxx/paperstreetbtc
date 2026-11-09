@@ -67,7 +67,7 @@ chk('summer EDT offset', IC.etTodayISO(Date.UTC(2026, 6, 6, 3, 30)) === '2026-07
 const calls = (src.match(/applyLiveWeek\(/g) || []).length;
 chk('applyLiveWeek only defined + called inside liveWeekFor', calls === 2, calls);
 chk('isLiveCandle guarded', /isLiveCandle = state\.liveOn && isInProgress\(\) && i === n - 1 && weekCoversToday\(w\)/.test(src));
-chk('in-progress line label guarded', /\(in progress\)'/.test(src) && /progressNote\) && weekCoversToday\(dw\[n - 1\]\)\) curLab/.test(src));
+chk('current-line price labels removed (9 Nov: no live/in-progress box on the line)', !/curLab|liveTag|lx \+ tw/.test(src));
 chk('pill live/in-progress notes guarded', /var lastCur = isLast && weekCoversToday\(w\)/.test(src) && !/if \(isLast && state\.(liveOn|cfg\.lastInProgress|progressNote)/.test(src.replace(/else if \(isLast && state/g, 'X')) && !/else if \(isLast && state\.(cfg\.lastInProgress|progressNote)/.test(src));
 chk('subtitle in-progress note guarded', /state\.progressNote && Array\.isArray\(data\.weeks\) && weekCoversToday\(data\.weeks\[data\.weeks\.length - 1\]\)/.test(src));
 chk('timezone stated in a comment', /TIMEZONE: "today" is the calendar date in America\/New_York/.test(src));

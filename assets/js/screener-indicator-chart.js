@@ -947,38 +947,18 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       ctx.fillStyle = psC('#94a3b8','#475569'); ctx.font = '10px -apple-system, system-ui, sans-serif';
       ctx.fillText('Vol', 4, volTop + 10);
     }
-    // Current line: horizontal dashed cyan, labelled at the LEFT end,
-    // by the y-axis. EXPERIMENTAL LIVE FEEL: when the tile row is live,
-    // this line moves to the live price and carries a LIVE tag at the
-    // RIGHT end; otherwise it is exactly the old shipped-close line.
-    // For WTI the latest week is in progress, so the label says so —
-    // its close is not a daily close.
+    // Current line: horizontal dashed cyan. EXPERIMENTAL LIVE FEEL: when
+    // the tile row is live, this line moves to the live price; otherwise
+    // it is exactly the old shipped-close line. The filled price labels
+    // that used to sit on it (left "Live $x"/"Current $x" box, right green
+    // "LIVE $x" box) were removed 9 Nov 2026 (Sunil: they covered the
+    // chart and repeat the header "Live $x" / card "Current $x").
     var current = state.liveOn ? state.livePrice : dw[n - 1].close;
     var cy = y(current);
     ctx.save();
     ctx.strokeStyle = psC('#22d3ee','#0891b2'); ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
     ctx.beginPath(); ctx.moveTo(padL, cy); ctx.lineTo(cssW - padR, cy); ctx.stroke();
     ctx.setLineDash([]);
-    var curLab = state.liveOn ? ('Live ' + fmt(current)) : (state.cfg.currentPrefix + fmt(current));
-    if (!state.liveOn && (state.cfg.lastInProgress || state.progressNote) && weekCoversToday(dw[n - 1])) curLab += ' (in progress)';
-    ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
-    var tw = ctx.measureText(curLab).width;
-    var lx = padL + 6;
-    var ly = cy - 8;
-    if (ly < 14) ly = cy + 16;
-    ctx.fillStyle = psC('#22d3ee','#0891b2');
-    ctx.fillRect(lx - 4, ly - 11, tw + 8, 16);
-    ctx.fillStyle = psC('#0b1226','#f1f5f9');
-    ctx.fillText(curLab, lx, ly);
-    if (state.liveOn) {
-      ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
-      var liveTag = 'LIVE ' + fmt(current);
-      var ltw = ctx.measureText(liveTag).width;
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(cssW - padR - ltw - 10, cy - 19, ltw + 8, 16);
-      ctx.fillStyle = '#0b1226';
-      ctx.fillText(liveTag, cssW - padR - ltw - 6, cy - 7);
-    }
     ctx.restore();
     if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
       var by = y(state.base.value);
@@ -995,7 +975,6 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       var bly = by - 8;
       if (bly < 14) bly = by + 14;
       enhLabelYs.forEach(function (ey) { if (Math.abs(bly - ey) < 16) bly = (bly < ey) ? Math.max(14, bly - 16) : Math.min(by + 14, cssH - padB - 4); });
-      if (Math.abs(bly - ly) < 16 && bx < lx + tw + 10) bly = (bly < ly) ? Math.min(by + 14, cssH - padB - 4) : bly;
       ctx.fillStyle = psC('rgba(15,23,42,0.88)','#f1f5f9');
       ctx.fillRect(bx - 3, bly - 10, Math.min(btw + 6, cssW - padR - bx + 3), 14);
       ctx.fillStyle = psC('#cbd5e1','#0f172a');
