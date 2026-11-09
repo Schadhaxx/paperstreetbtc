@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Weekly OHLC candles for the Maple Leaf screener MARKET INDICATOR tiles.
 
-Writes one file per indicator: assets/data/{wti,gold,us10y,vix}-weekly.json
+Writes one file per indicator: assets/data/{wti,gold,us10y,vix,djia,qqq,usdcad,dxy}-weekly.json
 (WTI = CL=F NYMEX front-month futures, GOLD = GC=F COMEX futures,
-US10Y = ^TNX, VIX = ^VIX).
+US10Y = ^TNX, VIX = ^VIX, DJIA = ^DJI, QQQ = QQQ,
+CADUSD = CADUSD=X, USD per 1 CAD, DXY = DX-Y.NYB).
 
 Source: Yahoo chart API, unadjusted daily OHLC (quote open/high/low/close,
 never adjclose), fetched server-side by this tool — never in the browser.
@@ -40,8 +41,20 @@ usage:
 import json, math, os, sys, time, datetime as dt, urllib.request
 from zoneinfo import ZoneInfo
 
+# Holidays are the NYSE list in stock_weekly (2026-2028); importing it
+# keeps the two tools on the same calendar. stock_weekly has no
+# import-time side effects (guarded by __main__).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import stock_weekly as SW
+
 UTC = dt.timezone.utc
-ET = ZoneInfo('America/New_York')
+try:
+    ET = ZoneInfo('America/New_York')
+except Exception:
+    # tzdata missing (a minimal container): do not crash on import — the
+    # intraday gate must still be able to run and skip. build() raises a
+    # clear error if it is ever called without one.
+    ET = None
 MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 # symbol key -> (Yahoo symbol, decimals, source blurb, unit)
@@ -50,9 +63,18 @@ SPECS = {
     'GOLD':  ('GC%3DF', 2, 'Yahoo GC=F (COMEX futures), $/troy oz', 'usd'),
     'US10Y': ('%5ETNX', 3, 'Yahoo ^TNX (10-year Treasury yield), %', 'pct'),
     'VIX':   ('%5EVIX', 2, 'Yahoo ^VIX (CBOE Volatility Index), index points', 'pts'),
+    # Added with the Desk stocks/indicators (Nov 2026). Yahoo symbols are
+    # URL-encoded as in the shipped files; CADUSD is CADUSD=X (USD per 1
+    # CAD, ~0.709), NOT USDCAD=X.
+    'DJIA':   ('%5EDJI', 2, 'Yahoo ^DJI (Dow Jones Industrial Average), index points', 'pts'),
+    'QQQ':   ('QQQ', 2, 'Yahoo QQQ (Invesco QQQ Trust), USD', 'usd'),
+    'CADUSD': ('CADUSD%3DX', 4, 'Yahoo CADUSD=X (CAD/USD), USD per 1 CAD', 'usd'),
+    'DXY':   ('DX-Y.NYB', 2, 'Yahoo DX-Y.NYB (ICE US Dollar Index), index points', 'pts'),
 }
 FILES = {'WTI': 'wti-weekly.json', 'GOLD': 'gold-weekly.json',
-         'US10Y': 'us10y-weekly.json', 'VIX': 'vix-weekly.json'}
+         'US10Y': 'us10y-weekly.json', 'VIX': 'vix-weekly.json',
+         'DJIA': 'djia-weekly.json', 'QQQ': 'qqq-weekly.json',
+         'CADUSD': 'usdcad-weekly.json', 'DXY': 'dxy-weekly.json'}
 
 
 def rnd(x, nd):
@@ -97,8 +119,11 @@ def bars_from_payload(key, payload):
     # Yahoo inserts null-OHLC rows for market holidays (e.g. 25 Dec 2025 for
     # ^VIX). Those are not trading days and are skipped; a null bar on any
     # other day is a hard failure, never skipped or filled.
-    HOLIDAYS = {'2025-12-25', '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03',
-                '2026-05-25', '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25'}
+    # NYSE holidays from stock_weekly (2026-2028) plus 25 Dec 2025, the
+    # only pre-2026 holiday in the indicator data (Yahoo inserts a
+    # null-OHLC row for it, e.g. ^VIX). A hardcoded 2026-only list would
+    # fail on 2027+ holidays.
+    HOLIDAYS = SW.HOLIDAYS | {'2025-12-25'}
     out = {}
     for t, o, h, l, c in zip(ts, q['open'], q['high'], q['low'], q['close']):
         if t is None or any(v is None for v in (o, h, l, c)):
@@ -136,6 +161,8 @@ def candle_for_week(bars, monday):
 
 
 def build(key, out_dir, check_only):
+    if ET is None:
+        raise RuntimeError(f'{key}: America/New_York time zone data unavailable — cannot build')
     ysym, nd, source, unit = SPECS[key]
     path = os.path.join(out_dir, FILES[key])
     with open(path) as f:

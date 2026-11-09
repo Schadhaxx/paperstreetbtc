@@ -47,6 +47,7 @@ run vehicle node tests/test_vehicle.js "$WORK/history.json"                 # ET
 run vehicle_daily python3 tests/test_vehicle_daily.py                       # ETF toggle: nightly IBIT/FBTC updater (offline fixtures)
 run stock_weekly_py python3 tests/test_stock_weekly.py                       # screener stock candles: generator fixtures + shipped invariants
 run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
+run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
 run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
 run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et22): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
 run needchart_retry python3 tests/test_needchart_retry.py                    # needChart failure-then-retry (real _needChart, chart.umd aborted once)
