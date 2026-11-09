@@ -212,6 +212,7 @@ def unstall(hist, prev_hist, getter, now, max_calls=MAX_CALLS, stall_hours=STALL
     fb_stalled = sorted(d for d, s in fsrc.items()
                         if DATE_RE.match(d) and d in closes
                         and _is_num(closes[d].get('BTC'))
+                        and isinstance(s, dict)
                         and (s.get('BTC', 'yahoo').split('-')[0]
                              not in ('yahoo', 'ffill'))
                         and now > stall_cutoff(d, stall_hours))
