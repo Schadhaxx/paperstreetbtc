@@ -25,7 +25,13 @@ usage:
 import json, math, os, sys, time, datetime as dt, urllib.request
 from zoneinfo import ZoneInfo
 
-NY = ZoneInfo('America/New_York')
+try:
+    NY = ZoneInfo('America/New_York')
+except Exception:
+    # tzdata missing (a minimal container): do not crash on import — the
+    # intraday gate (tools/desk_intraday.py) must still be able to run and
+    # skip. parse_now raises a clear error if it is ever called without one.
+    NY = None
 # NYSE full closures. A weekday that is not in this set and has no Yahoo
 # bar is a hard error (the script will not skip it or invent a candle).
 HOLIDAYS = {
@@ -42,8 +48,11 @@ FINAL_HM = (16, 15)
 MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 SYMS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX',
         'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA']
-# BRK.B omitted here: Yahoo symbol is BRK-B (hyphen), so a pure list add
-# would 404. Generate stock-weekly-BRK.B.json with an explicit Yahoo map.
+# BRK.B omitted from SYMS: Yahoo symbol is BRK-B (hyphen), so a pure list
+# add would 404. Generate stock-weekly-BRK.B.json with an explicit Yahoo map.
+# YAHOO_MAP is the display-ticker -> Yahoo-symbol map; the intraday refresh
+# (tools/desk_intraday.py) fetches all 16 Desk stocks through it, BRK.B included.
+YAHOO_MAP = {'BRK.B': 'BRK-B'}
 SPECS = {
     'TSLA': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
     'PLTR': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
@@ -60,6 +69,10 @@ SPECS = {
     'XYZ': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
     'GOOGL': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
     'NVDA': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
+    # BRK.B is in SPECS (same YTD baseline as the other stocks) so the
+    # intraday refresh can build/validate its candle; it stays out of
+    # SYMS, so this file's full-rebuild loop is unchanged.
+    'BRK.B': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
 }
 
 def cents(x):
@@ -71,6 +84,8 @@ def dlabel(d):
     return f'{d.day} {MN[d.month - 1]} {d.year}'
 
 def parse_now(now):
+    if NY is None:
+        raise RuntimeError('America/New_York time zone data unavailable — cannot parse times')
     if now is None:
         return dt.datetime.now(NY)
     if isinstance(now, dt.datetime):
