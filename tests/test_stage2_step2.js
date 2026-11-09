@@ -47,7 +47,7 @@ chk('pending resize frame cancelled by clearLineChart, both Chart.js fallbacks a
 chk('panel has drawLineTooltip', /function drawLineTooltip\(ctx,p,px,py,W,padT,plotH\)/.test(panel));
 
 /* NATIVE_LINE flag + wiring */
-chk('panel has NATIVE_LINE flag (off by default)', /var NATIVE_LINE=false;/.test(panel));
+chk('panel has NATIVE_LINE flag (ON by default, 9 Nov 2026)', /var NATIVE_LINE=true;/.test(panel));
 chk('draw1D routes to draw1DNative when NATIVE_LINE is true',
   /if\(NATIVE_LINE\)\{if\(ch\)\{ch\.destroy\(\);ch=null;\}nativeOK=draw1DNative\(pts\);lineDrawn=nativeOK;\}/.test(panel));
 chk('draw1D falls back to Chart.js when native fails or flag is off',

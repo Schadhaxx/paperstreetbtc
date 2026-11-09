@@ -814,9 +814,9 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
    and candle views share this canvas; a cap would make the line view
    blurrier than the candle view on a 3x phone).
    F6 — Colours: the hardcoded dark Chart.js values, not "improved".
-   The native line is behind the NATIVE_LINE flag (off by default); the
-   Chart.js path stays the fallback until Step 4 side-by-side passes. */
-var NATIVE_LINE=false; /* Step 2: off by default. Set true via P.setNativeLine / window.__BTC_SET_NATIVE_LINE (test hook). */
+   The native line is behind the NATIVE_LINE flag (ON since 9 Nov 2026); the
+   Chart.js path stays the automatic fallback (draw*Native returns false on any failure). */
+var NATIVE_LINE=true; /* ON (Sunil, 9 Nov 2026): native line views; Chart.js stays the automatic fallback. Toggle via P.setNativeLine / window.__BTC_SET_NATIVE_LINE (test hook). */
 var lineDrawn=false; /* F1: true while the native 1D line is on the canvas. */
 var linePts=null; /* pts array last drawn by draw1DNative (tooltip + redraw). */
 var lineHover=-1; /* index of the hovered/tapped point, -1 = none. */
