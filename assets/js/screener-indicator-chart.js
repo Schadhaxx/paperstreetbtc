@@ -136,12 +136,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     },
     USDCAD: {
       symbol: 'USDCAD',
-      title: 'USD/CAD — YTD weekly candles',
-      dataUrl: 'assets/data/usdcad-weekly.json?v=1',
+      title: 'CAD/USD — YTD weekly candles',
+      dataUrl: 'assets/data/usdcad-weekly.json?v=cadusd1',
       dailyUrl: null,
       format: fmtFx,
       currentPrefix: 'Current ',
-      subBlurb: 'Weekly candles. Tap a candle for its week.',
+      subBlurb: 'USD per 1 CAD. Weekly candles. Tap a candle for its week.',
       lastInProgress: null
     },
     DXY: {

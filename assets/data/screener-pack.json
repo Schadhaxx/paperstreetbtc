@@ -68,15 +68,15 @@
       "ytdPct": null
     },
     {
-      "baseClose": null,
-      "dayChange": 0.0084,
-      "dayChangePct": 0.6,
-      "name": "USD/CAD",
-      "prevClose": 1.4017,
-      "price": 1.4101,
+      "baseClose": 0.7302,
+      "dayChange": -0.0044,
+      "dayChangePct": -0.6168,
+      "name": "CAD/USD",
+      "prevClose": 0.7134,
+      "price": 0.709,
       "symbol": "USDCAD",
       "unit": "fx",
-      "ytdPct": null
+      "ytdPct": -2.9033
     },
     {
       "baseClose": null,

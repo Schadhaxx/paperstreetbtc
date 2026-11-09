@@ -296,7 +296,7 @@
     if (r.symbol === 'VIX') return 'points';
     if (r.symbol === 'DJIA') return 'points';
     if (r.symbol === 'QQQ') return 'USD';
-    if (r.symbol === 'USDCAD') return 'CAD per USD';
+    if (r.symbol === 'USDCAD') return 'USD per CAD';
     if (r.symbol === 'DXY') return 'points';
     return '';
   }
@@ -364,7 +364,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=10')
+    fetch('assets/data/screener-pack.json?v=cadusd1')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];
