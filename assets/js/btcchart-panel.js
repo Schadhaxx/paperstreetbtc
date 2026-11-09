@@ -1027,7 +1027,7 @@ function nativeTooltipBind(c){
     show(downIdx);
   }
   c.addEventListener('pointerup',function(){endLinePress();});
-  c.addEventListener('pointercancel',function(){endLinePress();});
+  c.addEventListener('pointercancel',function(){pressMoved=true;endLinePress();}); /* iOS fires pointercancel when the browser takes over a pan: treat as a move, no tooltip. */
   c.addEventListener('touchend',function(){endLinePress();},{passive:true});
   c.addEventListener('touchcancel',function(){endLinePress();},{passive:true});
   /* Dismiss the sticky tooltip when the page scrolls. */
