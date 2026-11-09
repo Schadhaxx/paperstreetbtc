@@ -216,12 +216,42 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       open: w.open, high: Math.max(w.high, price), low: Math.min(w.low, price), close: price,
       volume: (typeof w.volume === 'number' ? w.volume : null) };
   }
+  // Candle date guardrail (9 Nov 2026, Sunil): a live price may only be
+  // painted onto a candle whose Monday-Sunday range contains TODAY, so a
+  // stale file (last week 2-8 Nov, today 9 Nov) can never bend last
+  // week's candle or mark it live / in progress.
+  // TIMEZONE: "today" is the calendar date in America/New_York (ET,
+  // DST-correct via nyOffsetHours) - market weeks and the live quote are
+  // ET. The file's monday/sunday are plain YYYY-MM-DD dates (UTC-midnight
+  // Dates once loaded), compared as dates.
+  // Fails closed: unknown today or candle dates -> false (no live price).
+  function isoDay(v) {
+    if (v instanceof Date) { var tv = v.getTime(); return isFinite(tv) ? v.toISOString().slice(0, 10) : null; }
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+    return null;
+  }
+  function etTodayISO(nowMs) {
+    var t = (nowMs === undefined) ? Date.now() : nowMs;
+    if (typeof t !== 'number' || !isFinite(t)) return null;
+    return new Date(t + nyOffsetHours(t) * 3600000).toISOString().slice(0, 10);
+  }
+  function weekCoversToday(w, nowMs) {
+    if (!w) return false;
+    var m = isoDay(w.monday), s = isoDay(w.sunday), t = etTodayISO(nowMs);
+    if (!m || !s || !t || m > s) return false;
+    return t >= m && t <= s;
+  }
+  // The only way the live price reaches a candle: guarded copy, or the
+  // week unchanged.
+  function liveWeekFor(w, price, nowMs) {
+    return weekCoversToday(w, nowMs) ? applyLiveWeek(w, price) : w;
+  }
   function displayWeeks() {
     if (!state.weeks.length) return [];
     if (!state.liveOn || !state.progressNote && !(state.cfg && state.cfg.lastInProgress)) return state.weeks;
     if (!state.liveOn) return state.weeks;
     var out = state.weeks.slice();
-    out[out.length - 1] = applyLiveWeek(out[out.length - 1], state.livePrice);
+    out[out.length - 1] = liveWeekFor(out[out.length - 1], state.livePrice);
     return out;
   }
   function isInProgress() {
@@ -599,7 +629,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var line = cfg.basis === 'listing'
       ? 'Since listing 12 Jun 2026, not 31 Dec 2025. Data to ' + asOf + '. Tap a candle for its week.'
       : 'Weekly candles, data to ' + asOf + '. Tap a candle for its week.';
-    if (state.progressNote) line = line.replace('Tap a candle for its week.', 'Latest week in progress. Tap a candle for its week.');
+    if (state.progressNote && Array.isArray(data.weeks) && weekCoversToday(data.weeks[data.weeks.length - 1])) line = line.replace('Tap a candle for its week.', 'Latest week in progress. Tap a candle for its week.');
     state.resolvedSub = line;
     var sub = el('ind-sub');
     if (sub) sub.textContent = line;
@@ -761,7 +791,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // never mutated). When not live, dw is exactly viewWeeks.
     var dw = viewWeeks.slice();
     if (state.liveOn && isInProgress() && typeof state.livePrice === 'number' && isFinite(state.livePrice) && dw.length) {
-      dw[dw.length - 1] = applyLiveWeek(dw[dw.length - 1], state.livePrice);
+      dw[dw.length - 1] = liveWeekFor(dw[dw.length - 1], state.livePrice);
     }
     var lo = Infinity, hi = -Infinity;
     dw.forEach(function (w) { lo = Math.min(lo, w.low); hi = Math.max(hi, w.high); });
@@ -823,7 +853,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(cx, y(w.high)); ctx.lineTo(cx, y(w.low)); ctx.stroke();
       var top = y(Math.max(w.open, w.close)), bot = y(Math.min(w.open, w.close));
-      var isLiveCandle = state.liveOn && isInProgress() && i === n - 1;
+      var isLiveCandle = state.liveOn && isInProgress() && i === n - 1 && weekCoversToday(w);
       var grow = (reducedM || isLiveCandle) ? 1 : Math.max(0, Math.min(1, prog * n - i));
       var mid = (top + bot) / 2, half = (bot - top) / 2 * grow;
       ctx.fillRect(cx - bw / 2, mid - half, bw, Math.max(1, half * 2));
@@ -930,7 +960,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     ctx.beginPath(); ctx.moveTo(padL, cy); ctx.lineTo(cssW - padR, cy); ctx.stroke();
     ctx.setLineDash([]);
     var curLab = state.liveOn ? ('Live ' + fmt(current)) : (state.cfg.currentPrefix + fmt(current));
-    if (!state.liveOn && (state.cfg.lastInProgress || state.progressNote)) curLab += ' (in progress)';
+    if (!state.liveOn && (state.cfg.lastInProgress || state.progressNote) && weekCoversToday(dw[n - 1])) curLab += ' (in progress)';
     ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
     var tw = ctx.measureText(curLab).width;
     var lx = padL + 6;
@@ -1056,7 +1086,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // candle and the modal is live, show the live-extended values
     // (display only — the shipped week is never mutated).
     if (idx === vw.length - 1 && state.liveOn && isInProgress() && typeof state.livePrice === 'number' && isFinite(state.livePrice)) {
-      w = applyLiveWeek(w, state.livePrice);
+      w = liveWeekFor(w, state.livePrice);
     }
     var chg = (w.close / w.open - 1) * 100;
     var isLast = idx === vw.length - 1;
@@ -1090,9 +1120,10 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       }
       if (ENH.patterns) { var pat = enhPattern(state.weeks, (state.viewStart || 0) + idx); if (pat) html += '<br>Pattern hint: ' + pat + ' — a shape, not a prediction.'; }
       if (typeof w.volume === 'number' && w.volume > 0) html += '<br>Volume ' + fmtVol(w.volume) + '.';
-      if (isLast && state.liveOn && isInProgress()) html += '<br><i>Latest week is live — its close follows the live price and is not a final close.</i>';
-      else if (isLast && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
-      else if (isLast && state.progressNote) html += '<br><i>Latest week is ' + state.progressNote + '.</i>';
+      var lastCur = isLast && weekCoversToday(w);
+      if (lastCur && state.liveOn && isInProgress()) html += '<br><i>Latest week is live — its close follows the live price and is not a final close.</i>';
+      else if (lastCur && state.cfg.lastInProgress) html += '<br><i>Latest week ' + state.cfg.lastInProgress + ' — close is not a final daily close.</i>';
+      else if (lastCur && state.progressNote) html += '<br><i>Latest week is ' + state.progressNote + '.</i>';
       pill.style.display = 'block';
       pill.innerHTML = html;
     }
@@ -1247,5 +1278,5 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
 })();
