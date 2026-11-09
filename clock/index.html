@@ -132,9 +132,11 @@ html[data-theme="light"] body.ps-clock .bc-inline{background:#fff!important;bord
 html[data-theme="light"] body.ps-clock .bc-ct-lab{color:#475569}
 html[data-theme="light"] body.ps-clock .bc-ct button{color:#475569;border-color:#e2e8f0;background:#fff}
 html[data-theme="light"] body.ps-clock .bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
+.wl-btn{background:transparent;color:#22d3ee;border:1px solid rgba(34,211,238,.5);border-radius:999px;padding:0 8px;line-height:13px;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit;margin-left:4px;position:relative}.wl-btn::after{content:"";position:absolute;inset:-12px -6px}.wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}.wl-btn.wl-wait{border-style:dashed}.wl-btn[hidden]{display:none}
+html[data-theme="light"] body.ps-clock .wl-btn{color:#0e7490;border-color:#0e7490}html[data-theme="light"] body.ps-clock .wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}
 </style></head><body class="ps-clock"><div class="wrap">
 <a class="brand" href="../index.html"><picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture><span class="brand-text">Paperstreet <span>BTC</span></span><span class="brand-clock">· Live BTC Chart</span></a>
-<div class="top"><span class="lab">₿ Live BTC Chart</span><span class="live"><i></i>LIVE · AUTO</span><span class="et" id="now">—</span></div>
+<div class="top"><span class="lab">₿ Live BTC Chart</span><span class="live"><i></i>LIVE · AUTO<button type="button" class="wl-btn" id="wakeBtn" aria-pressed="false" title="Keep this screen from sleeping while the page is open" hidden>Keep screen on</button></span><span class="et" id="now">—</span></div>
 
 <div class="hero merged" id="hero">
 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span class="lab" id="curLab">Bitcoin · USD · live price</span><span class="cur-toggle" role="group" aria-label="Price currency"><button type="button" data-cur="USD" class="on" title="Show price in US dollars">USD $</button><button type="button" data-cur="CAD" title="Show price in Canadian dollars">CAD $</button></span></div>
@@ -335,4 +337,25 @@ document.querySelector('#hashRg button[data-h="1m"]').style.background='#22d3ee'
 $('hashLog').addEventListener('click',function(){HASH.log=!HASH.log;this.style.background=HASH.log?'#22d3ee':'';this.style.color=HASH.log?'#041018':'';drawHash();});
 fetchHash();setInterval(fetchHash,60000);
 </script>
+<script>/* Keep screen on (Screen Wake Lock API), 9 Nov 2026. Clock page only.
+   Hidden where navigator.wakeLock is missing. Tap requests the lock (WebKit needs a tap);
+   the browser drops it when the tab is hidden, so it is re-requested when the page is
+   visible again; if that is refused the button asks for one more tap. Never logs errors. */
+(function(){var b=document.getElementById('wakeBtn');if(!b)return;
+var wl=navigator.wakeLock;if(!wl||typeof wl.request!=='function')return;
+var want=false,lock=null,busy=false;
+function ui(st){b.setAttribute('aria-pressed',st==='on'?'true':'false');b.classList.toggle('wl-wait',st==='wait');
+  b.textContent=st==='on'?'Screen kept on':st==='wait'?'Tap to keep screen on':'Keep screen on';
+  b.title=st==='on'?'Tap to let the screen sleep again':'Keep this screen from sleeping while the page is open';}
+function acquire(fromTap){if(busy||lock||!want)return;if(document.visibilityState!=='visible'){ui('wait');return;}busy=true;
+  var p;try{p=wl.request('screen');}catch(e){p=Promise.reject(e);}
+  Promise.resolve(p).then(function(s){busy=false;if(!want){try{Promise.resolve(s.release()).catch(function(){});}catch(e){}return;}lock=s;ui('on');
+    s.addEventListener('release',function(){if(lock===s)lock=null;ui(want?'wait':'off');});
+  },function(){busy=false;lock=null;if(fromTap||!want){want=false;ui('off');}else ui('wait');});}
+function drop(){want=false;var s=lock;lock=null;ui('off');if(s){try{Promise.resolve(s.release()).catch(function(){});}catch(e){}}}
+b.addEventListener('click',function(){if(lock||(busy&&want)){drop();}else{want=true;acquire(true);}});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&want&&!lock)acquire(false);});
+b.hidden=false;ui('off');
+window.__PS_WAKE={state:function(){return {want:want,locked:!!lock,label:b.textContent,pressed:b.getAttribute('aria-pressed')};}};
+})();</script>
 <script src="../assets/js/theme-pill.js?v=lm3" defer></script></body></html>
