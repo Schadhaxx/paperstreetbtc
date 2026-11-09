@@ -53,6 +53,9 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   function fmtPoints(v) {
     return v.toFixed(2) + ' pts';
   }
+  function fmtFx(v) {
+    return v.toFixed(4);
+  }
   function fmtDateUTC(d) {
     var MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return d.getUTCDate() + ' ' + MN[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
@@ -109,6 +112,48 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       subBlurb: 'Weekly candles. Tap a candle for its week.',
       lastInProgress: null,
       ptsChange: true,
+    },
+    DJIA: {
+      symbol: 'DJIA',
+      title: 'DJIA — YTD weekly candles',
+      dataUrl: 'assets/data/djia-weekly.json?v=1',
+      dailyUrl: null,
+      format: fmtPoints,
+      currentPrefix: 'Current ',
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
+      lastInProgress: null,
+      ptsChange: true,
+    },
+    QQQ: {
+      symbol: 'QQQ',
+      title: 'QQQ — YTD weekly candles',
+      dataUrl: 'assets/data/qqq-weekly.json?v=1',
+      dailyUrl: null,
+      format: fmtMoney,
+      currentPrefix: 'Current ',
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
+      lastInProgress: null
+    },
+    USDCAD: {
+      symbol: 'USDCAD',
+      title: 'USD/CAD — YTD weekly candles',
+      dataUrl: 'assets/data/usdcad-weekly.json?v=1',
+      dailyUrl: null,
+      format: fmtFx,
+      currentPrefix: 'Current ',
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
+      lastInProgress: null
+    },
+    DXY: {
+      symbol: 'DXY',
+      title: 'DXY — YTD weekly candles',
+      dataUrl: 'assets/data/dxy-weekly.json?v=1',
+      dailyUrl: null,
+      format: fmtPoints,
+      currentPrefix: 'Current ',
+      subBlurb: 'Weekly candles. Tap a candle for its week.',
+      lastInProgress: null,
+      ptsChange: true,
     }
   };
 
@@ -116,7 +161,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // weekly close ("Close $…"), never the live card price. "Current $…
   // YTD …" is drawn from the card's own merged row. Cache-bust STOCK_V
   // whenever the JSON is regenerated.
-  var STOCK_V = '20261104';
+  var STOCK_V = '20261109';
   function stockCfg(sym, basis) {
     var listing = basis === 'listing';
     return {
@@ -139,7 +184,16 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     IBIT: stockCfg('IBIT', 'ytd'),
     MU: stockCfg('MU', 'ytd'),
     META: stockCfg('META', 'ytd'),
-    SPCX: stockCfg('SPCX', 'listing')
+    SPCX: stockCfg('SPCX', 'listing'),
+    'BRK.B': stockCfg('BRK.B', 'ytd'),
+    AAPL: stockCfg('AAPL', 'ytd'),
+    AMZN: stockCfg('AMZN', 'ytd'),
+    MSFT: stockCfg('MSFT', 'ytd'),
+    NFLX: stockCfg('NFLX', 'ytd'),
+    SPOT: stockCfg('SPOT', 'ytd'),
+    XYZ: stockCfg('XYZ', 'ytd'),
+    GOOGL: stockCfg('GOOGL', 'ytd'),
+    NVDA: stockCfg('NVDA', 'ytd')
   };
   function cardMoney(v) {
     if (typeof v !== 'number' || !isFinite(v)) return '—';
@@ -1049,13 +1103,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       var onInfo = e.target.closest ? (e.target.closest('#ind-info-pill') || e.target.closest('.ind-info-btn')) : null;
       if (inDialog && !onInfo) { hideInfo(); return; }
     }
-    var tile = e.target.closest ? e.target.closest('.tile[data-symbol="GOLD"], .tile[data-symbol="WTI"], .tile[data-symbol="US10Y"], .tile[data-symbol="VIX"]') : null;
-    if (tile) {
+    var tile = e.target.closest ? e.target.closest('.tile[data-symbol]') : null;
+    if (tile && CONFIGS[tile.getAttribute('data-symbol')]) {
       var cfg = CONFIGS[tile.getAttribute('data-symbol')];
-      if (cfg) {
-        if (state.cfg && state.cfg.symbol === cfg.symbol && state.weeks.length) { state.cfg = cfg; openModal(cfg); }
-        else { state.weeks = []; openModal(cfg); }
-      }
+      if (state.cfg && state.cfg.symbol === cfg.symbol && state.weeks.length) { state.cfg = cfg; openModal(cfg); }
+      else { state.weeks = []; openModal(cfg); }
       return;
     }
     var stockCard = e.target.closest ? e.target.closest('.card[data-symbol]') : null;

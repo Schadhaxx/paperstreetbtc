@@ -2,7 +2,7 @@
 """Weekly OHLC candles for the Maple Leaf screener stock cards.
 
 Writes one file per symbol: assets/data/stock-weekly-<SYM>.json
-(TSLA, PLTR, MSTR, IBIT, MU, META, SPCX).
+(TSLA, PLTR, MSTR, IBIT, MU, META, SPCX, AAPL, AMZN, MSFT, NFLX, SPOT, XYZ, GOOGL, NVDA).
 
 Source: Yahoo chart API, unadjusted daily OHLC (quote open/high/low/close,
 never adjclose). Weeks are Monday-Sunday on the calendar date of each
@@ -40,7 +40,10 @@ HOLIDAYS = {
 # has not settled yet is not shipped as a completed close.
 FINAL_HM = (16, 15)
 MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-SYMS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX']
+SYMS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX',
+        'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA']
+# BRK.B omitted here: Yahoo symbol is BRK-B (hyphen), so a pure list add
+# would 404. Generate stock-weekly-BRK.B.json with an explicit Yahoo map.
 SPECS = {
     'TSLA': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
     'PLTR': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
@@ -49,6 +52,14 @@ SPECS = {
     'MU': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
     'META': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
     'SPCX': {'basis': 'listing', 'base_session': '2026-06-12', 'first_session': '2026-06-12', 'base_label': 'Listing close'},
+    'AAPL': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
+    'AMZN': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
+    'MSFT': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
+    'NFLX': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
+    'SPOT': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
+    'XYZ': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
+    'GOOGL': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
+    'NVDA': {'basis': 'ytd', 'base_session': '2025-12-31', 'first_session': '2026-01-02', 'base_label': '31 Dec close'},
 }
 
 def cents(x):

@@ -98,11 +98,14 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     };
   })();
 
-  var STOCKS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX'];
+  var STOCKS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX', 'BRK.B', 'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA'];
   var BENCH = ['BTC', 'SPY', 'QQQ'];
   var COLOR = {
     TSLA: psC('#22d3ee','#0891b2'), PLTR: psC('#a78bfa','#7c3aed'), MSTR: psC('#fb923c','#ea580c'), IBIT: psC('#38bdf8','#0284c7'),
     MU: psC('#facc15','#ca8a04'), META: psC('#fb7185','#e11d48'), SPCX: psC('#2dd4bf','#0d9488'),
+    'BRK.B': psC('#c084fc','#7e22ce'), AAPL: psC('#60a5fa','#2563eb'), AMZN: psC('#fbbf24','#d97706'),
+    MSFT: psC('#34d399','#059669'), NFLX: psC('#f87171','#dc2626'), SPOT: psC('#4ade80','#16a34a'),
+    XYZ: psC('#e879f9','#a21caf'), GOOGL: psC('#38bdf8','#0369a1'), NVDA: psC('#a3e635','#65a30d'),
     BTC: psC('#94a3b8','#475569'), SPY: psC('#64748b','#334155'), QQQ: psC('#cbd5e1','#64748b')
   };
   var CMP_V = '20261031a';
@@ -638,11 +641,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var stocks = model ? model.models.filter(function (m) { return m.kind !== 'benchmark' && CmpMath.isNum(m.pct); }) : [];
     var ranked = CmpMath.rankDesc(stocks);
     if (!ranked.length) {
-      el.textContent = 'Beta. Comparison chart, as of ' + asOfLabel() + '.';
+      el.textContent = 'Comparison chart, as of ' + asOfLabel() + '.';
       return;
     }
     var best = ranked[0], worst = ranked[ranked.length - 1];
-    el.textContent = 'Beta. Best: ' + best.sym + ' ' + CmpMath.fmtPct(best.pct) + ', worst: ' + worst.sym + ' ' + CmpMath.fmtPct(worst.pct) + ', as of ' + asOfLabel() + '.';
+    el.textContent = 'Best: ' + best.sym + ' ' + CmpMath.fmtPct(best.pct) + ', worst: ' + worst.sym + ' ' + CmpMath.fmtPct(worst.pct) + ', as of ' + asOfLabel() + '.';
   }
 
   function renderFail() {

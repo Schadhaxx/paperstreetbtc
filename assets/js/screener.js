@@ -1,6 +1,6 @@
 // Stock Screener — Maple Leaf Pack
-// Two boxes, one page: Stocks (7 rows) and Market Indicators (WTI, Gold,
-// 10-Year Treasury Yield, VIX). Each box has its own table and ONE status
+// Two boxes, one page: Stocks (16 rows) and Market Indicators (WTI, Gold,
+// 10-Year, VIX, DJIA, QQQ, USDCAD, DXY). Each box has its own table and ONE status
 // line below that table — there is no per-row Status column, and no
 // per-row status is rendered anywhere. The table status line is computed
 // from the per-row feed flags (_src / _closeDate), which are internal only
@@ -89,6 +89,7 @@
     if (v === null || v === undefined) return '—';
     if (r.unit === 'pct') return v.toFixed(2) + '%';
     if (r.unit === 'points') return v.toFixed(2);
+    if (r.unit === 'fx') return v.toFixed(4);
     return money(v);
   }
   function pct(v) {
@@ -106,6 +107,7 @@
     var sign = r.dayChange > 0 ? '+' : '';
     if (r.unit === 'pct') return sign + r.dayChange.toFixed(2) + ' pp (' + pct(r.dayChangePct) + ')';
     if (r.unit === 'points') return sign + r.dayChange.toFixed(2) + ' pts (' + pct(r.dayChangePct) + ')';
+    if (r.unit === 'fx') return sign + r.dayChange.toFixed(4) + ' (' + pct(r.dayChangePct) + ')';
     return (r.dayChange < 0 ? '-$' : sign + '$') + Math.abs(r.dayChange).toFixed(2) + ' (' + pct(r.dayChangePct) + ')';
   }
   function fmtIso(iso) {
@@ -292,6 +294,10 @@
     if (r.symbol === 'GOLD') return '$/troy oz';
     if (r.symbol === 'US10Y') return '%';
     if (r.symbol === 'VIX') return 'points';
+    if (r.symbol === 'DJIA') return 'points';
+    if (r.symbol === 'QQQ') return 'USD';
+    if (r.symbol === 'USDCAD') return 'CAD per USD';
+    if (r.symbol === 'DXY') return 'points';
     return '';
   }
   function render() {
@@ -358,7 +364,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=9')
+    fetch('assets/data/screener-pack.json?v=10')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];

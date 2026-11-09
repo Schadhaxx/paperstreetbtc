@@ -81,7 +81,6 @@
   #ind-cardline { display:none; margin:2px 0 8px; font-size:15px; font-weight:800; letter-spacing:-.01em; line-height:1.35; }
   #ind-pill { display:none; margin-top:12px; background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:999px; padding:12px 16px; font-size:14px; line-height:1.55; text-align:center; cursor:pointer; }
   #ind-status { color:var(--mut); font-size:13px; line-height:1.55; margin-top:12px; }
-  .ind-beta { display:inline-block; background:#7c2d12; color:#fdba74; border:1px solid #f97316; border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700; margin-left:8px; vertical-align:middle; }
   #ind-liveprice { display:none; font-size:15px; font-weight:800; margin-left:8px; }
   .ind-enh-btn { height:36px; padding:0 12px; font-size:13px; }
   .ind-enh-btn[aria-pressed="true"] { border-color:var(--cyan); color:var(--cyan); }
@@ -139,7 +138,6 @@
   .cmp-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
   .cmp-title h2 { white-space:nowrap; }
   .cmp-title { display:flex; align-items:center; gap:8px; min-width:0; }
-  .cmp-beta { flex:0 0 auto; height:22px; padding:0 8px; border-radius:999px; border:1px solid rgba(34,211,238,.5); color:var(--cyan); background:rgba(34,211,238,.08); font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; display:inline-flex; align-items:center; }
   .cmp-tabs { display:flex; gap:6px; }
   .cmp-tab, .cmp-chip { height:44px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:#0b1226; color:var(--txt); font-size:13px; font-weight:700; cursor:pointer; }
   .cmp-tab { padding:0 14px; }
@@ -225,14 +223,14 @@
   <header>
     <a class="brand-row" href="index.html"><picture><source type="image/webp" srcset="assets/img/owl-220.webp"><img src="assets/img/owl-220.png" alt="Paperstreet BTC"></picture><span class="brand-name">Paperstreet <span class="brand-btc">BTC</span></span></a>
     <h1>The Desk.</h1>
-    <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Your watchlist, at a glance. Seven stocks, four market indicators. Trend bars show only the size of today's move — they are not price history.</p></details>
+    <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About this page</summary><p class="sub">Your watchlist, at a glance. Sixteen stocks, eight market indicators. Trend bars show only the size of today's move — they are not price history.</p></details>
     <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
   </header>
   <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>How the boxes work</summary><p class="asof">Each box has one status line below it, saying which rows are live and which are on a dated close.</p></details>
 
   <section aria-label="Market Indicators">
   <h2>Market Indicators</h2>
-  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About the indicators</summary><p class="box-note">WTI $/barrel · Gold (COMEX futures) $/troy oz · 10-Year % (day change in percentage points) · VIX points, not a price. Tap a tile for its YTD weekly candle chart.</p></details>
+  <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About the indicators</summary><p class="box-note">WTI $/barrel · Gold (COMEX futures) $/troy oz · 10-Year % (day change in percentage points) · VIX points · DJIA points · QQQ USD · USD/CAD · DXY points. Tap a tile for its YTD weekly candle chart.</p></details>
   <div class="kpis" id="indicators-body"><p>Loading…</p></div>
   <p class="status-line" id="indicators-status">Loading status…</p>
   </section>
@@ -257,11 +255,10 @@
   <p class="status-line" id="stocks-status">Loading status…</p>
   </section>
 
-  <section class="chart-card" aria-label="Comparison chart, beta">
+  <section class="chart-card" aria-label="Comparison chart">
     <div class="cmp-head">
       <div class="cmp-title">
         <h2>Comparison chart</h2>
-        <span class="cmp-beta">Beta</span>
       </div>
       <div class="cmp-tabs" role="tablist" aria-label="Comparison view">
         <button type="button" class="cmp-tab is-on" role="tab" id="cmp-tab-lines" aria-selected="true" data-cmp-view="lines">Lines</button>
@@ -284,6 +281,15 @@
       <button type="button" class="cmp-chip" data-cmp-symbol="MU" aria-pressed="false"><i class="cmp-dot"></i>MU</button>
       <button type="button" class="cmp-chip" data-cmp-symbol="META" aria-pressed="false"><i class="cmp-dot"></i>META</button>
       <button type="button" class="cmp-chip" data-cmp-symbol="SPCX" aria-pressed="false"><i class="cmp-dot"></i>SPCX</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="BRK.B" aria-pressed="false"><i class="cmp-dot"></i>BRK.B</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="AAPL" aria-pressed="false"><i class="cmp-dot"></i>AAPL</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="AMZN" aria-pressed="false"><i class="cmp-dot"></i>AMZN</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="MSFT" aria-pressed="false"><i class="cmp-dot"></i>MSFT</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="NFLX" aria-pressed="false"><i class="cmp-dot"></i>NFLX</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="SPOT" aria-pressed="false"><i class="cmp-dot"></i>SPOT</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="XYZ" aria-pressed="false"><i class="cmp-dot"></i>XYZ</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="GOOGL" aria-pressed="false"><i class="cmp-dot"></i>GOOGL</button>
+      <button type="button" class="cmp-chip" data-cmp-symbol="NVDA" aria-pressed="false"><i class="cmp-dot"></i>NVDA</button>
     </div>
     <div class="cmp-chips" id="cmp-bench" role="group" aria-label="Benchmarks">
       <button type="button" class="cmp-chip" data-cmp-bench="BTC" aria-pressed="false">BTC</button>
@@ -304,7 +310,7 @@
       </div>
       <ol class="cmp-board" id="cmp-board"></ol>
     </div>
-    <p class="cmp-sr" id="cmp-summary">Beta. Comparison chart.</p>
+    <p class="cmp-sr" id="cmp-summary">Comparison chart.</p>
   </section>
 
   <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
@@ -312,7 +318,7 @@
 <script src="assets/vendor/chart.umd.min.js"></script>
 <div class="ind-modal" id="ind-modal" aria-hidden="true" role="dialog" aria-label="Indicator YTD weekly candle chart">
   <div class="ind-dialog">
-    <div class="ind-head"><h3 id="ind-title">Gold — YTD weekly candles</h3><span><span class="ind-beta">BETA</span><span id="ind-liveprice"></span></span><span style="display:flex;gap:8px;"><button type="button" class="ind-info-btn" id="ind-info-top" aria-label="About this chart">+</button><button type="button" class="btn" id="ind-close" aria-label="Close indicator chart">✕</button></span></div>
+    <div class="ind-head"><h3 id="ind-title">Gold — YTD weekly candles</h3><span><span id="ind-liveprice"></span></span><span style="display:flex;gap:8px;"><button type="button" class="ind-info-btn" id="ind-info-top" aria-label="About this chart">+</button><button type="button" class="btn" id="ind-close" aria-label="Close indicator chart">✕</button></span></div>
     <p class="ind-sub" id="ind-sub" hidden></p>
     <div id="ind-info-pill" role="note" tabindex="0"><button type="button" id="ind-info-x" aria-label="Dismiss">✕</button><span id="ind-info-text"></span></div>
     <p id="ind-cardline"></p>
@@ -332,9 +338,9 @@
     <button type="button" class="btn" id="ind-retry">Retry</button>
   </div>
 </div>
-<script src="assets/js/screener.js?v=scr2"></script>
-<script src="assets/js/screener-indicator-chart.js?v=stocks9"></script>
-<script src="assets/js/screener-chart.js?v=cmp6"></script>
+<script src="assets/js/screener.js?v=scr3"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks10"></script>
+<script src="assets/js/screener-chart.js?v=cmp7"></script>
 <script src="assets/js/et.js?v=et2"></script>
 <script src="assets/js/btcchart.js?v=et22"></script>
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>
