@@ -960,13 +960,38 @@ function drawLineTooltip(ctx,p,px,py,W,padT,plotH){
   if(ty+th>padT+plotH)ty=padT+plotH-th;
   if(tx<4)tx=4;
   if(tx+tw>W-4)tx=W-4-tw;
-  ctx.fillStyle='rgba(15,23,42,.92)';
-  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.fillStyle=psC('rgba(15,23,42,.92)','#ffffff');
+  ctx.strokeStyle=psC('#334155','#e2e8f0');ctx.lineWidth=1;
   ctx.beginPath();ctx.rect(tx,ty,tw,th);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#e2e8f0';ctx.textAlign='left';ctx.textBaseline='top';
-  lines.forEach(function(t,i){ctx.fillText(t,tx+8,ty+6+i*14);});
+  ctx.textAlign='left';ctx.textBaseline='top';
+  /* H1: theme colours as chart-theme.js gives Chart.js (light: title #0f172a, body #334155; dark unchanged). */
+  lines.forEach(function(t,i){ctx.fillStyle=i===0?psC('#e2e8f0','#0f172a'):psC('#e2e8f0','#334155');ctx.fillText(t,tx+8,ty+6+i*14);});
+}
+function nativeXLabels(ctx,texts,xs,L,R,W,y){
+  /* X-axis labels. Edge labels keep the usual clamp (L+30 / W-R-30), so
+     nothing moves where labels already fit. M1: where the clamped first
+     (or last) label would run into its neighbour, it moves back toward its
+     tick as Chart.js places it (staying on the canvas); any label that
+     still overlaps the previous one is skipped. */
+  var m=texts.length,pos=[],w=[],GAP=6,k;
+  for(k=0;k<m;k++){w[k]=ctx.measureText(texts[k]).width;pos[k]=Math.max(L+30,Math.min(W-R-30,xs[k]));}
+  if(m>1&&pos[0]+w[0]/2+GAP>pos[1]-w[1]/2)pos[0]=Math.max(w[0]/2+2,Math.min(pos[0],xs[0]));
+  if(m>1&&pos[m-1]-w[m-1]/2-GAP<pos[m-2]+w[m-2]/2)pos[m-1]=Math.min(W-w[m-1]/2-2,Math.max(pos[m-1],xs[m-1]));
+  var lastR=-1e9;
+  for(k=0;k<m;k++){
+    if(pos[k]-w[k]/2<lastR+GAP)continue;
+    ctx.fillText(texts[k],pos[k],y);lastR=pos[k]+w[k]/2;
+  }
+}
+function nativeThemeWatch(){
+  /* H1: colours come from psC at draw time; redraw the native line when
+     data-theme changes so a theme toggle repaints it. */
+  if(nativeThemeWatch._on||!window.MutationObserver)return;
+  nativeThemeWatch._on=true;
+  try{new MutationObserver(function(){if(lineDrawn&&lineGeom){lineHover=-1;redrawNativeLine();}}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});}catch(e){}
 }
 function nativeTooltipBind(c){
+  nativeThemeWatch();
   if(c._lineTipBound)return;
   c._lineTipBound=true;
   /* F3 — SCROLL SAFETY (Speed Option 2 rollback + round-3 pill lesson):
@@ -982,7 +1007,10 @@ function nativeTooltipBind(c){
     var cx=(ev.clientX!=null)?ev.clientX:((ev.touches&&ev.touches[0])?ev.touches[0].clientX:((ev.changedTouches&&ev.changedTouches[0])?ev.changedTouches[0].clientX:null));
     if(cx==null)return -1;
     var x=cx-r.left,L=lineGeom.pad.l,iw=lineGeom.plotW,n=lineGeom.n;
-    if(x<L||x>L+iw)return -1;
+    /* M2: the live Now dot sits on the right plot edge; accept taps a little
+       outside the plot (8px left, 12px right = the right margin) and clamp. */
+    if(x<L-8||x>L+iw+12)return -1;
+    x=Math.max(L,Math.min(L+iw,x));
     var t=(x-L)/iw;
     return Math.max(0,Math.min(n-1,Math.round(t*Math.max(1,n-1))));
   }
@@ -1072,7 +1100,7 @@ function draw1DNative(pts){
     var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
     var xs=pts.map(function(p,i){return X(i);}),ys=vals.map(function(v){return Y(v);});
     /* Y gridlines + labels (same format as the Chart.js yTick callback). */
-    ctx.strokeStyle='rgba(255,255,255,.05)';ctx.fillStyle='#9aa6bc';
+    ctx.strokeStyle=psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)');ctx.fillStyle=psC('#9aa6bc','#475569');
     ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
     ticks.forEach(function(v){
       var y=Y(v);
@@ -1092,11 +1120,8 @@ function draw1DNative(pts){
       var x=X(i);
       ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
     });
-    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#9aa6bc';
-    xIdx.forEach(function(i){
-      var dx=Math.max(L+30,Math.min(W-R-30,X(i)));
-      ctx.fillText(lab[i],dx,T+ih+6);
-    });
+    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle=psC('#9aa6bc','#475569');
+    nativeXLabels(ctx,xIdx.map(function(i){return lab[i];}),xIdx.map(function(i){return X(i);}),L,R,W,T+ih+6);
     /* Fill under the line, then the line (tension .15, same as Chart.js). */
     ctx.beginPath();
     nativeTraceLine(ctx,xs,ys,.15,{l:L,t:T,r:L+iw,b:T+ih});
@@ -1149,7 +1174,7 @@ function drawDailyTooltip(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH){
   var title=(i===n-1&&hasLive)?'Now (live) · '+d[i][0]:d[i][0];
   var lines=[{t:title,c:null}];
   if(!sx){
-    lines.push({t:'BTC '+fmt(d[i][1]),c:null});
+    lines.push({t:fmt(d[i][1]),c:null}); /* L1: Chart.js drawDaily label is fmt(raw), no 'BTC ' prefix. */
   }else{
     lines.push({t:'BTC '+fmt(d[i][1])+' ('+fp(reb.btc[i]-100)+')',c:'#22d3ee'});
     if(cmp.S&&cmp.S[i]!=null&&cmp.s0)lines.push({t:'S&P 500 '+cmp.S[i].toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(reb.spx[i]-100)+')',c:'#c4b5fd'});
@@ -1166,14 +1191,14 @@ function drawDailyTooltip(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH){
   if(ty+th>padT+plotH)ty=padT+plotH-th;
   if(tx<4)tx=4;
   if(tx+tw>W-4)tx=W-4-tw;
-  ctx.fillStyle='rgba(15,23,42,.92)';
-  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.fillStyle=psC('rgba(15,23,42,.92)','#ffffff');
+  ctx.strokeStyle=psC('#334155','#e2e8f0');ctx.lineWidth=1;
   ctx.beginPath();ctx.rect(tx,ty,tw,th);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#e2e8f0';ctx.textAlign='left';ctx.textBaseline='top';
+  ctx.textAlign='left';ctx.textBaseline='top';
   lines.forEach(function(L,j){
     var lx=tx+8;
     if(L.c){ctx.fillStyle=L.c;ctx.fillRect(lx,ty+6+j*14+2,8,8);lx+=14;}
-    ctx.fillStyle='#e2e8f0';ctx.fillText(L.t,lx,ty+6+j*14);
+    ctx.fillStyle=j===0?psC('#e2e8f0','#0f172a'):psC('#e2e8f0','#334155');ctx.fillText(L.t,lx,ty+6+j*14);
   });
 }
 function drawDailyNative(d,cmp){
@@ -1262,7 +1287,7 @@ function drawDailyNative(d,cmp){
        19 the 1/2/5 set would draw), and for a compare log view the 1/2/5
        set. (Linear ticks always get a label, so this changes nothing
        there.) The drawn ticks are what the layout hook reports. */
-    ctx.strokeStyle='rgba(255,255,255,.05)';ctx.fillStyle='#9aa6bc';
+    ctx.strokeStyle=psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)');ctx.fillStyle=psC('#9aa6bc','#475569');
     ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
     var drawnY=[];
     yTicks.forEach(function(v){
@@ -1282,11 +1307,8 @@ function drawDailyNative(d,cmp){
       var x=X(i);
       ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
     });
-    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#9aa6bc';
-    xIdx.forEach(function(i){
-      var dx=Math.max(L+30,Math.min(W-R-30,X(i)));
-      ctx.fillText(n>400?lab[i].slice(0,4):lab[i].slice(5),dx,T+ih+6);
-    });
+    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle=psC('#9aa6bc','#475569');
+    nativeXLabels(ctx,xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);}),xIdx.map(function(i){return X(i);}),L,R,W,T+ih+6);
     /* Trace a dataset's line. spanGaps bridges nulls into one path
        (S&P, MSTR); without it the line breaks at nulls (Gold). */
     function traceDS(ys,spanGaps){

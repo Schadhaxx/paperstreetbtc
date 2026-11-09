@@ -89,8 +89,8 @@ chk('draw1DNative does NOT cap DPR at 2', !/function draw1DNative\(pts\)\{[\s\S]
 
 /* Flag F6 — hardcoded dark Chart.js colours, not "improved" */
 chk('native line colour is #22d3ee', /ctx\.strokeStyle='#22d3ee';ctx\.lineWidth=2;/.test(panel));
-chk('native y labels are #9aa6bc', /ctx\.fillStyle='#9aa6bc';\n    ctx\.font='11px Inter, sans-serif';ctx\.textAlign='right'/.test(panel));
-chk('native gridlines are rgba(255,255,255,.05)', /ctx\.strokeStyle='rgba\(255,255,255,\.05\)';ctx\.fillStyle='#9aa6bc';/.test(panel));
+chk('native y labels are #9aa6bc', /ctx\.fillStyle=psC\('#9aa6bc','#475569'\);\n    ctx\.font='11px Inter, sans-serif';ctx\.textAlign='right'/.test(panel));
+chk('native gridlines are rgba(255,255,255,.05)', /ctx\.strokeStyle=psC\('rgba\(255,255,255,\.05\)','rgba\(15,23,42,\.08\)'\);ctx\.fillStyle=psC\('#9aa6bc','#475569'\);/.test(panel));
 chk('native gradient stops match the Chart.js fill', /g\.addColorStop\(0,'rgba\(34,211,238,\.28\)'\);[\s\S]*?g\.addColorStop\(1,'rgba\(34,211,238,0\)'\);/.test(panel));
 chk('native line tension is .15 (not the YTD 0.3/0.25)', /nativeTraceLine\(ctx,xs,ys,\.15,\{l:L,t:T,r:L\+iw,b:T\+ih\}\)/.test(panel));
 
