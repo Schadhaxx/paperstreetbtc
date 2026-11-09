@@ -42,7 +42,8 @@ chk('panel has nativeTraceLine implemented (Chart.js splineCurve, Catmull-Rom)',
 chk('panel has nativeGradientFill implemented', /function nativeGradientFill\(ctx,x,y,w,h\)\{[\s\S]*?createLinearGradient/.test(panel));
 chk('panel has nativeTooltipBind implemented', /function nativeTooltipBind\(c\)\{[\s\S]*?addEventListener\('pointermove'/.test(panel));
 chk('panel has nativeTooltipHide implemented', /function nativeTooltipHide\(\)\{[\s\S]*?lineHover=-1/.test(panel));
-chk('panel has nativeResize implemented', /function nativeResize\(\)\{redrawLine\(\);\}/.test(panel));
+chk('panel has nativeResize implemented (rAF-coalesced)', /function nativeResize\(\)\{if\(nrRaf\)return;var f=function\(\)\{nrRaf=0;redrawLine\(\);\};nrRaf=window\.requestAnimationFrame\?window\.requestAnimationFrame\(f\):setTimeout\(f,16\);\}/.test(panel));
+chk('pending resize frame cancelled by clearLineChart, both Chart.js fallbacks and close()', (panel.match(/cancelNativeResize\(\);/g)||[]).length === 4 && /function cancelNativeResize\(\)\{if\(nrRaf\)/.test(panel));
 chk('panel has drawLineTooltip', /function drawLineTooltip\(ctx,p,px,py,W,padT,plotH\)/.test(panel));
 
 /* NATIVE_LINE flag + wiring */
@@ -69,7 +70,7 @@ chk('drawDaily guard relaxed for the native path (no Chart.js needed when native
 chk('draw() still routes to draw1D/drawDaily', /function draw\(\)\{if\(rng==='1D'\)\{draw1D\(\);\}else/.test(panel));
 
 /* Flag F1 — the ch tangle resolved */
-chk('panel has clearLineChart helper', /function clearLineChart\(\)\{if\(ch\)\{ch\.destroy\(\);ch=null;\}lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window\.__BTC_LINE_LAYOUT=null;window\.__BTC_LINE_HOVER=-1;\}/.test(panel));
+chk('panel has clearLineChart helper', /function clearLineChart\(\)\{if\(ch\)\{ch\.destroy\(\);ch=null;\}lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window\.__BTC_LINE_LAYOUT=null;window\.__BTC_LINE_HOVER=-1;cancelNativeResize\(\);\}/.test(panel));
 chk('panel has lineDrawn flag', /var lineDrawn=false;/.test(panel));
 chk('panel has redrawLine entry point', /function redrawLine\(\)\{if\(lineDrawn\)draw\(\);\}/.test(panel));
 const bareCh = (panel.match(/\n\s*if\(ch\)\{ch\.destroy\(\);ch=null;\}\n/g) || []).length;

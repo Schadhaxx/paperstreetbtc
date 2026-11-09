@@ -671,7 +671,7 @@ function draw1D(){
   /* Stage 2 Step 2: native 1D line behind the NATIVE_LINE flag; Chart.js stays the fallback. */
   var nativeOK=false;
   if(NATIVE_LINE){if(ch){ch.destroy();ch=null;}nativeOK=draw1DNative(pts);lineDrawn=nativeOK;}
-  if(!nativeOK){if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});lineDrawn=false;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;}
+  if(!nativeOK){if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});lineDrawn=false;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;cancelNativeResize();}
 }
 
 /* Range-row scroll hint, 29 Oct 2026: tabs run shortest (1D) to longest (Max) left to right, so on a phone the longer ranges sit off-screen to the right and are reached by swiping left. The hint shows only while there is still more to the right. */
@@ -801,7 +801,7 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   /* Stage 2 Step 3: native range line behind the NATIVE_LINE flag; Chart.js stays the fallback. */
   var nativeOK=false;
   if(NATIVE_LINE){if(ch){ch.destroy();ch=null;}nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG});lineDrawn=nativeOK;}
-  if(!nativeOK){if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});lineDrawn=false;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;}}
+  if(!nativeOK){if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});lineDrawn=false;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;cancelNativeResize();}}
 /* ===== Stage 2 native line renderer — Step 2: 1D line (8 Nov 2026) =====
    draw1DNative implements the 1D intraday line natively (smooth curve,
    cyan gradient fill, axes, labels, live "Now" point, tap/hover tooltip).
@@ -824,11 +824,16 @@ var lineGeom=null; /* layout of the last native 1D draw (hit-testing + parity). 
 /* F1: clear the line chart — destroys any Chart.js instance AND clears the
    native line flag. Call this wherever the old code did `if(ch){ch.destroy();ch=null;}`
    before drawing candles (the line view is leaving the canvas). */
-function clearLineChart(){if(ch){ch.destroy();ch=null;}lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;}
+function clearLineChart(){if(ch){ch.destroy();ch=null;}lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;cancelNativeResize();}
 /* F1: redraw the native line at the current size (Chart.js responsive:true
    replacement — flag F4). No-op unless the native 1D line is showing. */
 function redrawLine(){if(lineDrawn)draw();}
-function nativeResize(){redrawLine();}
+/* Resize coalescing: iOS fires many resize events while the toolbar collapses
+   during scroll; redraw at most once per animation frame. Teardown
+   (clearLineChart), the Chart.js fallback and close() cancel a pending frame. */
+var nrRaf=0;
+function cancelNativeResize(){if(nrRaf){if(window.cancelAnimationFrame)window.cancelAnimationFrame(nrRaf);else clearTimeout(nrRaf);nrRaf=0;}}
+function nativeResize(){if(nrRaf)return;var f=function(){nrRaf=0;redrawLine();};nrRaf=window.requestAnimationFrame?window.requestAnimationFrame(f):setTimeout(f,16);}
 /* Redraw the native line with the current hover state (tooltip show/hide).
    Dispatches on the layout kind: the 1D line or the range daily line.
    Guarded on lineDrawn so a scroll after switching back to the Chart.js
@@ -1409,7 +1414,7 @@ function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&
   $('bcRr').textContent='Loading…';$('bcX').focus();
   Promise.all([getData(),needChart()]).then(draw).catch(function(){if(!window.Chart&&P.showErr){P.showErr();}else{$('bcRr').textContent='Chart data unavailable right now.';}});}
 function close(){if(INLINE)return;if(!dlg||dlg.hidden)return;
-  var finish=function(){dlg.hidden=true;dim.hidden=true;dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
+  var finish=function(){cancelNativeResize();dlg.hidden=true;dim.hidden=true;dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
     [pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
     var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();};
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){

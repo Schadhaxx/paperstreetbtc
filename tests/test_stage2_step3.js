@@ -52,7 +52,7 @@ chk('drawDailyNative layout carries kind daily', /lineGeom=\{kind:'daily',pad/.t
 chk('drawDaily routes to drawDailyNative when NATIVE_LINE is true',
   /if\(NATIVE_LINE\)\{if\(ch\)\{ch\.destroy\(\);ch=null;\}nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG\}\);lineDrawn=nativeOK;\}/.test(panel));
 chk('drawDaily falls back to Chart.js when native fails or flag is off',
-  /if\(!nativeOK\)\{if\(ch\)ch\.destroy\(\);ch=new Chart\(c,\{type:'line',data:\{labels:lab,datasets:ds\},options:opts\}\);lineDrawn=false;window\.__BTC_LINE_LAYOUT=null;window\.__BTC_LINE_HOVER=-1;\}\}/.test(panel));
+  /if\(!nativeOK\)\{if\(ch\)ch\.destroy\(\);ch=new Chart\(c,\{type:'line',data:\{labels:lab,datasets:ds\},options:opts\}\);lineDrawn=false;window\.__BTC_LINE_LAYOUT=null;window\.__BTC_LINE_HOVER=-1;cancelNativeResize\(\);\}\}/.test(panel));
 chk('drawDaily guard relaxed for the native path (no Chart.js needed when native is on)',
   /function drawDaily\(\)\{if\(!DATA\)return;if\(!NATIVE_LINE&&!window\.Chart\)return;/.test(panel));
 chk('draw-failure isolation records __BTC_DRAWERR for the daily line', /window\.__BTC_DRAWERR=\{where:'drawDailyNative'/.test(panel));
