@@ -2,14 +2,19 @@
 """tools/desk_intraday.py — offline fixtures. No network.
 
 Covers: refresh-in-place (past weeks byte-identical), new-week append,
-fail-closed on bad Yahoo/fixture data, BRK.B -> BRK-B, CADUSD = CADUSD=X
+finalise-a-past-in-progress-week before appending (and refuse to append
+when it cannot be finalised), the session-open label ("(session open),
+week not finished" while the market is open; "completed" only after the
+close), indicator holidays from the shared NYSE list (2027+), fail-closed
+on bad Yahoo/fixture data, a null row for today before the first trade
+("no bar yet", not a failure), BRK.B -> BRK-B, CADUSD = CADUSD=X
 ~0.709, the ET time gate (hours / holiday / early close, EST + EDT,
 10 PM ET outside), tzdata fail-safe (missing/stale zone skips the run),
 holiday/early-close list coverage (fails when a year is not covered),
-the partial-failure rule (warn naming stale symbols; fail if > 3 fail),
-Yahoo 429 (one 429 fails closed, two in a row abort), and
-commit-only-on-change (no write when nothing changed, even at a later
---now).
+the partial-failure rule (warn naming stale symbols; fail if > 3 fail;
+::warning:: on stdout), Yahoo 429 (one 429 fails closed, two in a row
+abort and name the never-tried symbols), and commit-only-on-change (no
+write when nothing changed, even at a later --now).
 """
 import copy, datetime as dt, io, json, os, shutil, subprocess, sys, tempfile
 import urllib.error, urllib.request
@@ -60,6 +65,16 @@ def bar(date, o, h, l, c, vol=None):
         r['volume'] = vol
     return r
 
+# Fixture bars for the week of Mon 5 Jan 2026 (Mon-Fri), TSLA.
+PREV_WEEK_BARS = [
+    bar('2026-01-05', 453.00, 455.00, 451.00, 454.00, 900),
+    bar('2026-01-06', 454.00, 456.00, 452.00, 455.00, 950),
+    bar('2026-01-07', 455.00, 457.00, 453.00, 456.00, 1000),
+    bar('2026-01-08', 456.00, 458.00, 454.00, 457.00, 1050),
+    bar('2026-01-09', 457.00, 459.00, 455.00, 458.00, 1100),
+]
+# Recomputed candle from PREV_WEEK_BARS: open 453, high 459, low 451, close 458, days 5, volume 5000.
+
 # Fixture bars for the week of Mon 12 Jan 2026 (Mon-Thu), TSLA.
 WEEK_BARS = [
     bar('2026-01-12', 453.00, 455.00, 451.00, 454.00, 1000),
@@ -98,21 +113,45 @@ try:
 finally:
     shutil.rmtree(td, ignore_errors=True)
 
-# --- (b) new week appends, past weeks untouched ---
+# --- (b) new week appends; a past week still in progress is finalised first ---
 td = tempfile.mkdtemp(prefix='di-')
 try:
     past = wk('2026-01-05', 5, 453.00, 462.50, 449.80, 460.50, 5000)
     doc = stock_doc([past], asof='2026-01-09', last='2026-01-09')
     open(os.path.join(td, 'stock-weekly-TSLA.json'), 'w').write(json.dumps(doc, indent=2) + '\n')
-    fx = {'now': '2026-01-13T12:00:00-05:00', 'stocks': {'TSLA': WEEK_BARS[:2]}}
+    # Fixture covers BOTH weeks: the previous week (to finalise) and the
+    # current week (to append). Without the previous week's bars the run
+    # refuses to append — it must not freeze stale in-progress values.
+    fx = {'now': '2026-01-13T12:00:00-05:00', 'stocks': {'TSLA': PREV_WEEK_BARS + WEEK_BARS[:2]}}
     fxp = os.path.join(td, 'fx.json'); json.dump(fx, open(fxp, 'w'))
     code, out, err = run_cli(['--fixture', fxp, '--out-dir', td, '--symbol', 'TSLA'])
     chk('(b) append CLI exit 0', code == 0, err)
     new = json.load(open(os.path.join(td, 'stock-weekly-TSLA.json')))
-    chk('(b) past week untouched', new['weeks'][0] == past, new['weeks'][0])
+    # The past week was still in progress (stale values), so it is
+    # replaced with the re-fetched final values — not frozen as final.
+    w0 = new['weeks'][0]
+    chk('(b) past in-progress week finalised, not frozen',
+        (w0['open'], w0['high'], w0['low'], w0['close'], w0['days']) == (453.0, 459.0, 451.0, 458.0, 5), w0)
+    chk('(b) finalised week keeps its Monday and volume', w0['monday'] == '2026-01-05' and w0.get('volume') == 5000, w0)
     chk('(b) new week appended', len(new['weeks']) == 2 and new['weeks'][1]['monday'] == '2026-01-12', new['weeks'])
     chk('(b) appended candle is Mon-Tue only', (new['weeks'][1]['open'], new['weeks'][1]['close'], new['weeks'][1]['days']) == (453.0, 455.0, 2), new['weeks'][1])
     chk('(b) asOf is the last bar', new['asOf'] == '2026-01-13', new)
+finally:
+    shutil.rmtree(td, ignore_errors=True)
+# A past week that is already final (inProgress None) is byte-identical
+# on append — only an in-progress week is ever rewritten.
+td = tempfile.mkdtemp(prefix='di-')
+try:
+    past = wk('2026-01-05', 5, 453.00, 462.50, 449.80, 460.50, 5000)
+    doc = stock_doc([past], asof='2026-01-09', last='2026-01-09', prog=False)
+    open(os.path.join(td, 'stock-weekly-TSLA.json'), 'w').write(json.dumps(doc, indent=2) + '\n')
+    fx = {'now': '2026-01-13T12:00:00-05:00', 'stocks': {'TSLA': WEEK_BARS[:2]}}
+    fxp = os.path.join(td, 'fx.json'); json.dump(fx, open(fxp, 'w'))
+    code, out, err = run_cli(['--fixture', fxp, '--out-dir', td, '--symbol', 'TSLA'])
+    chk('(b) final past week: append exit 0', code == 0, err)
+    new = json.load(open(os.path.join(td, 'stock-weekly-TSLA.json')))
+    chk('(b) final past week byte-identical', new['weeks'][0] == past, new['weeks'][0])
+    chk('(b) final past week: new week appended', len(new['weeks']) == 2 and new['weeks'][1]['monday'] == '2026-01-12', new['weeks'])
 finally:
     shutil.rmtree(td, ignore_errors=True)
 
@@ -403,6 +442,7 @@ try:
     chk('(j) 4 failures: run exits 1', code == 1, f'code={code} out={out} err={err}')
     chk('(j) 4 failures: warning names all 4 stale symbols',
         all(s in err for s in ('TSLA', 'PLTR', 'MSTR', 'IBIT')) and 'stale' in err.lower(), err)
+    chk('(j) 4 failures: ::warning:: is on stdout (annotation)', '::warning::' in out, out)
     chk('(j) 4 failures: the good symbol still refreshed', json.load(open(os.path.join(td, 'stock-weekly-MU.json')))['weeks'][1]['close'] == 457.0)
     chk('(j) 4 failures: a bad symbol file is untouched', json.load(open(os.path.join(td, 'stock-weekly-TSLA.json')))['weeks'][1]['close'] == 455.00)
 finally:
@@ -415,6 +455,7 @@ try:
     chk('(j) 3 failures: run exits 0', code == 0, f'code={code} out={out} err={err}')
     chk('(j) 3 failures: warning still names the 3 stale symbols',
         all(s in err for s in ('TSLA', 'PLTR', 'MSTR')) and 'stale' in err.lower(), err)
+    chk('(j) 3 failures: ::warning:: is on stdout (annotation)', '::warning::' in out, out)
 finally:
     shutil.rmtree(td, ignore_errors=True)
 
@@ -490,6 +531,7 @@ try:
         D.fetch_yahoo_payload = orig_fetch
     chk('(k) two 429s in a row: run exits 1', code == 1, f'code={code} out={out} err={err}')
     chk('(k) two 429s in a row: output says ABORTING and names 429', 'ABORTING' in err and '429' in err, err)
+    chk('(k) two 429s in a row: abort names the never-tried symbols', 'Never tried' in err and 'MSTR' in err, err)
     chk('(k) two 429s in a row: MSTR file untouched (run stopped before it)',
         open(os.path.join(td, 'stock-weekly-MSTR.json'), 'rb').read() == mstr_before, out + err)
     chk('(k) two 429s in a row: TSLA/PLTR files untouched (kept last good)',
@@ -576,6 +618,231 @@ try:
     code2, out2, err2 = run_cli(['--fixture', fxp2, '--out-dir', td, '--symbol', 'CADUSD'])
     after = open(p, 'rb').read()
     chk('(l) indicator same values, later --now: file byte-identical', code2 == 0 and before == after, out2 + err2)
+finally:
+    shutil.rmtree(td, ignore_errors=True)
+
+# --- (m) finalise the previous in-progress week before appending (fix 3) ---
+# If the previous week cannot be finalised, the run refuses to append.
+td = tempfile.mkdtemp(prefix='di-')
+try:
+    past = wk('2026-01-05', 5, 453.00, 462.50, 449.80, 460.50, 5000)
+    doc = stock_doc([past], asof='2026-01-09', last='2026-01-09')
+    p = os.path.join(td, 'stock-weekly-TSLA.json')
+    open(p, 'w').write(json.dumps(doc, indent=2) + '\n')
+    before = open(p, 'rb').read()
+    # Fixture has ONLY the current week's bars — the previous week cannot
+    # be finalised, so the run must refuse to append (no frozen stale week).
+    fx = {'now': '2026-01-13T12:00:00-05:00', 'stocks': {'TSLA': WEEK_BARS[:2]}}
+    fxp = os.path.join(td, 'fx.json'); json.dump(fx, open(fxp, 'w'))
+    code, out, err = run_cli(['--fixture', fxp, '--out-dir', td, '--symbol', 'TSLA'])
+    chk('(m) cannot finalise prev week: run exits 1', code == 1, f'code={code} out={out} err={err}')
+    chk('(m) cannot finalise prev week: file unchanged (no append)', open(p, 'rb').read() == before, out + err)
+    chk('(m) cannot finalise prev week: message says so', 'cannot finalise previous week' in err, err)
+finally:
+    shutil.rmtree(td, ignore_errors=True)
+# A re-fetch covering fewer days than the shipped week is also refused.
+td = tempfile.mkdtemp(prefix='di-')
+try:
+    past = wk('2026-01-05', 5, 453.00, 462.50, 449.80, 460.50, 5000)
+    doc = stock_doc([past], asof='2026-01-09', last='2026-01-09')
+    p = os.path.join(td, 'stock-weekly-TSLA.json')
+    open(p, 'w').write(json.dumps(doc, indent=2) + '\n')
+    before = open(p, 'rb').read()
+    # Re-fetch covers only Mon-Wed of the previous week (3 days < shipped 5).
+    fx = {'now': '2026-01-13T12:00:00-05:00', 'stocks': {'TSLA': PREV_WEEK_BARS[:3] + WEEK_BARS[:2]}}
+    fxp = os.path.join(td, 'fx.json'); json.dump(fx, open(fxp, 'w'))
+    code, out, err = run_cli(['--fixture', fxp, '--out-dir', td, '--symbol', 'TSLA'])
+    chk('(m) prev week fewer days: run exits 1', code == 1, f'code={code} out={out} err={err}')
+    chk('(m) prev week fewer days: file unchanged (no append)', open(p, 'rb').read() == before, out + err)
+finally:
+    shutil.rmtree(td, ignore_errors=True)
+# Indicators finalise the same way (CADUSD, UTC weeks).
+td = tempfile.mkdtemp(prefix='di-')
+try:
+    past = wk('2026-01-05', 5, 0.7275, 0.7278, 0.7192, 0.7213)
+    doc = {'source': 'Yahoo CADUSD=X (CAD/USD), USD per 1 CAD', 'asOf': '9 Jan 2026, 12:00 PM ET',
+           'note': ('Weekly candles, UTC Monday-Sunday weeks, YTD 2026. '
+                    'Values are USD per 1 CAD (Yahoo CADUSD=X). Weekly snapshot — the latest week is in progress until it closes.'),
+           'weeks': [past], 'inProgress': 'in progress, as of 9 Jan 2026, 12:00 PM ET'}
+    open(os.path.join(td, 'usdcad-weekly.json'), 'w').write(json.dumps(doc, indent=2) + '\n')
+    prev_bars = [bar('2026-01-05', 0.7275, 0.7280, 0.7270, 0.7278),
+                 bar('2026-01-06', 0.7278, 0.7285, 0.7272, 0.7280),
+                 bar('2026-01-07', 0.7280, 0.7288, 0.7275, 0.7282),
+                 bar('2026-01-08', 0.7282, 0.7290, 0.7278, 0.7285),
+                 bar('2026-01-09', 0.7285, 0.7292, 0.7280, 0.7288)]
+    cur_bars = [bar('2026-01-12', 0.7080, 0.7095, 0.7074, 0.7088),
+                bar('2026-01-13', 0.7088, 0.7106, 0.7080, 0.7090)]
+    fx = {'now': '2026-01-13T12:00:00-05:00', 'indicators': {'CADUSD': prev_bars + cur_bars}}
+    fxp = os.path.join(td, 'fx.json'); json.dump(fx, open(fxp, 'w'))
+    code, out, err = run_cli(['--fixture', fxp, '--out-dir', td, '--symbol', 'CADUSD'])
+    chk('(m) indicator append exit 0', code == 0, err)
+    new = json.load(open(os.path.join(td, 'usdcad-weekly.json')))
+    w0 = new['weeks'][0]
+    chk('(m) indicator past week finalised',
+        (w0['open'], w0['high'], w0['low'], w0['close'], w0['days']) == (0.7275, 0.7292, 0.727, 0.7288, 5), w0)
+    chk('(m) indicator new week appended', len(new['weeks']) == 2 and new['weeks'][1]['monday'] == '2026-01-12', new['weeks'])
+finally:
+    shutil.rmtree(td, ignore_errors=True)
+
+# --- (n) session-open label: "(session open), week not finished" while the market is open (fix 4) ---
+def sess(iso):
+    return D.session_open(SW.parse_now(iso))
+chk('(n) session_open: Tue 10:00 is open', sess('2026-01-13T10:00:00-05:00') is True)
+chk('(n) session_open: Tue 09:30 is open', sess('2026-01-13T09:30:00-05:00') is True)
+chk('(n) session_open: Tue 09:29 is not open', sess('2026-01-13T09:29:00-05:00') is False)
+chk('(n) session_open: Tue 15:59 is open', sess('2026-01-13T15:59:00-05:00') is True)
+chk('(n) session_open: Tue 16:00 is not open (closed)', sess('2026-01-13T16:00:00-05:00') is False)
+chk('(n) session_open: Tue 08:00 is not open', sess('2026-01-13T08:00:00-05:00') is False)
+chk('(n) session_open: Thanksgiving is not open', sess('2026-11-26T10:00:00-05:00') is False)
+chk('(n) session_open: Saturday is not open', sess('2026-01-17T10:00:00-05:00') is False)
+chk('(n) session_open: early-close Fri 27 Nov 12:59 is open', sess('2026-11-27T12:59:00-05:00') is True)
+chk('(n) session_open: early-close Fri 27 Nov 13:00 is not open', sess('2026-11-27T13:00:00-05:00') is False)
+chk('(n) session_open: early-close Fri 27 Nov 10:00 is open', sess('2026-11-27T10:00:00-05:00') is True)
+def stock_label_at(now_iso, bars):
+    """Refresh TSLA (current week 12 Jan) at `now_iso`; return (code, inProgress, note)."""
+    td = tempfile.mkdtemp(prefix='di-')
+    try:
+        past = wk('2026-01-05', 5, 453.00, 462.50, 449.80, 460.50, 5000)
+        cur = wk('2026-01-12', 4, 453.00, 462.50, 449.80, 455.00, 4000)
+        doc = stock_doc([past, cur])
+        open(os.path.join(td, 'stock-weekly-TSLA.json'), 'w').write(json.dumps(doc, indent=2) + '\n')
+        fx = {'now': now_iso, 'stocks': {'TSLA': bars}}
+        fxp = os.path.join(td, 'fx.json'); json.dump(fx, open(fxp, 'w'))
+        code, out, err = run_cli(['--fixture', fxp, '--out-dir', td, '--symbol', 'TSLA'])
+        new = json.load(open(os.path.join(td, 'stock-weekly-TSLA.json')))
+        return code, new.get('inProgress'), new.get('note', '')
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
+# Tue 13 Jan 10:00 AM, session open: "(session open), week not finished", never "completed".
+code, prog, note = stock_label_at('2026-01-13T10:00:00-05:00', WEEK_BARS[:2])
+chk('(n) session open: exit 0', code == 0)
+chk('(n) session open: label says (session open), week not finished',
+    isinstance(prog, str) and '(session open)' in prog and 'week not finished' in prog, prog)
+chk('(n) session open: label never says completed', isinstance(prog, str) and 'completed' not in prog, prog)
+# Tue 13 Jan 5:00 PM, after the close: "through last completed session".
+code, prog, note = stock_label_at('2026-01-13T17:00:00-05:00', WEEK_BARS[:2])
+chk('(n) after close: label says through last completed session',
+    isinstance(prog, str) and 'through last completed session' in prog, prog)
+# Tue 13 Jan 8:00 AM, before the open: last session (Monday) is completed.
+code, prog, note = stock_label_at('2026-01-13T08:00:00-05:00', WEEK_BARS[:1])
+chk('(n) before open: label says through last completed session',
+    isinstance(prog, str) and 'through last completed session 12 Jan 2026' in prog, prog)
+# Fri 16 Jan 4:30 PM, after the settle: the week is a final close.
+fri_bars = WEEK_BARS + [bar('2026-01-16', 457.00, 459.00, 455.00, 458.00, 1400)]
+code, prog, note = stock_label_at('2026-01-16T16:30:00-05:00', fri_bars)
+chk('(n) Fri after settle: week is final (inProgress None)', code == 0 and prog is None, prog)
+chk('(n) Fri after settle: note says final close', 'final close' in note, note)
+# Fri 16 Jan 4:00 PM, at the close but before the 4:15 settle: not final yet.
+code, prog, note = stock_label_at('2026-01-16T16:00:00-05:00', fri_bars)
+chk('(n) Fri at close, before settle: not final, completed session',
+    isinstance(prog, str) and 'through last completed session' in prog, prog)
+# Early-close Fri 27 Nov 2026: session open at noon, week final after 1:15 PM.
+def early_close_label_at(now_iso):
+    td = tempfile.mkdtemp(prefix='di-')
+    try:
+        past = wk('2026-11-16', 5, 453.00, 462.50, 449.80, 460.50, 5000)
+        cur = wk('2026-11-23', 3, 453.00, 457.00, 451.00, 456.00, 3000)
+        doc = stock_doc([past, cur], asof='2026-11-25', last='2026-11-25')
+        open(os.path.join(td, 'stock-weekly-TSLA.json'), 'w').write(json.dumps(doc, indent=2) + '\n')
+        bars = [bar('2026-11-23', 453.00, 455.00, 451.00, 454.00, 1000),
+                bar('2026-11-24', 454.00, 456.00, 452.00, 455.00, 1100),
+                bar('2026-11-25', 455.00, 457.00, 453.00, 456.00, 1200),
+                bar('2026-11-27', 456.00, 458.00, 454.00, 457.00, 1300)]
+        fx = {'now': now_iso, 'stocks': {'TSLA': bars}}
+        fxp = os.path.join(td, 'fx.json'); json.dump(fx, open(fxp, 'w'))
+        code, out, err = run_cli(['--fixture', fxp, '--out-dir', td, '--symbol', 'TSLA'])
+        new = json.load(open(os.path.join(td, 'stock-weekly-TSLA.json')))
+        return code, new.get('inProgress'), new.get('note', '')
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
+code, prog, note = early_close_label_at('2026-11-27T12:00:00-05:00')
+chk('(n) early-close Fri noon: session open label', code == 0 and isinstance(prog, str) and '(session open)' in prog, prog)
+code, prog, note = early_close_label_at('2026-11-27T14:00:00-05:00')
+chk('(n) early-close Fri 2 PM: week is final (inProgress None)', code == 0 and prog is None, prog)
+
+# --- (o) indicator holiday list covers 2027+ (fix 5) ---
+def ind_payload(rows):
+    """rows: (date_iso, o, h, l, c); None values make a null-OHLC row."""
+    ts, o, h, l, c = [], [], [], [], []
+    for d, oo, hh, ll, cc in rows:
+        dd = dt.date.fromisoformat(d)
+        ts.append(int(dt.datetime(dd.year, dd.month, dd.day, 12, 0, tzinfo=dt.timezone.utc).timestamp()))
+        o.append(oo); h.append(hh); l.append(ll); c.append(cc)
+    return {'timestamp': ts, 'indicators': {'quote': [{'open': o, 'high': h, 'low': l, 'close': c}]}}
+# A null row on a 2027 holiday (Mon 18 Jan 2027, MLK) is skipped — the old
+# 2026-only list raised on it.
+p = ind_payload([('2027-01-18', None, None, None, None), ('2027-01-19', 100.0, 101.0, 99.0, 100.5)])
+bars = IW.bars_from_payload('WTI', p)
+chk('(o) null row on 2027 holiday (18 Jan) is skipped', set(bars) == {dt.date(2027, 1, 19)}, bars)
+# A null row on a 2026 holiday is still skipped (regression).
+p = ind_payload([('2026-01-19', None, None, None, None), ('2026-01-20', 100.0, 101.0, 99.0, 100.5)])
+bars = IW.bars_from_payload('WTI', p)
+chk('(o) null row on 2026 holiday (19 Jan) is skipped', set(bars) == {dt.date(2026, 1, 20)}, bars)
+# A null row on a 2027 NON-holiday still fails closed (not silently skipped).
+p = ind_payload([('2027-01-20', None, None, None, None), ('2027-01-19', 100.0, 101.0, 99.0, 100.5)])
+try:
+    IW.bars_from_payload('WTI', p)
+    chk('(o) null row on 2027 non-holiday still raises', False, 'no error raised')
+except RuntimeError as e:
+    chk('(o) null row on 2027 non-holiday still raises', 'null OHLC' in str(e), str(e))
+# The list itself is the shared NYSE list plus 25 Dec 2025.
+chk('(o) indicator holidays are stock_weekly.HOLIDAYS + 2025-12-25',
+    '2027-01-18' in SW.HOLIDAYS and '2028-12-25' in SW.HOLIDAYS and '2025-12-25' not in SW.HOLIDAYS)
+
+# --- (p) a null row for TODAY before the first trade is "no bar yet", not a failure ---
+def yahoo_payload_null_today(valid_rows, null_date, tz):
+    """Valid bars + one null-OHLC row dated `null_date` (noon in `tz`)."""
+    ts, o, h, l, c = [], [], [], [], []
+    for r in valid_rows:
+        d = dt.date.fromisoformat(r['date'])
+        ts.append(int(dt.datetime(d.year, d.month, d.day, 12, 0, tzinfo=tz).timestamp()))
+        o.append(r['open']); h.append(r['high']); l.append(r['low']); c.append(r['close'])
+    d = dt.date.fromisoformat(null_date)
+    ts.append(int(dt.datetime(d.year, d.month, d.day, 12, 0, tzinfo=tz).timestamp()))
+    o.append(None); h.append(None); l.append(None); c.append(None)
+    return {'meta': {'currency': 'USD'}, 'timestamp': ts,
+            'indicators': {'quote': [{'open': o, 'high': h, 'low': l, 'close': c}]}}
+# Stock: null row for today (Thu 15 Jan) before the first trade -> skipped, exit 0.
+td = tempfile.mkdtemp(prefix='di-')
+try:
+    past = wk('2026-01-05', 5, 453.00, 462.50, 449.80, 460.50, 5000)
+    cur = wk('2026-01-12', 3, 453.00, 456.00, 451.00, 455.00, 3000)
+    doc = stock_doc([past, cur])
+    p = os.path.join(td, 'stock-weekly-TSLA.json')
+    open(p, 'w').write(json.dumps(doc, indent=2) + '\n')
+    before = open(p, 'rb').read()
+    orig_fetch = D.fetch_yahoo_payload
+    def fake_fetch_null_today(ysym, since):
+        return yahoo_payload_null_today(WEEK_BARS[:3], '2026-01-15', NY_TZ)
+    D.fetch_yahoo_payload = fake_fetch_null_today
+    try:
+        code, out, err = run_main_in_process(['--out-dir', td, '--now', '2026-01-15T12:00:00-05:00', '--symbol', 'TSLA'])
+    finally:
+        D.fetch_yahoo_payload = orig_fetch
+    chk('(p) null row for today: run exits 0 (skipped, not failed)', code == 0, f'code={code} out={out} err={err}')
+    chk('(p) null row for today: file unchanged', open(p, 'rb').read() == before, out + err)
+    chk('(p) null row for today: message says no bar yet', 'no bar for today yet' in out, out + err)
+finally:
+    shutil.rmtree(td, ignore_errors=True)
+# A null row on a PAST day (not today) still fails closed.
+td = tempfile.mkdtemp(prefix='di-')
+try:
+    past = wk('2026-01-05', 5, 453.00, 462.50, 449.80, 460.50, 5000)
+    cur = wk('2026-01-12', 3, 453.00, 456.00, 451.00, 455.00, 3000)
+    doc = stock_doc([past, cur])
+    p = os.path.join(td, 'stock-weekly-TSLA.json')
+    open(p, 'w').write(json.dumps(doc, indent=2) + '\n')
+    before = open(p, 'rb').read()
+    orig_fetch = D.fetch_yahoo_payload
+    def fake_fetch_null_past(ysym, since):
+        return yahoo_payload_null_today(WEEK_BARS[:2], '2026-01-14', NY_TZ)
+    D.fetch_yahoo_payload = fake_fetch_null_past
+    try:
+        code, out, err = run_main_in_process(['--out-dir', td, '--now', '2026-01-15T12:00:00-05:00', '--symbol', 'TSLA'])
+    finally:
+        D.fetch_yahoo_payload = orig_fetch
+    chk('(p) null row on a past day: run exits 1 (fails closed)', code == 1, f'code={code} out={out} err={err}')
+    chk('(p) null row on a past day: file unchanged', open(p, 'rb').read() == before, out + err)
 finally:
     shutil.rmtree(td, ignore_errors=True)
 

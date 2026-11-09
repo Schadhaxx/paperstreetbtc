@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
-"""Desk intraday refresh: keep the current week's Desk candle live.
+"""Desk intraday refresh: keep the current week's Desk candle up to date.
 
 Re-pulls ONLY the in-progress weekly candle for the 16 Desk stock pills
 and the 8 indicator tiles on screener.html, every 15 minutes while NYSE
-is open (plus one final run after the close). Run by the `desk-intraday`
-job in .github/workflows/prices.yml — never by hand on main, never as a
-full rebuild (that is tools/stock_weekly.py / tools/indicator_weekly.py).
+is open (plus one final run after the close). The candle is in progress,
+not a live quote: the Pages CDN can lag ~10 min behind a push, so the
+Desk shows the latest published candle, not a tick. Run by the
+`desk-intraday` job in .github/workflows/desk-intraday.yml — never by
+hand on main, never as a full rebuild (that is tools/stock_weekly.py /
+tools/indicator_weekly.py).
 
 For each symbol: load the shipped weekly file, fetch the current week's
 daily bars from Yahoo, recompute ONLY the current week candle (open =
 first bar's open in the week, high = max high to date, low = min low to
 date, close = last bar's close to date, days = bars so far). If the
 file's last week IS the current week, replace it in place; if it is a
-past week, append the new current week. Past weeks are NEVER modified —
-the shipped weeks (including gold's flagged 30 Oct close and WTI's
-26 Oct week close, preserved pending review) stay byte-identical.
+past week, append the new current week. Past weeks that are final are
+NEVER modified — the shipped weeks (including gold's flagged 30 Oct
+close and WTI's 26 Oct week close, preserved pending review) stay
+byte-identical. The one exception: a past week still marked in progress
+is re-fetched and replaced with its final values before the new week is
+appended, so a stale in-progress candle never freezes as a final week;
+if it cannot be re-fetched and validated, the symbol is not appended
+at all (the next 15-min tick retries).
 
 Weeks follow each tool's existing convention: stocks by America/New_York
 date, indicators by UTC date. Stocks fetch through the Yahoo map in
@@ -141,6 +149,22 @@ def in_window(now_et):
     if 570 <= mins <= 990:  # 9:30 AM-4:30 PM ET
         return True, 'inside 9:30 AM-4:30 PM ET'
     return False, 'outside 9:30 AM-4:30 PM ET'
+
+def session_open(now_et):
+    """True if the NYSE session is open right now.
+
+    9:30 AM to the close (4:00 PM, or 1:00 PM on an early-close day),
+    on a weekday that is not an NYSE holiday. Used only for the
+    in-progress label: while the session is open, the candle's close is
+    today's in-progress print, not a completed session — so the label
+    must not say "through last completed session".
+    """
+    d = now_et.date()
+    if d.weekday() >= 5 or d.isoformat() in SW.HOLIDAYS:
+        return False
+    mins = now_et.hour * 60 + now_et.minute
+    close_mins = 780 if d.isoformat() in EARLY_CLOSES else 960  # 1 PM / 4 PM
+    return 570 <= mins < close_mins
 
 # --- Yahoo fetch (windowed; parsing/validation reused from the existing tools) ---
 
@@ -315,17 +339,33 @@ def refresh_stock(sym, out_dir, now, fixture_bars, check_only):
         raise RuntimeError(f'{sym}: shipped file has no weeks — refusing to build from scratch')
     today_et = now_et.date()
     cur_mon = SW.week_monday(today_et)
-    if fixture_bars is not None:
-        bars, vols = fixture_bars
-    else:
-        payload = fetch_yahoo_payload(yahoo_symbol(sym), cur_mon)
-        bars = SW.bars_from_yahoo_payload(yahoo_symbol(sym), payload)
-        vols = volumes_from_payload(payload, NY)
     last = weeks[-1]
     last_mon = dt.date.fromisoformat(last['monday'])
     if last_mon > cur_mon:
         print(f'{sym}: shipped file is ahead of the current week ({last_mon} > {cur_mon}) — skipping')
         return 'skipped', False
+    # If the last shipped week is a past week that was still in progress,
+    # it must be finalised before a new week is appended — otherwise its
+    # stale in-progress values would freeze as a final week (the 2 Nov
+    # week was stuck at Thursday's close). Fetch from its Monday so its
+    # bars are in the payload too.
+    finalize_last = last_mon < cur_mon and bool(old.get('inProgress'))
+    fetch_since = last_mon if finalize_last else cur_mon
+    if fixture_bars is not None:
+        bars, vols = fixture_bars
+    else:
+        payload = fetch_yahoo_payload(yahoo_symbol(sym), fetch_since)
+        try:
+            bars = SW.bars_from_yahoo_payload(yahoo_symbol(sym), payload)
+        except RuntimeError as e:
+            # A null row for TODAY before the first trade is "no bar yet",
+            # not a failure: the market has not printed today. Any other
+            # null row is a data problem and still fails closed.
+            if f'null OHLC on {today_et.isoformat()}' in str(e):
+                print(f'{sym}: no bar for today yet — file unchanged')
+                return 'skipped', False
+            raise
+        vols = volumes_from_payload(payload, NY)
     old_volume = last.get('volume') if last_mon == cur_mon else None
     candle = candle_for_week(bars, cur_mon, vols, old_volume)
     if candle is None:
@@ -335,9 +375,32 @@ def refresh_stock(sym, out_dir, now, fixture_bars, check_only):
     if bad:
         print(f'{sym}: recomputed candle invalid ({ "; ".join(bad) }) — keeping last good file', file=sys.stderr)
         return 'failed', False
+    # Finalise the previous in-progress week before appending: re-fetch
+    # (already in the payload) and validate it, replace it, then append.
+    # If it cannot be finalised, do NOT append — the file stays as-is and
+    # the next 15-min tick retries, rather than freezing stale values.
+    if finalize_last:
+        prev = candle_for_week(bars, last_mon, vols, last.get('volume'))
+        prev_bad = validate_candle(prev)
+        if prev is None or prev_bad:
+            why = 'no bars' if prev is None else '; '.join(prev_bad)
+            print(f'{sym}: cannot finalise previous week {last_mon} ({why}) — keeping last good file, not appending', file=sys.stderr)
+            return 'failed', False
+        if prev['days'] < last['days']:
+            print(f'{sym}: re-fetched previous week {last_mon} has fewer days ({prev["days"]}) than shipped ({last["days"]}) — keeping last good file, not appending', file=sys.stderr)
+            return 'failed', False
+        weeks = weeks[:-1] + [prev]
+        print(f'{sym}: finalised previous week {last_mon} (close {prev["close"]}, {prev["days"]} days) before appending')
     last_bar = max(d for d in bars if SW.week_monday(d) == cur_mon)
-    # Week finished only on the weekend, or Friday after the 16:15 ET settle.
-    finished = today_et.weekday() >= 5 or (today_et.weekday() == 4 and (now_et.hour, now_et.minute) >= (16, 15))
+    # Week finished only on the weekend, or Friday after the close has
+    # settled (4:15 PM, or 1:15 PM on an early-close Friday).
+    if today_et.weekday() >= 5:
+        finished = True
+    elif today_et.weekday() == 4:
+        close_hm = (13, 15) if today_et.isoformat() in EARLY_CLOSES else (16, 15)
+        finished = (now_et.hour, now_et.minute) >= close_hm
+    else:
+        finished = False
     doc = dict(old)
     if last_mon == cur_mon:
         if candle == last and old.get('lastSession') == last_bar.isoformat():
@@ -356,6 +419,11 @@ def refresh_stock(sym, out_dir, now, fixture_bars, check_only):
     if finished:
         doc['inProgress'] = None
         tail = f'Latest week is a final close through {SW.dlabel(last_bar)}.'
+    elif session_open(now_et):
+        # The session is open: today's close is an in-progress print, not
+        # a completed session — say so, and never say "completed" here.
+        doc['inProgress'] = f'in progress, as of {et_label(now_et)} (session open), week not finished'
+        tail = f'Latest week is in progress as of {SW.dlabel(last_bar)}, {now_et.strftime("%-I:%M %p ET")}; its close is not a final close.'
     else:
         doc['inProgress'] = f'in progress, through last completed session {SW.dlabel(last_bar)} — week not finished'
         tail = f'Latest week is in progress as of {SW.dlabel(last_bar)}, {now_et.strftime("%-I:%M %p ET")}; its close is not a final close.'
@@ -380,18 +448,32 @@ def refresh_indicator(key, out_dir, now, fixture_bars, check_only):
         raise RuntimeError(f'{key}: shipped file has no weeks — refusing to build from scratch')
     today_utc = now_et.astimezone(UTC).date()
     cur_mon = SW.week_monday(today_utc)
-    if fixture_bars is not None:
-        bars, vols = fixture_bars
-    else:
-        ysym = IW.SPECS[key][0]
-        payload = fetch_yahoo_payload(ysym, cur_mon)
-        bars = IW.bars_from_payload(key, payload)
-        vols = volumes_from_payload(payload, UTC)
     last = weeks[-1]
     last_mon = dt.date.fromisoformat(last['monday'])
     if last_mon > cur_mon:
         print(f'{key}: shipped file is ahead of the current week ({last_mon} > {cur_mon}) — skipping')
         return 'skipped', False
+    # If the last shipped week is a past week that was still in progress,
+    # finalise it before appending — otherwise its stale in-progress
+    # values would freeze as a final week. Fetch from its Monday so its
+    # bars are in the payload too.
+    finalize_last = last_mon < cur_mon and bool(old.get('inProgress'))
+    fetch_since = last_mon if finalize_last else cur_mon
+    if fixture_bars is not None:
+        bars, vols = fixture_bars
+    else:
+        ysym = IW.SPECS[key][0]
+        payload = fetch_yahoo_payload(ysym, fetch_since)
+        try:
+            bars = IW.bars_from_payload(key, payload)
+        except RuntimeError as e:
+            # A null row for TODAY before the first trade is "no bar yet",
+            # not a failure. Any other null row still fails closed.
+            if f'null OHLC on {today_utc.isoformat()}' in str(e):
+                print(f'{key}: no bar for today yet — file unchanged')
+                return 'skipped', False
+            raise
+        vols = volumes_from_payload(payload, UTC)
     old_volume = last.get('volume') if last_mon == cur_mon else None
     candle = candle_for_week(bars, cur_mon, vols, old_volume)
     if candle is None:
@@ -401,6 +483,21 @@ def refresh_indicator(key, out_dir, now, fixture_bars, check_only):
     if bad:
         print(f'{key}: recomputed candle invalid ({ "; ".join(bad) }) — keeping last good file', file=sys.stderr)
         return 'failed', False
+    # Finalise the previous in-progress week before appending; if it
+    # cannot be finalised, do NOT append — the file stays as-is and the
+    # next 15-min tick retries.
+    if finalize_last:
+        prev = candle_for_week(bars, last_mon, vols, last.get('volume'))
+        prev_bad = validate_candle(prev)
+        if prev is None or prev_bad:
+            why = 'no bars' if prev is None else '; '.join(prev_bad)
+            print(f'{key}: cannot finalise previous week {last_mon} ({why}) — keeping last good file, not appending', file=sys.stderr)
+            return 'failed', False
+        if prev['days'] < last['days']:
+            print(f'{key}: re-fetched previous week {last_mon} has fewer days ({prev["days"]}) than shipped ({last["days"]}) — keeping last good file, not appending', file=sys.stderr)
+            return 'failed', False
+        weeks = weeks[:-1] + [prev]
+        print(f'{key}: finalised previous week {last_mon} (close {prev["close"]}, {prev["days"]} days) before appending')
     asof_label = et_label(now_et)
     finished = today_utc >= cur_mon + dt.timedelta(days=6)
     doc = dict(old)
@@ -525,7 +622,8 @@ def main(argv):
     critical = []
     consecutive_429 = 0
     aborted_429 = False
-    for kind, sym in targets:
+    never_tried = []
+    for idx, (kind, sym) in enumerate(targets):
         try:
             fb = fx_bars.get((kind, sym)) if fx_bars is not None else None
             if fx_bars is not None and fb is None:
@@ -569,8 +667,10 @@ def main(argv):
             failed_names.append(sym)
             print(f'{sym}: Yahoo rate-limited (HTTP 429) — keeping last good file', file=sys.stderr)
             if consecutive_429 >= 2:
+                never_tried = [s for _, s in targets[idx + 1:]]
+                never = f' Never tried: {", ".join(never_tried)}.' if never_tried else ''
                 print(f'desk-intraday: ABORTING — two Yahoo 429s in a row ({", ".join(failed_names[-2:])}); '
-                      f'stopping the run instead of hammering Yahoo. Last good files kept.', file=sys.stderr)
+                      f'stopping the run instead of hammering Yahoo. Last good files kept.{never}', file=sys.stderr)
                 aborted_429 = True
                 break
         except Exception as e:
@@ -586,12 +686,15 @@ def main(argv):
     if failed_names:
         # Name the stale symbols, both as a GitHub Actions annotation and
         # as a plain log line — a run must never pass quietly with part of
-        # the Desk stale and nobody able to see which part.
+        # the Desk stale and nobody able to see which part. The ::warning::
+        # goes on stdout so it is picked up as an annotation.
         stale = ', '.join(failed_names)
-        print(f'::warning::desk-intraday: {len(failed_names)} symbol(s) failed and kept their last good file (stale): {stale}', file=sys.stderr)
+        print(f'::warning::desk-intraday: {len(failed_names)} symbol(s) failed and kept their last good file (stale): {stale}')
         print(f'desk-intraday: stale symbols (kept last good file): {stale}', file=sys.stderr)
     if aborted_429:
         print('desk-intraday: run aborted on consecutive Yahoo 429s — no further symbols fetched', file=sys.stderr)
+        if never_tried:
+            print(f'desk-intraday: never tried after the abort: {", ".join(never_tried)}', file=sys.stderr)
         return 1
     if critical:
         print('desk-intraday: critical failure — ' + '; '.join(critical), file=sys.stderr)

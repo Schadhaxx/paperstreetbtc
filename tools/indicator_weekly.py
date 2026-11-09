@@ -41,6 +41,12 @@ usage:
 import json, math, os, sys, time, datetime as dt, urllib.request
 from zoneinfo import ZoneInfo
 
+# Holidays are the NYSE list in stock_weekly (2026-2028); importing it
+# keeps the two tools on the same calendar. stock_weekly has no
+# import-time side effects (guarded by __main__).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import stock_weekly as SW
+
 UTC = dt.timezone.utc
 try:
     ET = ZoneInfo('America/New_York')
@@ -113,8 +119,11 @@ def bars_from_payload(key, payload):
     # Yahoo inserts null-OHLC rows for market holidays (e.g. 25 Dec 2025 for
     # ^VIX). Those are not trading days and are skipped; a null bar on any
     # other day is a hard failure, never skipped or filled.
-    HOLIDAYS = {'2025-12-25', '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03',
-                '2026-05-25', '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25'}
+    # NYSE holidays from stock_weekly (2026-2028) plus 25 Dec 2025, the
+    # only pre-2026 holiday in the indicator data (Yahoo inserts a
+    # null-OHLC row for it, e.g. ^VIX). A hardcoded 2026-only list would
+    # fail on 2027+ holidays.
+    HOLIDAYS = SW.HOLIDAYS | {'2025-12-25'}
     out = {}
     for t, o, h, l, c in zip(ts, q['open'], q['high'], q['low'], q['close']):
         if t is None or any(v is None for v in (o, h, l, c)):
