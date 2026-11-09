@@ -49,7 +49,7 @@ run stock_weekly_py python3 tests/test_stock_weekly.py                       # s
 run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
 run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
 run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
-run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et22): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
+run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et23): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
 run needchart_retry python3 tests/test_needchart_retry.py                    # needChart failure-then-retry (real _needChart, chart.umd aborted once)
 run oi001_label node tests/test_oi001_label.js                              # OI-001: backup-source BTC label keyed on fallback_sources
 run oi001_compare_scope python3 tests/test_oi001_compare_scope.py           # OI-001: Compare #pvChartNote backup label with crafted Coinbase day (scope fix)

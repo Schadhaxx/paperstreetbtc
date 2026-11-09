@@ -15,8 +15,8 @@
      on the layout kind (redrawNativeLine), guarded on lineDrawn so a scroll
      after switching back to the Chart.js fallback cannot repaint the
      native line over it.
-   - Pin bumped et21 -> et22 in Step 4 (panel content changed): all 16
-     HTML callers pin et22, and the stub loads the panel with et22.
+   - Pin bumped et23 -> et23 (rebase onto main; main also used et23) in Step 4 (panel content changed): all 16
+     HTML callers pin et23, and the stub loads the panel with et23.
    - The YTD hero chart (s2.js) is out of scope: it must still use Chart.js.
 */
 const fs = require('fs'), path = require('path');
@@ -92,20 +92,20 @@ chk('panel keeps drawCandles1D + drawCandlesRange', /function drawCandles1D\(/.t
 chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(panel));
 chk('panel keeps needChart', /function needChart\(\)/.test(panel));
 
-/* Pin bumped et21 -> et22 in Step 4 (panel content changed) */
-chk('stub loads the panel with et22', /btcchart-panel\.js\?v=et22/.test(stub));
+/* Pin bumped et23 -> et23 (rebase onto main; main also used et23) in Step 4 (panel content changed) */
+chk('stub loads the panel with et23', /btcchart-panel\.js\?v=et23/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
   'recap/2026-05/index.html', 'recap/2026-06/index.html', 'recap/2026-07/index.html', 'recap/2026-08/index.html',
   'recap/2026-09/index.html', 'recap/2026-10/index.html', 'recap/2026-11/index.html'];
-let et22 = 0, other = [];
+let et23 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et22') et22++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et23') et23++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et22', et22 === 16 && other.length === 0, 'et22=' + et22 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et23', et23 === 16 && other.length === 0, 'et23=' + et23 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart out of scope: still Chart.js */
 chk('s2.js still uses Chart.js (out of scope)', /new Chart\s*\(/.test(s2));
