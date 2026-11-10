@@ -11,24 +11,24 @@
   "berkshire": {
    "bought": [],
    "contributed": 0,
-   "final": 90795.98,
-   "gain": -9204.02,
-   "gain_pct": -9.2,
+   "final": 90794.22,
+   "gain": -9205.78,
+   "gain_pct": -9.21,
    "skipped": []
   },
   "hf": {
    "bought": [],
    "contributed": 0,
-   "final": 85275.76,
-   "gain": -14724.24,
-   "gain_pct": -14.72,
+   "final": 85273.45,
+   "gain": -14726.55,
+   "gain_pct": -14.73,
    "skipped": []
   },
   "hodlr": {
    "bought": [],
    "contributed": 0,
-   "final": 85973.41,
-   "gain": -14026.59,
+   "final": 85970.46,
+   "gain": -14029.54,
    "gain_pct": -14.03,
    "skipped": []
   },
