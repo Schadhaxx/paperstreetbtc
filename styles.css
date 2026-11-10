@@ -371,6 +371,9 @@ h2 {
   max-width: 640px;
   margin-bottom: 40px;
 }
+#tracker .section-lead {
+  margin-bottom: 16px;
+}
 
 /* Principles */
 .philosophy-visual {
@@ -1223,6 +1226,41 @@ html[data-theme="light"] .lab-pill:hover{background:#0e7490;color:#fff}
 .pf-tbl th:first-child,.pf-tbl td:first-child{text-align:left}
 .pf-tbl em{font-style:normal;opacity:.7;font-size:.7rem}
 .pf-note{font-size:.75rem;color:var(--muted);margin-top:8px}
+
+/* Collapsed data-source footnotes; same details.more pattern as The Desk. */
+details.more { margin: 8px 0 12px; }
+.pf-live > details.more { margin: 8px 0 0; }
+#tracker .section-lead + details.more { margin: 0 0 12px; }
+details.more > summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  user-select: none;
+}
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary .more-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+details.more > summary:focus-visible .more-btn { outline: 2px solid var(--accent); outline-offset: 2px; }
+details.more[open] > summary .more-btn::before { content: "\2212"; }
+details.more:not([open]) > summary .more-btn::before { content: "+"; }
+details.more > p { margin-top: 8px; }
+details.more[open] > .as-of { margin-bottom: 0.5rem; }
 
 /* Header BTC ticker */
 .hdr-tick{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;margin-right:20px;background:var(--surface);border:1px solid var(--border);border-radius:999px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.9rem;color:var(--text);white-space:nowrap}

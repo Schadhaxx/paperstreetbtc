@@ -22,7 +22,7 @@
 <meta name="twitter:image:alt" content="Paperstreet BTC owl logo">
 <link rel="preload" href="assets/fonts/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/outfit-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=bc1">
 <link rel="stylesheet" href="assets/css/nav.css?v=cr028">
 <link rel="stylesheet" href="assets/css/xfollow.css">
 <link rel="stylesheet" href="light.css?v=lm4">
@@ -195,10 +195,16 @@
     <div class="pf-live" id="pfLive">
       <div class="pf-bar"><span class="btc-live-label">Portfolios now</span></div>
       <div class="pf-grid"></div>
-      <p class="pf-note"></p>
+      <details class="more">
+        <summary><span class="more-btn" aria-hidden="true"></span>Data sources</summary>
+        <p class="pf-note"></p>
+      </details>
     </div>
     <p class="section-lead">Select a sleeve. See the path from January 1st, 2026 to the latest live price. Spot BTC is the hurdle.</p>
-    <p class="as-of" id="ytdAsOf">—</p>
+    <details class="more">
+      <summary><span class="more-btn" aria-hidden="true"></span>Data sources</summary>
+      <p class="as-of" id="ytdAsOf">—</p>
+    </details>
     <div class="mode-toggle" id="modeToggle"><button class="bench-btn active" data-mode="live">Live</button><button class="bench-btn" data-mode="me">Month-end</button></div>
 
     <div class="bench-selector">
