@@ -197,5 +197,54 @@ class TestCheckOnly(unittest.TestCase):
             self.assertEqual(rc, 0)
 
 
+
+
+class TestNewDeskStockCoverage(unittest.TestCase):
+    """The nine Desk stocks added 9 Nov 2026 must be in the daily
+    generator the same way TSLA/MU are: STOCKS entry, weekly file
+    map, ytd from 2 Jan 2026, and BRK.B fetched as Yahoo BRK-B."""
+
+    NEW = ('BRK.B', 'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA')
+
+    def test_new_stocks_are_in_STOCKS_like_tsla(self):
+        for k in ('TSLA', 'MU') + self.NEW:
+            self.assertIn(k, sd.STOCKS)
+            ysym, nd, unit, basis, first, fname = sd.STOCKS[k]
+            self.assertEqual(nd, 2)
+            self.assertEqual(unit, 'usd')
+            self.assertEqual(basis, 'ytd' if k != 'SPCX' else 'listing')
+            self.assertEqual(first, '2026-01-02')
+            self.assertEqual(fname, f'stock-daily-{k}.json')
+            self.assertEqual(sd.WEEKLY_FILES[k], f'stock-weekly-{k}.json')
+
+    def test_brk_b_yahoo_symbol_is_hyphenated(self):
+        self.assertEqual(sd.STOCKS['BRK.B'][0], 'BRK-B')
+        self.assertEqual(sd.STOCKS['AAPL'][0], 'AAPL')
+        self.assertEqual(sd.STOCKS['TSLA'][0], 'TSLA')
+
+    def test_new_indicators_are_not_in_daily_tool(self):
+        for k in ('DJIA', 'QQQ', 'USDCAD', 'CADUSD', 'DXY'):
+            self.assertNotIn(k, sd.STOCKS)
+            self.assertNotIn(k, sd.INDICATORS)
+
+    def test_shipped_daily_files_match_tsla_calendar(self):
+        root = os.path.join(os.path.dirname(__file__), '..', 'assets', 'data')
+        with open(os.path.join(root, 'stock-daily-TSLA.json')) as f:
+            tsla = json.load(f)
+        tsla_dates = [r['date'] for r in tsla['days']]
+        self.assertEqual(tsla['asOf'], '2026-11-06')
+        for k in self.NEW:
+            with open(os.path.join(root, f'stock-daily-{k}.json')) as f:
+                doc = json.load(f)
+            self.assertEqual(doc['asOf'], '2026-11-06')
+            self.assertEqual(doc['firstSession'], '2026-01-02')
+            self.assertEqual(doc['basis'], 'ytd')
+            self.assertEqual([r['date'] for r in doc['days']], tsla_dates)
+            self.assertTrue(all(isinstance(r['close'], float) and r['close'] > 0 for r in doc['days']))
+        with open(os.path.join(root, 'stock-daily-BRK.B.json')) as f:
+            brk = json.load(f)
+        self.assertIn('BRK-B', brk['source'])
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

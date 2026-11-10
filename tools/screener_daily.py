@@ -3,9 +3,14 @@
 Bollinger Weekly/Daily switch.
 
 Writes one file per symbol: assets/data/stock-daily-<SYM>.json
-(TSLA, PLTR, MSTR, IBIT, MU, META, SPCX) and
-assets/data/ind-daily-{wti,gold,us10y,vix}.json
+(TSLA, PLTR, MSTR, IBIT, MU, META, SPCX, plus the nine Desk stocks
+added 9 Nov 2026: BRK.B, AAPL, AMZN, MSFT, NFLX, SPOT, XYZ, GOOGL,
+NVDA) and assets/data/ind-daily-{wti,gold,us10y,vix}.json
 (WTI = CL=F, GOLD = GC=F, US10Y = ^TNX, VIX = ^VIX).
+BRK.B is fetched as Yahoo BRK-B (hyphen), same map as
+tools/stock_weekly.py; a raw BRK.B request would 404. New indicators
+(DJIA, QQQ, USDCAD, DXY) are not included — their Desk charts have
+dailyUrl: null.
 (The ind-daily- prefix avoids colliding with the Compare daily files
 gold-daily.json and mstr-daily.json, which are different data.)
 
@@ -45,13 +50,13 @@ run never exits 0 while leaving stale data looking fresh. A daily file
 with fewer than 20 closes is still written (it grows daily); the JS
 draws no bands until 20 daily closes are available.
 
-Refresh route: this tool is NOT wired into prices.yml (the weekly tools
-aren't either — the weekly files are refreshed by Chief's job, and
-prices.yml's recap job handles btc-daily/vehicle-daily). The intended
-home is the recap job in .github/workflows/prices.yml (it already
-rebuilds daily files on final closes and pushes them to main) — see
-proposals/daily-bollinger-prices-note.md for the prepared wiring. Until
-then, run it manually and commit the files.
+Refresh route: the recap job in .github/workflows/prices.yml runs this
+tool on final closes (continue-on-error, never blocks recap or prices)
+and commits any changed stock-daily-*.json / ind-daily-*.json files.
+The weekly tools are still refreshed separately (Chief's job and
+desk-intraday). See proposals/daily-bollinger-prices-note.md for the
+original wiring note; the file list here now includes the nine new
+Desk stocks.
 
 usage:
   python3 tools/screener_daily.py [--out-dir assets/data] [--weekly-dir assets/data]
@@ -91,6 +96,18 @@ STOCKS = {
     'MU':   ('MU', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-MU.json'),
     'META': ('META', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-META.json'),
     'SPCX': ('SPCX', 2, 'usd', 'listing', '2026-06-12', 'stock-daily-SPCX.json'),
+    # New Desk stocks (9 Nov 2026). BRK.B's Yahoo symbol is BRK-B
+    # (hyphen), same as tools/stock_weekly.py YAHOO_MAP; a raw 'BRK.B'
+    # fetch would 404. The other eight are 1:1 with their tickers.
+    'BRK.B': ('BRK-B', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-BRK.B.json'),
+    'AAPL': ('AAPL', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-AAPL.json'),
+    'AMZN': ('AMZN', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-AMZN.json'),
+    'MSFT': ('MSFT', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-MSFT.json'),
+    'NFLX': ('NFLX', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-NFLX.json'),
+    'SPOT': ('SPOT', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-SPOT.json'),
+    'XYZ':  ('XYZ', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-XYZ.json'),
+    'GOOGL': ('GOOGL', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-GOOGL.json'),
+    'NVDA': ('NVDA', 2, 'usd', 'ytd', '2026-01-02', 'stock-daily-NVDA.json'),
 }
 INDICATORS = {
     'WTI':   ('CL%3DF', 2, 'usd', 'ytd', '2026-01-02', 'ind-daily-wti.json'),
@@ -103,6 +120,11 @@ WEEKLY_FILES = {
     'MSTR': 'stock-weekly-MSTR.json', 'IBIT': 'stock-weekly-IBIT.json',
     'MU': 'stock-weekly-MU.json', 'META': 'stock-weekly-META.json',
     'SPCX': 'stock-weekly-SPCX.json',
+    'BRK.B': 'stock-weekly-BRK.B.json', 'AAPL': 'stock-weekly-AAPL.json',
+    'AMZN': 'stock-weekly-AMZN.json', 'MSFT': 'stock-weekly-MSFT.json',
+    'NFLX': 'stock-weekly-NFLX.json', 'SPOT': 'stock-weekly-SPOT.json',
+    'XYZ': 'stock-weekly-XYZ.json', 'GOOGL': 'stock-weekly-GOOGL.json',
+    'NVDA': 'stock-weekly-NVDA.json',
     'WTI': 'wti-weekly.json', 'GOLD': 'gold-weekly.json',
     'US10Y': 'us10y-weekly.json', 'VIX': 'vix-weekly.json',
 }
