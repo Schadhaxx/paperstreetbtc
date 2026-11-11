@@ -61,11 +61,25 @@ class TestStockBuild(unittest.TestCase):
         self.assertEqual(len(doc['days']), 19)
 
     def test_stock_weekly_mismatch_is_hard_error(self):
-        bad = [('2026-01-30', 431.00)] + [p for p in TSLA_ROWS if p[0] != '2026-01-30']
+        # Mismatch on a completed prior week (16 Jan, week of 12 Jan),
+        # not the in-progress week containing NOW (30 Jan).
+        bad = [('2026-01-16', 438.00)] + [p for p in TSLA_ROWS if p[0] != '2026-01-16']
         closes = sd.closes_from_fixture_rows('TSLA', rows(bad))
         with self.assertRaises(RuntimeError) as cm:
             sd.build_doc('TSLA', closes, NOW, TSLA_WEEKS)
         self.assertIn('weekly-consistency', str(cm.exception))
+        self.assertIn('2026-01-12', str(cm.exception))
+
+    def test_in_progress_week_mismatch_is_skipped(self):
+        # NOW is Friday 30 Jan, still inside the week of 26 Jan.
+        # A desk-intraday weekly close that does not match the official
+        # daily bar on 30 Jan must not fail the build.
+        bad = [('2026-01-30', 431.00)] + [p for p in TSLA_ROWS if p[0] != '2026-01-30']
+        closes = sd.closes_from_fixture_rows('TSLA', rows(bad))
+        doc, mism = sd.build_doc('TSLA', closes, NOW, TSLA_WEEKS)
+        self.assertEqual(mism, [])
+        self.assertEqual(doc['asOf'], '2026-01-30')
+        self.assertEqual(doc['days'][-1], {'date': '2026-01-30', 'close': 431.00})
 
     def test_missing_session_is_hard_error(self):
         short = [p for p in TSLA_ROWS if p[0] != '2026-01-14']
@@ -197,6 +211,38 @@ class TestCheckOnly(unittest.TestCase):
             self.assertEqual(rc, 0)
 
 
+
+
+class TestPartialWrite(unittest.TestCase):
+    def test_one_stock_failure_still_writes_the_rest(self):
+        # TSLA builds; AAPL fails a completed-week consistency check.
+        # The run must write TSLA, skip AAPL, and exit 1.
+        aapl_rows = list(TSLA_ROWS)
+        aapl_rows = [('2026-01-16', 438.00) if d == '2026-01-16' else (d, c) for d, c in aapl_rows]
+        fx = {
+            'now': NOW,
+            'symbols': {
+                'TSLA': rows(TSLA_ROWS),
+                'AAPL': rows(aapl_rows),
+            },
+        }
+        with tempfile.TemporaryDirectory() as td:
+            fxpath = os.path.join(td, 'fx.json')
+            with open(fxpath, 'w') as f:
+                json.dump(fx, f)
+            for k in ('TSLA', 'AAPL'):
+                with open(os.path.join(td, f'stock-weekly-{k}.json'), 'w') as f:
+                    json.dump({'weeks': TSLA_WEEKS, 'asOf': '2026-01-30'}, f)
+            rc = sd.main(['--fixture', fxpath, '--out-dir', td, '--weekly-dir', td, '--now', NOW])
+            self.assertEqual(rc, 1)
+            tsla_path = os.path.join(td, 'stock-daily-TSLA.json')
+            aapl_path = os.path.join(td, 'stock-daily-AAPL.json')
+            self.assertTrue(os.path.exists(tsla_path))
+            self.assertFalse(os.path.exists(aapl_path))
+            with open(tsla_path) as f:
+                doc = json.load(f)
+            self.assertEqual(doc['asOf'], '2026-01-30')
+            self.assertEqual(len(doc['days']), 20)
 
 
 class TestNewDeskStockCoverage(unittest.TestCase):
