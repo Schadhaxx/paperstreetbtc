@@ -797,10 +797,31 @@ jobs:
         timeout-minutes: 3
         run: |
           mkdir -p /tmp/screener-daily
-          python3 tools/screener_daily.py --out-dir /tmp/screener-daily --weekly-dir assets/data && python3 tools/screener_daily.py --check-only --out-dir /tmp/screener-daily --weekly-dir assets/data || { echo "::warning::screener-daily update skipped; the modal falls back to weekly bands"; exit 0; }
+          set +e
+          python3 tools/screener_daily.py --out-dir /tmp/screener-daily --weekly-dir assets/data 2>&1 | tee /tmp/screener-daily.log
+          gen_rc=${PIPESTATUS[0]}
+          chk_rc=0
+          if [ "$gen_rc" -eq 0 ]; then
+            python3 tools/screener_daily.py --check-only --out-dir /tmp/screener-daily --weekly-dir assets/data
+            chk_rc=$?
+          fi
+          set -e
+          wrote=0
+          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json; do
+            [ -f "/tmp/screener-daily/$f" ] && wrote=1 && break
+          done
+          if [ "$wrote" -eq 0 ] || { [ "$gen_rc" -eq 0 ] && [ "$chk_rc" -ne 0 ]; }; then
+            echo "::warning::screener-daily update skipped; the modal falls back to weekly bands"
+            echo "changed=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if [ "$gen_rc" -ne 0 ]; then
+            failed=$(sed -n 's/^FAILED \([^:]*\):.*/\1/p' /tmp/screener-daily.log | paste -sd ',' - | sed 's/,/, /g')
+            echo "::warning::screener-daily skipped ${failed:-unknown}; copying files that were written"
+          fi
           changed=0
           for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json; do
-            if ! cmp -s "/tmp/screener-daily/$f" "assets/data/$f"; then cp "/tmp/screener-daily/$f" "assets/data/$f.tmp" && mv "assets/data/$f.tmp" "assets/data/$f"; echo "updated $f"; changed=1; fi
+            if [ -f "/tmp/screener-daily/$f" ] && ! cmp -s "/tmp/screener-daily/$f" "assets/data/$f"; then cp "/tmp/screener-daily/$f" "assets/data/$f.tmp" && mv "assets/data/$f.tmp" "assets/data/$f"; echo "updated $f"; changed=1; fi
           done
           echo "changed=$changed" >> $GITHUB_OUTPUT
       - name: Commit and push (fast-forward only, retries)
