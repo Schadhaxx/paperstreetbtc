@@ -1,15 +1,15 @@
 {
   "source": "Yahoo BRK-B unadjusted daily OHLC",
-  "asOf": "2026-11-10",
-  "asOfLabel": "10 Nov 2026",
+  "asOf": "2026-11-11",
+  "asOfLabel": "11 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "baseClose": 502.65,
   "baseSession": "2025-12-31",
   "baseLabel": "31 Dec close",
-  "lastSession": "2026-11-10",
-  "inProgress": "in progress, through last completed session 10 Nov 2026 \u2014 week not finished",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 10 Nov 2026, 4:17 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "lastSession": "2026-11-11",
+  "inProgress": "in progress, as of 11 Nov 2026, 9:50 AM ET (session open), week not finished",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 11 Nov 2026, 9:50 AM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -510,12 +510,12 @@
       "monday": "2026-11-09",
       "sunday": "2026-11-15",
       "label": "9 Nov 2026 \u2013 15 Nov 2026",
-      "days": 2,
+      "days": 3,
       "open": 569.99,
       "high": 586.45,
       "low": 562.45,
-      "close": 583.34,
-      "volume": 10695417
+      "close": 580.08,
+      "volume": 11521103
     }
   ]
 }
