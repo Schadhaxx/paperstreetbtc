@@ -1,11 +1,11 @@
 {
   "source": "Yahoo NFLX unadjusted daily closes",
-  "asOf": "2026-11-06",
-  "asOfLabel": "6 Nov 2026",
+  "asOf": "2026-11-10",
+  "asOfLabel": "10 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "firstSession": "2026-01-02",
-  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 6 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 10 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "days": [
     {
       "date": "2026-01-02",
@@ -862,6 +862,14 @@
     {
       "date": "2026-11-06",
       "close": 63.41
+    },
+    {
+      "date": "2026-11-09",
+      "close": 63.95
+    },
+    {
+      "date": "2026-11-10",
+      "close": 63.26
     }
   ]
 }
