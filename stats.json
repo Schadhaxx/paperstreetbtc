@@ -322,36 +322,36 @@
    }
   ]
  },
- "generated": "2026-11-11T21:00:44Z",
+ "generated": "2026-11-11T21:30:33Z",
  "history_first": "2025-12-31",
  "history_last": "2026-11-11",
  "history_sessions": 218,
- "history_sha256": "4d17d3108caefa3fd32b5e3b53484a4b5636506490c7eef7fcb8c95f712b4c04",
+ "history_sha256": "aa7d4bfebc718c9d6119347b335adcc3c43330f14fa6377bb10da527a9e72774",
  "note": "Pre-computed by Python; the site displays these numbers, it does not re-derive them. Spot mode only.",
  "pulse": {
   "berkshire": {
-   "above_start": -7743.94,
+   "above_start": -7742.58,
    "above_start_pct": -7.74,
-   "below_peak": 11638.88,
+   "below_peak": 11637.52,
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 92256.06
+   "value": 92257.42
   },
   "hf": {
-   "above_start": -13762.06,
+   "above_start": -13762.36,
    "above_start_pct": -13.76,
-   "below_peak": 26116.63,
+   "below_peak": 26116.93,
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 86237.94
+   "value": 86237.64
   },
   "hodlr": {
-   "above_start": -13013.77,
+   "above_start": -13014.15,
    "above_start_pct": -13.01,
-   "below_peak": 24280.26,
+   "below_peak": 24280.64,
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 86986.23
+   "value": 86985.85
   },
   "saylor": {
    "above_start": -4147.78,
@@ -390,7 +390,7 @@
    "name": "Berkshire Killer",
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 92256.06,
+   "value": 92257.42,
    "vol_ann_pct": 31.09,
    "worst_day": {
     "date": "2026-02-05",
@@ -418,20 +418,20 @@
     "2026-08": -1.47,
     "2026-09": -1.21,
     "2026-10": 8.94,
-    "2026-11": 8.46
+    "2026-11": 8.43
    },
    "mtd_month": "2026-11",
-   "mtd_pct": 8.46,
+   "mtd_pct": 8.43,
    "name": "Berkshire (BRK.B)",
    "peak_date": "2026-11-11",
-   "peak_value": 117.05,
-   "value": 117.05,
-   "vol_ann_pct": 15.4,
+   "peak_value": 117.03,
+   "value": 117.03,
+   "vol_ann_pct": 15.39,
    "worst_day": {
     "date": "2026-03-02",
     "pct": -4.91
    },
-   "ytd_pct": 17.05
+   "ytd_pct": 17.03
   },
   "btc": {
    "best_day": {
@@ -508,7 +508,7 @@
     "date": "2026-02-06",
     "pct": 16.17
    },
-   "drawdown_pct": -23.24,
+   "drawdown_pct": -23.25,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -42.45,
@@ -530,7 +530,7 @@
    "name": "Hedge Fund Killer",
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 86237.94,
+   "value": 86237.64,
    "vol_ann_pct": 51.9,
    "worst_day": {
     "date": "2026-02-05",
@@ -565,7 +565,7 @@
    "name": "Hodler Jam Sandwich",
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 86986.23,
+   "value": 86985.85,
    "vol_ann_pct": 46.12,
    "worst_day": {
     "date": "2026-02-05",
@@ -698,20 +698,20 @@
     "2026-08": 2.68,
     "2026-09": -0.33,
     "2026-10": -0.91,
-    "2026-11": 0.55
+    "2026-11": 0.54
    },
    "mtd_month": "2026-11",
-   "mtd_pct": 0.55,
+   "mtd_pct": 0.54,
    "name": "S&P 500 (SPY, total return)",
    "peak_date": "2026-10-06",
    "peak_value": 115.14,
-   "value": 112.3,
+   "value": 112.29,
    "vol_ann_pct": 14.04,
    "worst_day": {
     "date": "2026-11-05",
     "pct": -4.41
    },
-   "ytd_pct": 12.3
+   "ytd_pct": 12.29
   }
  },
  "source": "history.json (data branch) + ledger.js (STRC dividends)",
