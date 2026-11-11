@@ -25,6 +25,12 @@ Stocks use NYSE sessions (Mon-Fri ex holidays, America/New_York dates,
 final only at/after 16:15 ET) — the same calendar as
 tools/stock_weekly.py. Indicators use UTC calendar dates and skip
 null-OHLC bars on weekends/holidays, as tools/indicator_weekly.py does.
+An indicator bar counts as final only once its session is over: a bar
+dated before today (ET) is final; today's bar (ET) is final at/after
+18:00 ET (after the 17:00 ET CME close of CL=F/GC=F, the 16:15 ET VIX
+close and the US10Y close); a bar dated after today (ET) never is.
+Yahoo publishes the in-progress bar from the early session on, so
+without this rule every recap run rewrote today's moving price.
 
 Consistency: every daily close on a week's last session is checked
 against the shipped weekly file's close for that week, except the
@@ -90,6 +96,7 @@ IND_HOLIDAYS = {
     '2026-05-25', '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25',
 }
 FINAL_HM = (16, 15)
+IND_FINAL_HM = (18, 0)   # indicators: today's bar (ET) is final at/after 18:00 ET
 
 # key -> (yahoo symbol, decimals, unit, basis, first session, output file)
 STOCKS = {
@@ -272,13 +279,16 @@ def build_doc(key, closes, now, weekly_weeks, weekly_asof=None):
             raise RuntimeError(f'{key}: missing {len(missing)} completed session(s): {sample}{more} — not writing')
         asof = cutoff
     else:
-        # Indicators: last bar on or before the simulated "today" (UTC
-        # date of `now`). No session calendar is enforced (they trade
-        # nearly every day); a bar older than 10 days is stale and refuses.
-        today = now.astimezone(UTC).date()
-        dated = sorted(d for d in closes if d <= today)
+        # Indicators: last FINAL bar. A bar dated before today (ET) is
+        # final; today's bar only at/after IND_FINAL_HM ET; a later-dated
+        # bar never. (Yahoo serves today's in-progress bar all session.)
+        # No session calendar is enforced (they trade nearly every day);
+        # a bar older than 10 days is stale and refuses.
+        today = now.date()
+        done_today = (now.hour, now.minute) >= IND_FINAL_HM
+        dated = sorted(d for d in closes if d < today or (d == today and done_today))
         if not dated:
-            raise RuntimeError(f'{key}: no daily bar on or before {today}')
+            raise RuntimeError(f'{key}: no final daily bar on or before {today}')
         asof = dated[-1]
         if (today - asof).days > 10:
             raise RuntimeError(f'{key}: last daily bar {asof} is {(today - asof).days} days old — stale, not writing')

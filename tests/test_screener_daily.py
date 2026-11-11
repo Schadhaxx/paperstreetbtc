@@ -169,6 +169,37 @@ class TestIndicatorBuild(unittest.TestCase):
         self.assertEqual(doc['unit'], 'pct')
         self.assertTrue(all(abs(c['close'] - round(c['close'], 3)) < 1e-9 for c in doc['days']))
 
+    def test_indicator_in_progress_bar_is_dropped_until_1800_et(self):
+        # Yahoo serves today's bar while the session is still trading.
+        # It must not be written as a close until 18:00 ET (ET date).
+        pairs = [('2026-11-09', 4114.5), ('2026-11-10', 4030.2), ('2026-11-11', 4062.0)]
+        closes = sd.closes_from_fixture_rows('GOLD', rows(pairs))
+        for now in ('2026-11-11T05:15:00-05:00', '2026-11-11T17:59:00-05:00',
+                    '2026-11-11T09:30:00Z'):
+            doc, _ = sd.build_doc('GOLD', closes, now, [])
+            self.assertEqual(doc['asOf'], '2026-11-10', now)
+            self.assertEqual(doc['days'][-1], {'date': '2026-11-10', 'close': 4030.2}, now)
+        doc, _ = sd.build_doc('GOLD', closes, '2026-11-11T18:00:00-05:00', [])
+        self.assertEqual(doc['asOf'], '2026-11-11')
+        self.assertEqual(doc['days'][-1]['close'], 4062.0)
+
+    def test_indicator_next_day_bar_excluded_after_utc_midnight(self):
+        # 19:30 ET on 11 Nov is already 12 Nov in UTC; a 12 Nov bar (the
+        # next futures session) must not be included.
+        pairs = [('2026-11-10', 86.04), ('2026-11-11', 86.91), ('2026-11-12', 87.30)]
+        closes = sd.closes_from_fixture_rows('WTI', rows(pairs))
+        doc, _ = sd.build_doc('WTI', closes, '2026-11-11T19:30:00-05:00', [])
+        self.assertEqual(doc['asOf'], '2026-11-11')
+        self.assertEqual([r['date'] for r in doc['days']], ['2026-11-10', '2026-11-11'])
+
+    def test_indicator_rerun_same_day_is_byte_identical(self):
+        # A recap rerun before 18:00 ET with a moved in-progress price
+        # must produce the same file (so the workflow commits nothing).
+        base = [('2026-11-09', 19.92), ('2026-11-10', 19.46)]
+        a, _ = sd.build_doc('VIX', sd.closes_from_fixture_rows('VIX', rows(base + [('2026-11-11', 18.64)])), '2026-11-11T05:15:00-05:00', [])
+        b, _ = sd.build_doc('VIX', sd.closes_from_fixture_rows('VIX', rows(base + [('2026-11-11', 18.20)])), '2026-11-11T10:40:00-05:00', [])
+        self.assertEqual(json.dumps(a, indent=2), json.dumps(b, indent=2))
+
     def test_indicator_payload_skips_holiday_nulls(self):
         # Null close on a Saturday and on 2026-01-01 (holiday) is skipped;
         # a null close on a weekday is a hard error.
