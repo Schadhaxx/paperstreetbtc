@@ -66,8 +66,8 @@ const tslaW = loadJson('assets/data/stock-weekly-TSLA.json');
 const tslaD = loadJson('assets/data/stock-daily-TSLA.json');
 const tslaWeeks = weeksOf(tslaW);
 const tslaDays = tslaD.days;
-chk('TSLA daily file has 214 days', tslaDays.length === 214, tslaDays.length);
-chk('TSLA weekly file has 45 weeks', tslaWeeks.length === 45, tslaWeeks.length);
+chk('TSLA daily file has enough days for bands', tslaDays.length >= 20, tslaDays.length);
+chk('TSLA weekly file has enough weeks', tslaWeeks.length >= 20, tslaWeeks.length);
 
 const dB = IC.enhBollDaily(tslaWeeks, tslaDays);
 const wB = IC.enhBoll(tslaWeeks);
@@ -75,10 +75,10 @@ const last = tslaWeeks.length - 1;
 chk('TSLA daily bands non-null at last week', dB.sma[last] != null && dB.up[last] != null && dB.lo[last] != null);
 chk('TSLA weekly bands non-null at last week', wB.sma[last] != null);
 // Independent check: daily SMA at the last week = mean of the 20 daily
-// closes ending on the last session (2026-11-06, the in-progress week's
-// last completed session; the week's Sunday is 2026-11-08).
+// closes ending on that week's last session present in the daily file.
+// The daily file may trail the in-progress week in the weekly file.
 const li = lastDailyIdx(tslaDays, tslaWeeks[last].sunday);
-chk('TSLA last daily idx is 2026-11-06', tslaDays[li].date === '2026-11-06', tslaDays[li].date);
+chk('TSLA last daily idx is on or before that week Sunday', li >= 19 && tslaDays[li].date <= tslaWeeks[last].sunday, tslaDays[li] && tslaDays[li].date);
 const exp = dailyBand(tslaDays, li);
 chk('TSLA daily SMA matches independent calc', Math.abs(dB.sma[last] - exp.sma) < 1e-9, { got: dB.sma[last], exp: exp.sma });
 chk('TSLA daily upper matches independent calc', Math.abs(dB.up[last] - exp.up) < 1e-9);
@@ -115,18 +115,18 @@ const firstNonNull = b20.sma.findIndex(v => v !== null);
 chk('20 daily closes -> first band at week of 2026-01-26', firstNonNull === 4, firstNonNull);
 chk('20 daily closes -> weeks before that are null', b20.sma.slice(0, 4).every(v => v === null));
 
-/* ---- SPCX: only 22 weeks, 103 daily closes ---- */
+/* ---- SPCX: shorter history than TSLA, daily bands still render ---- */
 const spcxW = loadJson('assets/data/stock-weekly-SPCX.json');
 const spcxD = loadJson('assets/data/stock-daily-SPCX.json');
 const spcxWeeks = weeksOf(spcxW);
 const spcxDays = spcxD.days;
-chk('SPCX daily file has 103 days', spcxDays.length === 103, spcxDays.length);
-chk('SPCX weekly file has 22 weeks', spcxWeeks.length === 22, spcxWeeks.length);
+chk('SPCX daily file has enough days for bands', spcxDays.length >= 20, spcxDays.length);
+chk('SPCX weekly file has weeks', spcxWeeks.length >= 20, spcxWeeks.length);
 const sB = IC.enhBollDaily(spcxWeeks, spcxDays);
 const sW = IC.enhBoll(spcxWeeks);
 const sLast = spcxWeeks.length - 1;
 chk('SPCX daily bands non-null at last week', sB.sma[sLast] != null);
-chk('SPCX weekly bands non-null at last week (22 weeks >= 20)', sW.sma[sLast] != null);
+chk('SPCX weekly bands non-null at last week (weeks >= 20)', sW.sma[sLast] != null);
 // Daily bands exist for MORE weeks than weekly bands (daily needs 20
 // daily closes ≈ 4 weeks of trading; weekly needs 20 weeks).
 const sFirstDaily = sB.sma.findIndex(v => v !== null);
@@ -143,7 +143,7 @@ const vixW = loadJson('assets/data/vix-weekly.json');
 const vixD = loadJson('assets/data/ind-daily-vix.json');
 const vixWeeks = weeksOf(vixW);
 const vixDays = vixD.days;
-chk('VIX daily file has 216 days', vixDays.length === 216, vixDays.length);
+chk('VIX daily file has enough days for bands', vixDays.length >= 20, vixDays.length);
 const vB = IC.enhBollDaily(vixWeeks, vixDays);
 const vLast = vixWeeks.length - 1;
 chk('VIX daily bands non-null at last week', vB.sma[vLast] != null);

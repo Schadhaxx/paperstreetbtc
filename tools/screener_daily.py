@@ -27,13 +27,16 @@ tools/stock_weekly.py. Indicators use UTC calendar dates and skip
 null-OHLC bars on weekends/holidays, as tools/indicator_weekly.py does.
 
 Consistency: every daily close on a week's last session is checked
-against the shipped weekly file's close for that week. The last session
-is capped at the weekly file's asOf, because the weekly file's
-in-progress close is a snapshot as of its asOf while the daily file may
-already include a newer session.
-- Stocks: a mismatch over one cent is a hard error (the weekly file is
-  rebuilt from the same Yahoo bars, so they must agree) and nothing is
-  written.
+against the shipped weekly file's close for that week, except the
+current in-progress week. Desk-intraday snapshots in the weekly file
+legitimately differ from the official daily close until the weekly
+file catches up (typically by the next week). The last session of a
+completed week is capped at the weekly file's asOf, because the
+weekly file may not yet include a newer session the daily file has.
+- Stocks: a mismatch over one cent on a completed week is a hard
+  error for that stock only (the weekly file is rebuilt from the same
+  Yahoo bars, so they must agree). Other symbols are still written.
+  The run exits 1 if any symbol failed.
 - Indicators: a mismatch is REPORTED, not fatal — the shipped weekly
   files preserve two flagged values pending Grok Bot + Chief of Staff
   review (gold's 30 Oct close $3,901.20, an intraday pull; WTI's 26 Oct
@@ -43,12 +46,13 @@ already include a newer session.
   The note lists each mismatch. Three VIX weeks (2 Feb, 15 Jun, 29 Jun
   2026) also differ — pre-existing shipped-value discrepancies, reported.
 
-Fails loud. A missing completed session, a bad close, a Yahoo error,
-or a stock weekly-consistency failure aborts with exit 1 and writes
-nothing. Closes are never invented, never interpolated, and a failed
-run never exits 0 while leaving stale data looking fresh. A daily file
-with fewer than 20 closes is still written (it grows daily); the JS
-draws no bands until 20 daily closes are available.
+Fails loud per symbol. A missing completed session, a bad close, a
+Yahoo error, or a stock weekly-consistency failure on a completed
+week skips that symbol and still writes the rest; the run exits 1 if
+any symbol failed. Closes are never invented, never interpolated, and
+a failed run never exits 0 while leaving stale data looking fresh. A
+daily file with fewer than 20 closes is still written (it grows
+daily); the JS draws no bands until 20 daily closes are available.
 
 Refresh route: the recap job in .github/workflows/prices.yml runs this
 tool on final closes (continue-on-error, never blocks recap or prices)
@@ -281,13 +285,15 @@ def build_doc(key, closes, now, weekly_weeks, weekly_asof=None):
     days = [{'date': d.isoformat(), 'close': closes[d]} for d in sorted(closes) if first <= d <= asof]
     if not days:
         raise RuntimeError(f'{key}: no daily closes in range — not writing')
-    # Consistency: the daily close on each week's last session must equal
-    # the shipped weekly close for that week (same Yahoo bars). The last
-    # session is capped at the weekly file's asOf: the weekly file's
-    # in-progress close is a snapshot as of its asOf, while the daily
-    # file may already include a newer session in that week. Stocks:
-    # hard error. Indicators: reported (two flagged shipped values are
-    # expected to differ — see module docstring).
+    # Consistency: the daily close on each completed week's last session
+    # must equal the shipped weekly close for that week (same Yahoo
+    # bars). The current in-progress week is skipped: desk-intraday
+    # snapshots legitimately differ from the official daily close until
+    # the weekly file catches up. The last session of a completed week
+    # is capped at the weekly file's asOf, in case the daily file already
+    # includes a newer session. Stocks: hard error for that symbol only.
+    # Indicators: reported (two flagged shipped values are expected to
+    # differ — see module docstring).
     mismatches = []
     cap = None
     if weekly_asof:
@@ -299,11 +305,18 @@ def build_doc(key, closes, now, weekly_weeks, weekly_asof=None):
                 cap = dt.datetime.strptime(weekly_asof, '%d %b %Y, %I:%M %p ET').date()
             except Exception:
                 cap = None
+    today = now.date()
     for w in weekly_weeks or []:
         try:
             sun = dt.date.fromisoformat(w['sunday'])
             mon = dt.date.fromisoformat(w['monday'])
         except Exception:
+            continue
+        # Still inside this Mon-Sun week in ET: skip. A mid-session
+        # desk-intraday close on the same calendar day as the official
+        # daily bar would otherwise fail the check (and, before
+        # per-symbol writes, abort the whole run).
+        if today <= sun:
             continue
         hi = sun if cap is None else min(sun, cap)
         in_week = [d for d in closes if mon <= d <= hi]
@@ -438,6 +451,7 @@ def main(argv):
         print('screener-daily', 'OK' if not bad else 'INVALID', len(keys), 'files')
         return 1 if bad else 0
     docs = {}
+    failed = []
     for k in keys:
         try:
             weeks, wasof = load_weekly(weekly_dir, k)
@@ -453,14 +467,16 @@ def main(argv):
                 print(f'NOTE {k}: weekly-consistency notes (reported, not fatal): ' + '; '.join(mism))
         except Exception as e:
             print(f'FAILED {k}: {e}', file=sys.stderr)
-            print('screener-daily: no files written', file=sys.stderr)
-            return 1
+            failed.append(k)
     os.makedirs(out_dir, exist_ok=True)
     for k, doc in docs.items():
         path = os.path.join(out_dir, ALL[k][5])
         write_doc(path, doc)
         print(f'{k} days={len(doc["days"])} asOf={doc["asOf"]} first={doc["days"][0]["date"]} last={doc["days"][-1]["close"]}')
     print('screener-daily wrote', len(docs), 'file(s) ->', out_dir)
+    if failed:
+        print('screener-daily: skipped ' + ', '.join(failed) + f' ({len(failed)} failed, {len(docs)} written)', file=sys.stderr)
+        return 1
     return 0
 
 

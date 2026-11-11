@@ -609,7 +609,7 @@ jobs:
           curl -fsS --retry 3 --retry-delay 5 "https://raw.githubusercontent.com/${{ github.repository }}/main/recap/months.js?t=$(date +%s)" -o /tmp/months.js || echo "" > /tmp/months.js
           curl -fsS --retry 3 --retry-delay 5 "https://raw.githubusercontent.com/${{ github.repository }}/main/assets/data/btc-daily.json?t=$(date +%s)" | python3 -c "import json,sys;print(json.load(sys.stdin)['end'])" > /tmp/bd_end || echo "" > /tmp/bd_end
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json, re, datetime as dt, os
+          import json, re, datetime as dt, os, urllib.request
           def lastf(p):
               try:
                   h = json.load(open(p)); pv = set(h.get('btc_provisional') or [])
@@ -625,9 +625,29 @@ jobs:
           now = dt.datetime.now(dt.timezone.utc); bd_end = open('/tmp/bd_end').read().strip()
           last_final_day = (now - dt.timedelta(minutes=20)).date() - dt.timedelta(days=1)   # newest UTC day that is final
           bd_lag = bool(bd_end) and bd_end < last_final_day.isoformat()
-          flag = '1' if (new and (new > old or lag)) or bd_lag else '0'
+          # stock-daily lag: retrigger recap if any Desk daily file is
+          # behind history's newest final close (mirrors btc-daily lag).
+          # If every fetch fails, do not set lag (avoid false retriggers).
+          SD = ('AAPL','AMZN','BRK.B','GOOGL','IBIT','META','MSFT','MSTR','MU','NFLX','NVDA','PLTR','SPCX','SPOT','TSLA','XYZ')
+          repo = '${{ github.repository }}'
+          sd_asofs, sd_miss = [], []
+          ts = int(now.timestamp())
+          for sym in SD:
+              url = f'https://raw.githubusercontent.com/{repo}/main/assets/data/stock-daily-{sym}.json?t={ts}'
+              try:
+                  req = urllib.request.Request(url, headers={'User-Agent': 'paperstreetbtc-finalc'})
+                  with urllib.request.urlopen(req, timeout=8) as fh:
+                      asof = (json.load(fh) or {}).get('asOf') or ''
+                  if asof:
+                      sd_asofs.append(asof)
+                  else:
+                      sd_miss.append(sym)
+              except Exception:
+                  sd_miss.append(sym)
+          sd_lag = bool(new) and bool(sd_asofs) and (any(a < new for a in sd_asofs) or bool(sd_miss))
+          flag = '1' if (new and (new > old or lag)) or bd_lag or sd_lag else '0'
           print('final_close=' + flag)
-          import sys; print(f'newest final close: before {old or "-"}, now {new or "-"}; recap lagging: {lag}; btc-daily end {bd_end} lagging: {bd_lag}; final_close={flag}', file=sys.stderr)
+          import sys; print(f'newest final close: before {old or "-"}, now {new or "-"}; recap lagging: {lag}; btc-daily end {bd_end} lagging: {bd_lag}; stock-daily lagging: {sd_lag}; final_close={flag}', file=sys.stderr)
           PY
       - name: Stats + CSV (only when validated history changed)
         id: stats
