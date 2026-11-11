@@ -278,11 +278,14 @@ class TestNewDeskStockCoverage(unittest.TestCase):
         with open(os.path.join(root, 'stock-daily-TSLA.json')) as f:
             tsla = json.load(f)
         tsla_dates = [r['date'] for r in tsla['days']]
-        self.assertEqual(tsla['asOf'], '2026-11-06')
+        self.assertTrue(tsla_dates)
+        # asOf is the last completed session in the shipped daily file,
+        # not a pinned calendar date — files advance after each recap.
+        self.assertEqual(tsla['asOf'], tsla_dates[-1])
         for k in self.NEW:
             with open(os.path.join(root, f'stock-daily-{k}.json')) as f:
                 doc = json.load(f)
-            self.assertEqual(doc['asOf'], '2026-11-06')
+            self.assertEqual(doc['asOf'], tsla['asOf'])
             self.assertEqual(doc['firstSession'], '2026-01-02')
             self.assertEqual(doc['basis'], 'ytd')
             self.assertEqual([r['date'] for r in doc['days']], tsla_dates)
