@@ -429,6 +429,11 @@ jobs:
               if h.get('btc_provisional') and now_utc.minute % 30 < 5: return True                         # refresh provisional BTC every ~30 min
               for d in h.get('btc_provisional') or []:                                                     # its UTC day has ended: re-fetch until final
                   if now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): return True
+              tf_ = set((h.get('tiingo_final') or {}).keys())
+              for d, s_ in (h.get('fallback_sources') or {}).items():                                       # a FINAL BTC day still on a fallback (Coinbase/CoinGecko):
+                  b_ = str((s_ or {}).get('BTC', 'yahoo')).split('-')[0]                                     # re-fetch ~every 30 min so Yahoo's final bar replaces it
+                  if b_ not in ('yahoo', 'ffill') and d not in tf_ and d in h['closes'] and now_utc.minute % 30 < 5 \
+                     and now_utc >= _dt.datetime.fromisoformat(d).replace(tzinfo=_dt.timezone.utc) + _dt.timedelta(days=1, minutes=20): return True   # (else btc-daily waits for the next session close)
               return False
           # --- tiingo begin ---
           # TG (Tiingo): REFERENCE ONLY on the site. It never writes, replaces or freezes a close: it only cross-checks closes that just became FINAL
