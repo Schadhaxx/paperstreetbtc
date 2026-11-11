@@ -1,11 +1,11 @@
 {
   "source": "Yahoo CL%3DF unadjusted daily closes",
-  "asOf": "2026-11-06",
-  "asOfLabel": "6 Nov 2026",
+  "asOf": "2026-11-11",
+  "asOfLabel": "11 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "firstSession": "2026-01-02",
-  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 6 Nov 2026. Weekly-consistency notes (daily close differs from the shipped weekly close \u2014 preserved shipped value, pending review): week of 2026-10-26: daily close 104.12 on 2026-10-30 != weekly close 104.24; week of 2026-11-02: daily close 90.83 on 2026-11-06 != weekly close 90.52. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 11 Nov 2026. Weekly-consistency notes (daily close differs from the shipped weekly close \u2014 preserved shipped value, pending review): week of 2026-10-26: daily close 104.12 on 2026-10-30 != weekly close 104.24. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "days": [
     {
       "date": "2026-01-02",
@@ -862,6 +862,18 @@
     {
       "date": "2026-11-06",
       "close": 90.83
+    },
+    {
+      "date": "2026-11-09",
+      "close": 86.85
+    },
+    {
+      "date": "2026-11-10",
+      "close": 86.04
+    },
+    {
+      "date": "2026-11-11",
+      "close": 86.23
     }
   ]
 }
