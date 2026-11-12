@@ -1,7 +1,7 @@
 {
   "source": "Yahoo CL=F (NYMEX front-month WTI futures, continuous series), $/barrel",
-  "asOf": "12 Nov 2026, 2:40 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026: its close $104.24 was an intraday snapshot at 30 Oct 2026, 3:42 p.m. ET, NOT a final daily close. WTI is a continuous front-month series; there are gaps where contracts roll over. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Preserved shipped weeks (not overwritten): week of 2026-10-26 shipped close 104.24 differs from Yahoo recomputed 104.12 \u2014 preserved as shipped, pending review. Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 12 Nov 2026, 2:40 PM ET; its close is not a final close.",
+  "asOf": "12 Nov 2026, 2:50 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026: its close $104.24 was an intraday snapshot at 30 Oct 2026, 3:42 p.m. ET, NOT a final daily close. WTI is a continuous front-month series; there are gaps where contracts roll over. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Preserved shipped weeks (not overwritten): week of 2026-10-26 shipped close 104.24 differs from Yahoo recomputed 104.12 \u2014 preserved as shipped, pending review. Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 12 Nov 2026, 2:50 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -506,9 +506,9 @@
       "open": 90.83,
       "high": 91.42,
       "low": 83.88,
-      "close": 88.76,
-      "volume": 1134408
+      "close": 88.98,
+      "volume": 1138131
     }
   ],
-  "inProgress": "in progress, as of 12 Nov 2026, 2:40 PM ET"
+  "inProgress": "in progress, as of 12 Nov 2026, 2:50 PM ET"
 }
