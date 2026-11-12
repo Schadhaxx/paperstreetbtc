@@ -1,5 +1,5 @@
 {
- "as_of": "2026-11-11",
+ "as_of": "2026-11-12",
  "badges": [
   {
    "date": "2026-11-10",
@@ -26,34 +26,6 @@
   },
   "per_share_note": "Modelled \u2014 the per-day $/share is approximate, pending source-confirmed payable precision; the declared monthly total stands.",
   "upcoming": [
-   {
-    "cash": {
-     "berkshire": 6.75,
-     "hf": 3.37,
-     "hodlr": 3.37,
-     "saylor": 16.87
-    },
-    "ex": "2026-11-10",
-    "pay": "2026-11-12",
-    "pay_session": null,
-    "per_share": 0.0333333333,
-    "per_share_modelled": true,
-    "record": "2026-11-10"
-   },
-   {
-    "cash": {
-     "berkshire": 6.75,
-     "hf": 3.37,
-     "hodlr": 3.37,
-     "saylor": 16.87
-    },
-    "ex": "2026-11-11",
-    "pay": "2026-11-12",
-    "pay_session": null,
-    "per_share": 0.0333333333,
-    "per_share_modelled": true,
-    "record": "2026-11-11"
-   },
    {
     "cash": {
      "berkshire": 6.75,
@@ -322,44 +294,44 @@
    }
   ]
  },
- "generated": "2026-11-12T09:00:35Z",
+ "generated": "2026-11-12T21:00:40Z",
  "history_first": "2025-12-31",
- "history_last": "2026-11-11",
- "history_sessions": 218,
- "history_sha256": "4d775b3a6abf16cfadca8b7cdb9e6160d96837d886663092d5145b8c152d7dd3",
+ "history_last": "2026-11-12",
+ "history_sessions": 219,
+ "history_sha256": "51ab937f0c1c9f3e1e41e4498cebc6eebf94e4e4f2dbf89332883bf9ffa62cb7",
  "note": "Pre-computed by Python; the site displays these numbers, it does not re-derive them. Spot mode only.",
  "pulse": {
   "berkshire": {
-   "above_start": -8063.47,
-   "above_start_pct": -8.06,
-   "below_peak": 11958.41,
+   "above_start": -8910.64,
+   "above_start_pct": -8.91,
+   "below_peak": 12805.58,
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 91936.53
+   "value": 91089.36
   },
   "hf": {
-   "above_start": -14182.45,
-   "above_start_pct": -14.18,
-   "below_peak": 26537.02,
+   "above_start": -17670.02,
+   "above_start_pct": -17.67,
+   "below_peak": 30024.59,
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 85817.55
+   "value": 82329.98
   },
   "hodlr": {
-   "above_start": -13552.22,
-   "above_start_pct": -13.55,
-   "below_peak": 24818.71,
+   "above_start": -16680.74,
+   "above_start_pct": -16.68,
+   "below_peak": 27947.23,
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 86447.78
+   "value": 83319.26
   },
   "saylor": {
-   "above_start": -4147.78,
-   "above_start_pct": -4.15,
-   "below_peak": 21895.06,
+   "above_start": -7080.27,
+   "above_start_pct": -7.08,
+   "below_peak": 24827.55,
    "peak_date": "2026-05-11",
    "peak_value": 117747.28,
-   "value": 95852.22
+   "value": 92919.73
   }
  },
  "series": {
@@ -368,7 +340,7 @@
     "date": "2026-02-06",
     "pct": 7.23
    },
-   "drawdown_pct": -11.51,
+   "drawdown_pct": -12.33,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-25",
    "max_drawdown_pct": -28.14,
@@ -383,20 +355,20 @@
     "2026-08": 21.91,
     "2026-09": 2.41,
     "2026-10": -0.19,
-    "2026-11": -2.73
+    "2026-11": -3.62
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -2.73,
+   "mtd_pct": -3.62,
    "name": "Berkshire Killer",
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 91936.53,
-   "vol_ann_pct": 31.07,
+   "value": 91089.36,
+   "vol_ann_pct": 31.02,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -7.63
    },
-   "ytd_pct": -8.06
+   "ytd_pct": -8.91
   },
   "brk": {
    "best_day": {
@@ -418,27 +390,27 @@
     "2026-08": -1.47,
     "2026-09": -1.21,
     "2026-10": 8.94,
-    "2026-11": 8.43
+    "2026-11": 8.77
    },
    "mtd_month": "2026-11",
-   "mtd_pct": 8.43,
+   "mtd_pct": 8.77,
    "name": "Berkshire (BRK.B)",
-   "peak_date": "2026-11-11",
-   "peak_value": 117.03,
-   "value": 117.03,
-   "vol_ann_pct": 15.39,
+   "peak_date": "2026-11-12",
+   "peak_value": 117.39,
+   "value": 117.39,
+   "vol_ann_pct": 15.36,
    "worst_day": {
     "date": "2026-03-02",
     "pct": -4.91
    },
-   "ytd_pct": 17.03
+   "ytd_pct": 17.39
   },
   "btc": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 12.52
    },
-   "drawdown_pct": -23.69,
+   "drawdown_pct": -26.33,
    "kind": "benchmark",
    "max_drawdown_date": "2026-06-30",
    "max_drawdown_pct": -39.59,
@@ -453,30 +425,30 @@
     "2026-08": 25.05,
     "2026-09": 6.37,
     "2026-10": -7.61,
-    "2026-11": -4.19
+    "2026-11": -7.5
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -4.19,
+   "mtd_pct": -7.5,
    "name": "Spot BTC",
    "peak_date": "2026-01-14",
    "peak_value": 110.77,
-   "value": 84.52,
-   "vol_ann_pct": 43.79,
+   "value": 81.6,
+   "vol_ann_pct": 43.84,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.13
    },
-   "ytd_pct": -15.48
+   "ytd_pct": -18.4
   },
   "gold": {
    "best_day": {
     "date": "2026-02-03",
     "pct": 6.36
    },
-   "drawdown_pct": -26.36,
+   "drawdown_pct": -28.44,
    "kind": "benchmark",
-   "max_drawdown_date": "2026-10-30",
-   "max_drawdown_pct": -28.26,
+   "max_drawdown_date": "2026-11-12",
+   "max_drawdown_pct": -28.44,
    "monthly": {
     "2026-01": 12.27,
     "2026-02": 8.72,
@@ -488,27 +460,27 @@
     "2026-08": 9.93,
     "2026-09": -6.75,
     "2026-10": -6.58,
-    "2026-11": 2.64
+    "2026-11": -0.25
    },
    "mtd_month": "2026-11",
-   "mtd_pct": 2.64,
+   "mtd_pct": -0.25,
    "name": "Gold (GLD)",
    "peak_date": "2026-01-29",
    "peak_value": 125.13,
-   "value": 92.14,
-   "vol_ann_pct": 30.21,
+   "value": 89.55,
+   "vol_ann_pct": 30.29,
    "worst_day": {
     "date": "2026-01-30",
     "pct": -10.27
    },
-   "ytd_pct": -7.86
+   "ytd_pct": -10.45
   },
   "hf": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 16.17
    },
-   "drawdown_pct": -23.62,
+   "drawdown_pct": -26.72,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -42.45,
@@ -523,27 +495,27 @@
     "2026-08": 28.46,
     "2026-09": 9.05,
     "2026-10": -9.39,
-    "2026-11": -4.29
+    "2026-11": -8.18
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -4.29,
+   "mtd_pct": -8.18,
    "name": "Hedge Fund Killer",
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 85817.55,
-   "vol_ann_pct": 51.89,
+   "value": 82329.98,
+   "vol_ann_pct": 51.95,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.04
    },
-   "ytd_pct": -14.18
+   "ytd_pct": -17.67
   },
   "hodlr": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 14.21
    },
-   "drawdown_pct": -22.31,
+   "drawdown_pct": -25.12,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -39.89,
@@ -558,27 +530,27 @@
     "2026-08": 26.09,
     "2026-09": 7.74,
     "2026-10": -8.26,
-    "2026-11": -3.98
+    "2026-11": -7.45
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -3.98,
+   "mtd_pct": -7.45,
    "name": "Hodler Jam Sandwich",
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 86447.78,
-   "vol_ann_pct": 46.11,
+   "value": 83319.26,
+   "vol_ann_pct": 46.16,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -13.6
    },
-   "ytd_pct": -13.55
+   "ytd_pct": -16.68
   },
   "mstr": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 26.11
    },
-   "drawdown_pct": -37.56,
+   "drawdown_pct": -41.61,
    "kind": "benchmark",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -57.99,
@@ -593,27 +565,27 @@
     "2026-08": 42.52,
     "2026-09": 15.16,
     "2026-10": -14.75,
-    "2026-11": -6.25
+    "2026-11": -12.34
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -6.25,
+   "mtd_pct": -12.34,
    "name": "MSTR",
    "peak_date": "2026-05-11",
    "peak_value": 128.95,
-   "value": 80.52,
-   "vol_ann_pct": 84.77,
+   "value": 75.29,
+   "vol_ann_pct": 84.87,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -17.12
    },
-   "ytd_pct": -19.48
+   "ytd_pct": -24.71
   },
   "qqq": {
    "best_day": {
     "date": "2026-11-09",
     "pct": 3.54
    },
-   "drawdown_pct": -9.12,
+   "drawdown_pct": -9.41,
    "kind": "benchmark",
    "max_drawdown_date": "2026-11-05",
    "max_drawdown_pct": -14.82,
@@ -628,27 +600,27 @@
     "2026-08": 4.18,
     "2026-09": 3.31,
     "2026-10": -6.66,
-    "2026-11": -0.02
+    "2026-11": -0.34
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -0.02,
+   "mtd_pct": -0.34,
    "name": "QQQ (total return)",
    "peak_date": "2026-10-06",
    "peak_value": 124.08,
-   "value": 112.76,
-   "vol_ann_pct": 22.26,
+   "value": 112.4,
+   "vol_ann_pct": 22.21,
    "worst_day": {
     "date": "2026-11-05",
     "pct": -6.49
    },
-   "ytd_pct": 12.76
+   "ytd_pct": 12.4
   },
   "saylor": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 14.3
    },
-   "drawdown_pct": -18.59,
+   "drawdown_pct": -21.09,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -43.36,
@@ -663,27 +635,27 @@
     "2026-08": 23.62,
     "2026-09": 9.21,
     "2026-10": -7.64,
-    "2026-11": -2.44
+    "2026-11": -5.42
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -2.44,
+   "mtd_pct": -5.42,
    "name": "Saylor Moon",
    "peak_date": "2026-05-11",
    "peak_value": 117747.28,
-   "value": 95852.22,
-   "vol_ann_pct": 48.08,
+   "value": 92919.73,
+   "vol_ann_pct": 48.09,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -10.3
    },
-   "ytd_pct": -4.15
+   "ytd_pct": -7.08
   },
   "spy": {
    "best_day": {
     "date": "2026-03-31",
     "pct": 2.91
    },
-   "drawdown_pct": -2.47,
+   "drawdown_pct": -2.8,
    "kind": "benchmark",
    "max_drawdown_date": "2026-03-30",
    "max_drawdown_pct": -8.88,
@@ -698,20 +670,20 @@
     "2026-08": 2.68,
     "2026-09": -0.33,
     "2026-10": -0.91,
-    "2026-11": 0.54
+    "2026-11": 0.2
    },
    "mtd_month": "2026-11",
-   "mtd_pct": 0.54,
+   "mtd_pct": 0.2,
    "name": "S&P 500 (SPY, total return)",
    "peak_date": "2026-10-06",
    "peak_value": 115.14,
-   "value": 112.29,
-   "vol_ann_pct": 14.04,
+   "value": 111.92,
+   "vol_ann_pct": 14.02,
    "worst_day": {
     "date": "2026-11-05",
     "pct": -4.41
    },
-   "ytd_pct": 12.29
+   "ytd_pct": 11.92
   }
  },
  "source": "history.json (data branch) + ledger.js (STRC dividends)",
