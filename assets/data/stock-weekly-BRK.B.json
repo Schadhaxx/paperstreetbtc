@@ -9,7 +9,7 @@
   "baseLabel": "31 Dec close",
   "lastSession": "2026-11-12",
   "inProgress": "in progress, through last completed session 12 Nov 2026 \u2014 week not finished",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 12 Nov 2026, 4:10 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 12 Nov 2026, 4:20 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -512,10 +512,10 @@
       "label": "9 Nov 2026 \u2013 15 Nov 2026",
       "days": 4,
       "open": 569.99,
-      "high": 596.9,
+      "high": 596.92,
       "low": 562.45,
-      "close": 590.1,
-      "volume": 20556948
+      "close": 589.83,
+      "volume": 21132588
     }
   ]
 }
