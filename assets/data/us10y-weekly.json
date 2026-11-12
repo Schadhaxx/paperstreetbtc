@@ -1,7 +1,7 @@
 {
   "source": "Yahoo ^TNX (CBOE Interest Rate 10 Year T Note), yields in %",
-  "asOf": "12 Nov 2026, 1:10 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Yields in percent, shown to 3 decimals. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026 closed final: 30 Oct 2026 yield 4.929%, vs 29 Oct 4.989% (-0.060 pp). Source is Yahoo ^TNX, not Treasury par yield. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 12 Nov 2026, 1:10 PM ET; its close is not a final close.",
+  "asOf": "12 Nov 2026, 1:20 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Yields in percent, shown to 3 decimals. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026 closed final: 30 Oct 2026 yield 4.929%, vs 29 Oct 4.989% (-0.060 pp). Source is Yahoo ^TNX, not Treasury par yield. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 12 Nov 2026, 1:20 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -459,10 +459,10 @@
       "label": "9 Nov 2026 \u2013 15 Nov 2026",
       "days": 4,
       "open": 4.839,
-      "high": 5.109,
+      "high": 5.115,
       "low": 4.831,
-      "close": 5.107
+      "close": 5.111
     }
   ],
-  "inProgress": "in progress, as of 12 Nov 2026, 1:10 PM ET"
+  "inProgress": "in progress, as of 12 Nov 2026, 1:20 PM ET"
 }
