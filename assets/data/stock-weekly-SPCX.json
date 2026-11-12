@@ -8,8 +8,8 @@
   "baseSession": "2026-06-12",
   "baseLabel": "Listing close",
   "lastSession": "2026-11-12",
-  "inProgress": "in progress, as of 12 Nov 2026, 12:27 PM ET (session open), week not finished",
-  "note": "Weekly candles since listing, UTC Monday-Sunday weeks. First week is partial: 1 trading day (12 Jun 2026), week starting Mon 8 Jun 2026. Nothing before listing is included. The baseline is the first trading close, not an IPO print. The first candle open is the first trade and is not that baseline. Latest week is in progress as of 12 Nov 2026, 12:27 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "inProgress": "in progress, as of 12 Nov 2026, 12:30 PM ET (session open), week not finished",
+  "note": "Weekly candles since listing, UTC Monday-Sunday weeks. First week is partial: 1 trading day (12 Jun 2026), week starting Mon 8 Jun 2026. Nothing before listing is included. The baseline is the first trading close, not an IPO print. The first candle open is the first trade and is not that baseline. Latest week is in progress as of 12 Nov 2026, 12:30 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "weeks": [
     {
       "monday": "2026-06-08",
@@ -259,10 +259,10 @@
       "label": "9 Nov 2026 \u2013 15 Nov 2026",
       "days": 4,
       "open": 136.51,
-      "high": 147.56,
+      "high": 147.58,
       "low": 135.37,
-      "close": 143.08,
-      "volume": 360538766
+      "close": 142.97,
+      "volume": 360722821
     }
   ]
 }
