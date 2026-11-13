@@ -5,6 +5,13 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
 // the same session or a newer one. Older snapshots do not erase a newer
 // close. Day-change and YTD bars read those rows directly, so they cannot
 // drift from the cards.
+// Rendering is native canvas (no chart library): the line view draws
+// rebased lines with end labels and a hover crosshair, the bar view draws
+// horizontal day/YTD bars. A desk-live.json point (5-min current-week
+// close) fills today's point when the card row does not cover today and
+// the entry is fresh; see fetchDeskLive. The 5-min re-check calls
+// window.ScreenerChartRefreshDeskLive() to re-fetch it; no timer lives
+// in this file.
 // Signed zero stays black (#000000). On this dark card that text is hard
 // to see; the choice is deliberate and called out in the proposal.
 (function () {
@@ -115,14 +122,17 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   var daily = null;
   var dailyError = false;
   var rows = [];
+  var deskLive = null; // {asOfMs, bySym:{sym:{close, monday}}} or null
+  var deskLiveAt = 0;
+  var deskLiveToken = 0;
   var view = 'lines';
   var range = 'ytd';
   var barMetric = 'day';
   var on = {};
   var benchOn = { BTC: false, SPY: false, QQQ: false };
   var hi = null;
-  var chart = null;
-  var tipIndex = null;
+  var chart = null; // Chart.js instance for the bar view until it goes native; null in the line view
+  var native = null; // native line geometry for hover/click/redraw, or null
   STOCKS.forEach(function (s) { on[s] = (s === 'IBIT' || s === 'MSTR'); });
 
   function motionOK() {
@@ -151,6 +161,77 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (row._closeDate) return parsePretty(row._closeDate);
     return null;
   }
+  // --- desk-live.json overlay (5-min current-week close) ---
+  // Same source and freshness rule as the weekly-modal overlay in
+  // screener-indicator-chart.js (asOf < ~20 min old, Monday matches the
+  // week being drawn), adapted to daily closes: the entry's close is
+  // today's point for a stock whose daily series does not reach today.
+  // A missing or stale file is a silent fallback, never an error: the
+  // shipped daily file is the source of truth and the overlay is a
+  // freshness bonus.
+  var DESK_LIVE_URL = 'https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/desk-live.json';
+  var DESK_LIVE_MAX_AGE_MS = 20 * 60 * 1000; // ~20 min
+  var DESK_LIVE_MIN_REFETCH_MS = 4 * 60 * 1000; // throttle repeat fetches
+  function deskLiveFresh(asOfMs, nowMs) {
+    if (typeof asOfMs !== 'number' || !isFinite(asOfMs)) return false;
+    var t = (nowMs === undefined) ? Date.now() : nowMs;
+    if (typeof t !== 'number' || !isFinite(t)) return false;
+    // Allow up to 60s of clock skew the other way; the entry must not
+    // be from the future beyond that, nor older than ~20 min.
+    return asOfMs <= t + 60000 && (t - asOfMs) < DESK_LIVE_MAX_AGE_MS;
+  }
+  function mondayOf(iso) {
+    // Monday (UTC) of the week containing an ISO date.
+    var d = new Date(iso + 'T12:00:00Z');
+    if (isNaN(d.getTime())) return null;
+    var back = (d.getUTCDay() + 6) % 7;
+    return new Date(d.getTime() - back * 86400000).toISOString().slice(0, 10);
+  }
+  function deskLivePointFor(sym, today) {
+    if (!deskLive || !deskLive.bySym) return null;
+    var e = deskLive.bySym[sym];
+    if (!e) return null;
+    if (!deskLiveFresh(deskLive.asOfMs)) return null;
+    if (e.monday !== mondayOf(today)) return null;
+    if (typeof e.close !== 'number' || !isFinite(e.close) || !(e.close > 0)) return null;
+    return Math.round(e.close * 100) / 100;
+  }
+  function fetchDeskLive(force) {
+    var now = Date.now();
+    if (!force && deskLiveAt && now - deskLiveAt < DESK_LIVE_MIN_REFETCH_MS) return;
+    var token = ++deskLiveToken;
+    fetch(DESK_LIVE_URL + '?t=' + now, { cache: 'no-store' })
+      .then(function (res) { if (!res.ok) throw new Error('no desk-live file'); return res.json(); })
+      .then(function (data) {
+        if (token !== deskLiveToken) return; // stale response: ignore
+        var asOfMs = (data && typeof data.asOf === 'string') ? Date.parse(data.asOf) : NaN;
+        var bySym = {};
+        if (deskLiveFresh(asOfMs) && data && data.symbols && typeof data.symbols === 'object') {
+          var syms = data.symbols, k, en;
+          for (k in syms) {
+            en = syms[k];
+            if (!en || en.status !== 'ok') continue;
+            if (typeof en.close !== 'number' || !isFinite(en.close)) continue;
+            if (typeof en.monday !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(en.monday)) continue;
+            bySym[k] = { close: en.close, monday: en.monday };
+          }
+        }
+        deskLive = { asOfMs: asOfMs, bySym: bySym };
+        deskLiveAt = Date.now();
+        render();
+      })
+      .catch(function () {
+        if (token !== deskLiveToken) return;
+        // Silent fallback: no desk-live file (or a bad one) just means
+        // the shipped daily file stands. No error is shown.
+        deskLive = null;
+        deskLiveAt = Date.now();
+      });
+  }
+  // Update hook for the 5-min re-check (polling while a chart is open +
+  // refresh on tab return, wired by the caller): re-fetches desk-live.json
+  // and re-renders. No timer lives in this file.
+  window.ScreenerChartRefreshDeskLive = function () { fetchDeskLive(true); };
   function seriesFor(sym) {
     var s = daily && daily.symbols && daily.symbols[sym];
     if (!s || !s.dates || !s.closes) return null;
@@ -165,6 +246,20 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         closes.push(Math.round(row.price * 100) / 100);
       } else if (session && session === last) {
         closes[closes.length - 1] = Math.round(row.price * 100) / 100;
+      }
+    }
+    // 5-min desk-live point: only when the row above did not already put
+    // a point on today, the entry is fresh, and its Monday is the Monday
+    // of the week containing today. Otherwise the shipped daily file
+    // stands (desk-live.json does not exist yet on some loads; a missing
+    // or stale file is a silent fallback, never an error).
+    var lastD = dates[dates.length - 1];
+    var today = todayET();
+    if (s.kind === 'stock' && today && lastD < today) {
+      var dl = deskLivePointFor(sym, today);
+      if (dl !== null) {
+        dates.push(today);
+        closes.push(dl);
       }
     }
     return { dates: dates, closes: closes, baseClose: s.baseClose, basis: s.basis, kind: s.kind };
@@ -225,6 +320,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
 
   function destroyChart() {
     if (chart) { chart.destroy(); chart = null; }
+    native = null;
+    var canvas = document.getElementById('screener-chart');
+    if (canvas) {
+      var g = canvas.getContext('2d');
+      if (g) g.clearRect(0, 0, canvas.width, canvas.height);
+    }
   }
   function hexAlpha(hex, a) {
     var n = parseInt(hex.slice(1), 16);
@@ -255,92 +356,260 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       g.restore();
     }
   };
-  var endPlugin = {
-    id: 'cmpEnds',
-    afterDatasetsDraw: function (c) {
-      if (view !== 'lines') return;
-      var area = c.chartArea, g = c.ctx;
-      if (!area) return;
-      var placed = [];
-      var sets = c.data.datasets || [];
-      g.save();
-      g.font = '700 11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
-      g.textBaseline = 'middle';
-      var cands = [];
-      sets.forEach(function (ds, di) {
-        var meta = c.getDatasetMeta(di);
-        if (!meta || meta.hidden) return;
-        var last = null;
-        for (var i = meta.data.length - 1; i >= 0; i--) {
-          var v = ds.data[i];
-          if (v === null || v === undefined) continue;
-          last = meta.data[i];
-          break;
-        }
-        if (!last) return;
-        var label = ds.label + ' ' + CmpMath.fmtPct(ds._end);
-        var dim = hi && ds.label !== hi;
-        if (dim && c.width < 520) return;
-        var tw = g.measureText(label).width;
-        var x = last.x + 6;
-        if (x + tw > c.width - 4) x = Math.max(area.left, last.x - tw - 6);
-        var y = Math.max(area.top + 6, Math.min(area.bottom - 6, last.y));
-        cands.push({ di: di, last: last, ds: ds, label: label, dim: dim, x: x, y: y, w: tw, pri: ds.label === hi ? 0 : (ds._kind === 'benchmark' ? 2 : 1) });
-      });
-      // hide labels that would collide with an already placed label or cross another line (highlight first, then stocks, then benchmarks)
-      cands.sort(function (a, b) { return a.pri - b.pri; });
-      function crossesLine(cd) {
-        for (var k = 0; k < sets.length; k++) {
-          var m = c.getDatasetMeta(k);
-          if (!m || m.hidden) continue;
-          for (var j = 0; j < m.data.length; j++) {
-            var pt = m.data[j], val = sets[k].data[j];
-            if (!pt || val === null || val === undefined || pt === cd.last) continue;
-            if (pt.x >= cd.x - 2 && pt.x <= cd.x + cd.w + 2 && Math.abs(pt.y - cd.y) < 7) return true;
-          }
-        }
-        return false;
+  // --- native canvas line view ---
+  // Chart.js linear-scale tick generation, replicated the way the Stage 2
+  // BTC native line does it: step = niceNum(span/(maxTicks-1)), widened
+  // once if the tick count would exceed the limit.
+  function cmpNiceNum(x) {
+    if (!(x > 0)) return 1;
+    var r = Math.round(x);
+    if (Math.abs(x - r) < x / 1e3) x = r;
+    var p = Math.pow(10, Math.floor(Math.log10(x)));
+    var s = x / p;
+    return (s <= 1 ? 1 : s <= 2 ? 2 : s <= 5 ? 5 : 10) * p;
+  }
+  function cmpNiceTicks(min, max, maxTicks) {
+    if (!(max > min)) { max = min + 1; }
+    var mt = Math.max(2, maxTicks || 6);
+    var span = max - min, step = cmpNiceNum(span / (mt - 1));
+    var k = Math.ceil(max / step) - Math.floor(min / step);
+    if (k > mt - 1) step = cmpNiceNum(k * step / (mt - 1));
+    var t0 = Math.floor(min / step) * step, t1 = Math.ceil(max / step) * step, out = [];
+    for (var v = t0; v <= t1 + step * 0.01; v += step) out.push(Math.round(v * 1000) / 1000);
+    return out;
+  }
+  function nativeSpline(ctx, xs, ys, tension, b) {
+    // Chart.js splineCurve (Catmull-Rom), as in the Stage 2 BTC native
+    // line: control points clamped to the plot bounds.
+    var n = xs.length;
+    if (n < 1) return;
+    ctx.moveTo(xs[0], ys[0]);
+    if (n === 1) return;
+    if (!tension || n === 2) { for (var i = 1; i < n; i++) ctx.lineTo(xs[i], ys[i]); return; }
+    function spline(pX, pY, cX, cY, nX, nY, t) {
+      var d01 = Math.sqrt(Math.pow(cX - pX, 2) + Math.pow(cY - pY, 2));
+      var d12 = Math.sqrt(Math.pow(nX - cX, 2) + Math.pow(nY - cY, 2));
+      var s01 = d01 / (d01 + d12), s12 = d12 / (d01 + d12);
+      if (isNaN(s01)) s01 = 0;
+      if (isNaN(s12)) s12 = 0;
+      var fa = t * s01, fb = t * s12;
+      return { prev: { x: cX - fa * (nX - pX), y: cY - fa * (nY - pY) },
+               next: { x: cX + fb * (nX - pX), y: cY + fb * (nY - pY) } };
+    }
+    function clamp(v, lo, hi) { return Math.max(Math.min(v, hi), lo); }
+    var cp1x = [], cp1y = [], cp2x = [], cp2y = [], j;
+    for (j = 0; j < n; j++) {
+      var p = Math.max(0, j - 1), q = Math.min(n - 1, j + 1);
+      var c = spline(xs[p], ys[p], xs[j], ys[j], xs[q], ys[q], tension);
+      cp1x[j] = c.prev.x; cp1y[j] = c.prev.y; cp2x[j] = c.next.x; cp2y[j] = c.next.y;
+    }
+    if (b) {
+      for (j = 0; j < n; j++) {
+        cp1x[j] = clamp(cp1x[j], b.l, b.r); cp1y[j] = clamp(cp1y[j], b.t, b.b);
+        cp2x[j] = clamp(cp2x[j], b.l, b.r); cp2y[j] = clamp(cp2y[j], b.t, b.b);
       }
-      cands.forEach(function (cd) {
-        for (var p = 0; p < placed.length; p++) {
-          var o = placed[p];
-          if (Math.abs(o.y - cd.y) < 13 && cd.x < o.x + o.w + 4 && o.x < cd.x + cd.w + 4) return;
+    }
+    for (var i = 0; i < n - 1; i++) {
+      ctx.bezierCurveTo(cp2x[i], cp2y[i], cp1x[i + 1], cp1y[i + 1], xs[i + 1], ys[i + 1]);
+    }
+  }
+  function setupCanvas(canvas, wrap) {
+    // Size the backing store to the wrap (CSS pixels x devicePixelRatio,
+    // capped at 2) and return a context already scaled to CSS pixels.
+    var w = (wrap && wrap.clientWidth) || canvas.clientWidth || 0;
+    var h = (wrap && wrap.clientHeight) || canvas.clientHeight || 0;
+    if (w < 10 || h < 10) return null;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+    if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; }
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: w, h: h };
+  }
+  function paintNativeLines() {
+    if (!native || native.kind !== 'lines') return;
+    var canvas = document.getElementById('screener-chart');
+    var wrap = document.getElementById('cmp-canvas-wrap');
+    if (!canvas) return;
+    var s = setupCanvas(canvas, wrap);
+    if (!s) return;
+    var ctx = s.ctx, W = s.w, H = s.h;
+    var labels = native.labels, rows = native.tipRows, ordered = native.ordered;
+    var n = labels.length;
+    var vmin = Infinity, vmax = -Infinity;
+    rows.forEach(function (r) {
+      r.vals.forEach(function (v) { if (CmpMath.isNum(v)) { if (v < vmin) vmin = v; if (v > vmax) vmax = v; } });
+    });
+    if (!isFinite(vmin)) return;
+    if (vmax - vmin < 1e-9) { vmax = vmin + 1; vmin = vmin - 1; }
+    var ticks = cmpNiceTicks(vmin, vmax, 6);
+    var tMin = ticks[0], tMax = ticks[ticks.length - 1];
+    var phone = W < 520;
+    // Plot area: left from the widest y-tick label, right 96 (8 on phone)
+    // for the end labels, top 8, bottom room for the month ticks.
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+    var yW = 0;
+    ticks.forEach(function (t) { yW = Math.max(yW, ctx.measureText(CmpMath.fmtPct(t)).width); });
+    var padL = Math.ceil(yW) + 8, padR = phone ? 8 : 96, padT = 8, padB = 18;
+    var x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    function X(i) { return n <= 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1); }
+    function Y(v) { return y1 - (y1 - y0) * (v - tMin) / (tMax - tMin); }
+    var sets = rows.map(function (r, ri) {
+      var m = ordered[ri];
+      var dim = native.hi && r.sym !== native.hi;
+      var col = COLOR[r.sym] || psC('#94a3b8', '#475569');
+      var pts = r.vals.map(function (v, i) { return CmpMath.isNum(v) ? { x: X(i), y: Y(v), v: v } : null; });
+      return { sym: r.sym, kind: r.kind, col: col, dim: dim, end: m.pct, pts: pts };
+    });
+    native.sets = sets;
+    native.geom = { x0: x0, x1: x1, y0: y0, y1: y1, n: n };
+    // Y gridlines (dashed) + tick labels; the 0 line is stronger.
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'right';
+    ticks.forEach(function (t) {
+      var py = Y(t);
+      if (py < y0 - 1 || py > y1 + 1) return;
+      ctx.save();
+      ctx.setLineDash([2, 4]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = t === 0 ? psC('rgba(238,242,251,.42)', 'rgba(15,23,42,.35)') : psC('rgba(148,163,184,.16)', 'rgba(15,23,42,.10)');
+      ctx.beginPath();
+      ctx.moveTo(x0, py);
+      ctx.lineTo(x1, py);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(CmpMath.fmtPct(t), x0 - 6, py);
+    });
+    // X month ticks (autoSkip: every ceil(n/limit)-th label from index 0).
+    var maxTicks = phone ? 4 : 7;
+    var step = Math.max(1, Math.ceil(n / maxTicks));
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#94a3b8';
+    for (var i = 0; i < n; i += step) {
+      var lab = labels[i];
+      if (!lab || lab.length < 7) continue;
+      ctx.fillText(MONTHS[+lab.slice(5, 7) - 1], X(i), y1 + 10);
+    }
+    // Highlight fill under the highlighted line, down to the 0 line.
+    var hiSet = null;
+    sets.forEach(function (st) { if (st.sym === native.hi) hiSet = st; });
+    if (hiSet) {
+      var hx = [], hy = [];
+      hiSet.pts.forEach(function (p) { if (p) { hx.push(p.x); hy.push(p.y); } });
+      if (hx.length > 1) {
+        var yZero = Math.max(y0, Math.min(y1, Y(0)));
+        ctx.save();
+        ctx.beginPath();
+        nativeSpline(ctx, hx, hy, 0.3, { l: x0, r: x1, t: y0, b: y1 });
+        ctx.lineTo(hx[hx.length - 1], yZero);
+        ctx.lineTo(hx[0], yZero);
+        ctx.closePath();
+        var g = ctx.createLinearGradient(0, y0, 0, y1);
+        g.addColorStop(0, hexAlpha(hiSet.col, 0.38));
+        g.addColorStop(1, hexAlpha(hiSet.col, 0));
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    // Lines (spanGaps: connect across missing dates).
+    sets.forEach(function (st) {
+      var xs = [], ys = [];
+      st.pts.forEach(function (p) { if (p) { xs.push(p.x); ys.push(p.y); } });
+      if (xs.length < 2) return;
+      ctx.save();
+      ctx.beginPath();
+      nativeSpline(ctx, xs, ys, 0.3, { l: x0, r: x1, t: y0, b: y1 });
+      ctx.strokeStyle = fade(st.col, st.dim);
+      ctx.lineWidth = st.sym === native.hi ? 3 : (st.kind === 'benchmark' ? 1.5 : 2);
+      ctx.setLineDash(st.kind === 'benchmark' ? [5, 4] : []);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      ctx.restore();
+    });
+    // End labels (same placement/collision rules as the old plugin:
+    // highlight first, then stocks, then benchmarks; a label that would
+    // collide with a placed label or cross another line is skipped).
+    ctx.font = '700 11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    var placed = [];
+    var cands = [];
+    sets.forEach(function (st) {
+      var last = null;
+      for (var i = st.pts.length - 1; i >= 0; i--) { if (st.pts[i]) { last = st.pts[i]; break; } }
+      if (!last) return;
+      var label = st.sym + ' ' + CmpMath.fmtPct(st.end);
+      var dim = st.dim;
+      if (dim && phone) return;
+      var tw = ctx.measureText(label).width;
+      var x = last.x + 6;
+      if (x + tw > W - 4) x = Math.max(x0, last.x - tw - 6);
+      var y = Math.max(y0 + 6, Math.min(y1 - 6, last.y));
+      cands.push({ st: st, last: last, label: label, dim: dim, x: x, y: y, w: tw,
+        pri: st.sym === native.hi ? 0 : (st.kind === 'benchmark' ? 2 : 1) });
+    });
+    cands.sort(function (a, b) { return a.pri - b.pri; });
+    function crossesLine(cd) {
+      for (var k = 0; k < sets.length; k++) {
+        var pts = sets[k].pts;
+        for (var j = 0; j < pts.length; j++) {
+          var pt = pts[j];
+          if (!pt || pt === cd.last) continue;
+          if (pt.x >= cd.x - 2 && pt.x <= cd.x + cd.w + 2 && Math.abs(pt.y - cd.y) < 7) return true;
         }
-        if (cd.pri > 0 && crossesLine(cd)) return;
-        placed.push(cd);
-        g.fillStyle = fade(cd.ds.borderColor || '#eef2fb', cd.dim);
-        g.fillText(cd.label, cd.x, cd.y);
+      }
+      return false;
+    }
+    cands.forEach(function (cd) {
+      for (var p = 0; p < placed.length; p++) {
+        var o = placed[p];
+        if (Math.abs(o.y - cd.y) < 13 && cd.x < o.x + o.w + 4 && o.x < cd.x + cd.w + 4) return;
+      }
+      if (cd.pri > 0 && crossesLine(cd)) return;
+      placed.push(cd);
+      ctx.fillStyle = fade(cd.st.col, cd.dim);
+      ctx.fillText(cd.label, cd.x, cd.y);
+    });
+    // Hover crosshair + dots at the hovered index (only after a hover;
+    // the first paint shows the tip text but no crosshair, as before).
+    if (native.tipIndex !== null && native.tipIndex !== undefined && native.tipIndex >= 0 && native.tipIndex < n) {
+      var hx2 = X(native.tipIndex);
+      ctx.save();
+      ctx.strokeStyle = psC('rgba(148,163,184,.55)', 'rgba(15,23,42,.35)');
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(hx2, y0);
+      ctx.lineTo(hx2, y1);
+      ctx.stroke();
+      ctx.restore();
+      sets.forEach(function (st) {
+        var p = st.pts[native.tipIndex];
+        if (!p) return;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = fade(st.col, st.dim);
+        ctx.fill();
+        ctx.restore();
       });
-      g.restore();
     }
-  };
-  var crossPlugin = {
-    id: 'cmpCross',
-    afterDraw: function (c) {
-      if (view !== 'lines' || tipIndex === null) return;
-      var meta = c.getDatasetMeta(0);
-      if (!meta || !meta.data || !meta.data[tipIndex]) return;
-      var x = meta.data[tipIndex].x, area = c.chartArea, g = c.ctx;
-      g.save();
-      g.strokeStyle = psC('rgba(148,163,184,.55)','rgba(15,23,42,.35)');
-      g.setLineDash([3, 3]);
-      g.beginPath();
-      g.moveTo(x, area.top);
-      g.lineTo(x, area.bottom);
-      g.stroke();
-      g.restore();
-    }
-  };
+  }
 
   function showTip(labels, idx) {
     var tip = document.getElementById('cmp-tip');
     if (!tip) return;
-    if (view !== 'lines' || !chart || idx === null || idx === undefined) { tip.hidden = true; return; }
+    if (view !== 'lines' || !native || native.kind !== 'lines' || idx === null || idx === undefined) { tip.hidden = true; return; }
     var items = [];
-    (chart.data.datasets || []).forEach(function (ds) {
-      var v = ds.data[idx];
+    native.tipRows.forEach(function (r) {
+      var v = r.vals[idx];
       if (!CmpMath.isNum(v)) return;
-      items.push({ sym: ds.label, pct: v, kind: ds._kind });
+      items.push({ sym: r.sym, pct: v, kind: r.kind });
     });
     if (!items.length) { tip.hidden = true; return; }
     items = CmpMath.rankDesc(items);
@@ -357,7 +626,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   function renderLines(model) {
     var canvas = document.getElementById('screener-chart');
     var wrap = document.getElementById('cmp-canvas-wrap');
-    if (!canvas || typeof Chart === 'undefined') return;
+    if (!canvas) return;
     if (wrap) wrap.hidden = false;
     if (!model.models.length) {
       destroyChart();
@@ -374,86 +643,15 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       if (b.sym === hi) return -1;
       return 0;
     });
-    var datasets = ordered.map(function (m) {
+    var tipRows = ordered.map(function (m) {
       var map = {};
       m.dates.forEach(function (d, i) { map[d] = m.pcts[i]; });
-      var dim = hi && m.sym !== hi;
-      var col = COLOR[m.sym] || psC('#94a3b8','#475569');
-      return {
-        label: m.sym,
-        _end: m.pct,
-        _kind: m.kind,
-        data: labels.map(function (d) { return map[d] === undefined ? null : map[d]; }),
-        borderColor: fade(col, dim),
-        backgroundColor: function (ctx) {
-          if (m.sym !== hi) return 'transparent';
-          var area = ctx.chart.chartArea;
-          if (!area) return hexAlpha(col, 0.25);
-          var g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-          g.addColorStop(0, hexAlpha(col, 0.38));
-          g.addColorStop(1, hexAlpha(col, 0));
-          return g;
-        },
-        borderWidth: m.sym === hi ? 3 : (m.kind === 'benchmark' ? 1.5 : 2),
-        borderDash: m.kind === 'benchmark' ? [5, 4] : [],
-        tension: 0.3,
-        spanGaps: true,
-        pointRadius: 0,
-        pointHitRadius: 8,
-        fill: m.sym === hi ? 'origin' : false
-      };
+      return { sym: m.sym, kind: m.kind, vals: labels.map(function (d) { return map[d] === undefined ? null : map[d]; }) };
     });
-    var options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: motionOK() ? { duration: 700, easing: 'easeOutQuart' } : false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          enabled: false,
-          external: function (ctx) {
-            var pts = ctx.tooltip && ctx.tooltip.dataPoints;
-            tipIndex = pts && pts.length ? pts[0].dataIndex : null;
-            showTip(labels, tipIndex);
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          border: { display: false },
-          ticks: {
-            color: '#94a3b8', maxRotation: 0, autoSkip: true,
-            maxTicksLimit: (wrap && wrap.clientWidth < 520) ? 4 : 7,
-            callback: function (value) {
-              var lab = this.getLabelForValue(value);
-              if (!lab || lab.length < 7) return lab;
-              return MONTHS[+lab.slice(5, 7) - 1];
-            }
-          }
-        },
-        y: {
-          grid: { display: false },
-          border: { display: false },
-          ticks: {
-            color: '#94a3b8', maxTicksLimit: 6,
-            callback: function (v) { return CmpMath.fmtPct(v); }
-          }
-        }
-      },
-      layout: { padding: { right: (wrap && wrap.clientWidth < 520) ? 8 : 96, top: 8 } },
-      onClick: function (_e, els) {
-        if (els && els.length) {
-          var ds = chart.data.datasets[els[0].datasetIndex];
-          if (ds) setTimeout(function () { setHighlight(ds.label, true); }, 0);
-        }
-      }
-    };
-    if (chart) { chart.destroy(); chart = null; }
-    chart = new Chart(canvas, { type: 'line', data: { labels: labels, datasets: datasets }, options: options, plugins: [gridPlugin, endPlugin, crossPlugin] });
-    tipIndex = labels.length - 1;
-    showTip(labels, tipIndex);
+    if (chart) { chart.destroy(); chart = null; } // a bar chart may be showing
+    native = { kind: 'lines', labels: labels, tipRows: tipRows, ordered: ordered, hi: hi, tipIndex: null };
+    paintNativeLines();
+    showTip(labels, labels.length - 1);
   }
 
   function renderBars() {
@@ -815,6 +1013,65 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     });
     var retry = document.getElementById('cmp-retry');
     if (retry) retry.addEventListener('click', loadDaily);
+    // Native canvas hover/click (line view) + redraw on wrap resize.
+    // touch-action pan-y keeps vertical page scroll working on touch.
+    var cmpCanvas = document.getElementById('screener-chart');
+    if (cmpCanvas) {
+      cmpCanvas.style.touchAction = 'pan-y';
+      cmpCanvas.addEventListener('pointermove', function (e) {
+        if (!native || native.kind !== 'lines' || !native.geom) return;
+        var r = cmpCanvas.getBoundingClientRect();
+        var px = e.clientX - r.left, py = e.clientY - r.top;
+        var g = native.geom;
+        if (px < g.x0 || px > g.x1 || py < g.y0 || py > g.y1) return;
+        var idx = Math.round((px - g.x0) / (g.x1 - g.x0) * (g.n - 1));
+        idx = Math.max(0, Math.min(g.n - 1, idx));
+        if (native.tipIndex !== idx) {
+          native.tipIndex = idx;
+          paintNativeLines();
+          showTip(native.labels, idx);
+        }
+      });
+      cmpCanvas.addEventListener('pointerleave', function () {
+        if (!native || native.kind !== 'lines') return;
+        native.tipIndex = null;
+        paintNativeLines();
+        showTip(native.labels, null);
+      });
+      cmpCanvas.addEventListener('click', function (e) {
+        if (!native || native.kind !== 'lines' || !native.geom || !native.sets) return;
+        var r = cmpCanvas.getBoundingClientRect();
+        var px = e.clientX - r.left, py = e.clientY - r.top;
+        var g = native.geom;
+        var idx = Math.round((px - g.x0) / (g.x1 - g.x0) * (g.n - 1));
+        idx = Math.max(0, Math.min(g.n - 1, idx));
+        var best = null, bestD = 28;
+        native.sets.forEach(function (st) {
+          var p = st.pts[idx];
+          if (!p) return;
+          var d = Math.abs(p.y - py);
+          if (d < bestD) { bestD = d; best = st.sym; }
+        });
+        if (best) setTimeout(function () { setHighlight(best, true); }, 0);
+      });
+    }
+    var cmpWrap = document.getElementById('cmp-canvas-wrap');
+    if (cmpWrap) {
+      if (window.ResizeObserver) {
+        var cmpRO = new ResizeObserver(function () {
+          if (!native) return;
+          render();
+        });
+        cmpRO.observe(cmpWrap);
+      } else {
+        window.addEventListener('resize', function () {
+          if (!native) return;
+          render();
+        });
+      }
+    }
+    loadDaily();
+    fetchDeskLive();
     var body = document.getElementById('screener-body');
     if (body) body.addEventListener('click', function (e) {
       if (e.target.closest && e.target.closest('.note-btn')) return;
