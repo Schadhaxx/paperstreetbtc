@@ -1,15 +1,15 @@
 {
   "source": "Yahoo NFLX unadjusted daily OHLC",
-  "asOf": "2026-11-12",
-  "asOfLabel": "12 Nov 2026",
+  "asOf": "2026-11-13",
+  "asOfLabel": "13 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "baseClose": 93.76,
   "baseSession": "2025-12-31",
   "baseLabel": "31 Dec close",
-  "lastSession": "2026-11-12",
-  "inProgress": "in progress, through last completed session 12 Nov 2026 \u2014 week not finished",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 12 Nov 2026, 4:20 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "lastSession": "2026-11-13",
+  "inProgress": "in progress, as of 13 Nov 2026, 9:30 AM ET (session open), week not finished",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 13 Nov 2026, 9:30 AM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -510,12 +510,12 @@
       "monday": "2026-11-09",
       "sunday": "2026-11-15",
       "label": "9 Nov 2026 \u2013 15 Nov 2026",
-      "days": 4,
+      "days": 5,
       "open": 63.3,
       "high": 64.56,
       "low": 62.55,
-      "close": 62.69,
-      "volume": 123620481
+      "close": 62.82,
+      "volume": 124735599
     }
   ]
 }
