@@ -128,7 +128,7 @@
     var c = chgEl ? (chgEl.textContent || '').replace(/\s*\u00b7\s*24h\s*$/, '').trim() : '';
     pillChg.textContent = c && c !== '\u2014' ? c : '';
     pillChg.className = 'v4-px-chg' + (chgEl && /\bup\b/.test(chgEl.className) ? ' up' : chgEl && /\bdown\b/.test(chgEl.className) ? ' down' : '');
-    pill.setAttribute('aria-label', 'Live BTC price ' + (t || '') + (c ? ', ' + c + ' over 24 hours' : ''));
+    pill.setAttribute('aria-label', 'Live BTC price ' + (t || '') + (c ? ', ' + c + ' over 24 hours' : '') + '. Use arrow keys to move (Shift for bigger steps), Home to reset, or drag it.');
   }
   function bounds() {
     var box = stage.querySelector('.bc-box');
@@ -176,6 +176,29 @@
     pill.addEventListener('pointerup', endDrag);
     pill.addEventListener('pointercancel', endDrag);
     pill.addEventListener('click', function (e) { e.stopPropagation(); });
+    /* Keyboard: arrows move ~10px (Shift: 40px), clamped to the chart box and
+       saved like a drag; Home goes back to the default spot. */
+    pill.addEventListener('keydown', function (e) {
+      if (mode !== 'chart') return;
+      var k = e.key, step = e.shiftKey ? 40 : 10, dx = 0, dy = 0;
+      if (k === 'Home') {
+        pos = null;
+        try { sessionStorage.removeItem(KEY); } catch (er) {}
+        placePill(); e.preventDefault(); e.stopPropagation(); return;
+      }
+      if (k === 'ArrowLeft') dx = -step; else if (k === 'ArrowRight') dx = step;
+      else if (k === 'ArrowUp') dy = -step; else if (k === 'ArrowDown') dy = step;
+      else return;
+      var b = bounds(); if (!b) return;
+      var m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(pill.style.transform || '');
+      var cx = m ? +m[1] : b.x0, cy = m ? +m[2] : b.y0;
+      var x = Math.min(b.x0 + b.sx, Math.max(b.x0, cx + dx));
+      var y = Math.min(b.y0 + b.sy, Math.max(b.y0, cy + dy));
+      pos = { fx: b.sx ? (x - b.x0) / b.sx : 0, fy: b.sy ? (y - b.y0) / b.sy : 0 };
+      pill.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+      try { sessionStorage.setItem(KEY, JSON.stringify(pos)); } catch (er) {}
+      e.preventDefault(); e.stopPropagation();
+    });
     syncPill();
     if (window.MutationObserver) {
       var mo = new MutationObserver(function () { syncPill(); if (mode === 'chart') placePill(); });
