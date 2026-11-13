@@ -1,16 +1,10 @@
 /* Floating Follow-on-X button: one follow call-to-action at a time; never over card content on phone */
 (function(){
   var fab=document.querySelector('.xfab');if(!fab)return;
+  /* 13 Nov 2026: the pill always stays pinned at the bottom of the viewport.
+     The phone-only "start under the header" move (place() / .xtop) is gone. */
   var inView={},guard=false,ty=0;
-  var mq=window.matchMedia?matchMedia('(max-width:640px)'):null;
-  function place(){
-    if(mq&&mq.matches&&window.scrollY<=10){
-      var h=document.querySelector('.header');var hb=h?h.getBoundingClientRect().bottom:0;
-      ty=Math.round(hb+8-fab.offsetTop);fab.style.setProperty('--xty',ty+'px');fab.classList.add('xtop');
-    }else{ty=0;fab.classList.remove('xtop');}
-  }
   function upd(){
-    place();
     var hide=inView.xrp||!!document.querySelector('.article-modal:not([hidden])');
     if(!hide){
       var r={left:fab.offsetLeft,right:fab.offsetLeft+fab.offsetWidth,top:fab.offsetTop+ty,bottom:fab.offsetTop+ty+fab.offsetHeight};
