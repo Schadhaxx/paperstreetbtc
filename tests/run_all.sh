@@ -48,6 +48,7 @@ run vehicle_daily python3 tests/test_vehicle_daily.py                       # ET
 run stock_weekly_py python3 tests/test_stock_weekly.py                       # screener stock candles: generator fixtures + shipped invariants
 run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
 run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
+run desk_live python3 tests/test_desk_live.py                              # 5-min Desk (option b): desk-live.json builder + validator (offline fixtures)
 run candle_date_guardrail node tests/test_candle_date_guardrail.js             # Desk chart: live price only on the candle whose Mon-Sun range contains today (ET)
 run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
 run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et24): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
