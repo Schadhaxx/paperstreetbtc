@@ -282,14 +282,15 @@ chk('(f) Mon 10:00 ET is inside', gate('2026-11-09T10:00:00-05:00')[0] is True, 
 chk('(f) Mon 09:30 ET is inside (open)', gate('2026-11-09T09:30:00-05:00')[0] is True)
 chk('(f) Mon 09:29 ET is outside (before open)', gate('2026-11-09T09:29:00-05:00')[0] is False)
 chk('(f) Mon 16:30 ET is inside (final run)', gate('2026-11-09T16:30:00-05:00')[0] is True)
-chk('(f) Mon 16:31 ET is outside', gate('2026-11-09T16:31:00-05:00')[0] is False)
-# Friday's window runs to 4:45 PM ET (the Friday final run finalises the
-# week for the weekend, so a late GitHub run still gets in). Other
-# weekdays still end at 4:30 PM ET. 13 Nov 2026 is a Friday.
+chk('(f) Mon 16:37 ET is inside (backup cron :37, final window)', gate('2026-11-09T16:37:00-05:00')[0] is True)
+chk('(f) Mon 16:45 ET is inside (window end)', gate('2026-11-09T16:45:00-05:00')[0] is True)
+chk('(f) Mon 16:46 ET is outside', gate('2026-11-09T16:46:00-05:00')[0] is False)
+# Every weekday's window runs to 4:45 PM ET (widened Mon-Thu on 13 Nov
+# 2026 so the :37 backup cron reaches the final window). 13 Nov 2026 is a Friday.
 chk('(f) Fri 16:35 ET is inside (Friday extension)', gate('2026-11-13T16:35:00-05:00')[0] is True)
 chk('(f) Fri 16:45 ET is inside (Friday window end)', gate('2026-11-13T16:45:00-05:00')[0] is True)
 chk('(f) Fri 16:46 ET is outside', gate('2026-11-13T16:46:00-05:00')[0] is False)
-chk('(f) Mon 16:35 ET is outside (other weekdays still end 4:30 PM)', gate('2026-11-09T16:35:00-05:00')[0] is False)
+chk('(f) Thu 16:35 ET is inside (Mon-Thu also end 4:45 PM)', gate('2026-11-12T16:35:00-05:00')[0] is True)
 chk('(f) Mon 08:00 ET is outside', gate('2026-11-09T08:00:00-05:00')[0] is False)
 chk('(f) Mon 22:00 ET is outside (Stage 2 deploy window)', gate('2026-11-09T22:00:00-05:00')[0] is False)
 chk('(f) Mon 22:00 EDT is outside', gate('2026-07-06T22:00:00-04:00')[0] is False)

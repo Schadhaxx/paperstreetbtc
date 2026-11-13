@@ -49,8 +49,8 @@ or skipped with no bars yet), with at most 3 failures (all named). A
 The market-hours gate lives here too (--gate): the workflow's first
 step asks this tool whether now (America/New_York) is inside a NYSE
 session, so the cron alone is never trusted. Window: Mon-Fri
-9:30 AM-4:30 PM ET (Friday runs to 4:45 PM ET, so a late Friday run
-still finalises the week for the weekend); on an early-close day
+9:30 AM-4:45 PM ET (the 4:15-4:45 PM after-close final window; a late
+Friday run still finalises the week for the weekend); on an early-close day
 9:30 AM-1:30 PM ET.
 Holidays come from stock_weekly.HOLIDAYS (2026-2028); early closes are
 the official NYSE list in EARLY_CLOSES below (2026-2028). If the
@@ -316,23 +316,26 @@ def in_window(now_et):
         if 570 <= mins <= 810:  # 9:30 AM-1:30 PM ET
             return True, f'{d.isoformat()} is an early-close day, inside 9:30 AM-1:30 PM ET'
         return False, f'{d.isoformat()} is an early-close day, outside 9:30 AM-1:30 PM ET'
-    # Friday's window runs to 4:45 PM ET (1005 min): the Friday final run
+    # Every weekday's window runs to 4:45 PM ET (1005 min; widened from
+    # 4:30 PM Mon-Thu on 13 Nov 2026, stage 3, so the :37 GitHub backup
+    # cron also lands in the 4:15-4:45 PM final window). The Friday final run
     # marks the week as final for the weekend, so a GitHub run delayed
     # past 4:30 PM still gets in instead of leaving the week "in progress"
-    # over the weekend. Other weekdays end at 4:30 PM ET (990 min).
+    # over the weekend.
     # Early-close days are unaffected (their window is separate, above).
-    end = 1005 if d.weekday() == 4 else 990
-    if 570 <= mins <= end:  # 9:30 AM-4:30 PM ET (4:45 PM on Friday)
-        return True, f'inside 9:30 AM-{"4:45" if d.weekday() == 4 else "4:30"} PM ET'
-    return False, 'outside 9:30 AM-4:30 PM ET'
+    end = 1005
+    if 570 <= mins <= end:  # 9:30 AM-4:45 PM ET
+        return True, 'inside 9:30 AM-4:45 PM ET'
+    return False, 'outside 9:30 AM-4:45 PM ET'
 
 def final_run(now_et):
     """True only for the after-close FINAL run(s) of a session (stage 3).
 
     Inside the existing gate window (in_window) AND at/after the settle,
     15 minutes past the close: 4:15 PM ET (1:15 PM on an early-close
-    day). So the final window is 4:15-4:30 PM Mon-Thu, 4:15-4:45 PM on
-    Friday and 1:15-1:30 PM on an early-close day. Weekends, holidays,
+    day). So the final window is 4:15-4:45 PM ET Mon-Fri and 1:15-1:30 PM
+    on an early-close day. Note: the GitHub backup cron (:07/:37) does not
+    hit the 1:15-1:30 PM early-close final window; only cron-job.org does. Weekends, holidays,
     out-of-hours and a bad time zone are never final (in_window is
     False). Only a final run commits the weekly files to main and
     requests a Pages build; every other run publishes desk-live.json only.

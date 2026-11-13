@@ -1,14 +1,17 @@
 name: desk-intraday
-# Desk weekly candles: refresh ONLY the in-progress week, every 15 min
-# while NYSE is open, plus one final run after the close. This file is
-# separate from prices.yml so its */15 cron cannot fire the prices
+# Desk weekly candles: refresh ONLY the in-progress week. GitHub cron is a
+# backup at :07/:37 (every 30 min) while NYSE is open; cron-job.org
+# dispatches the primary ticks. Intraday runs publish desk-live.json to
+# the data branch; the after-close final run (4:15-4:45 PM ET) also
+# commits the weekly files to main. Note: the backup cron does not hit
+# the early-close final window (1:15-1:30 PM ET); only cron-job.org does.
+# This file is separate from prices.yml so its cron cannot fire the prices
 # fetch job (a duplicate fetch run would queue in prices-data and
 # GitHub could cancel a real price/recap run).
 #
 # NOTE: this file cannot be pushed by the GitHub App (it returns 403
 # on workflow files). It is added via GitHub web edit as Schadhaxx,
-# outside 9:30 AM-4:30 PM ET so it does not fire on the next 15-min
-# tick. Do not merge the code branch without it — the job would not
+# outside 9:30 AM-4:45 PM ET so it does not fire on the next tick. Do not merge the code branch without it — the job would not
 # exist.
 on:
   schedule:
@@ -20,7 +23,7 @@ jobs:
     # Writes Desk *-weekly.json files on main (after-close FINAL run
     # only, stage 3) and desk-live.json on the data branch (every run) —
     # never prices.json / history.json. The cron fires 13:00-21:59 UTC Mon-Fri,
-    # which covers 9:30 AM-4:30 PM ET in both EST (UTC-5) and EDT
+    # which covers 9:30 AM-4:45 PM ET in both EST (UTC-5) and EDT
     # (UTC-4); the in-job gate (America/New_York, holidays + early
     # closes in tools/desk_intraday.py) is the real control and skips
     # weekends, NYSE holidays, early-close afternoons, and out-of-hours
