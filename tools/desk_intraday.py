@@ -82,7 +82,7 @@ UTC = dt.timezone.utc
 
 STOCK_SYMS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX',
               'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA', 'BRK.B']
-INDICATOR_KEYS = ['WTI', 'GOLD', 'US10Y', 'VIX', 'DJIA', 'QQQ', 'CADUSD', 'DXY']
+INDICATOR_KEYS = ['WTI', 'GOLD', 'US10Y', 'VIX', 'DIA', 'QQQ', 'CADUSD', 'DXY']
 STOCK_FILES = {s: f'stock-weekly-{s}.json' for s in STOCK_SYMS}
 
 # NYSE early closes (1:00 PM ET), from the official NYSE holiday calendar

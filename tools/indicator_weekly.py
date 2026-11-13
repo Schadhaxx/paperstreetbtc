@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Weekly OHLC candles for the Maple Leaf screener MARKET INDICATOR tiles.
 
-Writes one file per indicator: assets/data/{wti,gold,us10y,vix,djia,qqq,usdcad,dxy}-weekly.json
+Writes one file per indicator: assets/data/{wti,gold,us10y,vix,dia,qqq,usdcad,dxy}-weekly.json
 (WTI = CL=F NYMEX front-month futures, GOLD = GC=F COMEX futures,
-US10Y = ^TNX, VIX = ^VIX, DJIA = ^DJI, QQQ = QQQ,
+US10Y = ^TNX, VIX = ^VIX, DIA = DIA (SPDR Dow Jones Industrial
+Average ETF, replaced the ^DJI index 13 Nov 2026), QQQ = QQQ,
 CADUSD = CADUSD=X, USD per 1 CAD, DXY = DX-Y.NYB).
 
 Source: Yahoo chart API, unadjusted daily OHLC (quote open/high/low/close,
@@ -66,14 +67,16 @@ SPECS = {
     # Added with the Desk stocks/indicators (Nov 2026). Yahoo symbols are
     # URL-encoded as in the shipped files; CADUSD is CADUSD=X (USD per 1
     # CAD, ~0.709), NOT USDCAD=X.
-    'DJIA':   ('%5EDJI', 2, 'Yahoo ^DJI (Dow Jones Industrial Average), index points', 'pts'),
+    # DIA replaced DJIA (^DJI index points) on 13 Nov 2026 (Sunil): the
+    # Desk shows the SPDR Dow Jones Industrial Average ETF in USD.
+    'DIA':   ('DIA', 2, 'Yahoo DIA (SPDR Dow Jones Industrial Average ETF Trust), USD', 'usd'),
     'QQQ':   ('QQQ', 2, 'Yahoo QQQ (Invesco QQQ Trust), USD', 'usd'),
     'CADUSD': ('CADUSD%3DX', 4, 'Yahoo CADUSD=X (CAD/USD), USD per 1 CAD', 'usd'),
     'DXY':   ('DX-Y.NYB', 2, 'Yahoo DX-Y.NYB (ICE US Dollar Index), index points', 'pts'),
 }
 FILES = {'WTI': 'wti-weekly.json', 'GOLD': 'gold-weekly.json',
          'US10Y': 'us10y-weekly.json', 'VIX': 'vix-weekly.json',
-         'DJIA': 'djia-weekly.json', 'QQQ': 'qqq-weekly.json',
+         'DIA': 'dia-weekly.json', 'QQQ': 'qqq-weekly.json',
          'CADUSD': 'usdcad-weekly.json', 'DXY': 'dxy-weekly.json'}
 
 

@@ -113,16 +113,17 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       lastInProgress: null,
       ptsChange: true,
     },
-    DJIA: {
-      symbol: 'DJIA',
-      title: 'DJIA — YTD weekly candles',
-      dataUrl: 'assets/data/djia-weekly.json?v=1',
-      dailyUrl: null,
-      format: fmtPoints,
+    // DIA (SPDR Dow Jones Industrial Average ETF, USD) replaced the
+    // DJIA index tile (points) on 13 Nov 2026.
+    DIA: {
+      symbol: 'DIA',
+      title: 'DIA — YTD weekly candles',
+      dataUrl: 'assets/data/dia-weekly.json?v=1',
+      dailyUrl: 'assets/data/ind-daily-dia.json?v=' + DAILY_V,
+      format: fmtMoney,
       currentPrefix: 'Current ',
-      subBlurb: 'Weekly candles. Tap a candle for its week.',
-      lastInProgress: null,
-      ptsChange: true,
+      subBlurb: 'SPDR Dow Jones Industrial Average ETF. Weekly candles. Tap a candle for its week.',
+      lastInProgress: null
     },
     QQQ: {
       symbol: 'QQQ',

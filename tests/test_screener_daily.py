@@ -304,6 +304,19 @@ class TestNewDeskStockCoverage(unittest.TestCase):
             self.assertNotIn(k, sd.STOCKS)
             self.assertNotIn(k, sd.INDICATORS)
 
+    def test_dia_daily_is_an_indicator_like_vix(self):
+        # DIA (SPDR Dow Jones Industrial Average ETF) replaced the DJIA
+        # index tile on 13 Nov 2026 and gets daily closes for the
+        # Bollinger Daily switch, same pipeline as the other tiles.
+        self.assertEqual(sd.INDICATORS['DIA'], ('DIA', 2, 'usd', 'ytd', '2026-01-02', 'ind-daily-dia.json'))
+        self.assertEqual(sd.WEEKLY_FILES['DIA'], 'dia-weekly.json')
+        root = os.path.join(os.path.dirname(__file__), '..', 'assets', 'data')
+        with open(os.path.join(root, 'ind-daily-dia.json')) as f:
+            doc = json.load(f)
+        self.assertEqual(doc['firstSession'], '2026-01-02')
+        self.assertEqual(doc['unit'], 'usd')
+        self.assertTrue(all(isinstance(r['close'], (int, float)) and r['close'] > 0 for r in doc['days']))
+
     def test_shipped_daily_files_match_tsla_calendar(self):
         root = os.path.join(os.path.dirname(__file__), '..', 'assets', 'data')
         with open(os.path.join(root, 'stock-daily-TSLA.json')) as f:

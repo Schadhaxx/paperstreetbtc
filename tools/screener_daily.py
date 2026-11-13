@@ -5,11 +5,13 @@ Bollinger Weekly/Daily switch.
 Writes one file per symbol: assets/data/stock-daily-<SYM>.json
 (TSLA, PLTR, MSTR, IBIT, MU, META, SPCX, plus the nine Desk stocks
 added 9 Nov 2026: BRK.B, AAPL, AMZN, MSFT, NFLX, SPOT, XYZ, GOOGL,
-NVDA) and assets/data/ind-daily-{wti,gold,us10y,vix}.json
-(WTI = CL=F, GOLD = GC=F, US10Y = ^TNX, VIX = ^VIX).
+NVDA) and assets/data/ind-daily-{wti,gold,us10y,vix,dia}.json
+(WTI = CL=F, GOLD = GC=F, US10Y = ^TNX, VIX = ^VIX, DIA = DIA, the
+SPDR Dow Jones Industrial Average ETF that replaced the DJIA index
+tile on 13 Nov 2026).
 BRK.B is fetched as Yahoo BRK-B (hyphen), same map as
 tools/stock_weekly.py; a raw BRK.B request would 404. New indicators
-(DJIA, QQQ, USDCAD, DXY) are not included — their Desk charts have
+(QQQ, USDCAD, DXY) are not included — their Desk charts have
 dailyUrl: null.
 (The ind-daily- prefix avoids colliding with the Compare daily files
 gold-daily.json and mstr-daily.json, which are different data.)
@@ -125,6 +127,7 @@ INDICATORS = {
     'GOLD':  ('GC%3DF', 2, 'usd', 'ytd', '2026-01-02', 'ind-daily-gold.json'),
     'US10Y': ('%5ETNX', 3, 'pct', 'ytd', '2026-01-02', 'ind-daily-us10y.json'),
     'VIX':   ('%5EVIX', 2, 'pts', 'ytd', '2026-01-02', 'ind-daily-vix.json'),
+    'DIA':   ('DIA', 2, 'usd', 'ytd', '2026-01-02', 'ind-daily-dia.json'),
 }
 WEEKLY_FILES = {
     'TSLA': 'stock-weekly-TSLA.json', 'PLTR': 'stock-weekly-PLTR.json',
@@ -138,6 +141,7 @@ WEEKLY_FILES = {
     'NVDA': 'stock-weekly-NVDA.json',
     'WTI': 'wti-weekly.json', 'GOLD': 'gold-weekly.json',
     'US10Y': 'us10y-weekly.json', 'VIX': 'vix-weekly.json',
+    'DIA': 'dia-weekly.json',
 }
 ALL = {**STOCKS, **INDICATORS}
 

@@ -61,11 +61,11 @@ jobs:
           if [ -n "$outside" ]; then echo "::error::unexpected change outside assets/data: $outside"; exit 1; fi
           for f in $(git status --porcelain -- assets/data | awk '{print $2}'); do
             case "$f" in
-              assets/data/stock-weekly-*.json|assets/data/wti-weekly.json|assets/data/gold-weekly.json|assets/data/us10y-weekly.json|assets/data/vix-weekly.json|assets/data/djia-weekly.json|assets/data/qqq-weekly.json|assets/data/usdcad-weekly.json|assets/data/dxy-weekly.json) ;;
+              assets/data/stock-weekly-*.json|assets/data/wti-weekly.json|assets/data/gold-weekly.json|assets/data/us10y-weekly.json|assets/data/vix-weekly.json|assets/data/dia-weekly.json|assets/data/qqq-weekly.json|assets/data/usdcad-weekly.json|assets/data/dxy-weekly.json) ;;
               *) echo "::error::desk-intraday would touch $f, refusing"; exit 1;;
             esac
           done
-          git add -- assets/data/stock-weekly-*.json assets/data/wti-weekly.json assets/data/gold-weekly.json assets/data/us10y-weekly.json assets/data/vix-weekly.json assets/data/djia-weekly.json assets/data/qqq-weekly.json assets/data/usdcad-weekly.json assets/data/dxy-weekly.json
+          git add -- assets/data/stock-weekly-*.json assets/data/wti-weekly.json assets/data/gold-weekly.json assets/data/us10y-weekly.json assets/data/vix-weekly.json assets/data/dia-weekly.json assets/data/qqq-weekly.json assets/data/usdcad-weekly.json assets/data/dxy-weekly.json
           if git diff --cached --quiet; then
             echo "no Desk changes; nothing to commit"
             exit 0

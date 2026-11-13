@@ -133,8 +133,9 @@ jobs:
           # Finnhub live quotes for US stocks/ETFs. New Desk stocks added
           # 9 Nov 2026 (AAPL, AMZN, MSFT, NFLX, SPOT, XYZ = Block, GOOGL,
           # NVDA) so their cards show live prices; XYZ is Block's Yahoo
-          # ticker, not SQ.
-          for s in ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD','IBIT','FBTC','MU','META','SPCX','AAPL','AMZN','MSFT','NFLX','SPOT','XYZ','GOOGL','NVDA']:
+          # ticker, not SQ. DIA (SPDR Dow Jones Industrial Average ETF)
+          # replaced the DJIA index tile on 13 Nov 2026 (Sunil).
+          for s in ['MSTR','STRC','TSLA','PLTR','SPY','QQQ','BRK.B','GLD','IBIT','FBTC','MU','META','SPCX','AAPL','AMZN','MSFT','NFLX','SPOT','XYZ','GOOGL','NVDA','DIA']:
               try:
                   q = get(f'https://finnhub.io/api/v1/quote?symbol={s}&token={key}')
                   if isinstance(q.get('c'), (int, float)) and q['c'] > 0:
@@ -149,11 +150,10 @@ jobs:
           # Gold is COMEX futures (GC=F), not spot, per owner approval 29 Oct 2026.
           # (GC=F futures, not XAUUSD spot.)
           # Do not map spot into GOLD.
-          # New Desk indicators (9 Nov 2026): DJIA = Dow Jones (^DJI, index
-          # points); USDCAD = CAD/USD (CADUSD=X, USD per 1 CAD, ~0.709) —
+          # New Desk indicators (9 Nov 2026): USDCAD = CAD/USD (CADUSD=X, USD per 1 CAD, ~0.709) —
           # key is 'USDCAD' because that is what the Desk (screener.js)
           # looks up in prices.json; DXY = US Dollar Index (DX-Y.NYB).
-          for key, sym in [('WTI', 'CL%3DF'), ('US10Y', '%5ETNX'), ('VIX', '%5EVIX'), ('GOLD', 'GC%3DF'), ('DJIA', '%5EDJI'), ('USDCAD', 'CADUSD%3DX'), ('DXY', 'DX-Y.NYB')]:
+          for key, sym in [('WTI', 'CL%3DF'), ('US10Y', '%5ETNX'), ('VIX', '%5EVIX'), ('GOLD', 'GC%3DF'), ('USDCAD', 'CADUSD%3DX'), ('DXY', 'DX-Y.NYB')]:
               try:
                   r_ = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d')['chart']['result'][0]
                   m = r_['meta']
@@ -812,7 +812,7 @@ jobs:
           fi
           set -e
           wrote=0
-          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json; do
+          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json ind-daily-dia.json; do
             [ -f "/tmp/screener-daily/$f" ] && wrote=1 && break
           done
           if [ "$wrote" -eq 0 ] || { [ "$gen_rc" -eq 0 ] && [ "$chk_rc" -ne 0 ]; }; then
@@ -825,7 +825,7 @@ jobs:
             echo "::warning::screener-daily skipped ${failed:-unknown}; copying files that were written"
           fi
           changed=0
-          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json; do
+          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json ind-daily-dia.json; do
             if [ -f "/tmp/screener-daily/$f" ] && ! cmp -s "/tmp/screener-daily/$f" "assets/data/$f"; then cp "/tmp/screener-daily/$f" "assets/data/$f.tmp" && mv "assets/data/$f.tmp" "assets/data/$f"; echo "updated $f"; changed=1; fi
           done
           echo "changed=$changed" >> $GITHUB_OUTPUT

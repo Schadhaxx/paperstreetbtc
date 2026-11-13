@@ -47,13 +47,13 @@
     },
     {
       "baseClose": null,
-      "dayChange": -237.33,
-      "dayChangePct": -0.46,
-      "name": "Dow Jones Industrial Average",
-      "prevClose": 51523.06,
-      "price": 51285.73,
-      "symbol": "DJIA",
-      "unit": "points",
+      "dayChange": -2.05,
+      "dayChangePct": -0.4,
+      "name": "DIA (SPDR Dow Jones ETF)",
+      "prevClose": 514.27,
+      "price": 512.22,
+      "symbol": "DIA",
+      "unit": "usd",
       "ytdPct": null
     },
     {

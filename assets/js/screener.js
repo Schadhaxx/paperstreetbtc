@@ -1,6 +1,6 @@
 // Stock Screener — Maple Leaf Pack
 // Two boxes, one page: Stocks (16 rows) and Market Indicators (WTI, Gold,
-// 10-Year, VIX, DJIA, QQQ, USDCAD, DXY). Each box has its own table and ONE status
+// 10-Year, VIX, DIA, QQQ, USDCAD, DXY). Each box has its own table and ONE status
 // line below that table — there is no per-row Status column, and no
 // per-row status is rendered anywhere. The table status line is computed
 // from the per-row feed flags (_src / _closeDate), which are internal only
@@ -294,7 +294,7 @@
     if (r.symbol === 'GOLD') return '$/troy oz';
     if (r.symbol === 'US10Y') return '%';
     if (r.symbol === 'VIX') return 'points';
-    if (r.symbol === 'DJIA') return 'points';
+    if (r.symbol === 'DIA') return 'USD';
     if (r.symbol === 'QQQ') return 'USD';
     if (r.symbol === 'USDCAD') return 'USD per CAD';
     if (r.symbol === 'DXY') return 'points';
@@ -364,7 +364,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=cadusd1')
+    fetch('assets/data/screener-pack.json?v=dia1')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];
