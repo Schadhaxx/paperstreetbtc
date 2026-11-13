@@ -322,7 +322,7 @@ body.ps-clock .v4-caption{
     height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 66px);
     overflow:hidden;
   }
-  body.ps-clock .v4-clock{flex-basis:38%;max-width:320px;}
+  body.ps-clock .v4-clock{flex-basis:38%;max-width:320px;padding-bottom:40px;box-sizing:border-box;} /* clear the Light pill (812x375) */
   body.ps-clock .v4-stage .price{margin:4px 0 6px;}
   body.ps-clock .chg{font-size:16px;}
   body.ps-clock .v4-caption{display:none;} /* keep the plot as tall as possible */
@@ -402,3 +402,8 @@ html[data-theme="light"] body.ps-clock .v4-fs-exit{color:#475569;border-color:#e
 html[data-theme="light"] body.ps-clock .v4-fs-exit{background:rgba(255,255,255,.92)}
 html[data-theme="light"] body.ps-clock .v4-fs-btn:hover,
 html[data-theme="light"] body.ps-clock .v4-fs-exit:hover{color:#0e7490;border-color:#22d3ee}
+/* 700-1199px split (e.g. iPad landscape 1024x768): drop the "Chart" label so
+   the compare chips (+ MSTR) are not clipped. */
+@media (min-aspect-ratio:11/10) and (min-width:700px) and (max-width:1199px){
+  body.ps-clock .v4-stage .bc-ct-lab{display:none}
+}

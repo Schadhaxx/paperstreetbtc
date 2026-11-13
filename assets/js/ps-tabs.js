@@ -98,7 +98,9 @@
   if (drop && sub) {
     drop.addEventListener('click', function (e) { e.stopPropagation(); setOpen(sub.hidden, true); });
     sub.addEventListener('click', function (e) { if (e.target.closest('a')) setOpen(false); });
-    document.addEventListener('click', function (e) {
+    /* pointerdown, not click: iOS Safari often sends no click for taps on
+       plain, non-clickable content, so the outside tap would be missed. */
+    document.addEventListener('pointerdown', function (e) {
       if (!sub.hidden && !nav.contains(e.target)) setOpen(false);
     });
     document.addEventListener('keydown', function (e) {
