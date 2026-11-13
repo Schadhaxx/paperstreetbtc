@@ -17,8 +17,9 @@ on:
 permissions: {}
 jobs:
   desk-intraday:
-    # Writes Desk *-weekly.json files on main ONLY — never
-    # prices.json / history.json. The cron fires 13:00-21:59 UTC Mon-Fri,
+    # Writes Desk *-weekly.json files on main (after-close FINAL run
+    # only, stage 3) and desk-live.json on the data branch (every run) —
+    # never prices.json / history.json. The cron fires 13:00-21:59 UTC Mon-Fri,
     # which covers 9:30 AM-4:30 PM ET in both EST (UTC-5) and EDT
     # (UTC-4); the in-job gate (America/New_York, holidays + early
     # closes in tools/desk_intraday.py) is the real control and skips
@@ -41,7 +42,7 @@ jobs:
         id: gate
         run: |
           python3 tools/desk_intraday.py --gate | tee /tmp/gate.txt
-          grep '^run=' /tmp/gate.txt >> "$GITHUB_OUTPUT"
+          grep -E '^(run|final)=' /tmp/gate.txt >> "$GITHUB_OUTPUT"
       # If this step fails (more than 3 symbols failed, two Yahoo 429s in
       # a row, or a critical file error), the run fails here and the push
       # step below is skipped — a failed run never publishes a partial
@@ -52,7 +53,13 @@ jobs:
           # --live-json also writes the one small current-week candle file
           # for every Desk symbol (desk-live.json, option b), built from the
           # same validated candles, outside the repo checkout.
-          python3 tools/desk_intraday.py --out-dir assets/data --live-json "${RUNNER_TEMP:-/tmp}/desk-live.json"
+          # Stage 3: only the after-close FINAL run (gate final=1, 4:15 PM ET
+          # or later inside the window; 1:15 PM on an early close) updates
+          # the weekly files for the main commit below. Every other run is
+          # --check-only: weekly files untouched, desk-live.json only.
+          ARGS=""
+          [ "${{ steps.gate.outputs.final }}" = "1" ] || ARGS="--check-only"
+          python3 tools/desk_intraday.py --out-dir assets/data $ARGS --live-json "${RUNNER_TEMP:-/tmp}/desk-live.json"
       # 5-minute Desk (option b): publish desk-live.json to the `data`
       # branch next to prices.json (raw.githubusercontent, no Pages build).
       # Only that one file is ever committed there; prices.yml owns every
@@ -91,9 +98,12 @@ jobs:
             if [ "$changed" != "desk-live.json" ]; then echo "::error::desk-live commit would change: $changed"; exit 1; fi
           done
           echo "::error::desk-live push failed after 4 tries"; exit 1
-      - name: Commit Desk data only and push (fast-forward only, rebase + retry)
+      # FINAL run only (stage 3): intraday runs make no main commit and no
+      # Pages build. The live publish above is continue-on-error, so a
+      # failed publish never blocks this step.
+      - name: Commit Desk data only and push (FINAL run only; fast-forward only, rebase + retry)
         id: push
-        if: steps.gate.outputs.run == '1'
+        if: steps.gate.outputs.run == '1' && steps.gate.outputs.final == '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -141,6 +151,7 @@ jobs:
               echo "- Changed and pushed to main: $(git log -1 --format='%h %s')"
               [ "${{ steps.pages.outputs.ok }}" = "1" ] && echo "- Pages build requested." || echo "- **Pages build request failed**: the change is on main but may not be live until the next Pages build."
             elif [ "${{ steps.gate.outputs.run }}" = "0" ]; then echo "- Outside market hours (gate skipped the run)."
+            elif [ "${{ steps.gate.outputs.final }}" != "1" ]; then echo "- Intraday run: desk-live.json only, no main commit (weekly files are committed by the after-close final run)."
             else echo "- No Desk changes; nothing to commit."
             fi
           } >> $GITHUB_STEP_SUMMARY

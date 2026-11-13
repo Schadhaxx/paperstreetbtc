@@ -62,7 +62,7 @@ usage:
   python3 tools/desk_intraday.py --check-only [--out-dir assets/data]
   python3 tools/desk_intraday.py --symbol TSLA [--out-dir assets/data]
   python3 tools/desk_intraday.py --fixture bars.json [--out-dir DIR] [--now ISO]
-  python3 tools/desk_intraday.py --gate   # prints run=1 / run=0 for the workflow
+  python3 tools/desk_intraday.py --gate   # prints run=1|0 and final=1|0 for the workflow
   python3 tools/desk_intraday.py [--out-dir assets/data] --live-json desk-live.json
   python3 tools/desk_intraday.py --validate-live desk-live.json
 
@@ -325,6 +325,31 @@ def in_window(now_et):
     if 570 <= mins <= end:  # 9:30 AM-4:30 PM ET (4:45 PM on Friday)
         return True, f'inside 9:30 AM-{"4:45" if d.weekday() == 4 else "4:30"} PM ET'
     return False, 'outside 9:30 AM-4:30 PM ET'
+
+def final_run(now_et):
+    """True only for the after-close FINAL run(s) of a session (stage 3).
+
+    Inside the existing gate window (in_window) AND at/after the settle,
+    15 minutes past the close: 4:15 PM ET (1:15 PM on an early-close
+    day). So the final window is 4:15-4:30 PM Mon-Thu, 4:15-4:45 PM on
+    Friday and 1:15-1:30 PM on an early-close day. Weekends, holidays,
+    out-of-hours and a bad time zone are never final (in_window is
+    False). Only a final run commits the weekly files to main and
+    requests a Pages build; every other run publishes desk-live.json only.
+    """
+    inside, _ = in_window(now_et)
+    if not inside:
+        return False
+    now_et = now_et.astimezone(NY)
+    mins = now_et.hour * 60 + now_et.minute
+    close_mins = 780 if now_et.date().isoformat() in EARLY_CLOSES else 960
+    return mins >= close_mins + 15
+
+def run_type(now_et):
+    """'skip' | 'intraday' | 'final' for the workflow (see final_run)."""
+    if not in_window(now_et)[0]:
+        return 'skip'
+    return 'final' if final_run(now_et) else 'intraday'
 
 def session_open(now_et):
     """True if the NYSE session is open right now.
@@ -774,10 +799,14 @@ def main(argv):
             # — skip the run, do not fetch. The workflow treats run=0 as a
             # clean skip, so this never pages anyone at 3 a.m.
             print('run=0')
+            print('final=0')
             print(f'desk-intraday gate: cannot determine ET time ({type(e).__name__}: {e}) — skipping run')
             return 0
+        final = inside and final_run(SW.parse_now(now))
         print(f'run={"1" if inside else "0"}')
-        print(f'desk-intraday gate: {reason} ({"inside" if inside else "outside"} window)')
+        print(f'final={"1" if final else "0"}')
+        print(f'desk-intraday gate: {reason} ({"inside" if inside else "outside"} window; '
+              f'{"FINAL run: commits weekly files to main" if final else ("intraday run: desk-live.json only" if inside else "skip")})')
         return 0
     if validate_live:
         try:

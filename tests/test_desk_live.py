@@ -218,5 +218,67 @@ try:
 finally:
     shutil.rmtree(td, ignore_errors=True)
 
+# --- (g) stage 3 run type: only the after-close final run commits to main ---
+import stock_weekly as SW
+def rt(iso):
+    return D.run_type(SW.parse_now(iso))
+for iso, want, why in [
+    ('2026-11-09T09:29:00-05:00', 'skip', 'Mon before open'),
+    ('2026-11-09T09:30:00-05:00', 'intraday', 'Mon open'),
+    ('2026-11-09T12:00:00-05:00', 'intraday', 'Mon midday'),
+    ('2026-11-09T16:00:00-05:00', 'intraday', 'Mon 4:00 close, not settled'),
+    ('2026-11-09T16:07:00-05:00', 'intraday', 'Mon 4:07 (GitHub cron :07) not settled'),
+    ('2026-11-09T16:14:00-05:00', 'intraday', 'Mon 4:14'),
+    ('2026-11-09T16:15:00-05:00', 'final', 'Mon 4:15 settle'),
+    ('2026-11-09T16:30:00-05:00', 'final', 'Mon 4:30 window end'),
+    ('2026-11-09T16:31:00-05:00', 'skip', 'Mon 4:31 outside'),
+    ('2026-11-09T16:37:00-05:00', 'skip', 'Mon 4:37 (GitHub cron :37) outside'),
+    ('2026-11-13T16:37:00-05:00', 'final', 'Fri 4:37 inside Friday extension'),
+    ('2026-11-13T16:45:00-05:00', 'final', 'Fri 4:45 window end'),
+    ('2026-11-13T16:46:00-05:00', 'skip', 'Fri 4:46 outside'),
+    ('2026-07-06T16:20:00-04:00', 'final', 'EDT Mon 4:20'),
+    ('2026-07-06T15:59:00-04:00', 'intraday', 'EDT Mon 3:59'),
+    ('2026-11-14T16:20:00-05:00', 'skip', 'Saturday'),
+    ('2026-11-15T16:20:00-05:00', 'skip', 'Sunday'),
+    ('2026-11-26T16:20:00-05:00', 'skip', 'Thanksgiving holiday'),
+    ('2026-12-25T12:00:00-05:00', 'skip', 'Christmas holiday'),
+    ('2026-11-27T12:59:00-05:00', 'intraday', 'early close 27 Nov 12:59'),
+    ('2026-11-27T13:14:00-05:00', 'intraday', 'early close 1:14'),
+    ('2026-11-27T13:15:00-05:00', 'final', 'early close 1:15 settle'),
+    ('2026-11-27T13:30:00-05:00', 'final', 'early close 1:30 window end'),
+    ('2026-11-27T13:31:00-05:00', 'skip', 'early close 1:31 outside'),
+    ('2026-11-27T16:20:00-05:00', 'skip', 'early close day 4:20 (not a final run)'),
+    ('2026-11-25T16:20:00-05:00', 'final', '25 Nov full session 4:20'),
+]:
+    got = rt(iso)
+    chk(f'(g) run type {why}: {want}', got == want, (iso, got))
+    chk(f'(g) final_run agrees ({why})', D.final_run(SW.parse_now(iso)) == (want == 'final'))
+for iso, run, fin in [('2026-11-09T16:20:00-05:00', '1', '1'), ('2026-11-09T11:00:00-05:00', '1', '0'),
+                      ('2026-11-14T16:20:00-05:00', '0', '0'), ('2026-11-26T16:20:00-05:00', '0', '0')]:
+    code, out, err = run_cli(['--gate', '--now', iso])
+    lines = out.splitlines()
+    chk(f'(g) --gate {iso} prints run={run} final={fin}', code == 0 and f'run={run}' in lines and f'final={fin}' in lines, out + err)
+code, out, err = run_cli(['--gate', '--now', 'not-a-time'])
+chk('(g) --gate with an unreadable time fails safe: run=0 final=0', code == 0 and 'run=0' in out.splitlines() and 'final=0' in out.splitlines(), out + err)
+
+# --- (h) workflow wiring (static): final-only main commit, live publish never blocks it ---
+import yaml
+wf = yaml.safe_load(open(os.path.join(R, '.github', 'workflows', 'desk-intraday.yml')))
+steps = wf['jobs']['desk-intraday']['steps']
+by_id = {st.get('id'): (i, st) for i, st in enumerate(steps) if st.get('id')}
+gate_run = by_id['gate'][1]['run']
+chk('(h) gate step exports run= and final=', "grep -E '^(run|final)='" in gate_run, gate_run)
+ref_i, ref = next((i, st) for i, st in enumerate(steps) if st.get('name', '').startswith('Refresh Desk weekly'))
+chk('(h) refresh is --check-only unless final=1', '[ "${{ steps.gate.outputs.final }}" = "1" ] || ARGS="--check-only"' in ref['run'] and '$ARGS --live-json' in ref['run'], ref['run'])
+li, live_st = by_id['live']
+chk('(h) live publish is continue-on-error and runs on every gated run', live_st.get('continue-on-error') is True and live_st.get('if') == "steps.gate.outputs.run == '1'", live_st.get('if'))
+pi, push_st = by_id['push']
+chk('(h) main commit only on the final run', push_st.get('if') == "steps.gate.outputs.run == '1' && steps.gate.outputs.final == '1'", push_st.get('if'))
+chk('(h) order: refresh < live publish < main commit', ref_i < li < pi)
+chk('(h) main commit has no dependency on the live step outcome', 'steps.live' not in (push_st.get('if') or '') and 'steps.live' not in push_st['run'])
+pages_st = by_id['pages'][1]
+chk('(h) Pages build only after a main push', pages_st.get('if') == "steps.push.outputs.pushed == '1'", pages_st.get('if'))
+chk('(h) schedule unchanged', wf[True]['schedule'] == [{'cron': '7,37 13-21 * * 1-5'}] if True in wf else wf['on']['schedule'] == [{'cron': '7,37 13-21 * * 1-5'}])
+
 print(f'DESK_LIVE TESTS {n} FAIL {f}')
 sys.exit(1 if f else 0)
