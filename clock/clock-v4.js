@@ -32,8 +32,10 @@
     root.classList.toggle('v4-fs-on', !!m);
     root.classList.toggle('v4-fs-chart', m === 'chart');
     root.classList.toggle('v4-fs-price', m === 'price');
+    placeWake();
     setBtns();
     kick();
+    after();
   }
   function enter(m, from) {
     opener = from || null;
@@ -75,5 +77,121 @@
   document.addEventListener('webkitfullscreenchange', onFsChange);
   /* The controls only exist in the split layout; if the screen rotates to
      portrait while full screen, stay full screen (exit button is still there). */
+  /* ---- 13 Nov 2026 fixes ---- */
+  /* Fix 4: "Keep screen on" in full screen. The Fullscreen API only shows
+     the stage, and the CSS fallback covers the page header, so the same
+     button (same listeners, same wake lock code) moves into the stage's
+     top-right bar beside Exit while full screen, and back afterwards. */
+  var bar = stage.querySelector('.v4-fs-bar');
+  var wake = document.getElementById('wakeBtn');
+  var wakeHome = wake ? wake.parentNode : null, wakeNext = wake ? wake.nextSibling : null;
+  function placeWake() {
+    if (!wake || !bar || !wakeHome) return;
+    if (mode) { if (wake.parentNode !== bar) bar.insertBefore(wake, bar.firstChild); }
+    else if (wake.parentNode !== wakeHome) wakeHome.insertBefore(wake, wakeNext && wakeNext.parentNode === wakeHome ? wakeNext : null);
+  }
+  function barW() {
+    if (!bar) return;
+    var w = mode ? Math.ceil(bar.getBoundingClientRect().width) : 0;
+    if (w > 0) stage.style.setProperty('--v4-fs-bar-w', w + 'px');
+  }
+  if (wake && window.MutationObserver) new MutationObserver(function () { if (mode) barW(); })
+    .observe(wake, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+
+  /* Fix 1: full-screen price never clips. CSS sizes it; if a long price
+     still does not fit the stage width, shrink it to fit. */
+  var priceEl = document.getElementById('price');
+  function fitPrice() {
+    if (!priceEl) return;
+    priceEl.style.fontSize = '';
+    if (mode !== 'price') return;
+    var cs = getComputedStyle(stage);
+    var avail = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var w = priceEl.scrollWidth;
+    if (avail > 0 && w > avail) priceEl.style.fontSize = (parseFloat(getComputedStyle(priceEl).fontSize) * avail / w * 0.96) + 'px';
+  }
+
+  /* Fix 2: live, draggable BTC price pill in full-screen chart mode.
+     Text mirrors the hero price + 24h change (same feed, no new fetch).
+     Pointer events (mouse + touch), kept inside the chart box; the
+     position is remembered for the session as fractions of the free space. */
+  var pill = document.getElementById('pxPill');
+  var pillVal = document.getElementById('pxPillVal'), pillChg = document.getElementById('pxPillChg');
+  var chgEl = document.getElementById('chg');
+  var plot = stage.querySelector('.v4-plot');
+  var KEY = 'ps-clock-pxpill', pos = null, drag = null;
+  try { var sv = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (sv && isFinite(sv.fx) && isFinite(sv.fy)) pos = { fx: sv.fx, fy: sv.fy }; } catch (e) {}
+  function syncPill() {
+    if (!pill || !priceEl) return;
+    var t = (priceEl.textContent || '').trim();
+    pillVal.innerHTML = '<span class="v4-px-sym">\u20bf</span> ' + (t || '\u2014').replace(/</g, '&lt;');
+    var c = chgEl ? (chgEl.textContent || '').replace(/\s*\u00b7\s*24h\s*$/, '').trim() : '';
+    pillChg.textContent = c && c !== '\u2014' ? c : '';
+    pillChg.className = 'v4-px-chg' + (chgEl && /\bup\b/.test(chgEl.className) ? ' up' : chgEl && /\bdown\b/.test(chgEl.className) ? ' down' : '');
+    pill.setAttribute('aria-label', 'Live BTC price ' + (t || '') + (c ? ', ' + c + ' over 24 hours' : ''));
+  }
+  function bounds() {
+    var box = stage.querySelector('.bc-box');
+    if (!box || !plot) return null;
+    var pr = plot.getBoundingClientRect(), br = box.getBoundingClientRect();
+    if (!br.width || !br.height) return null;
+    var pw = pill.offsetWidth, ph = pill.offsetHeight, m = 6;
+    var x0 = br.left - pr.left + m, y0 = br.top - pr.top + m;
+    return { x0: x0, y0: y0, sx: Math.max(0, br.width - pw - 2 * m), sy: Math.max(0, br.height - ph - 2 * m) };
+  }
+  function placePill() {
+    if (!pill || mode !== 'chart') return;
+    var b = bounds(); if (!b) return;
+    var fx = pos ? pos.fx : 0.5, fy = pos ? pos.fy : 0.02; /* default: top centre of the chart */
+    fx = Math.min(1, Math.max(0, fx)); fy = Math.min(1, Math.max(0, fy));
+    pill.style.transform = 'translate(' + Math.round(b.x0 + fx * b.sx) + 'px,' + Math.round(b.y0 + fy * b.sy) + 'px)';
+  }
+  if (pill) {
+    pill.addEventListener('pointerdown', function (e) {
+      if (mode !== 'chart' || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      var b = bounds(); if (!b) return;
+      var m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(pill.style.transform || '');
+      var cx = m ? +m[1] : b.x0, cy = m ? +m[2] : b.y0;
+      drag = { id: e.pointerId, dx: e.clientX - cx, dy: e.clientY - cy, b: b };
+      try { pill.setPointerCapture(e.pointerId); } catch (er) {}
+      pill.classList.add('dragging');
+      e.preventDefault(); e.stopPropagation();
+    });
+    pill.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var b = drag.b;
+      var x = Math.min(b.x0 + b.sx, Math.max(b.x0, e.clientX - drag.dx));
+      var y = Math.min(b.y0 + b.sy, Math.max(b.y0, e.clientY - drag.dy));
+      pos = { fx: b.sx ? (x - b.x0) / b.sx : 0, fy: b.sy ? (y - b.y0) / b.sy : 0 };
+      pill.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+      e.preventDefault(); e.stopPropagation();
+    });
+    var endDrag = function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      drag = null; pill.classList.remove('dragging');
+      try { pill.releasePointerCapture(e.pointerId); } catch (er) {}
+      try { if (pos) sessionStorage.setItem(KEY, JSON.stringify(pos)); } catch (er) {}
+      e.stopPropagation();
+    };
+    pill.addEventListener('pointerup', endDrag);
+    pill.addEventListener('pointercancel', endDrag);
+    pill.addEventListener('click', function (e) { e.stopPropagation(); });
+    syncPill();
+    if (window.MutationObserver) {
+      var mo = new MutationObserver(function () { syncPill(); if (mode === 'chart') placePill(); });
+      if (priceEl) mo.observe(priceEl, { childList: true, characterData: true, subtree: true });
+      if (chgEl) mo.observe(chgEl, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+  }
+  if (priceEl && window.MutationObserver) new MutationObserver(function () { if (mode === 'price') fitPrice(); })
+    .observe(priceEl, { childList: true, characterData: true, subtree: true });
+  function layout() { barW(); fitPrice(); placePill(); }
+  function after() {
+    try { requestAnimationFrame(layout); } catch (e) { layout(); }
+    setTimeout(layout, 150); setTimeout(layout, 400);
+  }
+  window.addEventListener('resize', function () { if (mode) after(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (mode) layout(); });
+
   window.__psClockFs = { enter: enter, exit: exit, mode: function () { return mode; } };
 })();

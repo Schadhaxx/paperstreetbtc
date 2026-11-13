@@ -391,8 +391,12 @@ html.v4-fs-chart body.ps-clock .v4-stage .bc-box{min-height:0 !important}
 /* Price mode: the clock takes the whole screen. */
 html.v4-fs-price body.ps-clock .v4-plot{display:none}
 html.v4-fs-price body.ps-clock .v4-stage{flex-direction:column;justify-content:center;align-items:center}
-html.v4-fs-price body.ps-clock .v4-clock{flex:0 0 auto;width:min(100%,1600px);max-width:none;min-width:0;align-items:stretch}
-html.v4-fs-price body.ps-clock .v4-stage .price{font-size:min(calc(100vw / 4.9), 46vh);margin:10px 0 12px}
+/* Fix 1 (13 Nov, desktop/large screens): the column hugs the price and is
+   centred; the price is centred and never clipped. clock-v4.js shrinks the
+   font when a long price (e.g. C$ or 7 digits) would not fit the width. */
+html.v4-fs-price body.ps-clock .v4-clock{flex:0 0 auto;container-type:normal;width:fit-content;max-width:100%;min-width:min(100%,320px);align-items:stretch}
+html.v4-fs-price body.ps-clock .v4-stage .price{font-size:min(calc(100vw / 4.9), 46vh);margin:10px 0 .2em;text-align:center;white-space:nowrap}
+html.v4-fs-price body.ps-clock .v4-chg{justify-content:center}
 html.v4-fs-price body.ps-clock .v4-chg{font-size:clamp(14px,2.2vw,26px)}
 html.v4-fs-price body.ps-clock .v4-chg .chg{font-size:clamp(16px,2.6vw,32px)}
 html[data-theme="light"].v4-fs-on body.ps-clock .v4-stage{background:#f6f8fb}
@@ -407,3 +411,66 @@ html[data-theme="light"] body.ps-clock .v4-fs-exit:hover{color:#0e7490;border-co
 @media (min-aspect-ratio:11/10) and (min-width:700px) and (max-width:1199px){
   body.ps-clock .v4-stage .bc-ct-lab{display:none}
 }
+
+/* ---- 13 Nov 2026 fixes: full-screen tools bar + live price pill ----
+   Fix 4: in either full-screen mode the "Keep screen on" pill joins the
+   Exit button in a top-right bar inside the stage (clock-v4.js moves the
+   same button there and back, so the wake lock code is untouched). The
+   bar's width is published as --v4-fs-bar-w so the range row clears it.
+   Fix 2: a draggable live BTC price pill, shown only in full-screen chart
+   mode, kept inside the chart box. */
+body.ps-clock .v4-fs-bar{display:none}
+html.v4-fs-on body.ps-clock .v4-fs-bar{
+  display:flex;align-items:center;gap:6px;flex-wrap:nowrap;
+  position:absolute;z-index:6;
+  top:calc(10px + env(safe-area-inset-top,0px));
+  right:calc(10px + env(safe-area-inset-right,0px));
+}
+html.v4-fs-on body.ps-clock .v4-fs-bar .v4-fs-exit{position:static;display:inline-flex}
+html.v4-fs-on body.ps-clock .v4-fs-bar .wl-btn{
+  margin:0;min-height:32px;padding:6px 12px;line-height:1;font-size:12px;
+  background:rgba(7,11,24,.88);white-space:nowrap;
+}
+html.v4-fs-on body.ps-clock .v4-fs-bar .wl-btn::after{inset:-6px -3px}
+html.v4-fs-on body.ps-clock .v4-fs-bar .wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}
+html.v4-fs-on body.ps-clock .v4-fs-bar .wl-btn[hidden]{display:none}
+html[data-theme="light"].v4-fs-on body.ps-clock .v4-fs-bar .wl-btn{background:rgba(255,255,255,.92)}
+html[data-theme="light"].v4-fs-on body.ps-clock .v4-fs-bar .wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}
+html.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-right:calc(var(--v4-fs-bar-w,140px) + 12px)}
+/* Narrow screens (phone portrait): the bar gets its own row above the chart. */
+@media (max-width:620px){
+  html.v4-fs-on body.ps-clock .v4-stage{padding-top:calc(54px + env(safe-area-inset-top,0px))}
+  html.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-right:0}
+}
+html.v4-fs-chart body.ps-clock .v4-plot{position:relative}
+body.ps-clock .v4-px-pill{display:none}
+html.v4-fs-chart body.ps-clock .v4-px-pill{
+  display:inline-flex;align-items:baseline;gap:8px;
+  position:absolute;z-index:4;left:0;top:0;
+  padding:7px 14px 7px 12px;border-radius:999px;
+  background:rgba(7,11,24,.82);color:#e8eef7;
+  border:1px solid rgba(34,211,238,.45);
+  box-shadow:0 6px 22px rgba(0,0,0,.45),0 0 18px rgba(34,211,238,.12);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  font:900 20px/1.1 Inter,system-ui,sans-serif;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+  cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+html.v4-fs-chart body.ps-clock .v4-px-pill.dragging{cursor:grabbing;box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 22px rgba(34,211,238,.25)}
+html.v4-fs-chart body.ps-clock .v4-px-pill:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+body.ps-clock .v4-px-pill .v4-px-sym{color:#22d3ee}
+body.ps-clock .v4-px-pill .v4-px-chg{font-size:13px;font-weight:800}
+body.ps-clock .v4-px-pill .v4-px-chg.up{color:#22c55e}
+body.ps-clock .v4-px-pill .v4-px-chg.down{color:#ef4444}
+@media (max-width:620px),(max-height:500px){
+  html.v4-fs-chart body.ps-clock .v4-px-pill{font-size:16px;padding:6px 12px 6px 10px}
+  body.ps-clock .v4-px-pill .v4-px-chg{font-size:12px}
+}
+html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill{
+  background:rgba(255,255,255,.9);color:#0f172a;border-color:rgba(14,116,144,.4);
+  box-shadow:0 6px 20px rgba(15,23,42,.14);
+}
+html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-sym{color:#0e7490}
+html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.up{color:#15803d}
+html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.down{color:#b91c1c}

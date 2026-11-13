@@ -149,26 +149,37 @@
   }
   .ps-tab-chev svg{display:block}
 
-  /* Neutralize the live-clock pulse dot and accent color that nav.css pins
-     on any `.header nav a[href$="clock/index.html"]`. Current-page state
-     is only `.is-current`. */
+  /* "Live BTC Chart" and "The Desk" keep their special colour on the
+     iPhone tab bar, matching the desktop/iPad nav (nav.css, 8 Nov): both
+     BTC cyan with a soft glow, and Live keeps its pulsing dot. Current
+     page still gets the underline from .is-current. (13 Nov 2026) */
   .ps-tabs a[href$="clock/index.html"],
   .ps-tabs a[href$="screener.html"],
-  html[data-theme="light"] .ps-tabs a[href$="clock/index.html"],
-  html[data-theme="light"] .ps-tabs a[href$="screener.html"]{
-    color:inherit;
-    text-shadow:none !important;
-    gap:0;
-  }
-  .ps-tabs a[href$="clock/index.html"]::before,
-  .ps-tabs a[href$="screener.html"]::before{
-    content:none !important;
-    display:none !important;
-  }
-  .ps-tabs a.is-current,
   .ps-tabs a[href$="clock/index.html"].is-current,
   .ps-tabs a[href$="screener.html"].is-current{
-    color:var(--text,#e8eef7) !important;
+    color:#22d3ee !important;
+    text-shadow:0 0 12px rgba(34,211,238,.55) !important;
+  }
+  .ps-tabs a[href$="clock/index.html"]:hover,
+  .ps-tabs a[href$="screener.html"]:hover{color:#a5f3fc !important}
+  .ps-tabs a[href$="clock/index.html"]{gap:5px}
+  .ps-tabs a[href$="clock/index.html"]::before{
+    content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;
+    background:currentColor;box-shadow:0 0 8px rgba(34,211,238,.9);
+    animation:navLivePulse 2.2s ease-in-out infinite;
+  }
+  html[data-theme="light"] .ps-tabs a[href$="clock/index.html"],
+  html[data-theme="light"] .ps-tabs a[href$="screener.html"]{
+    color:#0e7490 !important;
+    text-shadow:none !important;
+  }
+  html[data-theme="light"] .ps-tabs a[href$="clock/index.html"]:hover,
+  html[data-theme="light"] .ps-tabs a[href$="screener.html"]:hover{color:#155e75 !important}
+  /* The dot adds ~12px; on 375px phones trim the tab side padding 1px so
+     the main row still fits without a scroll chevron. */
+  @media (max-width:380px){
+    .ps-main a,
+    .ps-main .ps-tab-drop{padding:0 3px}
   }
 }
 
@@ -227,6 +238,7 @@ html[data-theme="light"] .ps-tab-chev:active .ps-tab-chev-disk{
 }
 @media (max-width:1000px) and (prefers-reduced-motion:reduce){
   .ps-tab-drop .ps-tab-dis{transition:none}
+  .ps-tabs a[href$="clock/index.html"]::before{animation:none}
 }
 html[data-theme="light"] .ps-tabs .ps-tab-drop{color:rgba(15,23,42,.70) !important}
 html[data-theme="light"] .ps-tabs .ps-tab-drop:hover,

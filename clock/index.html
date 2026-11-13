@@ -134,12 +134,12 @@ html[data-theme="light"] body.ps-clock .bc-ct button{color:#475569;border-color:
 html[data-theme="light"] body.ps-clock .bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
 .wl-btn{background:transparent;color:#22d3ee;border:1px solid rgba(34,211,238,.5);border-radius:999px;padding:0 8px;line-height:13px;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit;margin-left:4px;position:relative}.wl-btn::after{content:"";position:absolute;inset:-12px -6px}.wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}.wl-btn.wl-wait{border-style:dashed}.wl-btn[hidden]{display:none}
 html[data-theme="light"] body.ps-clock .wl-btn{color:#0e7490;border-color:#0e7490}html[data-theme="light"] body.ps-clock .wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}
-</style><link rel="stylesheet" href="clock-v4.css?v=v4a"></head><body class="ps-clock"><div class="wrap">
+</style><link rel="stylesheet" href="clock-v4.css?v=v4b"></head><body class="ps-clock"><div class="wrap">
 <a class="brand" href="../index.html"><picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture><span class="brand-text">Paperstreet <span>BTC</span></span><span class="brand-clock">· Live BTC Chart</span></a>
 <div class="top"><span class="lab">₿ Live BTC Chart</span><span class="live"><i></i>LIVE · AUTO<button type="button" class="wl-btn" id="wakeBtn" aria-pressed="false" title="Keep this screen from sleeping while the page is open" hidden>Keep screen on</button></span><span class="et" id="now">—</span></div>
 
 <div class="hero merged v4-stage" id="hero">
-<button type="button" class="v4-fs-exit" aria-label="Exit full screen (Esc)" title="Exit full screen (Esc)"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Exit full screen</button>
+<div class="v4-fs-bar"><button type="button" class="v4-fs-exit" aria-label="Exit full screen (Esc)" title="Exit full screen (Esc)"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Exit full screen</button></div>
 <div class="v4-clock">
 <div class="v4-clock-meta"><span class="lab" id="curLab">Bitcoin · USD · live price</span><span class="cur-toggle" role="group" aria-label="Price currency"><button type="button" data-cur="USD" class="on" title="Show price in US dollars">USD $</button><button type="button" data-cur="CAD" title="Show price in Canadian dollars">CAD $</button></span></div>
 <div class="price" id="price">—</div>
@@ -147,6 +147,7 @@ html[data-theme="light"] body.ps-clock .wl-btn{color:#0e7490;border-color:#0e749
 <div class="v4-fs" role="group" aria-label="Full screen"><button type="button" class="v4-fs-btn" data-fs="chart" aria-pressed="false" title="Show the chart full screen"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 4.5v-3h3M10.5 4.5v-3h-3M1.5 7.5v3h3M10.5 7.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Full-screen chart</button><button type="button" class="v4-fs-btn" data-fs="price" aria-pressed="false" title="Show the price full screen"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 4.5v-3h3M10.5 4.5v-3h-3M1.5 7.5v3h3M10.5 7.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Full-screen price</button></div>
 </div>
 <div class="v4-plot">
+<div class="v4-px-pill" id="pxPill" title="Live BTC price · drag to move" aria-label="Live BTC price"><span class="v4-px-val" id="pxPillVal">—</span><span class="v4-px-chg" id="pxPillChg"></span></div>
 <div id="bcInline"></div>
 <div class="mut2 v4-caption"><span>Full chart · the homepage BTC popover, live here</span><span id="nextRefresh">next refresh 60s</span></div>
 </div>
@@ -297,7 +298,7 @@ render();/* Paint the initial state at once (restored CAD, or the CAD loading st
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
 <script src="../assets/js/btcchart.js?v=et24" defer></script>
-<script src="clock-v4.js?v=v4a" defer></script>
+<script src="clock-v4.js?v=v4b" defer></script>
 <script>
 /* V4: after the inlined chart mounts, fire one resize so the canvas
    matches the contained stage (the page already redraws on resize). */
