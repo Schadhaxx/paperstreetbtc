@@ -1,7 +1,7 @@
 {
   "source": "Yahoo ^DJI (Dow Jones Industrial Average), index points",
-  "asOf": "13 Nov 2026, 4:00 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Weekly snapshot \u2014 the latest week is in progress until it closes. Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 13 Nov 2026, 4:00 PM ET; its close is not a final close.",
+  "asOf": "13 Nov 2026, 4:10 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Weekly snapshot \u2014 the latest week is in progress until it closes. Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 13 Nov 2026, 4:10 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -461,9 +461,9 @@
       "open": 51643.01,
       "high": 52751.22,
       "low": 51643.01,
-      "close": 52347.85,
-      "volume": 3685236870
+      "close": 52347.55,
+      "volume": 3706051236
     }
   ],
-  "inProgress": "in progress, as of 13 Nov 2026, 4:00 PM ET"
+  "inProgress": "in progress, as of 13 Nov 2026, 4:10 PM ET"
 }
