@@ -63,6 +63,18 @@ usage:
   python3 tools/desk_intraday.py --symbol TSLA [--out-dir assets/data]
   python3 tools/desk_intraday.py --fixture bars.json [--out-dir DIR] [--now ISO]
   python3 tools/desk_intraday.py --gate   # prints run=1 / run=0 for the workflow
+  python3 tools/desk_intraday.py [--out-dir assets/data] --live-json desk-live.json
+  python3 tools/desk_intraday.py --validate-live desk-live.json
+
+--live-json PATH (5-minute Desk, option b): also writes ONE small file
+with the current-week candle of every Desk symbol (the same validated
+candle_for_week() result the weekly files get), for the `data` branch
+next to prices.json, outside the Pages build. With --check-only the
+weekly files are left untouched and only the live file is written.
+The file is validated (finite, positive, consistent OHLC, right week)
+before it is written; an invalid document is never written. See
+LIVE_SCHEMA below for the format. --validate-live re-checks a file
+(exit 1 if invalid), for the workflow before it publishes.
 """
 import datetime as dt, json, math, os, re, sys, time, urllib.error, urllib.request
 from zoneinfo import ZoneInfo
@@ -109,6 +121,162 @@ EARLY_CLOSES = {
 # most of the Desk stale. The failing symbols are named in a ::warning::
 # (see main) either way.
 MAX_SYMBOL_FAILURES = 3
+
+# --- live current-week file (desk-live.json, option b) ---
+#
+# LIVE_SCHEMA (v1). One object; keys:
+#   v          1
+#   kind       "desk-live"
+#   asOf       ISO UTC time the file was built, e.g. "2026-11-13T19:40:12Z"
+#   asOfLabel  same instant in ET, e.g. "13 Nov 2026, 2:40 PM ET"
+#   sessionOpen  true while the NYSE session is open
+#   symbols    {SYM: entry} for every Desk symbol (16 stocks + 8 tiles),
+#              keyed like the tool (CADUSD, not USDCAD). An entry is
+#              {"kind": "stock"|"indicator", "file": "<weekly file name>",
+#               "status": "ok"|"skipped"|"failed"} and, only when
+#              status is "ok", the current-week candle:
+#               monday, sunday (ISO dates; stocks = ET weeks, indicators
+#               = UTC weeks, as in their weekly files), days, open, high,
+#               low, close, optional volume, inProgress (bool) and, for
+#               stocks, lastSession (ISO date of the last daily bar).
+#   failed     sorted list of symbols whose status is "failed".
+# A consumer must ignore the file when asOf is too old, and any entry
+# whose monday is not the week it is drawing (it then keeps the Pages
+# weekly file's candle).
+LIVE_VERSION = 1
+LIVE_KIND = 'desk-live'
+LIVE_MAX_BYTES = 16 * 1024
+LIVE = {}   # (kind, sym) -> current-week entry, filled by refresh_stock / refresh_indicator
+
+def _live_entry(kind, sym, candle, in_progress, last_session=None):
+    e = {'kind': kind, 'file': STOCK_FILES[sym] if kind == 'stock' else IW.FILES[sym],
+         'status': 'ok', 'monday': candle['monday'], 'sunday': candle['sunday'],
+         'days': candle['days'], 'open': candle['open'], 'high': candle['high'],
+         'low': candle['low'], 'close': candle['close'], 'inProgress': bool(in_progress)}
+    if 'volume' in candle:
+        e['volume'] = candle['volume']
+    if last_session is not None:
+        e['lastSession'] = last_session
+    return e
+
+def _finite_pos(v):
+    return (not isinstance(v, bool)) and isinstance(v, (int, float)) and math.isfinite(v) and v > 0
+
+def validate_live_doc(doc, expected=None):
+    """Error strings for a desk-live document (empty == ok). Fail closed.
+
+    `expected` is the set of symbols that must all be present (default:
+    every Desk symbol). Every "ok" entry must carry a finite, positive,
+    consistent OHLC candle for a Monday-Sunday week.
+    """
+    bad = []
+    if not isinstance(doc, dict):
+        return ['not an object']
+    if doc.get('v') != LIVE_VERSION:
+        bad.append(f"bad v {doc.get('v')!r}")
+    if doc.get('kind') != LIVE_KIND:
+        bad.append(f"bad kind {doc.get('kind')!r}")
+    a = doc.get('asOf')
+    try:
+        if not (isinstance(a, str) and re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ', a)):
+            raise ValueError
+        dt.datetime.strptime(a, '%Y-%m-%dT%H:%M:%SZ')
+    except Exception:
+        bad.append(f'bad asOf {a!r}')
+    if not isinstance(doc.get('sessionOpen'), bool):
+        bad.append('bad sessionOpen')
+    syms = doc.get('symbols')
+    if not isinstance(syms, dict) or not syms:
+        return bad + ['no symbols']
+    want = set(expected) if expected is not None else set(STOCK_SYMS) | set(INDICATOR_KEYS)
+    missing = sorted(want - set(syms))
+    extra = sorted(set(syms) - want)
+    if missing:
+        bad.append(f'missing symbols {missing}')
+    if extra:
+        bad.append(f'unknown symbols {extra}')
+    failed = []
+    for sym, e in syms.items():
+        if not isinstance(e, dict):
+            bad.append(f'{sym}: not an object'); continue
+        st = e.get('status')
+        if st not in ('ok', 'skipped', 'failed'):
+            bad.append(f'{sym}: bad status {st!r}'); continue
+        if e.get('kind') not in ('stock', 'indicator'):
+            bad.append(f"{sym}: bad kind {e.get('kind')!r}")
+        if st == 'failed':
+            failed.append(sym)
+        if st != 'ok':
+            if any(k in e for k in ('open', 'high', 'low', 'close')):
+                bad.append(f'{sym}: {st} entry must not carry a candle')
+            continue
+        for k in ('open', 'high', 'low', 'close'):
+            if not _finite_pos(e.get(k)):
+                bad.append(f'{sym}: bad {k} {e.get(k)!r}')
+        if all(_finite_pos(e.get(k)) for k in ('open', 'high', 'low', 'close')):
+            o, h, l, c = e['open'], e['high'], e['low'], e['close']
+            if h < max(o, c) or l > min(o, c) or l > h:
+                bad.append(f'{sym}: OHLC inconsistent o={o} h={h} l={l} c={c}')
+        d = e.get('days')
+        if isinstance(d, bool) or not isinstance(d, int) or not 1 <= d <= 7:
+            bad.append(f'{sym}: bad days {d!r}')
+        try:
+            mon = dt.date.fromisoformat(e.get('monday'))
+            sun = dt.date.fromisoformat(e.get('sunday'))
+            if mon.weekday() != 0 or sun != mon + dt.timedelta(days=6):
+                bad.append(f'{sym}: bad week {mon}..{sun}')
+        except Exception:
+            bad.append(f"{sym}: bad monday/sunday {e.get('monday')!r}/{e.get('sunday')!r}")
+        if 'volume' in e:
+            v = e['volume']
+            if isinstance(v, bool) or not isinstance(v, int) or v < 0:
+                bad.append(f'{sym}: bad volume {v!r}')
+        if not isinstance(e.get('inProgress'), bool):
+            bad.append(f'{sym}: bad inProgress')
+    if sorted(doc.get('failed') or []) != sorted(failed) or not isinstance(doc.get('failed'), list):
+        bad.append('failed list does not match the failed entries')
+    return bad
+
+def build_live_doc(now_et, statuses):
+    """desk-live document from the LIVE collector and per-symbol statuses.
+
+    `statuses` maps (kind, sym) -> 'ok'|'skipped'|'failed' for every
+    target. A symbol whose refresh did not reach a validated current-week
+    candle is "skipped" (no bars yet) or "failed" — never given a candle.
+    """
+    symbols = {}
+    for (kind, sym), st in statuses.items():
+        e = LIVE.get((kind, sym))
+        if st == 'ok' and e is not None:
+            symbols[sym] = dict(e)
+        else:
+            symbols[sym] = {'kind': kind,
+                            'file': STOCK_FILES[sym] if kind == 'stock' else IW.FILES[sym],
+                            'status': 'failed' if st == 'failed' else 'skipped'}
+    now_utc = now_et.astimezone(UTC)
+    return {
+        'v': LIVE_VERSION, 'kind': LIVE_KIND,
+        'asOf': now_utc.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'asOfLabel': et_label(now_et.astimezone(NY)),
+        'sessionOpen': session_open(now_et.astimezone(NY)),
+        'symbols': {k: symbols[k] for k in sorted(symbols)},
+        'failed': sorted(k for k, e in symbols.items() if e['status'] == 'failed'),
+    }
+
+def write_live_doc(path, doc, expected=None):
+    """Validate, then write atomically. Raises (and writes nothing) if invalid."""
+    bad = validate_live_doc(doc, expected)
+    if bad:
+        raise RuntimeError('desk-live document invalid: ' + '; '.join(bad))
+    text = json.dumps(doc, separators=(',', ':'), sort_keys=False, allow_nan=False) + '\n'
+    if len(text.encode()) > LIVE_MAX_BYTES:
+        raise RuntimeError(f'desk-live document too big ({len(text)} bytes > {LIVE_MAX_BYTES})')
+    d = os.path.dirname(os.path.abspath(path))
+    os.makedirs(d, exist_ok=True)
+    with open(path + '.tmp', 'w') as f:
+        f.write(text)
+    os.replace(path + '.tmp', path)
+    return len(text.encode())
 
 # --- market-hours gate (pure function; the workflow's first step) ---
 
@@ -409,6 +577,7 @@ def refresh_stock(sym, out_dir, now, fixture_bars, check_only):
         finished = (now_et.hour, now_et.minute) >= close_hm
     else:
         finished = False
+    LIVE[('stock', sym)] = _live_entry('stock', sym, candle, not finished, last_bar.isoformat())
     doc = dict(old)
     if last_mon == cur_mon:
         if candle == last and old.get('lastSession') == last_bar.isoformat():
@@ -508,6 +677,7 @@ def refresh_indicator(key, out_dir, now, fixture_bars, check_only):
         print(f'{key}: finalised previous week {last_mon} (close {prev["close"]}, {prev["days"]} days) before appending')
     asof_label = et_label(now_et)
     finished = today_utc >= cur_mon + dt.timedelta(days=6)
+    LIVE[('indicator', key)] = _live_entry('indicator', key, candle, not finished)
     doc = dict(old)
     if last_mon == cur_mon:
         # No write when the candle is unchanged: asOf is the time the
@@ -574,6 +744,7 @@ def load_fixture(path):
 
 def main(argv):
     out_dir, now, check_only, only, fixture, gate = 'assets/data', None, False, None, None, False
+    live_json = validate_live = None
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -589,6 +760,10 @@ def main(argv):
             fixture = argv[i + 1]; i += 2
         elif a == '--gate':
             gate = True; i += 1
+        elif a == '--live-json':
+            live_json = argv[i + 1]; i += 2
+        elif a == '--validate-live':
+            validate_live = argv[i + 1]; i += 2
         else:
             print(f'unknown arg {a}', file=sys.stderr); return 2
     if gate:
@@ -603,6 +778,18 @@ def main(argv):
             return 0
         print(f'run={"1" if inside else "0"}')
         print(f'desk-intraday gate: {reason} ({"inside" if inside else "outside"} window)')
+        return 0
+    if validate_live:
+        try:
+            with open(validate_live) as f:
+                vdoc = json.load(f, parse_constant=lambda c: (_ for _ in ()).throw(ValueError(f'non-finite {c}')))
+        except Exception as e:
+            print(f'desk-live: cannot read {validate_live} ({type(e).__name__}: {e})', file=sys.stderr); return 1
+        vbad = validate_live_doc(vdoc)
+        if vbad:
+            print('desk-live INVALID: ' + '; '.join(vbad), file=sys.stderr); return 1
+        ok_n = sum(1 for e in vdoc['symbols'].values() if e['status'] == 'ok')
+        print(f"desk-live OK: {ok_n}/{len(vdoc['symbols'])} symbols with a candle, asOf {vdoc['asOf']}, failed {vdoc['failed'] or 'none'}")
         return 0
     if only and only not in STOCK_SYMS and only not in INDICATOR_KEYS:
         print(f'unknown symbol {only}', file=sys.stderr); return 2
@@ -631,6 +818,8 @@ def main(argv):
     consecutive_429 = 0
     aborted_429 = False
     never_tried = []
+    LIVE.clear()
+    statuses = {t: 'failed' for t in targets}   # every target is failed until proven otherwise
     for idx, (kind, sym) in enumerate(targets):
         try:
             fb = fx_bars.get((kind, sym)) if fx_bars is not None else None
@@ -642,6 +831,7 @@ def main(argv):
                 # breaks nor continues a 429 streak.
                 print(f'{sym}: not in fixture — skipping (not attempted)')
                 skipped += 1
+                statuses[(kind, sym)] = 'skipped'
                 continue
             if fb is not None and fb[0] == 'error':
                 print(f'{sym}: bad fixture data ({fb[1]}) — keeping last good file', file=sys.stderr)
@@ -662,8 +852,11 @@ def main(argv):
                 failed_names.append(sym)
             elif status == 'skipped':
                 skipped += 1
-            elif did:
-                changed += 1
+                statuses[(kind, sym)] = 'skipped'
+            else:
+                statuses[(kind, sym)] = 'ok' if (kind, sym) in LIVE else 'failed'
+                if did:
+                    changed += 1
         except YahooRateLimited as e:
             # A single 429 fails closed for that symbol only (keep its last
             # good file, warn, carry on). Two in a row means Yahoo is
@@ -689,6 +882,18 @@ def main(argv):
             failed += 1
             failed_names.append(sym)
     attempted = len(targets)
+    if live_json:
+        # Written even when the run then fails below (failed symbols are
+        # marked "failed" and carry no candle); the workflow publishes it
+        # only when the whole step succeeds.
+        try:
+            live_doc = build_live_doc(SW.parse_now(now), statuses)
+            nbytes = write_live_doc(live_json, live_doc, expected={s for _, s in targets})
+            ok_n = sum(1 for e in live_doc['symbols'].values() if e['status'] == 'ok')
+            print(f'desk-live: wrote {live_json} ({nbytes} bytes, {ok_n}/{len(targets)} symbols with a candle)')
+        except Exception as e:
+            print(f'desk-live: NOT written: {e}', file=sys.stderr)
+            return 1
     print(f'desk-intraday: {changed} changed, {skipped} skipped, {failed} failed of {attempted}'
           + (' (check-only, nothing written)' if check_only else f' -> {out_dir}'))
     if failed_names:
