@@ -205,7 +205,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   }
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '' };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0 };
 
 
   // --- Experimental live feel: pure helpers (also exposed for harness) ---
@@ -258,6 +258,119 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   function isInProgress() {
     return !!(state.progressNote || (state.cfg && state.cfg.lastInProgress));
   }
+  // --- desk-live.json overlay (5-min current-week candle, stage 2) ---
+  // The 5-min Desk job publishes desk-live.json to the data branch
+  // (next to prices.json) with the current week's candle per symbol,
+  // refreshed every 5 min in market hours. The modal overlays that
+  // candle on the last week from the Pages weekly file — but ONLY when
+  // the entry is fresh (asOf < ~20 min old) AND its monday is the week
+  // being drawn. Otherwise it is ignored and the modal silently falls
+  // back to the Pages candle (which the final run keeps current).
+  // A missing/unreadable desk-live.json is also a silent fallback,
+  // never an error: the Pages file is the source of truth and the
+  // overlay is a freshness bonus. The existing applyLiveWeek still
+  // patches the close from prices.json on top (see draw()).
+  var DESK_LIVE_URL = 'https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/desk-live.json';
+  var DESK_LIVE_MAX_AGE_MS = 20 * 60 * 1000; // ~20 min
+  var DESK_LIVE_POLL_MS = 5 * 60 * 1000; // re-poll every 5 min while open
+  function deskLiveFileFor(cfg) {
+    // Basename of the weekly file, e.g. "dia-weekly.json" or
+    // "stock-weekly-TSLA.json". Matching by file (not by symbol key)
+    // is what maps the overlay key CADUSD to the page's USDCAD, whose
+    // file is usdcad-weekly.json.
+    if (!cfg || typeof cfg.dataUrl !== 'string') return null;
+    var u = cfg.dataUrl.split('?')[0];
+    var i = u.lastIndexOf('/');
+    return i >= 0 ? u.slice(i + 1) : u;
+  }
+  function deskLiveEntryFor(data, cfg) {
+    if (!data || typeof data !== 'object' || !data.symbols || typeof data.symbols !== 'object') return null;
+    var file = deskLiveFileFor(cfg);
+    var syms = data.symbols, entry = null, k;
+    if (file) {
+      for (k in syms) {
+        if (syms[k] && syms[k].file === file) { entry = syms[k]; break; }
+      }
+    }
+    if (!entry && cfg && typeof cfg.symbol === 'string') {
+      // Fallback: direct symbol key, with the CADUSD -> USDCAD map.
+      var key = cfg.symbol === 'USDCAD' ? 'CADUSD' : cfg.symbol;
+      if (syms[key]) entry = syms[key];
+    }
+    if (!entry || entry.status !== 'ok') return null;
+    if (typeof entry.open !== 'number' || !isFinite(entry.open) ||
+        typeof entry.high !== 'number' || !isFinite(entry.high) ||
+        typeof entry.low !== 'number' || !isFinite(entry.low) ||
+        typeof entry.close !== 'number' || !isFinite(entry.close)) return null;
+    if (typeof entry.monday !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(entry.monday)) return null;
+    if (entry.high < Math.max(entry.open, entry.close) || entry.low > Math.min(entry.open, entry.close)) return null;
+    return entry;
+  }
+  function deskLiveFresh(asOfMs, nowMs) {
+    if (typeof asOfMs !== 'number' || !isFinite(asOfMs)) return false;
+    var t = (nowMs === undefined) ? Date.now() : nowMs;
+    if (typeof t !== 'number' || !isFinite(t)) return false;
+    // Allow up to 60s of clock skew the other way; the entry must not
+    // be from the future beyond that, nor older than ~20 min.
+    return asOfMs <= t + 60000 && (t - asOfMs) < DESK_LIVE_MAX_AGE_MS;
+  }
+  // The overlaid week: the desk-live candle, or the shipped week
+  // unchanged. Never mutates the input week. The shipped label/days
+  // are kept; the desk-live OHLC (and volume when present) win.
+  function deskLiveWeekFor(w, nowMs) {
+    var ov = state.deskLive;
+    if (!ov || !w) return w;
+    if (!deskLiveFresh(ov.asOfMs, nowMs)) return w;
+    if (isoDay(ov.monday) !== isoDay(w.monday)) return w;
+    return { monday: w.monday, sunday: w.sunday, label: w.label, days: (typeof ov.days === 'number' ? ov.days : w.days),
+      open: ov.open, high: ov.high, low: ov.low, close: ov.close,
+      volume: (typeof ov.volume === 'number' ? ov.volume : (typeof w.volume === 'number' ? w.volume : null)) };
+  }
+  function fetchDeskLive() {
+    if (!state.cfg) return;
+    var token = ++state.deskLiveToken;
+    var cfg = state.cfg;
+    fetch(DESK_LIVE_URL + '?t=' + Date.now(), { cache: 'no-store' })
+      .then(function (res) { if (!res.ok) throw new Error('no desk-live file'); return res.json(); })
+      .then(function (data) {
+        if (token !== state.deskLiveToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale response: ignore
+        var asOfMs = (typeof data.asOf === 'string') ? Date.parse(data.asOf) : NaN;
+        var entry = deskLiveEntryFor(data, cfg);
+        if (!entry || !deskLiveFresh(asOfMs)) { state.deskLive = null; }
+        else {
+          state.deskLive = { monday: entry.monday, open: entry.open, high: entry.high, low: entry.low, close: entry.close,
+            volume: (typeof entry.volume === 'number' ? entry.volume : null),
+            days: (typeof entry.days === 'number' ? entry.days : null), asOfMs: asOfMs };
+        }
+        state.deskLiveAt = Date.now();
+        var m = el('ind-modal');
+        if (m && m.classList.contains('open') && state.weeks.length && state.loadedSymbol === cfg.symbol) draw();
+      })
+      .catch(function () {
+        if (token !== state.deskLiveToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale failure: ignore
+        // Silent fallback: no desk-live file (or a bad one) just means
+        // the Pages weekly candle stands. No error is shown.
+        state.deskLive = null;
+        state.deskLiveAt = Date.now();
+      });
+  }
+  // Throttled re-fetch: only when > ~4 min since the last fetch, so a
+  // burst of visibilitychange events cannot hammer the file.
+  function deskLiveMaybeRefresh() {
+    if (!state.cfg) return;
+    var now = Date.now();
+    if (state.deskLiveAt && now - state.deskLiveAt < 4 * 60 * 1000) return;
+    fetchDeskLive();
+  }
+  function startDeskLiveTimer() {
+    stopDeskLiveTimer();
+    state.deskLiveTimer = setInterval(function () {
+      var m = el('ind-modal');
+      if (!m || !m.classList.contains('open')) { stopDeskLiveTimer(); return; }
+      fetchDeskLive();
+    }, DESK_LIVE_POLL_MS);
+  }
+  function stopDeskLiveTimer() { if (state.deskLiveTimer) { clearInterval(state.deskLiveTimer); state.deskLiveTimer = null; } }
   // US daylight saving time (post-2007 rules): second Sunday of March
   // 07:00 UTC to first Sunday of November 06:00 UTC. Returns the
   // America/New_York UTC offset in hours (-4 EDT, -5 EST) for a UTC instant.
@@ -659,6 +772,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // A same-symbol reopen keeps its loaded weeks but still clears
     // the old candle selection/pill so it cannot linger either.
     resetModalVisuals();
+    // 5-min desk-live overlay: fetch the current-week candle in
+    // parallel with the weekly file, and re-poll every 5 min while
+    // the modal is open. A missing/stale file is a silent fallback.
+    fetchDeskLive();
+    startDeskLiveTimer();
     if (switched) {
       state.resolvedSub = '';
       state.base = null;
@@ -687,6 +805,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var m = el('ind-modal');
     if (!m) return;
     stopPulse();
+    stopDeskLiveTimer();
     m.classList.remove('open');
     m.setAttribute('aria-hidden', 'true');
   }
@@ -791,6 +910,9 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // extended to the live price (display only — the shipped week is
     // never mutated). When not live, dw is exactly viewWeeks.
     var dw = viewWeeks.slice();
+    // 5-min desk-live overlay first (fresh + monday-matching only),
+    // then the live-price close patch on top, as before.
+    if (dw.length) dw[dw.length - 1] = deskLiveWeekFor(dw[dw.length - 1]);
     if (state.liveOn && isInProgress() && typeof state.livePrice === 'number' && isFinite(state.livePrice) && dw.length) {
       dw[dw.length - 1] = liveWeekFor(dw[dw.length - 1], state.livePrice);
     }
@@ -1062,6 +1184,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     }
     state.selected = idx;
     var w = vw[idx];
+    // 5-min desk-live overlay: if the tapped candle is the
+    // in-progress last candle, show the overlaid desk-live values
+    // (display only — the shipped week is never mutated), so the pill
+    // matches the drawn chart.
+    if (idx === vw.length - 1) w = deskLiveWeekFor(w);
     // Live display: if the tapped candle is the in-progress last
     // candle and the modal is live, show the live-extended values
     // (display only — the shipped week is never mutated).
@@ -1135,7 +1262,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (e.target.closest && e.target.closest('#ind-close')) { closeModal(); return; }
     if (e.target.closest && e.target.closest('#ind-retry')) {
       var r = el('ind-retry'); if (r) r.style.display = 'none';
-      state.weeks = []; loadData(); return;
+      state.weeks = []; loadData(); fetchDeskLive(); return;
     }
     var modal = el('ind-modal');
     if (modal && modal.classList.contains('open') && e.target === modal) closeModal();
@@ -1171,6 +1298,15 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   window.addEventListener('screener-ind-rows', function (e) {
     state.indRows = (e && e.detail) || [];
     refreshLive();
+  });
+  document.addEventListener('visibilitychange', function () {
+    // 5-min desk-live overlay: when the tab comes back, re-fetch the
+    // current-week candle (throttled) so the modal shows fresh data
+    // without waiting for the next 5-min poll.
+    if (document.visibilityState !== 'visible') return;
+    var modal = el('ind-modal');
+    if (!modal || !modal.classList.contains('open') || !state.weeks.length) return;
+    deskLiveMaybeRefresh();
   });
   document.addEventListener('DOMContentLoaded', function () {
     var canvas = el('ind-canvas');
@@ -1258,5 +1394,5 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
 })();
