@@ -131,7 +131,6 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   var on = {};
   var benchOn = { BTC: false, SPY: false, QQQ: false };
   var hi = null;
-  var chart = null; // Chart.js instance for the bar view until it goes native; null in the line view
   var native = null; // native line geometry for hover/click/redraw, or null
   STOCKS.forEach(function (s) { on[s] = (s === 'IBIT' || s === 'MSTR'); });
 
@@ -319,7 +318,6 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   }
 
   function destroyChart() {
-    if (chart) { chart.destroy(); chart = null; }
     native = null;
     var canvas = document.getElementById('screener-chart');
     if (canvas) {
@@ -335,27 +333,6 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return dim ? hexAlpha(hex, 0.28) : hex;
   }
 
-  var gridPlugin = {
-    id: 'cmpGrid',
-    beforeDraw: function (c) {
-      if (c.options.indexAxis === 'y') return;
-      var y = c.scales.y, area = c.chartArea, g = c.ctx;
-      if (!y || !area) return;
-      g.save();
-      g.setLineDash([2, 4]);
-      g.lineWidth = 1;
-      (y.ticks || []).forEach(function (t) {
-        var py = y.getPixelForValue(t.value);
-        if (py < area.top - 1 || py > area.bottom + 1) return;
-        g.strokeStyle = t.value === 0 ? psC('rgba(238,242,251,.42)','rgba(15,23,42,.35)') : psC('rgba(148,163,184,.16)','rgba(15,23,42,.10)');
-        g.beginPath();
-        g.moveTo(area.left, py);
-        g.lineTo(area.right, py);
-        g.stroke();
-      });
-      g.restore();
-    }
-  };
   // --- native canvas line view ---
   // Chart.js linear-scale tick generation, replicated the way the Stage 2
   // BTC native line does it: step = niceNum(span/(maxTicks-1)), widened
@@ -437,6 +414,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var s = setupCanvas(canvas, wrap);
     if (!s) return;
     var ctx = s.ctx, W = s.w, H = s.h;
+    ctx.clearRect(0, 0, W, H);
     var labels = native.labels, rows = native.tipRows, ordered = native.ordered;
     var n = labels.length;
     var vmin = Infinity, vmax = -Infinity;
@@ -648,16 +626,118 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       m.dates.forEach(function (d, i) { map[d] = m.pcts[i]; });
       return { sym: m.sym, kind: m.kind, vals: labels.map(function (d) { return map[d] === undefined ? null : map[d]; }) };
     });
-    if (chart) { chart.destroy(); chart = null; } // a bar chart may be showing
     native = { kind: 'lines', labels: labels, tipRows: tipRows, ordered: ordered, hi: hi, tipIndex: null };
     paintNativeLines();
     showTip(labels, labels.length - 1);
   }
 
+  function paintNativeBars() {
+    if (!native || native.kind !== 'bars') return;
+    var canvas = document.getElementById('screener-chart');
+    var wrap = document.getElementById('cmp-canvas-wrap');
+    if (!canvas) return;
+    var s = setupCanvas(canvas, wrap);
+    if (!s) return;
+    var ctx = s.ctx, W = s.w, H = s.h;
+    ctx.clearRect(0, 0, W, H);
+    var rows = native.rows;
+    if (!rows.length) return;
+    var vals = rows.map(function (r) { return r.pct; });
+    var vmin = Math.min.apply(null, [0].concat(vals));
+    var vmax = Math.max.apply(null, [0].concat(vals));
+    if (vmax - vmin < 1e-9) { vmax = vmin + 1; }
+    var ticks = cmpNiceTicks(vmin, vmax, 11);
+    var tMin = ticks[0], tMax = ticks[ticks.length - 1];
+    // Left pad from the widest symbol label (bold, as the old y ticks).
+    ctx.font = '700 12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+    var yW = 0;
+    rows.forEach(function (r) { yW = Math.max(yW, ctx.measureText(r.sym).width); });
+    var padL = Math.ceil(yW) + 10, padR = 8, padT = 8, padB = 18;
+    var x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    function X(v) { return x0 + (x1 - x0) * (v - tMin) / (tMax - tMin); }
+    var zeroX = X(0);
+    var slotH = (y1 - y0) / rows.length;
+    var barH = 16;
+    var slots = rows.map(function (r, i) {
+      var cy = y0 + slotH * (i + 0.5);
+      var bx0 = Math.min(zeroX, X(r.pct)), bx1 = Math.max(zeroX, X(r.pct));
+      return { sym: r.sym, yTop: cy - slotH / 2, yBottom: cy + slotH / 2, cy: cy, bx0: bx0, bx1: bx1 };
+    });
+    native.geom = { x0: x0, x1: x1, y0: y0, y1: y1, n: rows.length, slots: slots };
+    // X tick labels along the bottom (no gridlines, as before).
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#94a3b8';
+    ticks.forEach(function (t) { ctx.fillText(CmpMath.fmtPct(t), X(t), y1 + 10); });
+    // Zero baseline (the old view drew no gridlines; a bare 1px zero line
+    // keeps negative bars anchored without changing the look).
+    ctx.save();
+    ctx.strokeStyle = psC('rgba(238,242,251,.35)', 'rgba(15,23,42,.30)');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(zeroX, y0);
+    ctx.lineTo(zeroX, y1);
+    ctx.stroke();
+    ctx.restore();
+    // Bars: green up, red down, black at exactly zero (deliberate, as
+    // before); dimmed when another symbol is highlighted.
+    slots.forEach(function (sl, i) {
+      var r = rows[i];
+      var base = r.pct > 0 ? '#22c55e' : (r.pct < 0 ? '#ef4444' : '#000000');
+      var col = (native.hi && r.sym !== native.hi) ? hexAlpha(base, 0.35) : base;
+      var bx0 = sl.bx0, bx1 = sl.bx1;
+      if (bx1 - bx0 < 1) bx1 = bx0 + 1; // a zero bar still shows a sliver
+      var by = sl.cy - barH / 2;
+      ctx.save();
+      ctx.fillStyle = col;
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(bx0, by, bx1 - bx0, barH, 8);
+        ctx.fill();
+      } else {
+        ctx.fillRect(bx0, by, bx1 - bx0, barH);
+      }
+      if (native.hoverBar === i) {
+        ctx.strokeStyle = psC('rgba(238,242,251,.8)', 'rgba(15,23,42,.6)');
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      ctx.restore();
+      // Symbol label, bold. Theme-aware: the old hard-coded near-white
+      // is unreadable where this section goes light.
+      ctx.font = '700 12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = psC('#eef2fb', '#0f172a');
+      ctx.fillText(r.sym, x0 - 6, sl.cy);
+    });
+    // Hovered bar's value, just past the bar end (inside the bar when
+    // it would run off the canvas edge).
+    if (native.hoverBar !== null && native.hoverBar !== undefined && rows[native.hoverBar]) {
+      var hr = rows[native.hoverBar], hsl = slots[native.hoverBar];
+      var text = (native.metric === 'ytd' ? 'YTD ' : 'Day ') + CmpMath.fmtPct(hr.pct);
+      ctx.font = '700 12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+      ctx.textBaseline = 'middle';
+      var tw = ctx.measureText(text).width;
+      var tx, align, inside = false;
+      if (hr.pct >= 0) {
+        tx = hsl.bx1 + 6; align = 'left';
+        if (tx + tw > W - 4) { tx = hsl.bx1 - 6; align = 'right'; inside = true; }
+      } else {
+        tx = hsl.bx0 - 6; align = 'right';
+        if (tx - tw < 4) { tx = hsl.bx0 + 6; align = 'left'; inside = true; }
+      }
+      ctx.textAlign = align;
+      ctx.fillStyle = inside ? '#ffffff' : psC('#eef2fb', '#0f172a');
+      ctx.fillText(text, tx, hsl.cy);
+    }
+  }
+
   function renderBars() {
     var canvas = document.getElementById('screener-chart');
     var wrap = document.getElementById('cmp-canvas-wrap');
-    if (!canvas || typeof Chart === 'undefined') return;
+    if (!canvas) return;
     if (wrap) wrap.hidden = false;
     var tip = document.getElementById('cmp-tip');
     if (tip) tip.hidden = true;
@@ -669,43 +749,8 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       list.push({ sym: sym, pct: v });
     });
     list = CmpMath.rankDesc(list);
-    var labels = list.map(function (r) { return r.sym; });
-    var values = list.map(function (r) { return r.pct; });
-    var colors = values.map(function (v, i) {
-      var base = v > 0 ? '#22c55e' : (v < 0 ? '#ef4444' : '#000000');
-      if (hi && labels[i] !== hi) return hexAlpha(base, 0.35);
-      return base;
-    });
-    var data = { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderRadius: 8, barThickness: 16 }] };
-    var options = {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: motionOK() ? { duration: 500 } : false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function (item) {
-              return (barMetric === 'ytd' ? 'YTD ' : 'Day ') + CmpMath.fmtPct(item.parsed.x);
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          border: { display: false },
-          ticks: { color: '#94a3b8', callback: function (v) { return CmpMath.fmtPct(v); } }
-        },
-        y: { grid: { display: false }, border: { display: false }, ticks: { color: '#eef2fb', font: { weight: 700 } } }
-      },
-      onClick: function (_e, els) {
-        if (els && els.length) { var sym = labels[els[0].index]; setTimeout(function () { setHighlight(sym, true); }, 0); }
-      }
-    };
-    destroyChart();
-    chart = new Chart(canvas, { type: 'bar', data: data, options: options, plugins: [gridPlugin] });
+    native = { kind: 'bars', rows: list, metric: barMetric, hi: hi, hoverBar: null };
+    paintNativeBars();
   }
 
   function heatColor(v, mode) {
@@ -1019,30 +1064,58 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (cmpCanvas) {
       cmpCanvas.style.touchAction = 'pan-y';
       cmpCanvas.addEventListener('pointermove', function (e) {
-        if (!native || native.kind !== 'lines' || !native.geom) return;
+        if (!native || !native.geom) return;
         var r = cmpCanvas.getBoundingClientRect();
         var px = e.clientX - r.left, py = e.clientY - r.top;
         var g = native.geom;
-        if (px < g.x0 || px > g.x1 || py < g.y0 || py > g.y1) return;
-        var idx = Math.round((px - g.x0) / (g.x1 - g.x0) * (g.n - 1));
-        idx = Math.max(0, Math.min(g.n - 1, idx));
-        if (native.tipIndex !== idx) {
-          native.tipIndex = idx;
-          paintNativeLines();
-          showTip(native.labels, idx);
+        if (native.kind === 'lines') {
+          if (px < g.x0 || px > g.x1 || py < g.y0 || py > g.y1) return;
+          var idx = Math.round((px - g.x0) / (g.x1 - g.x0) * (g.n - 1));
+          idx = Math.max(0, Math.min(g.n - 1, idx));
+          if (native.tipIndex !== idx) {
+            native.tipIndex = idx;
+            paintNativeLines();
+            showTip(native.labels, idx);
+          }
+        } else if (native.kind === 'bars') {
+          var row = null;
+          (g.slots || []).forEach(function (sl, i) {
+            if (py >= sl.yTop && py < sl.yBottom) row = i;
+          });
+          if (native.hoverBar !== row) {
+            native.hoverBar = row;
+            paintNativeBars();
+          }
         }
       });
       cmpCanvas.addEventListener('pointerleave', function () {
-        if (!native || native.kind !== 'lines') return;
-        native.tipIndex = null;
-        paintNativeLines();
-        showTip(native.labels, null);
+        if (!native) return;
+        if (native.kind === 'lines') {
+          native.tipIndex = null;
+          paintNativeLines();
+          showTip(native.labels, null);
+        } else if (native.kind === 'bars' && native.hoverBar !== null) {
+          native.hoverBar = null;
+          paintNativeBars();
+        }
       });
       cmpCanvas.addEventListener('click', function (e) {
-        if (!native || native.kind !== 'lines' || !native.geom || !native.sets) return;
+        if (!native || !native.geom) return;
         var r = cmpCanvas.getBoundingClientRect();
         var px = e.clientX - r.left, py = e.clientY - r.top;
         var g = native.geom;
+        if (native.kind === 'bars') {
+          var brow = null;
+          (g.slots || []).forEach(function (sl, i) {
+            if (py >= sl.yTop && py < sl.yBottom) brow = i;
+          });
+          if (brow !== null && native.rows[brow]) {
+            var bsym = native.rows[brow].sym;
+            setTimeout(function () { setHighlight(bsym, true); }, 0);
+          }
+          return;
+        }
+        if (native.kind !== 'lines' || !native.sets) return;
         var idx = Math.round((px - g.x0) / (g.x1 - g.x0) * (g.n - 1));
         idx = Math.max(0, Math.min(g.n - 1, idx));
         var best = null, bestD = 28;
