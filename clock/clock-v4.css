@@ -1,0 +1,404 @@
+/* Live BTC Chart, V4 "Both-screens" (13 Nov 2026).
+   One responsive stage: giant price + inline chart.
+   - Desktop, iPhone landscape and iPad landscape (wider than tall, >=700px):
+     price-left / chart-right split that fills the first screen.
+   - iPhone portrait and iPad portrait: stacked, taller chart.
+   Same chart, same look, same features (ranges, compare chips, Line/1H/4H,
+   USD/CAD, Keep screen on, Light pill). Full-screen chart / full-screen
+   price controls live at the bottom of this file (split layouts only). */
+
+/* ---- Mobile-first stage ---- */
+body.ps-clock{
+  min-height:100dvh;
+}
+body.ps-clock .wrap{
+  max-width:1320px;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(36px + env(safe-area-inset-bottom,0px));
+  box-sizing:border-box;
+}
+body.ps-clock .brand{
+  flex-wrap:nowrap;
+  align-items:center;
+}
+body.ps-clock .brand-text,
+body.ps-clock .brand-clock{white-space:nowrap;}
+body.ps-clock .top{
+  margin:8px 0 10px;
+  gap:8px;
+}
+
+/* The first-screen stage: clock + chart. */
+body.ps-clock .v4-stage{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:14px 14px 12px;
+  border-radius:22px;
+}
+body.ps-clock .v4-clock{min-width:0;}
+body.ps-clock .v4-clock-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  flex-wrap:nowrap;
+}
+body.ps-clock #curLab{letter-spacing:.08em;}
+body.ps-clock .v4-stage .price{
+  font-size:clamp(64px,17vw,96px);
+  margin:4px 0 2px;
+  line-height:.9;
+}
+body.ps-clock .v4-chg{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  flex-wrap:wrap;
+}
+body.ps-clock .v4-chg .mut{font-size:13px;}
+
+body.ps-clock .v4-plot{
+  display:flex;
+  flex-direction:column;
+  flex:1 1 auto;
+  min-height:0;
+  min-width:0;
+}
+body.ps-clock .v4-stage #bcInline{
+  display:flex !important;
+  flex-direction:column;
+  flex:1 1 auto;
+  min-height:0;
+  margin-top:4px !important;
+}
+
+/* Hide the inlined pop-up's duplicate header (the clock already is the header). */
+body.ps-clock .v4-stage .bc-h,
+body.ps-clock .v4-stage .bc-rr,
+body.ps-clock .v4-stage .bc-rg-hint{display:none !important;}
+
+/* Compact toolbar + chart that fills leftover space. */
+body.ps-clock .v4-plot,
+body.ps-clock .v4-stage #bcInline,
+body.ps-clock .v4-stage .bc-inline,
+body.ps-clock .v4-stage .bc-rg,
+body.ps-clock .v4-stage .bc-lg,
+body.ps-clock .v4-stage .bc-ct,
+body.ps-clock .v4-stage .bc-box{min-width:0 !important;}
+body.ps-clock .v4-stage,
+body.ps-clock .v4-plot,
+body.ps-clock .v4-stage #bcInline{overflow-x:hidden;}
+body.ps-clock .v4-stage .bc-inline{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  grid-template-rows:auto auto 1fr !important;
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  height:100% !important;
+  width:100% !important;
+  row-gap:6px;
+}
+body.ps-clock .v4-stage .bc-rg{
+  margin:0 !important;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  width:100%;
+  overflow:hidden;
+}
+body.ps-clock .v4-stage .bc-rgs{
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  flex:1 1 auto;
+  min-width:0;
+  width:100%;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+body.ps-clock .v4-stage .bc-rgs::-webkit-scrollbar{display:none;}
+body.ps-clock .v4-stage .bc-lg{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:6px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  margin:0 !important;
+}
+body.ps-clock .v4-stage .bc-lg::-webkit-scrollbar{display:none;}
+body.ps-clock .v4-stage .bc-lg .bc-k{flex:0 0 auto;}
+body.ps-clock .v4-stage .bc-ct{margin:0 !important;}
+/* Phone-first toolbar: ranges get their own full-width scrolling row 1;
+   compare chips (scrolling) and Line/1H/4H share row 2. Ranges and the
+   chart-type buttons never share a row, so 3M/6M can't slide under Line. */
+body.ps-clock .v4-stage .bc-rg{grid-column:1 / -1;grid-row:1;}
+body.ps-clock .v4-stage .bc-lg{grid-column:1;grid-row:2;align-self:center;}
+body.ps-clock .v4-stage .bc-ct{grid-column:2;grid-row:2;align-self:center;}
+body.ps-clock .v4-stage .bc-box{grid-column:1 / -1 !important;}
+@media (max-width:700px){
+  body.ps-clock .v4-stage .bc-ct-lab{display:none;}
+}
+body.ps-clock .v4-stage .bc-rgs button,
+body.ps-clock .v4-stage .bc-sc button,
+body.ps-clock .v4-stage .bc-k,
+body.ps-clock .v4-stage .bc-k-spx,
+body.ps-clock .v4-stage .bc-ct button{
+  min-height:36px;
+}
+body.ps-clock .v4-stage .bc-box{
+  grid-column:1 / -1 !important;
+  height:auto !important;
+  min-height:220px;
+  position:relative;
+  width:100% !important;
+  overflow:hidden;
+}
+body.ps-clock .v4-stage #bcC{
+  position:absolute;inset:0;width:100%;height:100%;
+}
+body.ps-clock .v4-stage .bc-nt,
+body.ps-clock .v4-stage .bc-cl{display:none !important;} /* caption lives in .v4-caption */
+
+body.ps-clock .v4-caption{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  flex-wrap:wrap;
+  font-size:12px;
+  margin-top:6px;
+  color:#64748b;
+  flex:0 0 auto;
+}
+
+/* Light pill: keep off the y-axis on phones; desktop stays bottom-left
+   (it then sits on the price column in the split). */
+@media (max-width:760px){
+  body.ps-clock .ps-theme-pill{
+    left:auto !important;
+    right:calc(8px + env(safe-area-inset-right,0px));
+    bottom:calc(8px + env(safe-area-inset-bottom,0px));
+  }
+}
+
+/* ---- Tight iPhone portrait ---- */
+@media (max-width:480px) and (orientation:portrait){
+  body.ps-clock .wrap{
+    padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(18px + env(safe-area-inset-bottom,0px));
+  }
+  body.ps-clock .top{margin:6px 0 8px;}
+  body.ps-clock .v4-stage{
+    padding:12px 12px 10px;
+    height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 104px);
+    overflow:hidden;
+  }
+  body.ps-clock .v4-caption{display:none;}
+  body.ps-clock .v4-stage .price{
+    font-size:clamp(64px,17vw,88px);
+  }
+  body.ps-clock .v4-stage .bc-rgs button,
+  body.ps-clock .v4-stage .bc-sc button,
+  body.ps-clock .v4-stage .bc-k,
+  body.ps-clock .v4-stage .bc-k-spx,
+  body.ps-clock .v4-stage .bc-ct button{min-height:32px;}
+  body.ps-clock .v4-stage .bc-box{min-height:240px;}
+  body.ps-clock .v4-stage .bc-rg{
+    grid-column:1 / -1 !important;
+    overflow:hidden !important;
+    min-width:0;
+  }
+}
+
+/* ---- Tall stacked tablets (iPad portrait): bigger chart, full width,
+      but cap so the ticker can still peek on the first screen. ---- */
+@media (min-width:700px) and (max-aspect-ratio:11/10){
+  body.ps-clock .wrap{padding:18px 24px 40px;}
+  body.ps-clock .v4-stage{
+    padding:20px 22px 14px;
+    border-radius:26px;
+    flex:0 0 auto;
+  }
+  body.ps-clock .wrap{min-height:0;display:block;}
+  body.ps-clock .v4-stage .price{
+    font-size:clamp(80px,10vw,120px);
+    margin:6px 0 4px;
+  }
+  body.ps-clock .v4-stage .bc-inline{
+    grid-template-columns:minmax(0,1fr) auto !important;
+    grid-template-rows:auto auto 1fr !important;
+  }
+  body.ps-clock .v4-stage .bc-rg{grid-column:1 / -1 !important;grid-row:1;}
+  body.ps-clock .v4-stage .bc-lg{grid-column:1;grid-row:2;align-self:center;}
+  body.ps-clock .v4-stage .bc-ct{grid-column:2;grid-row:2;align-self:center;}
+  body.ps-clock .v4-stage .bc-box{
+    height:min(560px, calc(100dvh - 420px)) !important;
+    min-height:360px;
+  }
+}
+
+/* ---- Split: desktop, iPhone landscape, iPad landscape.
+      Price is a left-hand clock; the chart takes the remaining width
+      and almost the full first-screen height. ---- */
+@media (min-aspect-ratio:11/10) and (min-width:700px){
+  body.ps-clock .wrap{
+    padding:calc(12px + env(safe-area-inset-top,0px)) 22px calc(28px + env(safe-area-inset-bottom,0px));
+  }
+  /* Compact the page header so the stage can be the screen. */
+  body.ps-clock .top .lab{display:none;} /* redundant with brand "· Live BTC Chart" */
+  body.ps-clock .top{margin:4px 0 8px;}
+  body.ps-clock .v4-stage{
+    flex-direction:row;
+    align-items:stretch;
+    gap:24px;
+    padding:18px 20px 14px;
+    border-radius:24px;
+    height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 86px);
+    overflow:hidden;
+  }
+  body.ps-clock .v4-clock{
+    flex:0 0 40%;
+    max-width:520px;
+    min-width:240px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    container-type:inline-size;
+    container-name:clock;
+  }
+  body.ps-clock .v4-clock-meta{
+    flex-wrap:wrap;
+  }
+  /* Scale the hero price to the column, not the viewport, so it stays
+     a clock in a 300px landscape column and on a 500px desktop column. */
+  body.ps-clock .v4-stage .price{
+    font-size:clamp(52px, calc(100cqi / 4.7), 120px);
+    margin:8px 0 10px;
+  }
+  body.ps-clock .v4-plot{
+    flex:1 1 auto;
+  }
+  /* Ranges on their own full-width row (nowrap + scroll); legend and
+     chart-type share the second row; the chart fills the rest. */
+  body.ps-clock .v4-stage .bc-inline{
+    grid-template-columns:minmax(0,1fr) auto !important;
+    grid-template-rows:auto auto 1fr !important;
+    column-gap:10px;
+    row-gap:8px;
+    align-items:center;
+  }
+  body.ps-clock .v4-stage .bc-rg{grid-column:1 / -1 !important;grid-row:1;margin:0 !important;}
+  body.ps-clock .v4-stage .bc-lg{grid-column:1;grid-row:2;align-self:center;overflow-x:auto;}
+  body.ps-clock .v4-stage .bc-ct{grid-column:2;grid-row:2;align-self:center;}
+  body.ps-clock .v4-stage .bc-ct-lab{display:inline;}
+  body.ps-clock .v4-stage .bc-box{
+    grid-column:1 / -1 !important;
+    grid-row:auto;
+    height:100% !important;
+    min-height:280px;
+    align-self:stretch;
+    overflow:hidden;
+    max-width:100%;
+  }
+  body.ps-clock .v4-stage .bc-rgs button,
+  body.ps-clock .v4-stage .bc-sc button,
+  body.ps-clock .v4-stage .bc-k,
+  body.ps-clock .v4-stage .bc-k-spx,
+  body.ps-clock .v4-stage .bc-ct button{min-height:32px;}
+}
+
+/* ---- Short iPhone landscape: even tighter chrome, still the split. ---- */
+@media (orientation:landscape) and (max-height:500px) and (min-width:700px){
+  body.ps-clock .wrap{
+    padding:calc(6px + env(safe-area-inset-top,0px)) 10px calc(8px + env(safe-area-inset-bottom,0px));
+  }
+  body.ps-clock .brand .logo{width:28px;height:28px;border-radius:6px;}
+  body.ps-clock .brand-text,
+  body.ps-clock .brand-clock{font-size:1rem;}
+  body.ps-clock .top{margin:2px 0 6px;}
+  body.ps-clock .v4-stage{
+    gap:14px;
+    padding:10px 12px 8px;
+    border-radius:18px;
+    height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 66px);
+    overflow:hidden;
+  }
+  body.ps-clock .v4-clock{flex-basis:38%;max-width:320px;}
+  body.ps-clock .v4-stage .price{margin:4px 0 6px;}
+  body.ps-clock .chg{font-size:16px;}
+  body.ps-clock .v4-caption{display:none;} /* keep the plot as tall as possible */
+  body.ps-clock .v4-stage .bc-box{min-height:120px !important;}
+  body.ps-clock .v4-stage .bc-ct-lab{display:none;}
+  body.ps-clock .v4-stage .bc-rgs button,
+  body.ps-clock .v4-stage .bc-sc button,
+  body.ps-clock .v4-stage .bc-k,
+  body.ps-clock .v4-stage .bc-k-spx,
+  body.ps-clock .v4-stage .bc-ct button{min-height:28px;}
+}
+
+/* Light-mode: don't fight the existing clock light rules; just keep the stage. */
+html[data-theme="light"] body.ps-clock .v4-caption{color:#475569;}
+
+/* ---- Full-screen chart / full-screen price (13 Nov 2026) ----
+   Two small controls under the price, shown only in the split layout
+   (desktop, iPhone landscape, iPad landscape). The Fullscreen API is used
+   where the browser has it; iPhone Safari gets the same full-viewport
+   layout from CSS (fixed, 100dvh, safe-area padding). Exit: the button
+   or Esc. Styled like the USD/CAD toggle so nothing new is introduced. */
+body.ps-clock .v4-fs{display:none;gap:6px;flex-wrap:wrap;margin-top:12px}
+body.ps-clock .v4-fs-btn,
+body.ps-clock .v4-fs-exit{
+  display:inline-flex;align-items:center;gap:6px;
+  background:transparent;color:#94a3b8;
+  border:1px solid #1e293b;border-radius:999px;
+  padding:6px 12px;min-height:32px;
+  font:900 12px/1 Inter,system-ui,sans-serif;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+body.ps-clock .v4-fs-btn svg,
+body.ps-clock .v4-fs-exit svg{width:12px;height:12px;flex:0 0 auto;display:block}
+body.ps-clock .v4-fs-btn:hover,
+body.ps-clock .v4-fs-exit:hover{color:#22d3ee;border-color:rgba(34,211,238,.55)}
+body.ps-clock .v4-fs-btn:focus-visible,
+body.ps-clock .v4-fs-exit:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+body.ps-clock .v4-fs-exit{
+  display:none;position:absolute;z-index:5;
+  top:calc(10px + env(safe-area-inset-top,0px));
+  right:calc(10px + env(safe-area-inset-right,0px));
+  background:rgba(7,11,24,.88);
+}
+@media (min-aspect-ratio:11/10) and (min-width:700px){
+  body.ps-clock .v4-fs{display:flex}
+}
+html.v4-fs-on,html.v4-fs-on body{overflow:hidden}
+html.v4-fs-on body.ps-clock .v4-stage{
+  position:fixed;inset:0;z-index:100;
+  width:100vw;height:100vh;height:100dvh;max-height:none;
+  margin:0;border-radius:0;border:0;
+  box-sizing:border-box;
+  padding:calc(12px + env(safe-area-inset-top,0px)) calc(14px + env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));
+  background:#05070f;
+  overflow:hidden;
+}
+body.ps-clock .v4-stage:fullscreen{width:100vw;height:100vh}
+body.ps-clock .v4-stage::backdrop{background:#05070f}
+html.v4-fs-on body.ps-clock .v4-fs{display:none}
+html.v4-fs-on body.ps-clock .v4-fs-exit{display:inline-flex}
+/* Chart mode: the plot takes the whole screen. */
+html.v4-fs-chart body.ps-clock .v4-clock{display:none}
+html.v4-fs-chart body.ps-clock .v4-plot{flex:1 1 auto;width:100%;height:100%}
+html.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-right:150px;box-sizing:border-box}
+html.v4-fs-chart body.ps-clock .v4-stage .bc-box{min-height:0 !important}
+/* Price mode: the clock takes the whole screen. */
+html.v4-fs-price body.ps-clock .v4-plot{display:none}
+html.v4-fs-price body.ps-clock .v4-stage{flex-direction:column;justify-content:center;align-items:center}
+html.v4-fs-price body.ps-clock .v4-clock{flex:0 0 auto;width:min(100%,1600px);max-width:none;min-width:0;align-items:stretch}
+html.v4-fs-price body.ps-clock .v4-stage .price{font-size:min(calc(100vw / 4.9), 46vh);margin:10px 0 12px}
+html.v4-fs-price body.ps-clock .v4-chg{font-size:clamp(14px,2.2vw,26px)}
+html.v4-fs-price body.ps-clock .v4-chg .chg{font-size:clamp(16px,2.6vw,32px)}
+html[data-theme="light"].v4-fs-on body.ps-clock .v4-stage{background:#f6f8fb}
+html[data-theme="light"] body.ps-clock .v4-stage::backdrop{background:#f6f8fb}
+html[data-theme="light"] body.ps-clock .v4-fs-btn,
+html[data-theme="light"] body.ps-clock .v4-fs-exit{color:#475569;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .v4-fs-exit{background:rgba(255,255,255,.92)}
+html[data-theme="light"] body.ps-clock .v4-fs-btn:hover,
+html[data-theme="light"] body.ps-clock .v4-fs-exit:hover{color:#0e7490;border-color:#22d3ee}
