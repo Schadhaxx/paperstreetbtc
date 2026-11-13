@@ -1,222 +1,223 @@
 {
- "last_run": "2026-11-13T01:30:27Z",
- "status": "ok",
- "symbols": {
-  "AAPL": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
+  "alerts": [],
+  "last_run": "2026-11-13T01:30:27Z",
+  "status": "ok",
+  "symbols": {
+    "AAPL": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "AMZN": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "BRK.B": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "yahoo"
+    },
+    "BTC": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": true,
+      "source": "coinbase-unchecked"
+    },
+    "DJIA": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 212,
+      "provisional": false,
+      "source": "live"
+    },
+    "DXY": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 145,
+      "provisional": false,
+      "source": "live"
+    },
+    "FBTC": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "GLD": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "yahoo"
+    },
+    "GOLD": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 95,
+      "provisional": false,
+      "source": "live"
+    },
+    "GOOGL": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "IBIT": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "META": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "MSFT": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "MSTR": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "yahoo"
+    },
+    "MU": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "NFLX": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "NVDA": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "PLTR": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "yahoo"
+    },
+    "QQQ": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "yahoo"
+    },
+    "SPCX": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "SPOT": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    },
+    "SPY": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "yahoo"
+    },
+    "STRC": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "yahoo"
+    },
+    "TSLA": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "yahoo"
+    },
+    "US10Y": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 330,
+      "provisional": false,
+      "source": "live"
+    },
+    "USDCAD": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 0,
+      "provisional": false,
+      "source": "live"
+    },
+    "VIX": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 255,
+      "provisional": false,
+      "source": "live"
+    },
+    "WTI": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 95,
+      "provisional": false,
+      "source": "live"
+    },
+    "XYZ": {
+      "last_close_date": "2026-11-12",
+      "price_age_minutes": 270,
+      "provisional": false,
+      "source": "live"
+    }
   },
-  "AMZN": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "BRK.B": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "yahoo"
-  },
-  "BTC": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": true,
-   "source": "coinbase-unchecked"
-  },
-  "DJIA": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 212,
-   "provisional": false,
-   "source": "live"
-  },
-  "DXY": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 145,
-   "provisional": false,
-   "source": "live"
-  },
-  "FBTC": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "GLD": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "yahoo"
-  },
-  "GOLD": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 95,
-   "provisional": false,
-   "source": "live"
-  },
-  "GOOGL": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "IBIT": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "META": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "MSFT": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "MSTR": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "yahoo"
-  },
-  "MU": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "NFLX": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "NVDA": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "PLTR": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "yahoo"
-  },
-  "QQQ": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "yahoo"
-  },
-  "SPCX": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "SPOT": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  },
-  "SPY": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "yahoo"
-  },
-  "STRC": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "yahoo"
-  },
-  "TSLA": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "yahoo"
-  },
-  "US10Y": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 330,
-   "provisional": false,
-   "source": "live"
-  },
-  "USDCAD": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 0,
-   "provisional": false,
-   "source": "live"
-  },
-  "VIX": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 255,
-   "provisional": false,
-   "source": "live"
-  },
-  "WTI": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 95,
-   "provisional": false,
-   "source": "live"
-  },
-  "XYZ": {
-   "last_close_date": "2026-11-12",
-   "price_age_minutes": 270,
-   "provisional": false,
-   "source": "live"
-  }
- },
- "validation": [
-  {
-   "check": "parse",
-   "detail": "219 closes, 28 live stocks",
-   "status": "pass"
-  },
-  {
-   "check": "sessions",
-   "detail": "219 sessions 2025-12-31..2026-11-12, no gaps",
-   "status": "pass"
-  },
-  {
-   "check": "values",
-   "detail": "all closes and quotes finite and positive",
-   "status": "pass"
-  },
-  {
-   "check": "jumps",
-   "detail": "no single-session move over 35%",
-   "status": "pass"
-  },
-  {
-   "check": "tiingo",
-   "detail": "54 reference values within tolerance",
-   "status": "pass"
-  },
-  {
-   "check": "provisional",
-   "detail": "0 provisional BTC date(s) tagged",
-   "status": "pass"
-  },
-  {
-   "check": "dividends",
-   "detail": "44 STRC entries, record<pay, ex-dates unique",
-   "status": "pass"
-  },
-  {
-   "check": "inclusion",
-   "detail": "219 dates, 9 symbols incl. core, 28 live stocks; nothing dropped, nothing changed",
-   "status": "pass"
-  }
- ]
+  "validation": [
+    {
+      "check": "parse",
+      "detail": "219 closes, 28 live stocks",
+      "status": "pass"
+    },
+    {
+      "check": "sessions",
+      "detail": "219 sessions 2025-12-31..2026-11-12, no gaps",
+      "status": "pass"
+    },
+    {
+      "check": "values",
+      "detail": "all closes and quotes finite and positive",
+      "status": "pass"
+    },
+    {
+      "check": "jumps",
+      "detail": "no single-session move over 35%",
+      "status": "pass"
+    },
+    {
+      "check": "tiingo",
+      "detail": "54 reference values within tolerance",
+      "status": "pass"
+    },
+    {
+      "check": "provisional",
+      "detail": "0 provisional BTC date(s) tagged",
+      "status": "pass"
+    },
+    {
+      "check": "dividends",
+      "detail": "44 STRC entries, record<pay, ex-dates unique",
+      "status": "pass"
+    },
+    {
+      "check": "inclusion",
+      "detail": "219 dates, 9 symbols incl. core, 28 live stocks; nothing dropped, nothing changed",
+      "status": "pass"
+    }
+  ]
 }
