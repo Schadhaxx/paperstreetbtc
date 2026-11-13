@@ -1,7 +1,7 @@
 {
   "source": "Cboe daily history, verified against Yahoo ^VIX (CBOE Volatility Index), index points",
-  "asOf": "13 Nov 2026, 12:40 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Index levels in points, shown to 2 decimals \u2014 never a dollar value, and no VIX ETF is substituted. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026 closed final: 30 Oct 2026 level 19.42 points. Day count is 215 trading days, not 209: Cboe calculated VIX on Mon 25 May 2026 (16.59) and Mon 7 Sep 2026 (15.30), and also on Mon 19 Jan, Mon 16 Feb, Fri 19 Jun and Fri 3 Jul 2026, days on which the stock, futures and yield series are closed, so those six weeks count 5 days for VIX and 4 for the other indicators (211 days in Yahoo's data plus the 4 Cboe-only days). Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 13 Nov 2026, 12:40 PM ET; its close is not a final close.",
+  "asOf": "13 Nov 2026, 12:50 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Index levels in points, shown to 2 decimals \u2014 never a dollar value, and no VIX ETF is substituted. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026 closed final: 30 Oct 2026 level 19.42 points. Day count is 215 trading days, not 209: Cboe calculated VIX on Mon 25 May 2026 (16.59) and Mon 7 Sep 2026 (15.30), and also on Mon 19 Jan, Mon 16 Feb, Fri 19 Jun and Fri 3 Jul 2026, days on which the stock, futures and yield series are closed, so those six weeks count 5 days for VIX and 4 for the other indicators (211 days in Yahoo's data plus the 4 Cboe-only days). Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 13 Nov 2026, 12:50 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -461,8 +461,8 @@
       "open": 25.08,
       "high": 25.08,
       "low": 17.33,
-      "close": 19.86
+      "close": 19.73
     }
   ],
-  "inProgress": "in progress, as of 13 Nov 2026, 12:40 PM ET"
+  "inProgress": "in progress, as of 13 Nov 2026, 12:50 PM ET"
 }
