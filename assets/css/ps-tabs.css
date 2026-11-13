@@ -1,0 +1,241 @@
+/* iPhone tab nav (13 Nov 2026) — replaces the phone/tablet hamburger.
+   Same breakpoint as the old hamburger (max-width:1000px); the desktop
+   <nav> above 1000px (desktop, iPad landscape and 1024px iPad portrait)
+   is untouched. One row of text tabs (14px, 44px targets, no scrollbar,
+   safe-area aware). Chevrons + edge fades appear ONLY when a row really
+   overflows (ps-tabs.js). Sleeves toggles a smaller second row with the
+   five Sleeves links; a thin chevron-down on the tab rotates when open. */
+
+.ps-tabs{display:none}
+
+@media (max-width:1000px){
+  .header .mnav-btn,
+  .header .mnav-menu{display:none !important}
+
+  /* Tab bar supplies the bottom rule; drop the header's so we don't get a double line. */
+  .header{border-bottom:none}
+
+  /* nav.css uses `.header nav{display:none!important}` at this breakpoint.
+     Keep using <nav> for a11y, but win the specificity war. */
+  .header nav.ps-tabs,
+  .ps-tabs{
+    display:block !important;
+    position:relative;
+    border-top:1px solid var(--border,rgba(255,255,255,.08));
+    border-bottom:1px solid var(--border,rgba(255,255,255,.08));
+    background:inherit;
+  }
+
+  .ps-tabs-scroller{
+    display:flex;
+    flex-wrap:nowrap;
+    align-items:stretch;
+    gap:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scroll-behavior:smooth;
+    overscroll-behavior-x:contain;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+    padding:0 max(6px, env(safe-area-inset-right,0px)) 0 max(6px, env(safe-area-inset-left,0px));
+  }
+  .ps-tabs-scroller::-webkit-scrollbar{display:none;width:0;height:0}
+
+  /* When every item fits, spread them evenly so the row looks intentional, not left-packed. */
+  .ps-row.is-fit > .ps-tabs-scroller{justify-content:space-evenly}
+
+  .ps-tabs a,
+  .ps-tabs .ps-tab-drop{
+    flex:0 0 auto;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:44px;
+    padding:0 4px;
+    margin:0;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    cursor:pointer;
+    font-family:Outfit,Inter,system-ui,sans-serif;
+    font-size:14px !important;
+    font-weight:600 !important;
+    letter-spacing:-.04em;
+    text-shadow:none !important;
+    line-height:1;
+    white-space:nowrap;
+    color:rgba(232,238,247,.62) !important;
+    text-decoration:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .ps-tabs a:hover,
+  .ps-tabs a:focus-visible,
+  .ps-tabs .ps-tab-drop:hover,
+  .ps-tabs .ps-tab-drop:focus-visible,
+  .ps-tabs .ps-tab-drop[aria-expanded="true"]{color:var(--text,#e8eef7) !important}
+  .ps-tabs a:focus-visible,
+  .ps-tabs .ps-tab-drop:focus-visible{outline:2px solid #22d3ee;outline-offset:-2px;border-radius:6px}
+
+  .ps-tabs a.is-current,
+  .ps-tabs .ps-tab-drop.is-current{
+    color:var(--text,#e8eef7) !important;
+    box-shadow:inset 0 -2px 0 #22d3ee;
+  }
+
+  /* Soft edge fades — only shown when the row actually overflows (toggled in JS). */
+  .ps-tab-fade{
+    position:absolute;
+    top:0;height:44px;
+    width:36px;
+    pointer-events:none;
+    z-index:1;
+    opacity:0;
+    visibility:hidden;
+    transition:opacity .18s ease,visibility .18s ease;
+  }
+  .ps-tab-fade-l{
+    left:0;
+    background:linear-gradient(to right, var(--bg,#070b18) 12%, transparent);
+  }
+  .ps-tab-fade-r{
+    right:0;
+    background:linear-gradient(to left, var(--bg,#070b18) 12%, transparent);
+  }
+  .ps-row.is-show-left > .ps-tab-fade-l,
+  .ps-row.is-show-right > .ps-tab-fade-r{
+    opacity:1;visibility:visible;
+  }
+
+  /* Round chevrons sit in the fade. 44px hit target, 28px visual circle. */
+  .ps-tab-chev{
+    position:absolute;
+    top:0;
+    z-index:2;
+    width:44px;height:44px;
+    padding:0;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border:0;
+    background:transparent;
+    color:var(--text,#e8eef7);
+    cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:opacity .18s ease,visibility .18s ease;
+  }
+  .ps-tab-chev-l{left:0}
+  .ps-tab-chev-r{right:0}
+  .ps-row.is-show-left > .ps-tab-chev-l,
+  .ps-row.is-show-right > .ps-tab-chev-r{
+    opacity:1;visibility:visible;pointer-events:auto;
+  }
+  .ps-tab-chev:focus-visible{outline:2px solid #22d3ee;outline-offset:-2px;border-radius:999px}
+  .ps-tab-chev .ps-tab-chev-disk{
+    width:28px;height:28px;
+    display:inline-flex;align-items:center;justify-content:center;
+    border-radius:999px;
+    background:var(--surface,#121a2e);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 2px 8px rgba(0,0,0,.35);
+  }
+  .ps-tab-chev:hover .ps-tab-chev-disk,
+  .ps-tab-chev:active .ps-tab-chev-disk{
+    border-color:#22d3ee;
+    color:#22d3ee;
+  }
+  .ps-tab-chev svg{display:block}
+
+  /* Neutralize the live-clock pulse dot and accent color that nav.css pins
+     on any `.header nav a[href$="clock/index.html"]`. Current-page state
+     is only `.is-current`. */
+  .ps-tabs a[href$="clock/index.html"],
+  .ps-tabs a[href$="screener.html"],
+  html[data-theme="light"] .ps-tabs a[href$="clock/index.html"],
+  html[data-theme="light"] .ps-tabs a[href$="screener.html"]{
+    color:inherit;
+    text-shadow:none !important;
+    gap:0;
+  }
+  .ps-tabs a[href$="clock/index.html"]::before,
+  .ps-tabs a[href$="screener.html"]::before{
+    content:none !important;
+    display:none !important;
+  }
+  .ps-tabs a.is-current,
+  .ps-tabs a[href$="clock/index.html"].is-current,
+  .ps-tabs a[href$="screener.html"].is-current{
+    color:var(--text,#e8eef7) !important;
+  }
+}
+
+/* Light theme */
+html[data-theme="light"] .ps-tabs a{color:rgba(15,23,42,.55) !important}
+html[data-theme="light"] .ps-tabs a:hover,
+html[data-theme="light"] .ps-tabs a:focus-visible,
+html[data-theme="light"] .ps-tabs a.is-current{color:#0f172a !important}
+html[data-theme="light"] .ps-tabs a.is-current{box-shadow:inset 0 -2px 0 #0e7490}
+html[data-theme="light"] .ps-tab-fade-l{
+  background:linear-gradient(to right, var(--bg,#f6f8fb) 12%, transparent);
+}
+html[data-theme="light"] .ps-tab-fade-r{
+  background:linear-gradient(to left, var(--bg,#f6f8fb) 12%, transparent);
+}
+html[data-theme="light"] .ps-tab-chev{color:#0f172a}
+html[data-theme="light"] .ps-tab-chev .ps-tab-chev-disk{
+  background:#fff;
+  border-color:rgba(15,23,42,.14);
+  box-shadow:0 2px 8px rgba(15,23,42,.1);
+}
+html[data-theme="light"] .ps-tab-chev:hover .ps-tab-chev-disk,
+html[data-theme="light"] .ps-tab-chev:active .ps-tab-chev-disk{
+  border-color:#0e7490;
+  color:#0e7490;
+}
+
+@media (max-width:1000px){
+  .ps-row{position:relative}
+
+  /* Sleeves disclosure: a thin chevron-down that turns over when open. */
+  .ps-tabs .ps-tab-drop{gap:3px}
+  .ps-tab-drop .ps-tab-dis{
+    display:block;width:9px;height:9px;flex:0 0 auto;
+    margin-top:1px;opacity:.75;
+    transition:transform .2s ease,opacity .2s ease;
+  }
+  .ps-tab-drop[aria-expanded="true"] .ps-tab-dis{transform:rotate(180deg);opacity:1}
+
+  /* Sleeves sub-row: same clean text style, smaller and quieter. */
+  .ps-sub{border-top:1px solid var(--border,rgba(255,255,255,.08));background:rgba(255,255,255,.025)}
+  .ps-sub[hidden]{display:none !important}
+  .ps-sub .ps-tabs-scroller{gap:0}
+  .ps-sub a{
+    min-height:36px !important;
+    font-size:13px !important;
+    font-weight:500 !important;
+    letter-spacing:-.02em;
+    padding:0 6px !important;
+    color:rgba(232,238,247,.55) !important;
+  }
+  .ps-sub a.is-current{color:#22d3ee !important;box-shadow:none}
+  .ps-sub .ps-tab-fade{height:36px}
+  .ps-sub .ps-tab-chev{height:36px}
+  .ps-sub .ps-tab-chev .ps-tab-chev-disk{width:24px;height:24px}
+}
+@media (max-width:1000px) and (prefers-reduced-motion:reduce){
+  .ps-tab-drop .ps-tab-dis{transition:none}
+}
+html[data-theme="light"] .ps-tabs .ps-tab-drop{color:rgba(15,23,42,.55) !important}
+html[data-theme="light"] .ps-tabs .ps-tab-drop:hover,
+html[data-theme="light"] .ps-tabs .ps-tab-drop:focus-visible,
+html[data-theme="light"] .ps-tabs .ps-tab-drop[aria-expanded="true"],
+html[data-theme="light"] .ps-tabs .ps-tab-drop.is-current{color:#0f172a !important}
+html[data-theme="light"] .ps-tabs .ps-tab-drop.is-current{box-shadow:inset 0 -2px 0 #0e7490}
+html[data-theme="light"] .ps-sub{border-top-color:rgba(15,23,42,.08);background:rgba(15,23,42,.025)}
+html[data-theme="light"] .ps-sub a{color:rgba(15,23,42,.55) !important}
+html[data-theme="light"] .ps-sub a:hover,
+html[data-theme="light"] .ps-sub a:focus-visible{color:#0f172a !important}
+html[data-theme="light"] .ps-sub a.is-current{color:#0e7490 !important;box-shadow:none}

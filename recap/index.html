@@ -13,7 +13,7 @@
 #list{display:grid;gap:14px;padding-bottom:100px}#list a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px;color:var(--text);text-decoration:none}
 #list a:hover{border-color:var(--accent)}#list p{color:var(--muted);font-size:14px}
 </style>
-<link rel="stylesheet" href="../assets/css/header.css"><link rel="stylesheet" href="../assets/css/nav.css?v=cr028"><link rel="stylesheet" href="../assets/css/xfollow.css">
+<link rel="stylesheet" href="../assets/css/header.css"><link rel="stylesheet" href="../assets/css/nav.css?v=cr028"><link rel="stylesheet" href="../assets/css/ps-tabs.css?v=t1"><link rel="stylesheet" href="../assets/css/xfollow.css">
 <link rel="stylesheet" href="../light.css?v=lm4">
 <script src="../chart-theme.js?v=lm1"></script>
 </head><body>
@@ -40,24 +40,35 @@
       <a href="../screener.html">The Desk</a>
       <a href="../index.html#articles">Articles</a>
     </nav>
-    <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
   </div>
-  <div class="mnav-menu" id="mnavMenu" hidden>
-    <div class="mnav-drop">
-      <button type="button" class="mnav-tab" aria-expanded="false">Sleeves <span class="nav-chev">▾</span></button>
-      <div class="mnav-sub">
+  <nav class="ps-tabs" aria-label="Sections">
+    <div class="ps-row ps-main">
+      <button type="button" class="ps-tab-chev ps-tab-chev-l" hidden aria-label="Scroll menu left"><span class="ps-tab-chev-disk" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M10 3.5L5 8l5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <div class="ps-tab-fade ps-tab-fade-l" aria-hidden="true"></div>
+      <div class="ps-tabs-scroller">
+        <button type="button" class="ps-tab-drop" aria-expanded="false" aria-controls="psSleevesRow">Sleeves<svg class="ps-tab-dis" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.75L5 6.75L8 3.75" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <a href="../compare/index.html">Portfolio Lab</a>
+        <a href="../clock/index.html">Live BTC Chart</a>
+        <a href="../screener.html">The Desk</a>
+        <a href="../index.html#articles">Articles</a>
+      </div>
+      <div class="ps-tab-fade ps-tab-fade-r" aria-hidden="true"></div>
+      <button type="button" class="ps-tab-chev ps-tab-chev-r" hidden aria-label="Scroll menu right"><span class="ps-tab-chev-disk" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M6 3.5L11 8l-5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+    <div class="ps-row ps-sub" id="psSleevesRow" hidden>
+      <button type="button" class="ps-tab-chev ps-tab-chev-l" hidden aria-label="Scroll Sleeves menu left"><span class="ps-tab-chev-disk" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M10 3.5L5 8l5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <div class="ps-tab-fade ps-tab-fade-l" aria-hidden="true"></div>
+      <div class="ps-tabs-scroller">
         <a href="../index.html#principles">Principles</a>
         <a href="../index.html#sleeves">Sleeves</a>
         <a href="../index.html#tracker">Sleeve tracker</a>
         <a href="../index.html#rules">Rules</a>
         <a href="../recap/index.html">Monthly Recap</a>
       </div>
+      <div class="ps-tab-fade ps-tab-fade-r" aria-hidden="true"></div>
+      <button type="button" class="ps-tab-chev ps-tab-chev-r" hidden aria-label="Scroll Sleeves menu right"><span class="ps-tab-chev-disk" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M6 3.5L11 8l-5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
     </div>
-    <a href="../compare/index.html">Portfolio Lab</a>
-    <a href="../clock/index.html">Live BTC Chart</a>
-    <a href="../screener.html">The Desk</a>
-    <a href="../index.html#articles">Articles</a>
-  </div>
+  </nav>
 </header>
 <main class="c"><div class="eyebrow">Archive</div><h1>Monthly recaps</h1><div id="list"></div><p class="xsub"><a href="https://x.com/PaperstreetBTC" target="_blank" rel="noreferrer noopener" aria-label="Follow @PaperstreetBTC on X"><span class="xsub-i"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>Follow @PaperstreetBTC on X</a></p>
 </main>
@@ -69,4 +80,4 @@ document.getElementById('list').innerHTML=RECAP_MONTHS.slice().sort(function(a,b
   +(m.sl?'<div class="rc-s">'+m.sl.map(function(s){return '<span>'+s.n+' <b style="color:'+c(s.m)+'">'+f(s.m)+'</b></span>';}).join('')+'</div>':'')+'<span class="rc-go">Full recap →</span></a>';}).join('');})();</script>
 <style>.rc{display:block}.rc-b{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.9rem;color:#cbd5e1;margin:8px 0}.rc-s{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:#94a3b8}.rc-go{display:inline-block;margin-top:10px;color:#22d3ee;font-weight:600;font-size:.9rem}</style>
 <a href="../index.html" style="position:fixed;left:18px;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;background:#f7931a;color:#111;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)">&larr; Home</a>
-<script src="../assets/js/s7.js"></script><script src="../assets/js/btcchart.js?v=et24"></script></body></html>
+<script src="../assets/js/s7.js"></script><script src="../assets/js/ps-tabs.js?v=t1"></script><script src="../assets/js/btcchart.js?v=et24"></script></body></html>

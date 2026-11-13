@@ -23,7 +23,7 @@
 <link rel="preload" href="assets/fonts/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/outfit-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css?v=bc2">
-<link rel="stylesheet" href="assets/css/nav.css?v=cr028">
+<link rel="stylesheet" href="assets/css/nav.css?v=cr028"><link rel="stylesheet" href="assets/css/ps-tabs.css?v=t1">
 <link rel="stylesheet" href="assets/css/xfollow.css">
 <link rel="stylesheet" href="light.css?v=lm4">
 <script src="chart-theme.js?v=lm1"></script>
@@ -54,24 +54,35 @@
       <a href="screener.html">The Desk</a>
       <a href="#articles">Articles</a>
     </nav>
-    <button type="button" class="mnav-btn" id="mnavBtn" aria-label="Open section menu" aria-expanded="false" aria-controls="mnavMenu"><span class="mnav-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
   </div>
-  <div class="mnav-menu" id="mnavMenu" hidden>
-    <div class="mnav-drop">
-      <button type="button" class="mnav-tab" aria-expanded="false">Sleeves <span class="nav-chev">▾</span></button>
-      <div class="mnav-sub">
+  <nav class="ps-tabs" aria-label="Sections">
+    <div class="ps-row ps-main">
+      <button type="button" class="ps-tab-chev ps-tab-chev-l" hidden aria-label="Scroll menu left"><span class="ps-tab-chev-disk" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M10 3.5L5 8l5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <div class="ps-tab-fade ps-tab-fade-l" aria-hidden="true"></div>
+      <div class="ps-tabs-scroller">
+        <button type="button" class="ps-tab-drop" aria-expanded="false" aria-controls="psSleevesRow">Sleeves<svg class="ps-tab-dis" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.75L5 6.75L8 3.75" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <a href="compare/index.html">Portfolio Lab</a>
+        <a href="clock/index.html">Live BTC Chart</a>
+        <a href="screener.html">The Desk</a>
+        <a href="#articles">Articles</a>
+      </div>
+      <div class="ps-tab-fade ps-tab-fade-r" aria-hidden="true"></div>
+      <button type="button" class="ps-tab-chev ps-tab-chev-r" hidden aria-label="Scroll menu right"><span class="ps-tab-chev-disk" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M6 3.5L11 8l-5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+    </div>
+    <div class="ps-row ps-sub" id="psSleevesRow" hidden>
+      <button type="button" class="ps-tab-chev ps-tab-chev-l" hidden aria-label="Scroll Sleeves menu left"><span class="ps-tab-chev-disk" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M10 3.5L5 8l5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      <div class="ps-tab-fade ps-tab-fade-l" aria-hidden="true"></div>
+      <div class="ps-tabs-scroller">
         <a href="#principles">Principles</a>
         <a href="#sleeves">Sleeves</a>
         <a href="#tracker">Sleeve tracker</a>
         <a href="#rules">Rules</a>
         <a href="recap/index.html">Monthly Recap</a>
       </div>
+      <div class="ps-tab-fade ps-tab-fade-r" aria-hidden="true"></div>
+      <button type="button" class="ps-tab-chev ps-tab-chev-r" hidden aria-label="Scroll Sleeves menu right"><span class="ps-tab-chev-disk" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M6 3.5L11 8l-5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
     </div>
-    <a href="compare/index.html">Portfolio Lab</a>
-    <a href="clock/index.html">Live BTC Chart</a>
-    <a href="screener.html">The Desk</a>
-    <a href="#articles">Articles</a>
-  </div>
+  </nav>
 </header>
 
 <section class="hero">
@@ -504,7 +515,7 @@
 <script src="assets/js/s5.js?v=et1" defer></script>
 <script src="assets/js/s6.js?v=p5" defer></script>
 <script src="assets/js/vehicle.js?v=d3" defer></script>
-<script src="assets/js/s7.js" defer></script>
+<script src="assets/js/s7.js" defer></script><script src="assets/js/ps-tabs.js?v=t1" defer></script>
 <script src="assets/js/s8.js" defer></script>
 <script src="assets/js/btcchart.js?v=et24" defer></script>
 <script src="assets/js/ui5.js?v=cr015" defer></script>
