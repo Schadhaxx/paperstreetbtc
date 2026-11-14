@@ -134,12 +134,47 @@
   }
   function bounds() {
     var box = stage.querySelector('.bc-box');
-    if (!box || !plot) return null;
+    if (!box || !plot || !pill) return null;
     var pr = plot.getBoundingClientRect(), br = box.getBoundingClientRect();
+    var sr = stage.getBoundingClientRect();
     if (!br.width || !br.height) return null;
     var pw = pill.offsetWidth, ph = pill.offsetHeight, m = 6;
-    var x0 = br.left - pr.left + m, y0 = br.top - pr.top + m;
-    return { x0: x0, y0: y0, sx: Math.max(0, br.width - pw - 2 * m), sy: Math.max(0, br.height - ph - 2 * m) };
+    var vw = window.innerWidth || sr.right, vh = window.innerHeight || sr.bottom;
+    /* Stay inside the chart box and fully on screen (the 2x pill is wider,
+       including a $100k / C$140k price on iPhone landscape). */
+    var left = Math.max(br.left + m, sr.left + m, m);
+    var top = Math.max(br.top + m, sr.top + m, m);
+    var right = Math.min(br.right - m, sr.right - m, vw - m);
+    var bottom = Math.min(br.bottom - m, sr.bottom - m, vh - m);
+    /* Do not cover Exit or Keep screen on. */
+    var barEl = stage.querySelector('.v4-fs-bar');
+    if (barEl && barEl.offsetWidth) {
+      var ar = barEl.getBoundingClientRect(), g = 6;
+      var aL = ar.left - g, aT = ar.top - g, aR = ar.right + g, aB = ar.bottom + g;
+      if (left < aR && right > aL && top < aB && bottom > aT) {
+        if (bottom - aB >= ph) top = Math.max(top, aB);
+        else if (aL - left >= pw) right = Math.min(right, aL);
+        else if (bottom - aB > aL - left) top = Math.max(top, aB);
+        else right = Math.min(right, aL);
+      }
+    }
+    if (right < left) right = left;
+    if (bottom < top) bottom = top;
+    var x0 = left - pr.left, y0 = top - pr.top;
+    var sx = Math.max(0, right - left - pw), sy = Math.max(0, bottom - top - ph);
+    /* If the pill is wider/taller than the remaining box, pin it so as much
+       as possible stays on screen instead of overflowing the right/bottom. */
+    if (pw > right - left) {
+      var visR = Math.min(vw - m, sr.right - m);
+      x0 = Math.min(x0, visR - pw - pr.left);
+      sx = 0;
+    }
+    if (ph > bottom - top) {
+      var visB = Math.min(vh - m, sr.bottom - m);
+      y0 = Math.min(y0, visB - ph - pr.top);
+      sy = 0;
+    }
+    return { x0: x0, y0: y0, sx: sx, sy: sy };
   }
   function placePill() {
     if (!pill || mode !== 'chart') return;
