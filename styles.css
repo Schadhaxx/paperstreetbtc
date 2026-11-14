@@ -385,6 +385,7 @@ h2 {
 }
 #tracker .path-block .section-lead {
   margin-bottom: 20px;
+  max-width: none;
 }
 #tracker .sleeve-selector {
   margin: 0 0 0.85rem;
