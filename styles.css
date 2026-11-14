@@ -374,6 +374,27 @@ h2 {
 #tracker .section-lead {
   margin-bottom: 16px;
 }
+#tracker .path-block {
+  margin-top: 40px;
+}
+#tracker .path-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+#tracker .path-block .section-lead {
+  margin-bottom: 20px;
+}
+#tracker .sleeve-selector {
+  margin: 0 0 0.85rem;
+}
+#tracker .bench-selector {
+  margin: 0 0 0.75rem;
+}
+#tracker .mode-toggle {
+  margin: 0 0 1.25rem;
+}
 
 /* Principles */
 .philosophy-visual {
@@ -1200,10 +1221,10 @@ html[data-theme="light"] .lab-pill:hover{background:#0e7490;color:#fff}
 .btc-live-time{margin-left:auto;font-size:.8rem}
 
 /* Live portfolios */
-.pf-live{margin:0 0 22px}
+.pf-live{margin:0}
 .pf-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.pf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-.pf-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:border-color .2s}
+.pf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;align-items:stretch}
+.pf-card{display:flex;flex-direction:column;height:100%;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:border-color .2s}
 .pf-card:hover,.pf-card.open{border-color:var(--accent)}
 .pf-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px}
 .pf-name{font-weight:600;color:var(--text)}
@@ -1230,7 +1251,6 @@ html[data-theme="light"] .lab-pill:hover{background:#0e7490;color:#fff}
 /* Home-page Data sources footnotes only. Sized smaller than The Desk's details.more. */
 #tracker details.more { margin: 8px 0 12px; }
 #tracker .pf-live > details.more { margin: 8px 0 0; }
-#tracker .section-lead + details.more { margin: 0 0 12px; }
 #tracker details.more > summary {
   list-style: none;
   display: inline-flex;
@@ -1291,7 +1311,7 @@ html[data-theme="light"] .lab-pill:hover{background:#0e7490;color:#fff}
 @media (max-width:700px){.pulse-grid{grid-template-columns:1fr 1fr;gap:8px}.pulse-card{padding:10px 12px}.pulse-val{font-size:1rem}}
 .pf-start{display:none;margin-top:8px;font-size:.72rem;color:var(--muted)}
 .pf-card.open .pf-start{display:block}
-.pf-grid{align-items:start}
+.pf-grid{align-items:stretch}
 .pf-card.open{grid-column:1/-1}
 /* Slice 5 r2: the per-stock source/stale label must wrap instead of
    forcing the table wider than the card (it used to be nowrap, which
@@ -1426,7 +1446,7 @@ picture{display:contents}picture>source{display:none}
 .pf-card{transition:border-color .2s,box-shadow .2s,transform .2s}
 .pf-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.35),0 0 0 1px rgba(34,211,238,.25)}
 .pf-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-color:var(--accent)}
-.pf-toggle{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin-top:10px;padding:0;border:1px solid rgba(34,211,238,.4);border-radius:999px;font-size:.75rem;font-weight:600;color:var(--accent);background:rgba(34,211,238,.06);transition:background .2s,border-color .2s}
+.pf-toggle{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin-top:auto;padding:0;align-self:flex-start;border:1px solid rgba(34,211,238,.4);border-radius:999px;font-size:.75rem;font-weight:600;color:var(--accent);background:rgba(34,211,238,.06);transition:background .2s,border-color .2s}
 .pf-card:hover .pf-toggle,.pf-card:focus-visible .pf-toggle{background:rgba(34,211,238,.16);border-color:var(--accent)}
 .pf-chev{transition:transform .25s ease}
 .pf-card.open .pf-chev{transform:rotate(45deg)}

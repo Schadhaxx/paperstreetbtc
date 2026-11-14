@@ -5,6 +5,18 @@ const sleeves = {
   saylor: { name: 'Saylor Moon', color: '#67e8f9' }
 };
 
+function pathStartYear(iso){
+  const d = iso || (window.PSLEDGER && PSLEDGER.base) || '';
+  if (!d) return new Date().getFullYear();
+  const y = +String(d).slice(0, 4), m = +String(d).slice(5, 7);
+  return m === 12 ? y + 1 : y;
+}
+function setPathYear(iso){
+  const el = document.getElementById('pathYear');
+  if (el) el.textContent = String(pathStartYear(iso));
+}
+setPathYear();
+
 // Everything below is computed on page load by PSBook (book.js) from the site's ledger (ledger.js) and its own daily closes (history.json):
 // points = January 1st, 2026 start (2025-12-31 close), each completed month-end session close, and the latest close. No stored NAVs.
 let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null, BTCPROV = false, BTCFB = null;
@@ -19,6 +31,7 @@ let B_LAST = null;
 const MN3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function buildFromBook(B){
   ISO = B.points();
+  setPathYear(ISO[0] || (window.PSLEDGER && PSLEDGER.base));
   labels = ISO.map((d, i) => i === 0 ? '1 Jan' : (+d.slice(8)) + ' ' + MN3[+d.slice(5, 7) - 1]);
   Object.keys(sleeves).forEach(k => { vals[k] = ISO.map(d => (vehicle !== 'SPOT' && vehLoaded && B.tlV && B.tlV[vehicle]) ? B.navV(k, d, vehicle) : B.nav(k, d)); paths[k] = vals[k].map(v => Math.round(v / 10) / 100);
     sleeves[k].now = vals[k].at(-1); sleeves[k].ytd = (sleeves[k].now / 100000 - 1) * 100; });

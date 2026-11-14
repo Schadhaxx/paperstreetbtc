@@ -22,7 +22,7 @@
 <meta name="twitter:image:alt" content="Paperstreet BTC owl logo">
 <link rel="preload" href="assets/fonts/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/outfit-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=bc2">
+<link rel="stylesheet" href="styles.css?v=bc3">
 <link rel="stylesheet" href="assets/css/nav.css?v=cr028"><link rel="stylesheet" href="assets/css/ps-tabs.css?v=t2">
 <link rel="stylesheet" href="assets/css/xfollow.css?v=x2">
 <link rel="stylesheet" href="light.css?v=lm4">
@@ -209,32 +209,29 @@
       <details class="more">
         <summary><span class="more-btn" aria-hidden="true"></span>Data sources</summary>
         <p class="pf-note"></p>
+        <p class="as-of" id="ytdAsOf">—</p>
       </details>
     </div>
-    <p class="section-lead">Select a sleeve. See the path from January 1st, 2026 to the latest live price. Spot BTC is the hurdle.</p>
-    <details class="more">
-      <summary><span class="more-btn" aria-hidden="true"></span>Data sources</summary>
-      <p class="as-of" id="ytdAsOf">—</p>
-    </details>
-    <div class="mode-toggle" id="modeToggle"><button class="bench-btn active" data-mode="live">Live</button><button class="bench-btn" data-mode="me">Month-end</button></div>
-
-    <div class="bench-selector">
-      <span class="bench-label">Benchmark</span>
-      <button class="bench-btn active" data-bench="btc">Spot BTC</button>
-      <button class="bench-btn" data-bench="spy">SPY</button>
-      <button class="bench-btn" data-bench="qqq">QQQ</button>
-      <button class="bench-btn" data-bench="brk">BRK.B</button>
-      <button class="bench-btn" data-bench="gold">Gold (GLD)</button>
-      <button class="bench-btn" data-bench="mstr">MSTR</button>
-    </div>
-    <div class="sleeve-selector">
-      <button class="sleeve-btn active" data-sleeve="berkshire">Berkshire Killer</button>
-      <button class="sleeve-btn" data-sleeve="hodlr">Hodler Jam Sandwich</button>
-      <button class="sleeve-btn" data-sleeve="hf">Hedge Fund Killer</button>
-      <button class="sleeve-btn" data-sleeve="saylor">Saylor Moon</button>
-    </div>
-
-    <div class="tracker-visual">
+    <div class="path-block">
+      <div class="path-bar"><span class="btc-live-label">Performance path</span></div>
+      <p class="section-lead" id="pathLead">Each sleeve from January 1st, <span id="pathYear"></span> to the latest live price. Spot BTC is the hurdle.</p>
+      <div class="sleeve-selector">
+        <button class="sleeve-btn active" data-sleeve="berkshire">Berkshire Killer</button>
+        <button class="sleeve-btn" data-sleeve="hodlr">Hodler Jam Sandwich</button>
+        <button class="sleeve-btn" data-sleeve="hf">Hedge Fund Killer</button>
+        <button class="sleeve-btn" data-sleeve="saylor">Saylor Moon</button>
+      </div>
+      <div class="bench-selector">
+        <span class="bench-label">Benchmark</span>
+        <button class="bench-btn active" data-bench="btc">Spot BTC</button>
+        <button class="bench-btn" data-bench="spy">SPY</button>
+        <button class="bench-btn" data-bench="qqq">QQQ</button>
+        <button class="bench-btn" data-bench="brk">BRK.B</button>
+        <button class="bench-btn" data-bench="gold">Gold (GLD)</button>
+        <button class="bench-btn" data-bench="mstr">MSTR</button>
+      </div>
+      <div class="mode-toggle" id="modeToggle"><button class="bench-btn active" data-mode="live">Live</button><button class="bench-btn" data-mode="me">Month-end</button></div>
+      <div class="tracker-visual">
       <div class="tracker-stats">
         <div class="stat">
           <span class="stat-label">Start</span>
@@ -256,6 +253,7 @@
       <div class="chart-wrap">
         <canvas id="ytdChart" height="220"></canvas>
       </div>
+    </div>
     </div>
 
     <p><a href="compare/index.html" class="lab-pill">There's a better chart in the Portfolio Lab →</a></p>
@@ -504,7 +502,7 @@
 <script src="assets/vendor/chart.umd.min.js" defer></script>
 <script src="assets/js/ledger.js" defer></script>
 <script src="assets/js/book.js" defer></script>
-<script src="assets/js/s2.js?v=p4" defer></script>
+<script src="assets/js/s2.js?v=p5" defer></script>
 
 <script src="assets/js/s3.js" defer></script>
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>
