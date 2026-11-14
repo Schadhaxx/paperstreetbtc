@@ -1,11 +1,16 @@
 /* Live BTC Chart, V4 "Both-screens" (13 Nov 2026).
    One responsive stage: giant price + inline chart.
-   - Desktop, iPhone landscape and iPad landscape (wider than tall, >=700px):
+   - Desktop and iPad landscape (wider than tall, >=700px, height > 500px):
      price-left / chart-right split that fills the first screen.
+   - Phone landscape (orientation: landscape and max-height: 500px):
+     single column — compact top bar (price, 24h, USD/CAD, full-screen
+     buttons, Light toggle) and a chart that fills the remaining space.
+     The left-hand price rail is not used, so the chart can be as wide as
+     the popup / full-screen chart views. Full-screen modes are unchanged.
    - iPhone portrait and iPad portrait: stacked, taller chart.
    Same chart, same look, same features (ranges, compare chips, Line/1H/4H,
    USD/CAD, Keep screen on, Light pill). Full-screen chart / full-screen
-   price controls live at the bottom of this file (split layouts only). */
+   price controls live at the bottom of this file. */
 
 /* ---- Mobile-first stage ---- */
 body.ps-clock{
@@ -333,6 +338,131 @@ body.ps-clock .v4-caption{
   body.ps-clock .v4-stage .bc-k,
   body.ps-clock .v4-stage .bc-k-spx,
   body.ps-clock .v4-stage .bc-ct button{min-height:28px;}
+}
+
+/* ---- Phone landscape: drop the two-column split (13 Nov 2026).
+      The 700px+ split was also matching iPhone landscape (e.g. 932x430),
+      which left a tall price rail and a ~552x232 chart. Below 500px tall,
+      use a single column: a compact top bar for the price, 24h, USD/CAD
+      toggle, and full-screen buttons, and let the chart fill the rest.
+      Scoped with html:not(.v4-fs-on) so desktop, portrait, tablet, and
+      both full-screen modes stay on their existing rules. A short desktop
+      window that is also under 500px tall would match; normal desktop
+      (e.g. 1280x800) does not. */
+@media (orientation: landscape) and (max-height: 500px){
+  html:not(.v4-fs-on) body.ps-clock .wrap{
+    padding:calc(6px + env(safe-area-inset-top,0px)) 10px calc(8px + env(safe-area-inset-bottom,0px));
+  }
+  html:not(.v4-fs-on) body.ps-clock .brand .logo{width:28px;height:28px;border-radius:6px;}
+  html:not(.v4-fs-on) body.ps-clock .brand-text,
+  html:not(.v4-fs-on) body.ps-clock .brand-clock{font-size:1rem;}
+  html:not(.v4-fs-on) body.ps-clock .top{margin:2px 0 6px;}
+  html:not(.v4-fs-on) body.ps-clock .top .lab{display:none;}
+  html:not(.v4-fs-on) body.ps-clock .v4-stage{
+    flex-direction:column;
+    align-items:stretch;
+    gap:6px;
+    padding:8px 10px 8px;
+    border-radius:18px;
+    height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 58px);
+    overflow:hidden;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-clock{
+    flex:0 0 auto;
+    flex-basis:auto;
+    max-width:none;
+    min-width:0;
+    width:100%;
+    display:flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    align-items:center;
+    justify-content:flex-start;
+    gap:6px 10px;
+    padding-bottom:0;
+    padding-right:72px; /* slot for the Light pill, parked in this bar */
+    box-sizing:border-box;
+    container-type:normal;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-clock-meta{
+    flex:0 0 auto;
+    flex-wrap:nowrap;
+    order:3;
+    margin-left:auto;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-clock-meta #curLab{display:none;} /* toggle stays; label is redundant here */
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .price{
+    order:1;
+    font-size:clamp(26px, 5.2vw, 36px);
+    margin:0;
+    line-height:1;
+    white-space:nowrap;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-chg{
+    order:2;
+    margin:0;
+    flex:0 1 auto;
+    min-width:0;
+    white-space:nowrap;
+  }
+  html:not(.v4-fs-on) body.ps-clock .chg{font-size:14px;}
+  html:not(.v4-fs-on) body.ps-clock .v4-chg .mut{font-size:12px;}
+  html:not(.v4-fs-on) body.ps-clock .v4-fs{
+    display:flex;
+    order:4;
+    margin-top:0;
+    flex:0 0 auto;
+    gap:6px;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-fs-btn{
+    white-space:nowrap;
+    min-height:28px;
+    padding:5px 10px;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-plot{
+    flex:1 1 auto;
+    min-height:0;
+    width:100%;
+    max-width:none;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-caption{display:none;}
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-inline{
+    height:100% !important;
+    min-height:0 !important;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-box{
+    min-height:0 !important;
+    height:100% !important;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-ct-lab{display:none;}
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-rgs button,
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-sc button,
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-k,
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-k-spx,
+  html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-ct button{min-height:28px;}
+  /* Light pill: keep the same control, park it in the compact top bar. */
+  html:not(.v4-fs-on) body.ps-clock .ps-theme-pill{
+    left:auto !important;
+    right:calc(16px + env(safe-area-inset-right,0px));
+    bottom:auto !important;
+    top:calc(env(safe-area-inset-top,0px) + 78px);
+    padding:0.45rem 0.85rem;
+    font-size:0.8rem;
+  }
+}
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 900px){
+  /* Mid/narrow phone landscape (e.g. 844x390, 667x375): shorten the
+     full-screen labels so both Chart and Price stay visible on one row.
+     The Price-only control must remain available; only the wording shrinks. */
+  html:not(.v4-fs-on) body.ps-clock .v4-fs-btn{font-size:0;gap:4px;padding:5px 8px;}
+  html:not(.v4-fs-on) body.ps-clock .v4-fs-btn svg{width:12px;height:12px;}
+  html:not(.v4-fs-on) body.ps-clock .v4-fs-btn[data-fs="chart"]::after{content:"Chart";font-size:11px;font-weight:900;letter-spacing:0;}
+  html:not(.v4-fs-on) body.ps-clock .v4-fs-btn[data-fs="price"]::after{content:"Price";font-size:11px;font-weight:900;letter-spacing:0;}
+}
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 700px){
+  /* Tightest phones (e.g. 667x375): keep the % change, drop the 24h/updated
+     text so the bar does not overflow. */
+  html:not(.v4-fs-on) body.ps-clock .v4-chg .mut{display:none;}
 }
 
 /* Light-mode: don't fight the existing clock light rules; just keep the stage. */
