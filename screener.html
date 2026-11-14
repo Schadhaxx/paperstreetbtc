@@ -138,8 +138,11 @@
   .cmp-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
   .cmp-title h2 { white-space:nowrap; }
   .cmp-title { display:flex; align-items:center; gap:8px; min-width:0; }
-  .cmp-chip { height:44px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:#0b1226; color:var(--txt); font-size:13px; font-weight:700; cursor:pointer; }
-  .cmp-chip:focus-visible, .cmp-row button:focus-visible, .cmp-tile:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  .cmp-tabs { display:flex; gap:6px; }
+  .cmp-tab, .cmp-chip { height:44px; flex:0 0 auto; border-radius:999px; border:1px solid var(--line); background:#0b1226; color:var(--txt); font-size:13px; font-weight:700; cursor:pointer; }
+  .cmp-tab { padding:0 14px; }
+  .cmp-tab.is-on { background:var(--cyan); color:#05070f; border-color:var(--cyan); }
+  .cmp-tab:focus-visible, .cmp-chip:focus-visible, .cmp-row button:focus-visible, .cmp-tile:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
   .cmp-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
   .cmp-stat { background:rgba(5,7,15,.38); border:1px solid var(--line); border-radius:14px; padding:8px 10px; min-height:54px; }
   .cmp-stat span { display:block; color:var(--mut); font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
@@ -153,6 +156,9 @@
   .cmp-note { color:var(--mut); font-size:13px; line-height:1.45; margin:0 0 10px; }
   .cmp-stage { display:block; min-width:0; }
   .cmp-plot { min-width:0; }
+  .cmp-canvas-wrap { height:280px; }
+  .cmp-tip { margin-top:8px; background:#0b1226; border:1px solid var(--line); border-radius:14px; padding:8px 10px; font-size:12px; line-height:1.5; font-variant-numeric:tabular-nums; }
+  .cmp-tip-row { display:flex; justify-content:space-between; gap:10px; align-items:center; }
   .cmp-heat { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .cmp-tile { min-height:92px; border-radius:16px; border:1px solid rgba(255,255,255,.08); padding:12px; text-align:left; color:var(--txt); cursor:pointer; }
   .cmp-tile .cmp-sym { font-weight:850; font-size:16px; display:block; }
@@ -163,37 +169,24 @@
   .cmp-tile.is-hi { box-shadow:0 0 0 2px var(--cyan); }
   .cmp-fail { color:var(--mut); font-size:14px; line-height:1.5; }
   .cmp-board { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
-  .cmp-row button { width:100%; min-height:44px; display:grid; grid-template-columns:10px 48px 1fr auto; gap:8px; align-items:center; background:rgba(5,7,15,.35); border:1px solid transparent; border-radius:14px; color:inherit; padding:6px 8px; cursor:pointer; font:inherit; font-variant-numeric:tabular-nums; text-align:left; }
+  .cmp-row button { width:100%; min-height:44px; display:grid; grid-template-columns:10px 48px minmax(0,1fr) auto auto; gap:8px; align-items:center; background:rgba(5,7,15,.35); border:1px solid transparent; border-radius:14px; color:inherit; padding:6px 8px; cursor:pointer; font:inherit; font-variant-numeric:tabular-nums; text-align:left; }
   .cmp-row.is-hi button { border-color:var(--cyan); box-shadow:0 0 0 1px rgba(34,211,238,.35); }
+  .cmp-spark { width:72px; height:28px; display:block; }
   .cmp-ret, .cmp-day { font-weight:800; font-size:13px; white-space:nowrap; }
   .cmp-sr { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   @media (min-width:700px) {
     .cmp-stats { grid-template-columns:repeat(4,1fr); }
     .cmp-heat { grid-template-columns:repeat(4,1fr); }
+    .cmp-canvas-wrap { height:340px; }
   }
   @media (min-width:1000px) {
     .cmp-stage { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(220px,.72fr); gap:14px; align-items:start; }
     .cmp-board { margin-top:0; }
+    .cmp-canvas-wrap { height:380px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .cmp-row button, .cmp-tile, .cmp-chip { transition:none; }
+    .cmp-row button, .cmp-tile, .cmp-chip, .cmp-tab { transition:none; }
   }
-  .btc-cmp .cmp-chips { flex-wrap:wrap; overflow:visible; }
-  .btc-cmp .cmp-title { width:100%; }
-  .btc-cmp-about { margin:0; }
-  .btc-cmp-about > p { margin-top:8px; }
-  .btc-cmp-lock { cursor:default; }
-  .btc-cmp-lock:disabled { opacity:1; color:inherit; }
-  .btc-cmp-legend { display:flex; flex-wrap:wrap; gap:8px 14px; margin:0 0 10px; font-size:12px; line-height:1.4; color:var(--mut); }
-  .btc-cmp-legend span { display:inline-flex; align-items:center; gap:6px; }
-  .btc-cmp-legend .late { color:var(--txt); }
-  .btc-cmp-wrap { position:relative; height:280px; }
-  .btc-cmp-wrap canvas { display:block; width:100%; height:100%; }
-  .btc-cmp-tip { margin-top:8px; background:#0b1226; border:1px solid var(--line); border-radius:14px; padding:8px 10px; font-size:12px; line-height:1.5; font-variant-numeric:tabular-nums; }
-  .btc-cmp-tip-row { display:flex; justify-content:space-between; gap:10px; align-items:center; }
-  html[data-theme="light"] .btc-cmp-tip { background:#fff; }
-  @media (min-width:700px) { .btc-cmp-wrap { height:340px; } }
-  @media (min-width:1000px) { .btc-cmp-wrap { height:380px; } }
   .disclaimer { color:var(--mut); font-size:13px; margin-top:26px; line-height:1.6; }
   a { color:var(--cyan); }
   @media (min-width:700px) {
@@ -260,51 +253,24 @@
   <p class="status-line" id="stocks-status">Loading status…</p>
   </section>
 
-  <section class="chart-card btc-cmp" id="btc-cmp" aria-label="Spot Bitcoin comparison">
-    <div class="cmp-head">
-      <div class="cmp-title">
-        <h2>Spot Bitcoin comparison</h2>
-        <details class="more btc-cmp-about">
-          <summary><span class="more-btn" aria-hidden="true"></span>About this chart</summary>
-          <p class="cmp-note" id="btc-cmp-note">Each line is growth from that symbol’s first available close (1×). Bitcoin starts 18 Aug 2010, the earliest close in this repo. Symbols that begin later start at 1× on their first date, marked in the legend. The vertical axis is a log scale, so Bitcoin’s million-fold rise since 2010 and shorter 2026 series can share one chart.</p>
-        </details>
-      </div>
-    </div>
-    <div class="cmp-chips" id="btc-cmp-chips" role="group" aria-label="Symbols to compare with spot Bitcoin">
-      <button type="button" class="cmp-chip is-on btc-cmp-lock" data-btc-cmp="BTC" aria-pressed="true" disabled><i class="cmp-dot"></i>BTC</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="TSLA" aria-pressed="false"><i class="cmp-dot"></i>TSLA</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="PLTR" aria-pressed="false"><i class="cmp-dot"></i>PLTR</button>
-      <button type="button" class="cmp-chip is-on" data-btc-cmp="MSTR" aria-pressed="true"><i class="cmp-dot"></i>MSTR</button>
-      <button type="button" class="cmp-chip is-on" data-btc-cmp="IBIT" aria-pressed="true"><i class="cmp-dot"></i>IBIT</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="MU" aria-pressed="false"><i class="cmp-dot"></i>MU</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="META" aria-pressed="false"><i class="cmp-dot"></i>META</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="SPCX" aria-pressed="false"><i class="cmp-dot"></i>SPCX</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="BRK.B" aria-pressed="false"><i class="cmp-dot"></i>BRK.B</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="AAPL" aria-pressed="false"><i class="cmp-dot"></i>AAPL</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="AMZN" aria-pressed="false"><i class="cmp-dot"></i>AMZN</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="MSFT" aria-pressed="false"><i class="cmp-dot"></i>MSFT</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="NFLX" aria-pressed="false"><i class="cmp-dot"></i>NFLX</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="SPOT" aria-pressed="false"><i class="cmp-dot"></i>SPOT</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="XYZ" aria-pressed="false"><i class="cmp-dot"></i>XYZ</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="GOOGL" aria-pressed="false"><i class="cmp-dot"></i>GOOGL</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="NVDA" aria-pressed="false"><i class="cmp-dot"></i>NVDA</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="GOLD" aria-pressed="false"><i class="cmp-dot"></i>GOLD</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="US10Y" aria-pressed="false"><i class="cmp-dot"></i>US10Y</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="DIA" aria-pressed="false"><i class="cmp-dot"></i>DIA</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="QQQ" aria-pressed="false"><i class="cmp-dot"></i>QQQ</button>
-    </div>
-    <div class="btc-cmp-legend" id="btc-cmp-legend"></div>
-    <div class="btc-cmp-wrap" id="btc-cmp-wrap"><canvas id="btc-cmp-canvas" aria-label="Spot Bitcoin comparison on a log scale"></canvas></div>
-    <div class="btc-cmp-tip" id="btc-cmp-tip" hidden></div>
-  </section>
-
   <section class="chart-card" aria-label="Comparison chart">
     <div class="cmp-head">
       <div class="cmp-title">
         <h2>Comparison chart</h2>
       </div>
+      <div class="cmp-tabs" role="tablist" aria-label="Comparison view">
+        <button type="button" class="cmp-tab is-on" role="tab" id="cmp-tab-lines" aria-selected="true" data-cmp-view="lines">Lines</button>
+        <button type="button" class="cmp-tab" role="tab" id="cmp-tab-bars" aria-selected="false" data-cmp-view="bars">Bars</button>
+        <button type="button" class="cmp-tab" role="tab" id="cmp-tab-heat" aria-selected="false" data-cmp-view="heat">Heat</button>
+      </div>
     </div>
     <div class="cmp-stats" id="cmp-stats"></div>
+    <div class="cmp-chips" id="cmp-ranges" role="group" aria-label="Range">
+      <button type="button" class="cmp-chip" data-cmp-range="1M" aria-pressed="false">1M</button>
+      <button type="button" class="cmp-chip" data-cmp-range="3M" aria-pressed="false">3M</button>
+      <button type="button" class="cmp-chip" data-cmp-range="6M" aria-pressed="false">6M</button>
+      <button type="button" class="cmp-chip is-on" data-cmp-range="ytd" aria-pressed="true">YTD</button>
+    </div>
     <div class="cmp-chips" id="cmp-symbols" role="group" aria-label="Stocks">
       <button type="button" class="cmp-chip" data-cmp-symbol="TSLA" aria-pressed="false"><i class="cmp-dot"></i>TSLA</button>
       <button type="button" class="cmp-chip" data-cmp-symbol="PLTR" aria-pressed="false"><i class="cmp-dot"></i>PLTR</button>
@@ -323,14 +289,22 @@
       <button type="button" class="cmp-chip" data-cmp-symbol="GOOGL" aria-pressed="false"><i class="cmp-dot"></i>GOOGL</button>
       <button type="button" class="cmp-chip" data-cmp-symbol="NVDA" aria-pressed="false"><i class="cmp-dot"></i>NVDA</button>
     </div>
-    <div class="cmp-chips" id="cmp-metric" role="group" aria-label="Heat map metric">
+    <div class="cmp-chips" id="cmp-bench" role="group" aria-label="Benchmarks">
+      <button type="button" class="cmp-chip" data-cmp-bench="BTC" aria-pressed="false">BTC</button>
+      <button type="button" class="cmp-chip" data-cmp-bench="SPY" aria-pressed="false">SPY</button>
+      <button type="button" class="cmp-chip" data-cmp-bench="QQQ" aria-pressed="false">QQQ</button>
+    </div>
+    <div class="cmp-chips" id="cmp-metric" role="group" aria-label="Bar metric" hidden>
       <button type="button" class="cmp-chip is-on" data-cmp-metric="day" aria-pressed="true">Day change</button>
       <button type="button" class="cmp-chip" data-cmp-metric="ytd" aria-pressed="false">YTD</button>
     </div>
     <p class="cmp-note" id="cmp-note"></p>
     <div class="cmp-stage">
       <div class="cmp-plot" id="cmp-plot">
-        <div class="cmp-heat" id="cmp-heat"></div>
+        <div class="chart-wrap cmp-canvas-wrap" id="cmp-canvas-wrap"><canvas id="screener-chart" aria-label="Rebased performance comparison"></canvas></div>
+        <div class="cmp-tip" id="cmp-tip" hidden></div>
+        <div class="cmp-heat" id="cmp-heat" hidden></div>
+        <p class="cmp-fail" id="cmp-fail" hidden>Daily history did not load. <button type="button" class="btn" id="cmp-retry">Retry</button></p>
       </div>
       <ol class="cmp-board" id="cmp-board"></ol>
     </div>
@@ -364,8 +338,7 @@
 </div>
 <script src="assets/js/screener.js?v=scr5"></script>
 <script src="assets/js/screener-indicator-chart.js?v=stocks15"></script>
-<script src="assets/js/screener-chart.js?v=cmp8"></script>
-<script src="assets/js/screener-btc-compare.js?v=bbc2"></script>
+<script src="assets/js/screener-chart.js?v=cmp7"></script>
 <script src="assets/js/et.js?v=et2"></script>
 <script src="assets/js/btcchart.js?v=et24"></script>
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>
