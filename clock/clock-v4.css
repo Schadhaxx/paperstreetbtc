@@ -393,20 +393,30 @@ body.ps-clock .v4-caption{
   html:not(.v4-fs-on) body.ps-clock .v4-clock-meta #curLab{display:none;} /* toggle stays; label is redundant here */
   html:not(.v4-fs-on) body.ps-clock .v4-stage .price{
     order:1;
-    font-size:clamp(26px, 5.2vw, 36px);
+    /* 32px cap (was 36px): at 932x430 a $100k+ price is ~18px wider and
+       would eat the ~16px of spare in the bar. The change text can also
+       shrink/ellipsis, so $1,000,000 still fits on one row. */
+    font-size:clamp(24px, 4.6vw, 32px);
     margin:0;
     line-height:1;
     white-space:nowrap;
+    flex:0 0 auto;
   }
   html:not(.v4-fs-on) body.ps-clock .v4-chg{
     order:2;
     margin:0;
     flex:0 1 auto;
     min-width:0;
+    overflow:hidden;
+  }
+  html:not(.v4-fs-on) body.ps-clock .chg{font-size:14px;flex:0 0 auto;white-space:nowrap;}
+  html:not(.v4-fs-on) body.ps-clock .v4-chg .mut{
+    font-size:12px;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
     white-space:nowrap;
   }
-  html:not(.v4-fs-on) body.ps-clock .chg{font-size:14px;}
-  html:not(.v4-fs-on) body.ps-clock .v4-chg .mut{font-size:12px;}
   html:not(.v4-fs-on) body.ps-clock .v4-fs{
     display:flex;
     order:4;
