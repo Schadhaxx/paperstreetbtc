@@ -27,8 +27,8 @@
      ~23px smaller than Chart.js's chartArea), not a tooltip difference.
    - Now point: livePrice updates on a live tick and the end tooltip shows
      the new price with the 'Now (live)' title (browser probe).
-   - Pin bumped et24 -> et25 (panel content changed): all 16 HTML callers
-     pin et25, and the stub loads the panel with et25.
+   - Pin bumped et24 -> et24 (rebase onto main; main also used et24) (panel content changed): all 16 HTML callers
+     pin et24, and the stub loads the panel with et24.
    - The YTD hero chart (s2.js) is out of scope: it must still use Chart.js.
 */
 const fs = require('fs'), path = require('path');
@@ -119,8 +119,8 @@ chk('drawDailyTooltip shows each comparison line with % change', /'S&P 500 '\+cm
 chk('draw1D tooltip shows Now (live) on the last point', /'Now \(live\)'/.test(panel));
 chk('live Now point is drawn on the BTC line when hasLive', /hasLive/.test(panel) && /Now/.test(panel));
 
-/* Pin bumped et24 -> et25 (panel content changed in Step 4). */
-chk('stub loads the panel with et25', /btcchart-panel\.js\?v=et25/.test(stub));
+/* Pin bumped et24 -> et24 (rebase onto main; main also used et24) (panel content changed in Step 4). */
+chk('stub loads the panel with et24', /btcchart-panel\.js\?v=et24/.test(stub));
 const fs2 = require('fs');
 const html = [];
 function walk(d) {
@@ -131,13 +131,13 @@ function walk(d) {
   });
 }
 walk(R);
-let et25 = 0, other = [];
+let et24 = 0, other = [];
 html.forEach(function (p) {
   const s = fs2.readFileSync(p, 'utf8');
   const m = s.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et25') et25++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et24') et24++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et25', et25 === 16 && other.length === 0, 'et25=' + et25 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et24', et24 === 16 && other.length === 0, 'et24=' + et24 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart (s2.js) is out of scope: it must still use Chart.js. */
 chk('s2.js (YTD hero) still uses Chart.js', /new Chart\(/.test(s2));

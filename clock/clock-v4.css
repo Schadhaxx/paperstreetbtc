@@ -519,13 +519,7 @@ html.v4-fs-price body.ps-clock .v4-fs-bar .v4-fs-tochart{
 @media (min-aspect-ratio:11/10) and (min-width:700px){
   body.ps-clock .v4-fs{display:flex}
 }
-html.v4-fs-on,html.v4-fs-on body{overflow:hidden;overscroll-behavior:none}
-/* Chart box only (not the range-chip row): stop iOS from panning the page
-   under a finger on the graph. #bcC is pan-y in nav.css for the normal view. */
-html.v4-fs-chart body.ps-clock .v4-stage .bc-box,
-html.v4-fs-chart body.ps-clock .v4-stage #bcC{
-  touch-action:none;overscroll-behavior:none;
-}
+html.v4-fs-on,html.v4-fs-on body{overflow:hidden}
 html.v4-fs-on body.ps-clock .v4-stage{
   position:fixed;inset:0;z-index:100;
   width:100vw;height:100vh;height:100dvh;max-height:none;

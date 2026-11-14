@@ -218,47 +218,5 @@
   window.addEventListener('resize', function () { if (mode) after(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (mode) layout(); });
 
-  /* Chart page-scroll lock (14 Nov 2026).
-     Full-screen chart: preventDefault on moves that start on the chart box
-     so iPhone landscape cannot rubber-band the page under the graph.
-     Normal view: never trap a vertical swipe (Speed Option 2 / c9f4cf6
-     rollback). Only preventDefault for a pinch or a clearly horizontal pan.
-     Scoped to .bc-box so the range-chip row and the live price pill are
-     untouched; wake-lock logic is unchanged. */
-  var armX = null, armY = null;
-  function onChartBox(el) {
-    return !!(el && el.closest && el.closest('.bc-box'));
-  }
-  function armChartLock(e) {
-    if (!onChartBox(e.target)) return;
-    var t = (e.touches && e.touches[0]) || e;
-    armX = t.clientX; armY = t.clientY;
-  }
-  function endChartLock() { armX = armY = null; }
-  function moveChartLock(e) {
-    if (!onChartBox(e.target)) return;
-    if (mode === 'chart') {
-      if (e.cancelable) e.preventDefault();
-      return;
-    }
-    if (e.pointerType === 'mouse') return;
-    var pinch = !!(e.touches && e.touches.length >= 2);
-    var horiz = false;
-    var t = (e.touches && e.touches[0]) || e;
-    if (!pinch && armX != null && t && t.clientX != null) {
-      var dx = Math.abs(t.clientX - armX), dy = Math.abs(t.clientY - armY);
-      horiz = dx > dy && dx > 8;
-    }
-    if ((pinch || horiz) && e.cancelable) e.preventDefault();
-  }
-  stage.addEventListener('touchstart', armChartLock, {passive: true});
-  stage.addEventListener('pointerdown', armChartLock, {passive: true});
-  stage.addEventListener('touchmove', moveChartLock, {passive: false});
-  stage.addEventListener('pointermove', moveChartLock, {passive: false});
-  stage.addEventListener('touchend', endChartLock, {passive: true});
-  stage.addEventListener('touchcancel', endChartLock, {passive: true});
-  stage.addEventListener('pointerup', endChartLock, {passive: true});
-  stage.addEventListener('pointercancel', endChartLock, {passive: true});
-
   window.__psClockFs = { enter: enter, exit: exit, mode: function () { return mode; } };
 })();
