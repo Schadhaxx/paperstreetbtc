@@ -715,6 +715,73 @@ function getData(){if(dataP)return dataP;
 var RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'],DAYS={'1D':1,'1W':7,'1M':31,'3M':92,'6M':183,'1Y':366,'5Y':1827,'10Y':3653};
 var rng='1D',LOG=false,dlg=null,dim=null,ch=null,opener=null;
 function isPhone(){return window.innerWidth<=640;}
+/* Chart page-scroll lock (14 Nov 2026).
+   When the popover/sheet is open, or the clock chart is full-screen
+   (html.v4-fs-chart), lock the page under the graph: overflow +
+   overscroll-behavior on html/body, touch-action:none on the chart box,
+   and non-passive touchmove/pointermove preventDefault on the canvas.
+   In the normal page view the canvas stays touch-action:pan-y (nav.css)
+   so a vertical swipe still scrolls the page (Speed Option 2 / c9f4cf6
+   rollback). Only a pinch or a clearly horizontal pan is cancelled then.
+   Wake-lock logic is not touched. */
+function chartSurfaceLock(){
+  if(document.documentElement.classList.contains('v4-fs-chart'))return true;
+  if(!INLINE&&dlg&&!dlg.hidden)return true;
+  return false;
+}
+function ensureChartLockStyle(){
+  if(document.getElementById('bcChartLockStyle'))return;
+  var s=document.createElement('style');
+  s.id='bcChartLockStyle';
+  s.textContent='html.bc-chart-lock,html.bc-chart-lock body{overflow:hidden;overscroll-behavior:none}'
+    +'html.bc-chart-lock .bc-box,html.bc-chart-lock #bcC{touch-action:none;overscroll-behavior:none}';
+  document.head.appendChild(s);
+}
+function syncChartLock(){
+  ensureChartLockStyle();
+  document.documentElement.classList.toggle('bc-chart-lock',chartSurfaceLock());
+}
+function watchChartLock(){
+  if(watchChartLock._on||!window.MutationObserver)return;
+  watchChartLock._on=true;
+  try{new MutationObserver(function(){syncChartLock();}).observe(document.documentElement,{attributes:true,attributeFilter:['class']});}catch(e){}
+}
+function bindChartScrollLock(){
+  var c=$('bcC');
+  if(!c||c._scrollLockBound)return;
+  c._scrollLockBound=true;
+  ensureChartLockStyle();
+  var armX=null,armY=null;
+  function arm(e){
+    var t=(e.touches&&e.touches[0])||e;
+    armX=t.clientX;armY=t.clientY;
+  }
+  function end(){armX=armY=null;}
+  function move(e){
+    if(chartSurfaceLock()){
+      if(e.cancelable)e.preventDefault();
+      return;
+    }
+    if(e.pointerType==='mouse')return;
+    var pinch=!!(e.touches&&e.touches.length>=2);
+    var horiz=false;
+    var t=(e.touches&&e.touches[0])||e;
+    if(!pinch&&armX!=null&&t&&t.clientX!=null){
+      var dx=Math.abs(t.clientX-armX),dy=Math.abs(t.clientY-armY);
+      horiz=dx>dy&&dx>8;
+    }
+    if((pinch||horiz)&&e.cancelable)e.preventDefault();
+  }
+  c.addEventListener('touchstart',arm,{passive:true});
+  c.addEventListener('pointerdown',arm,{passive:true});
+  c.addEventListener('touchmove',move,{passive:false});
+  c.addEventListener('pointermove',move,{passive:false});
+  c.addEventListener('touchend',end,{passive:true});
+  c.addEventListener('touchcancel',end,{passive:true});
+  c.addEventListener('pointerup',end,{passive:true});
+  c.addEventListener('pointercancel',end,{passive:true});
+}
+
 /* Popover chart is Spot BTC only (owner decision 29 Oct 2026):
    the vehicle toggle was removed from this popover. The tracker
    BITCOIN VEHICLE toggle (vehicle.js, under the BTC live pill) remains
@@ -749,7 +816,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
   dlg.addEventListener('touchend',function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>80)close();y0=null;},{passive:true});
-  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();nativeResize();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
+  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();nativeResize();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});bindChartScrollLock();watchChartLock();syncChartLock();}
 function place(){if(INLINE)return;var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
   if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),isLand=window.innerWidth>window.innerHeight,shortLand=isLand&&window.innerHeight<500,wide=isLand&&(window.innerWidth>=900||window.innerHeight<500),wCap=wide?900:640,w=Math.min(wCap,window.innerWidth-32);
   /* Short landscape (iPhone landscape, viewport <500px tall, 8 Nov 2026,
@@ -1416,7 +1483,7 @@ function morphToPill(el){
   if(!pr.width||!pr.height||!fr.width||!fr.height)return null;
   return {dx:pr.left-fr.left,dy:pr.top-fr.top,sx:pr.width/fr.width,sy:pr.height/fr.height};}
 function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
-  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;
+  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;syncChartLock();
   var morph=null;
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
     dlg.style.visibility='hidden';place();morph=morphToPill(opener);
@@ -1436,7 +1503,7 @@ function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&
   $('bcRr').textContent='Loading…';$('bcX').focus();
   Promise.all([getData(),needChart()]).then(draw).catch(function(){if(!window.Chart&&P.showErr){P.showErr();}else{$('bcRr').textContent='Chart data unavailable right now.';}});}
 function close(){if(INLINE)return;if(!dlg||dlg.hidden)return;
-  var finish=function(){cancelNativeResize();dlg.hidden=true;dim.hidden=true;dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
+  var finish=function(){cancelNativeResize();dlg.hidden=true;dim.hidden=true;syncChartLock();dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
     [pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
     var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();};
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){

@@ -56,7 +56,7 @@ def main():
         base = 'http://127.0.0.1:%d' % port
         for _ in range(40):
             try:
-                urllib.request.urlopen(base + '/assets/js/btcchart.js?v=et24', timeout=1)
+                urllib.request.urlopen(base + '/assets/js/btcchart.js?v=et25', timeout=1)
                 break
             except Exception:
                 time.sleep(0.25)
@@ -76,9 +76,9 @@ def main():
             # Bare harness page: a pill is all the eager file needs to define __BTCP.
             page.set_content('<!doctype html><html><head></head><body>'
                              '<button type="button" id="hdrTick"></button></body></html>')
-            page.add_script_tag(url=base + '/assets/js/btcchart.js?v=et24')
+            page.add_script_tag(url=base + '/assets/js/btcchart.js?v=et25')
             page.wait_for_function("!!window.__BTCP", timeout=5000)
-            page.add_script_tag(url=base + '/assets/js/btcchart-panel.js?v=et24')
+            page.add_script_tag(url=base + '/assets/js/btcchart-panel.js?v=et25')
             page.wait_for_function("!!(window.__BTCP && window.__BTCP.panelReady)", timeout=5000)
             result = page.evaluate("""async () => {
               const B = window.__BTCP;
