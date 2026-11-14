@@ -69,6 +69,8 @@
     });
   }
   if (exitBtn) exitBtn.addEventListener('click', function (e) { e.stopPropagation(); exit(); });
+  var toChart = stage.querySelector('.v4-fs-tochart');
+  if (toChart) toChart.addEventListener('click', function (e) { e.stopPropagation(); enter('chart', this); });
   document.addEventListener('keydown', function (e) {
     if ((e.key === 'Escape' || e.key === 'Esc') && mode) exit();
   });

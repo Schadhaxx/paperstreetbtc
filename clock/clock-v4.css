@@ -4,7 +4,8 @@
      price-left / chart-right split that fills the first screen.
    - Phone landscape (orientation: landscape and max-height: 500px):
      single column — compact top bar (price, 24h, USD/CAD, full-screen
-     buttons, Light toggle) and a chart that fills the remaining space.
+     buttons) and a chart that fills the remaining space. The Light/Dark
+     pill is hidden in this orientation (all modes) so it is not in the way.
      The left-hand price rail is not used, so the chart can be as wide as
      the popup / full-screen chart views. Full-screen modes are unchanged.
    - iPhone portrait and iPad portrait: stacked, taller chart.
@@ -48,7 +49,9 @@ body.ps-clock .v4-clock-meta{
   gap:8px;
   flex-wrap:nowrap;
 }
-body.ps-clock #curLab{letter-spacing:.08em;}
+body.ps-clock #curLab,
+body.ps-clock #blockLab{letter-spacing:.08em;}
+body.ps-clock .v4-clock-labs{display:flex;flex-direction:column;gap:2px;min-width:0;}
 body.ps-clock .v4-stage .price{
   font-size:clamp(64px,17vw,96px);
   margin:4px 0 2px;
@@ -327,7 +330,7 @@ body.ps-clock .v4-caption{
     height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 66px);
     overflow:hidden;
   }
-  body.ps-clock .v4-clock{flex-basis:38%;max-width:320px;padding-bottom:40px;box-sizing:border-box;} /* clear the Light pill (812x375) */
+  body.ps-clock .v4-clock{flex-basis:38%;max-width:320px;padding-bottom:0;box-sizing:border-box;}
   body.ps-clock .v4-stage .price{margin:4px 0 6px;}
   body.ps-clock .chg{font-size:16px;}
   body.ps-clock .v4-caption{display:none;} /* keep the plot as tall as possible */
@@ -380,7 +383,6 @@ body.ps-clock .v4-caption{
     justify-content:flex-start;
     gap:6px 10px;
     padding-bottom:0;
-    padding-right:72px; /* slot for the Light pill, parked in this bar */
     box-sizing:border-box;
     container-type:normal;
   }
@@ -390,7 +392,9 @@ body.ps-clock .v4-caption{
     order:3;
     margin-left:auto;
   }
-  html:not(.v4-fs-on) body.ps-clock .v4-clock-meta #curLab{display:none;} /* toggle stays; label is redundant here */
+  html:not(.v4-fs-on) body.ps-clock .v4-clock-meta #curLab,
+  html:not(.v4-fs-on) body.ps-clock .v4-clock-meta #blockLab,
+  html:not(.v4-fs-on) body.ps-clock .v4-clock-labs{display:none;} /* toggle stays; labels are redundant here */
   html:not(.v4-fs-on) body.ps-clock .v4-stage .price{
     order:1;
     /* 32px cap (was 36px): at 932x430 a $100k+ price is ~18px wider and
@@ -450,15 +454,11 @@ body.ps-clock .v4-caption{
   html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-k,
   html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-k-spx,
   html:not(.v4-fs-on) body.ps-clock .v4-stage .bc-ct button{min-height:28px;}
-  /* Light pill: keep the same control, park it in the compact top bar. */
-  html:not(.v4-fs-on) body.ps-clock .ps-theme-pill{
-    left:auto !important;
-    right:calc(16px + env(safe-area-inset-right,0px));
-    bottom:auto !important;
-    top:calc(env(safe-area-inset-top,0px) + 78px);
-    padding:0.45rem 0.85rem;
-    font-size:0.8rem;
-  }
+}
+/* Light/Dark pill: hidden in phone landscape, every mode (default,
+   full-screen chart, full-screen price). Portrait and desktop are unchanged. */
+@media (orientation: landscape) and (max-height: 500px){
+  body.ps-clock .ps-theme-pill{display:none !important;}
 }
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 900px){
   /* Mid/narrow phone landscape (e.g. 844x390, 667x375): shorten the
@@ -486,7 +486,8 @@ html[data-theme="light"] body.ps-clock .v4-caption{color:#475569;}
    or Esc. Styled like the USD/CAD toggle so nothing new is introduced. */
 body.ps-clock .v4-fs{display:none;gap:6px;flex-wrap:wrap;margin-top:12px}
 body.ps-clock .v4-fs-btn,
-body.ps-clock .v4-fs-exit{
+body.ps-clock .v4-fs-exit,
+body.ps-clock .v4-fs-tochart{
   display:inline-flex;align-items:center;gap:6px;
   background:transparent;color:#94a3b8;
   border:1px solid #1e293b;border-radius:999px;
@@ -495,15 +496,24 @@ body.ps-clock .v4-fs-exit{
   -webkit-tap-highlight-color:transparent;
 }
 body.ps-clock .v4-fs-btn svg,
-body.ps-clock .v4-fs-exit svg{width:12px;height:12px;flex:0 0 auto;display:block}
+body.ps-clock .v4-fs-exit svg,
+body.ps-clock .v4-fs-tochart svg{width:12px;height:12px;flex:0 0 auto;display:block}
 body.ps-clock .v4-fs-btn:hover,
-body.ps-clock .v4-fs-exit:hover{color:#22d3ee;border-color:rgba(34,211,238,.55)}
+body.ps-clock .v4-fs-exit:hover,
+body.ps-clock .v4-fs-tochart:hover{color:#22d3ee;border-color:rgba(34,211,238,.55)}
 body.ps-clock .v4-fs-btn:focus-visible,
-body.ps-clock .v4-fs-exit:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+body.ps-clock .v4-fs-exit:focus-visible,
+body.ps-clock .v4-fs-tochart:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
 body.ps-clock .v4-fs-exit{
   display:none;position:absolute;z-index:5;
   top:calc(10px + env(safe-area-inset-top,0px));
   right:calc(10px + env(safe-area-inset-right,0px));
+  background:rgba(7,11,24,.88);
+}
+/* "Switch to chart" lives in the full-screen tools bar, price-only mode. */
+body.ps-clock .v4-fs-tochart{display:none;white-space:nowrap}
+html.v4-fs-price body.ps-clock .v4-fs-bar .v4-fs-tochart{
+  display:inline-flex;position:static;
   background:rgba(7,11,24,.88);
 }
 @media (min-aspect-ratio:11/10) and (min-width:700px){
@@ -535,6 +545,9 @@ html.v4-fs-price body.ps-clock .v4-stage{flex-direction:column;justify-content:c
    centred; the price is centred and never clipped. clock-v4.js shrinks the
    font when a long price (e.g. C$ or 7 digits) would not fit the width. */
 html.v4-fs-price body.ps-clock .v4-clock{flex:0 0 auto;container-type:normal;width:fit-content;max-width:100%;min-width:min(100%,320px);align-items:stretch}
+@media (orientation: landscape) and (max-height: 500px){
+  html.v4-fs-price body.ps-clock .v4-stage{padding-top:calc(52px + env(safe-area-inset-top,0px))}
+}
 html.v4-fs-price body.ps-clock .v4-stage .price{font-size:min(calc(100vw / 4.9), 46vh);margin:10px 0 .2em;text-align:center;white-space:nowrap}
 html.v4-fs-price body.ps-clock .v4-chg{justify-content:center}
 html.v4-fs-price body.ps-clock .v4-chg{font-size:clamp(14px,2.2vw,26px)}
@@ -542,10 +555,13 @@ html.v4-fs-price body.ps-clock .v4-chg .chg{font-size:clamp(16px,2.6vw,32px)}
 html[data-theme="light"].v4-fs-on body.ps-clock .v4-stage{background:#f6f8fb}
 html[data-theme="light"] body.ps-clock .v4-stage::backdrop{background:#f6f8fb}
 html[data-theme="light"] body.ps-clock .v4-fs-btn,
-html[data-theme="light"] body.ps-clock .v4-fs-exit{color:#475569;border-color:#e2e8f0}
-html[data-theme="light"] body.ps-clock .v4-fs-exit{background:rgba(255,255,255,.92)}
+html[data-theme="light"] body.ps-clock .v4-fs-exit,
+html[data-theme="light"] body.ps-clock .v4-fs-tochart{color:#475569;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .v4-fs-exit,
+html[data-theme="light"] body.ps-clock .v4-fs-tochart{background:rgba(255,255,255,.92)}
 html[data-theme="light"] body.ps-clock .v4-fs-btn:hover,
-html[data-theme="light"] body.ps-clock .v4-fs-exit:hover{color:#0e7490;border-color:#22d3ee}
+html[data-theme="light"] body.ps-clock .v4-fs-exit:hover,
+html[data-theme="light"] body.ps-clock .v4-fs-tochart:hover{color:#0e7490;border-color:#22d3ee}
 /* 700-1199px split (e.g. iPad landscape 1024x768): drop the "Chart" label so
    the compare chips (+ MSTR) are not clipped. */
 @media (min-aspect-ratio:11/10) and (min-width:700px) and (max-width:1199px){
@@ -580,6 +596,12 @@ html.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-right:calc(var(--v4-fs-b
 /* Narrow screens (phone portrait): the bar gets its own row above the chart. */
 @media (max-width:620px){
   html.v4-fs-on body.ps-clock .v4-stage{padding-top:calc(54px + env(safe-area-inset-top,0px))}
+  html.v4-fs-price body.ps-clock .v4-stage{padding-top:calc(96px + env(safe-area-inset-top,0px))}
+  html.v4-fs-on body.ps-clock .v4-fs-bar{
+    left:calc(10px + env(safe-area-inset-left,0px));
+    justify-content:flex-end;
+    flex-wrap:wrap;
+  }
   html.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-right:0}
 }
 html.v4-fs-chart body.ps-clock .v4-plot{position:relative}
