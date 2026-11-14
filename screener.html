@@ -178,13 +178,10 @@
   @media (prefers-reduced-motion: reduce) {
     .cmp-row button, .cmp-tile, .cmp-chip { transition:none; }
   }
-  .cmp-lab { margin:16px 0 0; }
-  .lab-pill{display:inline-block;background:transparent;border:1px solid var(--cyan,#22d3ee);color:var(--cyan,#22d3ee);padding:.55rem 1.1rem;border-radius:999px;font:600 .95rem Outfit,Inter,sans-serif;text-decoration:none;cursor:pointer}
-  .lab-pill:hover{background:var(--cyan,#22d3ee);color:#041018}
-  html[data-theme="light"] .lab-pill{color:#0e7490;border-color:#0e7490}
-  html[data-theme="light"] .lab-pill:hover{background:#0e7490;color:#fff}
-  @media (max-width:480px){.lab-pill{font-size:.82rem;padding:.5rem .9rem}}
   .btc-cmp .cmp-chips { flex-wrap:wrap; overflow:visible; }
+  .btc-cmp .cmp-title { width:100%; }
+  .btc-cmp-about { margin:0; }
+  .btc-cmp-about > p { margin-top:8px; }
   .btc-cmp-lock { cursor:default; }
   .btc-cmp-lock:disabled { opacity:1; color:inherit; }
   .btc-cmp-legend { display:flex; flex-wrap:wrap; gap:8px 14px; margin:0 0 10px; font-size:12px; line-height:1.4; color:var(--mut); }
@@ -267,9 +264,12 @@
     <div class="cmp-head">
       <div class="cmp-title">
         <h2>Spot Bitcoin comparison</h2>
+        <details class="more btc-cmp-about">
+          <summary><span class="more-btn" aria-hidden="true"></span>About this chart</summary>
+          <p class="cmp-note" id="btc-cmp-note">Each line is growth from that symbol’s first available close (1×). Bitcoin starts 18 Aug 2010, the earliest close in this repo. Symbols that begin later start at 1× on their first date, marked in the legend. The vertical axis is a log scale, so Bitcoin’s million-fold rise since 2010 and shorter 2026 series can share one chart.</p>
+        </details>
       </div>
     </div>
-    <p class="cmp-note" id="btc-cmp-note">Each line is growth from that symbol’s first available close (1×). Bitcoin starts 18 Aug 2010, the earliest close in this repo. Symbols that begin later start at 1× on their first date, marked in the legend. The vertical axis is a log scale, so Bitcoin’s million-fold rise since 2010 and shorter 2026 series can share one chart.</p>
     <div class="cmp-chips" id="btc-cmp-chips" role="group" aria-label="Symbols to compare with spot Bitcoin">
       <button type="button" class="cmp-chip is-on btc-cmp-lock" data-btc-cmp="BTC" aria-pressed="true" disabled><i class="cmp-dot"></i>BTC</button>
       <button type="button" class="cmp-chip" data-btc-cmp="TSLA" aria-pressed="false"><i class="cmp-dot"></i>TSLA</button>
@@ -288,14 +288,10 @@
       <button type="button" class="cmp-chip" data-btc-cmp="XYZ" aria-pressed="false"><i class="cmp-dot"></i>XYZ</button>
       <button type="button" class="cmp-chip" data-btc-cmp="GOOGL" aria-pressed="false"><i class="cmp-dot"></i>GOOGL</button>
       <button type="button" class="cmp-chip" data-btc-cmp="NVDA" aria-pressed="false"><i class="cmp-dot"></i>NVDA</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="WTI" aria-pressed="false"><i class="cmp-dot"></i>WTI</button>
       <button type="button" class="cmp-chip" data-btc-cmp="GOLD" aria-pressed="false"><i class="cmp-dot"></i>GOLD</button>
       <button type="button" class="cmp-chip" data-btc-cmp="US10Y" aria-pressed="false"><i class="cmp-dot"></i>US10Y</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="VIX" aria-pressed="false"><i class="cmp-dot"></i>VIX</button>
       <button type="button" class="cmp-chip" data-btc-cmp="DIA" aria-pressed="false"><i class="cmp-dot"></i>DIA</button>
       <button type="button" class="cmp-chip" data-btc-cmp="QQQ" aria-pressed="false"><i class="cmp-dot"></i>QQQ</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="USDCAD" aria-pressed="false"><i class="cmp-dot"></i>USDCAD</button>
-      <button type="button" class="cmp-chip" data-btc-cmp="DXY" aria-pressed="false"><i class="cmp-dot"></i>DXY</button>
     </div>
     <div class="btc-cmp-legend" id="btc-cmp-legend"></div>
     <div class="btc-cmp-wrap" id="btc-cmp-wrap"><canvas id="btc-cmp-canvas" aria-label="Spot Bitcoin comparison on a log scale"></canvas></div>
@@ -339,7 +335,6 @@
       <ol class="cmp-board" id="cmp-board"></ol>
     </div>
     <p class="cmp-sr" id="cmp-summary">Comparison chart.</p>
-    <p class="cmp-lab"><a href="compare/index.html" class="lab-pill">There's a better chart in the Portfolio Lab →</a></p>
   </section>
 
   <p class="disclaimer">Not financial advice. Not an offer to buy or sell any security. Gold here is COMEX futures (GC=F), not spot; WTI is the NYMEX front-month futures quote; VIX is the Cboe index level in points, not a traded price. <a href="index.html">Back to the main page</a>.</p>
@@ -370,7 +365,7 @@
 <script src="assets/js/screener.js?v=scr5"></script>
 <script src="assets/js/screener-indicator-chart.js?v=stocks15"></script>
 <script src="assets/js/screener-chart.js?v=cmp8"></script>
-<script src="assets/js/screener-btc-compare.js?v=bbc1"></script>
+<script src="assets/js/screener-btc-compare.js?v=bbc2"></script>
 <script src="assets/js/et.js?v=et2"></script>
 <script src="assets/js/btcchart.js?v=et24"></script>
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>

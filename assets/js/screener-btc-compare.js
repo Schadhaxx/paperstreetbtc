@@ -13,9 +13,8 @@ window.psC = window.psC || function (d, l) { return document.documentElement.get
     'BRK.B': psC('#c084fc', '#7e22ce'), AAPL: psC('#60a5fa', '#2563eb'), AMZN: psC('#fbbf24', '#d97706'),
     MSFT: psC('#34d399', '#059669'), NFLX: psC('#f87171', '#dc2626'), SPOT: psC('#4ade80', '#16a34a'),
     XYZ: psC('#e879f9', '#a21caf'), GOOGL: psC('#38bdf8', '#0369a1'), NVDA: psC('#a3e635', '#65a30d'),
-    WTI: psC('#94a3b8', '#475569'), GOLD: psC('#eab308', '#a16207'), US10Y: psC('#64748b', '#334155'),
-    VIX: psC('#c084fc', '#6b21a8'), DIA: psC('#67e8f9', '#0e7490'), QQQ: psC('#cbd5e1', '#64748b'),
-    USDCAD: psC('#fdba74', '#c2410c'), DXY: psC('#86efac', '#15803d')
+    GOLD: psC('#eab308', '#a16207'), US10Y: psC('#64748b', '#334155'),
+    DIA: psC('#67e8f9', '#0e7490'), QQQ: psC('#cbd5e1', '#64748b')
   };
   // Longest existing files already in the repo. Later files only extend
   // or refresh the tail. No new feeds.
@@ -31,12 +30,10 @@ window.psC = window.psC || function (d, l) { return document.documentElement.get
     NFLX: ['assets/data/stock-daily-NFLX.json'], SPOT: ['assets/data/stock-daily-SPOT.json'],
     XYZ: ['assets/data/stock-daily-XYZ.json'], GOOGL: ['assets/data/stock-daily-GOOGL.json'],
     NVDA: ['assets/data/stock-daily-NVDA.json'],
-    WTI: ['assets/data/ind-daily-wti.json'], US10Y: ['assets/data/ind-daily-us10y.json'],
-    VIX: ['assets/data/ind-daily-vix.json'], DIA: ['assets/data/ind-daily-dia.json'],
-    QQQ: ['assets/data/qqq-weekly.json'], USDCAD: ['assets/data/usdcad-weekly.json'],
-    DXY: ['assets/data/dxy-weekly.json']
+    US10Y: ['assets/data/ind-daily-us10y.json'], DIA: ['assets/data/ind-daily-dia.json'],
+    QQQ: ['assets/data/qqq-weekly.json']
   };
-  var PIN = 'bbc1';
+  var PIN = 'bbc2';
   var BTC_START = '2010-08-18';
   var cache = {};
   var pending = {};
@@ -397,10 +394,8 @@ window.psC = window.psC || function (d, l) { return document.documentElement.get
     COLOR.MSFT = psC('#34d399', '#059669'); COLOR.NFLX = psC('#f87171', '#dc2626');
     COLOR.SPOT = psC('#4ade80', '#16a34a'); COLOR.XYZ = psC('#e879f9', '#a21caf');
     COLOR.GOOGL = psC('#38bdf8', '#0369a1'); COLOR.NVDA = psC('#a3e635', '#65a30d');
-    COLOR.WTI = psC('#94a3b8', '#475569'); COLOR.GOLD = psC('#eab308', '#a16207');
-    COLOR.US10Y = psC('#64748b', '#334155'); COLOR.VIX = psC('#c084fc', '#6b21a8');
+    COLOR.GOLD = psC('#eab308', '#a16207'); COLOR.US10Y = psC('#64748b', '#334155');
     COLOR.DIA = psC('#67e8f9', '#0e7490'); COLOR.QQQ = psC('#cbd5e1', '#64748b');
-    COLOR.USDCAD = psC('#fdba74', '#c2410c'); COLOR.DXY = psC('#86efac', '#15803d');
   }
 
   document.addEventListener('DOMContentLoaded', function () {
