@@ -1,11 +1,11 @@
 {
   "source": "Yahoo %5EVIX unadjusted daily closes",
-  "asOf": "2026-11-12",
-  "asOfLabel": "12 Nov 2026",
+  "asOf": "2026-11-13",
+  "asOfLabel": "13 Nov 2026",
   "unit": "pts",
   "basis": "ytd",
   "firstSession": "2026-01-02",
-  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 12 Nov 2026. Weekly-consistency notes (daily close differs from the shipped weekly close \u2014 preserved shipped value, pending review): week of 2026-02-02: daily close 20.37 on 2026-02-06 != weekly close 17.76; week of 2026-06-15: daily close 16.4 on 2026-06-18 != weekly close 16.78; week of 2026-06-29: daily close 16.15 on 2026-07-02 != weekly close 15.81. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 13 Nov 2026. Weekly-consistency notes (daily close differs from the shipped weekly close \u2014 preserved shipped value, pending review): week of 2026-02-02: daily close 20.37 on 2026-02-06 != weekly close 17.76; week of 2026-06-15: daily close 16.4 on 2026-06-18 != weekly close 16.78; week of 2026-06-29: daily close 16.15 on 2026-07-02 != weekly close 15.81. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "days": [
     {
       "date": "2026-01-02",
@@ -886,6 +886,10 @@
     {
       "date": "2026-11-12",
       "close": 18.7
+    },
+    {
+      "date": "2026-11-13",
+      "close": 19.3
     }
   ]
 }

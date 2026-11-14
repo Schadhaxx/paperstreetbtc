@@ -1,11 +1,11 @@
 {
   "source": "Yahoo MSTR unadjusted daily closes",
-  "asOf": "2026-11-12",
-  "asOfLabel": "12 Nov 2026",
+  "asOf": "2026-11-13",
+  "asOfLabel": "13 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "firstSession": "2026-01-02",
-  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 12 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 13 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "days": [
     {
       "date": "2026-01-02",
@@ -878,6 +878,10 @@
     {
       "date": "2026-11-12",
       "close": 114.41
+    },
+    {
+      "date": "2026-11-13",
+      "close": 111.62
     }
   ]
 }
