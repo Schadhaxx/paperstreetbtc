@@ -22,7 +22,7 @@
   function vehPriceDate(d){if(!vehLoaded||vehicle==='SPOT')return null;var ds=BK.vehicleDates[vehicle];if(!ds||!ds.length)return null;var out=null;for(var i=0;i<ds.length;i++){if(ds[i]<=d)out=ds[i];else break;}return out||ds[0];}
   function vehPx(d){var pd=vehPriceDate(d);if(pd==null)return null;return BK.vehicleMaps[vehicle][pd];}
   function vehPrevPx(d){var pd=vehPriceDate(d);if(pd==null)return null;var ds=BK.vehicleDates[vehicle],i=ds.indexOf(pd);if(i>0)return BK.vehicleMaps[vehicle][ds[i-1]];return BK.vehicleMaps[vehicle][pd];}
-  function navPrior(p){return (vehicle!=='SPOT'&&vehLoaded)?BK.navV(p.key,PRIOR,vehicle):BK.nav(p.key,PRIOR);}
+  function navPrior(p){var d=mode==='me'?mePrior():PRIOR;return (vehicle!=='SPOT'&&vehLoaded)?BK.navV(p.key,d,vehicle):BK.nav(p.key,d);}
 
   var btcSrc='CoinGecko',live={BTC:null}, src={}, prev={}, open={}, btcTime=null, btcChg=null, stkTime=null, lastTs=0;
   function anyLive(){return !!live.BTC||['MSTR','STRC','TSLA','PLTR'].some(function(k){return !!live[k];});}
@@ -34,8 +34,13 @@
   var mode='live', ks=Object.keys(MONTHEND).sort(), ME_D=ks[ks.length-1], ME=MONTHEND[ME_D];
   function fmtD(iso){var p=iso.split('-');return MN[+p[1]-1]+' '+(+p[2])+', '+p[0];}
   function meLabel(){return fmtD(ME_D);}
+  /* Session before the month-end date: the delta in month-end mode is the
+     month-end day's move, so it is measured vs the prior session, not vs
+     PRIOR (the session before the live ASOF). ME_D may come from
+     prices.json monthEnd and not yet be in BK.dates. */
+  function mePrior(){var i=BK.dates.indexOf(ME_D);if(i>0)return BK.dates[i-1];var out=null;for(var j=0;j<BK.dates.length;j++){if(BK.dates[j]<ME_D)out=BK.dates[j];else break;}return out||ME_D;}
   /* 'today' only on an NYSE session day once today's row exists; otherwise the honest 'since <prior close>' */
-  function chgLabel(){return (mode!=='me'&&ASOF===todayET()&&ET.session(ASOF))?'today':'since '+fmtD(PRIOR);}
+  function chgLabel(){if(mode==='me')return 'since '+fmtD(mePrior());return (ASOF===todayET()&&ET.session(ASOF))?'today':'since '+fmtD(PRIOR);}
   /* '(live)' only while stocks are trading or the BTC price is fresh (< 3 min) */
   /* one rule for every label: stock quotes count as live only while the market is open AND prices.json is < 30 min old */
   function stocksFresh(){return mktOpen()&&cacheUpd>0&&Date.now()-cacheUpd<30*60*1000&&Object.keys(src).some(function(k){return src[k];});}

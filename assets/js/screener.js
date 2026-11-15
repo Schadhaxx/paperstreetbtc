@@ -40,7 +40,7 @@
   // Finnhub's free /quote endpoint and always come from prices.json.
   // The Worker URL is a single configurable constant.
   var WORKER_URL = 'https://paperstreet-quotes.schadha08.workers.dev/';
-  var PACK_ASOF = '2026-10-28';
+  var PACK_ASOF = '2026-11-13';
   var state = { q: '', filter: 'all', sortKey: 'symbol', sortDir: 1 };
   var packRows = [];
   var packIndicators = [];
@@ -220,7 +220,7 @@
   }
 
   function statusLine(list) {
-    if (pricesFailed) return 'Pipeline quotes unavailable on this load — rows show their 28 Oct 2026 closes, not live quotes.';
+    if (pricesFailed) return 'Pipeline quotes unavailable on this load — rows show their ' + fmtIso(packAsOf) + ' closes, not live quotes.';
     var live = list.filter(function (r) { return r._src === 'live'; }).map(function (r) { return r.symbol; });
     var close = list.filter(function (r) { return r._src === 'close'; });
     var snap = list.filter(function (r) { return r._src === 'snapshot'; }).map(function (r) { return r.symbol; });

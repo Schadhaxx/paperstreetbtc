@@ -24,7 +24,7 @@ let labels = [], ISO = [], paths = {}, vals = {}, benchmarks = {}, LASTC = null,
    shared 'psvehicle' event fires. Benchmarks stay Spot BTC (the hurdle)
    in every mode; only the sleeve lines are re-priced. */
 let BKREF = null, vehicle = 'SPOT', vehLoaded = false;
-const BACKUP_LBL = 'Spot BTC (close from backup source until Yahoo\'s final bar)';
+const BACKUP_LBL = 'Spot BTC (backup close)';
 const isBtcFb = (fs, d) => { const base = String((fs[d] && fs[d].BTC) || 'yahoo').split('-')[0]; return base !== 'yahoo' && base !== 'ffill'; };
 const PROVNOTE = () => BTCFB ? (' · BTC close ' + BTCFB + ' from backup source until Yahoo\'s final bar') : (BTCPROV ? (' · BTC close provisional until ' + ET.btcCloseLabel(B_LAST)) : '');
 let B_LAST = null;

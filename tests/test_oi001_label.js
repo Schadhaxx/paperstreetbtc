@@ -6,7 +6,7 @@ const R = path.join(__dirname, '..');
 let n = 0, f = 0;
 const chk = (name, ok, info) => { n++; if (!ok) { f++; console.log('FAIL', name, info === undefined ? '' : JSON.stringify(info)); } else console.log('PASS', name); };
 
-const BACKUP_LBL = "Spot BTC (close from backup source until Yahoo's final bar)";
+const BACKUP_LBL = "Spot BTC (backup close)";
 
 /* Same rule as s2.js isBtcFb + fbDates / compare.js isBtcFb + fbDate */
 function isBtcFb(fs, d) {
@@ -60,12 +60,12 @@ chk('compare fetch-failure default empty -> no false backup', spotLabel({}) === 
 const s2 = fs.readFileSync(path.join(R, 'assets/js/s2.js'), 'utf8');
 const cmp = fs.readFileSync(path.join(R, 'assets/js/compare.js'), 'utf8');
 chk('s2.js uses fallback_sources', /fallback_sources/.test(s2));
-chk('s2.js has BACKUP_LBL wording', /close from backup source until Yahoo\\?'s final bar/.test(s2));
+chk('s2.js has BACKUP_LBL wording', /Spot BTC \(backup close\)/.test(s2));
 chk('s2.js drops time-window-only BTCPROV assignment', !/BTCPROV = \(B\.H\.btc_provisional \|\| \[\]\)\.indexOf\(B\.last\) >= 0 && Date\.now\(\)/.test(s2));
 chk('s2.js isBtcFb excludes yahoo and ffill', /base !== 'yahoo' && base !== 'ffill'/.test(s2));
 chk('compare.js loads BFB from fallback_sources', /BFB\s*=\s*h\.fallback_sources\s*\|\|\s*\{\}/.test(cmp));
 chk('compare.js fetch failure clears BFB', /\.catch\(e\s*=>\s*\{\s*BFB\s*=\s*\{\}/.test(cmp));
-chk('compare.js BACKUP_LBL wording', /close from backup source until Yahoo\\?'s final bar/.test(cmp));
+chk('compare.js BACKUP_LBL wording', /Spot BTC \(backup close\)/.test(cmp));
 chk('compare.js note names backup date', /BTC close '\+fd\+' from backup source/.test(cmp));
 chk('no price/NAV mutation in s2 OI-001 block', !/closes\[|nav\(|VAL\[/.test(s2.slice(s2.indexOf('OI-001'), s2.indexOf('OI-001') + 500)));
 
