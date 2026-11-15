@@ -562,6 +562,15 @@ html.v4-fs-price body.ps-clock .v4-stage .price{font-size:min(calc(100vw / 4.9),
 html.v4-fs-price body.ps-clock .v4-chg{justify-content:center}
 html.v4-fs-price body.ps-clock .v4-chg{font-size:clamp(14px,2.2vw,26px)}
 html.v4-fs-price body.ps-clock .v4-chg .chg{font-size:clamp(16px,2.6vw,32px)}
+/* CAD toggle fix (14 Nov 2026): in price-only mode the giant price text
+   overflows its line box — font 261px, line-height only 235px, glyphs
+   ~356px tall — so the text spills ~61px above the price div and covers
+   the currency toggle, intercepting every tap (elementFromPoint at the
+   toggle returns DIV#price). The toggle, its handler and setCur/render
+   all work; only hit-testing is broken. Raising the meta row (labels +
+   toggle) above the price restores it. No layout change: position:relative
+   with no offsets, z-index 1 sits below the fs-bar (6) and theme dot (7). */
+html.v4-fs-price body.ps-clock .v4-clock-meta{position:relative;z-index:1}
 html[data-theme="light"].v4-fs-on body.ps-clock .v4-stage{background:#f6f8fb}
 html[data-theme="light"] body.ps-clock .v4-stage::backdrop{background:#f6f8fb}
 html[data-theme="light"] body.ps-clock .v4-fs-btn,
