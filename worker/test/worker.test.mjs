@@ -485,6 +485,49 @@ test('stale-price branch: a carried price older than ~10 minutes is not served (
   assert.equal(p.btc, null, 'an expired carried price must not be served — the pages fetch directly');
 });
 
+// --- BTC stale-price branch, round 4: no fallback to time -----------------
+//
+// Nov 15 r4 (Grok Bot round-3 must-fix): old cache entries have no
+// priceAt, so the code fell back to time. The old Worker refreshed time
+// on every save, so during a full BTC-source outage a days-old price
+// could look 0–1 min old and get served for up to 10 min right after
+// deploy. The branch now uses priceAt only; a missing priceAt means the
+// price is expired (btc null), however fresh time looks.
+
+test('stale-price branch: a cache entry with no priceAt and time = now returns btc null', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Simulate an old cache entry: no priceAt, but time refreshed to now.
+  await __test.dropLastGoodCachePriceAt();
+
+  // All BTC sources down. Expire fresh so the Worker must refresh.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc, null, 'a carried price with no priceAt must not be served, even with a fresh time');
+});
+
+test('stale-price branch: a carried price 9 minutes old is still served', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Age the cached price to 9 minutes — inside the ~10 min cap.
+  const nineMin = Date.now() - 9 * 60 * 1000;
+  await __test.setLastGoodCachePriceAt(new Date(nineMin).toISOString());
+
+  // All BTC sources down. Expire fresh so the Worker must refresh.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'a carried price inside the cap must still be served');
+  assert.equal(p.btc.chgStale, true, 'a carried value is marked stale');
+});
+
 test('a fresh price carries priceAt, and time is the capture time', async () => {
   const { stub } = makeFetchStub();
   globalThis.fetch = stub;

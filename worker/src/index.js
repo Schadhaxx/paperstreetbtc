@@ -409,18 +409,19 @@ async function refreshQuotes(env) {
   let btcOut = btc;
   let btcStale = false;
   if (!btcOut && lastGood?.btc && typeof lastGood.btc.usd === 'number' && lastGood.btc.usd > 0) {
-    // Price age check (Nov 15 r3, should-fix #1): a carried price older
-    // than ~10 minutes is not served at all — the pages fetch the price
-    // directly. The original capture time is priceAt (older cache entries
-    // carry time); without a usable timestamp, treat it as expired.
-    const priceAtMs = Date.parse(lastGood.btc.priceAt ?? lastGood.btc.time);
+    // Price age check (Nov 15 r3, should-fix #1; r4: no fallback to time):
+    // a carried price older than ~10 minutes is not served at all — the
+    // pages fetch the price directly. The original capture time is
+    // priceAt; entries without one (old cache entries predate it) are
+    // treated as expired, never as fresh via time.
+    const priceAtMs = Date.parse(lastGood.btc.priceAt);
     if (Number.isFinite(priceAtMs) && Date.now() - priceAtMs <= LASTGOOD_CHG_MAX_AGE_MS) {
       // Change age check (Nov 15 r2 must-fix, applied here too): the
       // carried change is reused only while it is at most 10 minutes old.
       // Old cache entries with no chgAt serve null.
       const at = Date.parse(lastGood.btc.chgAt);
       const ok = typeof lastGood.btc.chg24h === 'number' && Number.isFinite(at) && Date.now() - at <= LASTGOOD_CHG_MAX_AGE_MS;
-      btcOut = { ...lastGood.btc, priceAt: lastGood.btc.priceAt ?? lastGood.btc.time, chg24h: ok ? lastGood.btc.chg24h : null, chgAt: ok ? lastGood.btc.chgAt : null, chgStale: true };
+      btcOut = { ...lastGood.btc, priceAt: lastGood.btc.priceAt, chg24h: ok ? lastGood.btc.chg24h : null, chgAt: ok ? lastGood.btc.chgAt : null, chgStale: true };
       btcStale = true;
     }
     // Past the price cap (or no timestamp): leave btcOut null so the
@@ -596,6 +597,23 @@ export const __test = {
     if (payload && payload.btc) {
       payload.btc.priceAt = iso;
       payload.btc.time = iso;
+      await cache.put(
+        LASTGOOD_CACHE_KEY,
+        new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } }),
+      );
+    }
+  },
+  // Drop priceAt from the last-good cache entry and refresh time to now
+  // (simulates an old cache entry written by the pre-priceAt Worker, which
+  // refreshed time on every save but never wrote priceAt). Used by the
+  // no-priceAt expiry test: the old code fell back to time and served the
+  // days-old price as fresh; the fixed code treats it as expired.
+  async dropLastGoodCachePriceAt() {
+    const cache = getCache();
+    const payload = await readCachedPayload(cache, LASTGOOD_CACHE_KEY);
+    if (payload && payload.btc) {
+      delete payload.btc.priceAt;
+      payload.btc.time = new Date().toISOString();
       await cache.put(
         LASTGOOD_CACHE_KEY,
         new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } }),
