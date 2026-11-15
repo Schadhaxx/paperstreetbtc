@@ -1,0 +1,1326 @@
+{
+ "A-dark-l-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "A-dark-l-fsprice": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "A-dark-l-fsrsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "A-dark-l-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "A-dark-l-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "A-dark-l-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "A-dark-p-candles": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-dark-p-closed": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-dark-p-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "393x852"
+ },
+ "A-dark-p-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-dark-p-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-dark-p-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-dark-p-rsicol": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-dark-p-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-dark-se-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "A-dark-se-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "A-dark-se-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "A-light-l-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "A-light-l-fsrsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "A-light-l-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "A-light-l-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "A-light-l-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "A-light-p-candles": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-light-p-closed": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-light-p-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-light-p-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-light-p-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "A-light-p-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-l-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "B-dark-l-fsprice": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "B-dark-l-fsrsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "B-dark-l-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "B-dark-l-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "B-dark-l-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "B-dark-p-candles": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-p-closed": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-p-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-p-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-p-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-p-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-p-rsicol": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-p-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-dark-se-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "B-dark-se-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "B-dark-se-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "B-light-l-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "B-light-l-fsrsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "B-light-l-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "B-light-l-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "B-light-l-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "B-light-p-candles": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-light-p-closed": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-light-p-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-light-p-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-light-p-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "B-light-p-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-l-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "C-dark-l-fsprice": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "C-dark-l-fsrsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "C-dark-l-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "C-dark-l-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "C-dark-l-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "C-dark-p-candles": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-p-closed": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-p-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-p-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-p-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-p-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-p-rsicol": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-p-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-dark-se-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "C-dark-se-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "C-dark-se-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "C-light-l-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "C-light-l-fsrsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "C-light-l-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "C-light-l-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "C-light-l-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "C-light-p-candles": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-light-p-closed": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-light-p-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-light-p-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-light-p-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "C-light-p-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-l-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "D-dark-l-fsprice": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "D-dark-l-fsrsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "D-dark-l-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "D-dark-l-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "D-dark-l-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "D-dark-p-candles": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-p-closed": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-p-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-p-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-p-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-p-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-p-rsicol": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-p-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-dark-se-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "D-dark-se-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "D-dark-se-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "375x667"
+ },
+ "D-light-l-fsopen": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "D-light-l-fsrsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "Exit full screen"
+  ],
+  "viewport": "852x393"
+ },
+ "D-light-l-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "D-light-l-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "D-light-l-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill",
+   "Full-screen buttons"
+  ],
+  "viewport": "852x393"
+ },
+ "D-light-p-candles": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-light-p-closed": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-light-p-open-candles": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-light-p-open": {
+  "panel": true,
+  "panel_visible": true,
+  "overlaps": [],
+  "in_view": true,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-light-p-rsi": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ },
+ "D-light-p-today": {
+  "panel": false,
+  "panel_visible": null,
+  "overlaps": [],
+  "in_view": null,
+  "protected_visible": [
+   "BTC price",
+   "Keep screen on",
+   "Light/Dark pill"
+  ],
+  "viewport": "393x852"
+ }
+}

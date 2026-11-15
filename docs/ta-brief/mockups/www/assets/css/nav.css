@@ -1,0 +1,463 @@
+/* Site nav: 8 links on desktop, hamburger panel on phone/tablet (<=1000px), Live BTC pill + BTC chart */
+.mininav{display:none!important}
+.hdr-tick{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;margin-right:16px;background:var(--surface,#0f172a);border:1px solid var(--border,#1e293b);border-radius:999px;font-family:'Outfit',sans-serif;font-weight:600;font-size:.85rem;color:var(--text,#e5e7eb);white-space:nowrap;cursor:pointer;line-height:1.2}
+.hdr-tick:hover,.hdr-tick[aria-expanded="true"]{border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,.18)}
+.hdr-tick:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+/* Logo-to-pill spacing (8 Nov 2026): the pill had margin-left:auto (in
+   styles.css AND nav.css), so ALL free space in the header row landed
+   between the logo and the pill (236px at 1280px, 203px at iPad 768px,
+   81px at iPhone 390px). Pack the brand + pill together on the left
+   (header-inner gap: 16px desktop/tablet, 8px phone) and push the nav /
+   hamburger right with their own auto margins instead. justify-content is
+   flex-start at the source (styles.css + header.css); the nav / hamburger
+   auto margins below keep them right-aligned. Clock + screener have no
+   .header-inner. */
+.header-inner>nav{margin-left:auto}
+.hdr-sym{color:var(--orange,#f7931a)}
+.hdr-chg{font-size:.75rem}.hdr-chg.up{color:#34d399}.hdr-chg.down{color:#ef4444}
+.lp-lab{font:700 .6rem Outfit,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#94a3b8;display:inline-flex;align-items:center;gap:6px}
+.lp-dot{display:inline-block;width:7px;height:7px;border-radius:9px;background:#34d399;box-shadow:0 0 6px #34d399}
+.lp-cv{display:inline-flex;align-items:center;gap:5px;color:#22d3ee;font-size:.65rem;font-weight:700;letter-spacing:.02em;background:rgba(34,211,238,.12);border:0;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.lp-cv svg{width:12px;height:12px;flex:0 0 auto;display:block}
+.mnav-btn{display:none}
+.mnav-menu{display:none}
+.mnav-live{display:flex;padding:12px 8px 14px;border-bottom:1px solid var(--border,#1e293b)}
+.mnav-live .hdr-tick{margin:0;font-size:.95rem;padding:9px 12px;width:100%;justify-content:space-between}
+@media (max-width:1000px){
+  .header nav{display:none!important}
+  .hdr-tick{margin-right:0}
+  .mnav-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:44px;height:44px;margin-left:auto;padding:0;background:transparent;border:1px solid var(--border,#1e293b);border-radius:10px;color:var(--text,#e5e7eb);cursor:pointer}
+  .mnav-btn:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+  .mnav-bars{display:flex;flex-direction:column;gap:4px;width:18px}
+  .mnav-bars span{display:block;height:2px;border-radius:2px;background:currentColor;transition:transform .2s,opacity .2s}
+  .mnav-btn[aria-expanded="true"]{border-color:#22d3ee;color:#22d3ee;box-shadow:0 0 0 4px rgba(34,211,238,.14),0 0 18px rgba(34,211,238,.35)}
+  .mnav-btn[aria-expanded="true"] .mnav-bars span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+  .mnav-btn[aria-expanded="true"] .mnav-bars span:nth-child(2){opacity:0}
+  .mnav-btn[aria-expanded="true"] .mnav-bars span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+  .mnav-menu{display:flex;flex-direction:column;position:absolute;left:0;right:0;top:100%;z-index:25;
+    height:calc(100dvh - 72px - env(safe-area-inset-top));
+    padding:18px 16px calc(16px + env(safe-area-inset-bottom));
+    overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+    border:0;border-radius:26px 26px 0 0;
+    background:
+      linear-gradient(90deg,#f7931a,#22d3ee 42%,#fbbf24 70%,#22d3ee) top / 100% 2px no-repeat,
+      radial-gradient(120% 70% at 100% -10%,rgba(34,211,238,.22),transparent 52%),
+      radial-gradient(90% 55% at -15% 105%,rgba(247,147,26,.16),transparent 50%),
+      linear-gradient(180deg,#0a1020 0%,#070b18 38%,#070b18 100%);
+    box-shadow:0 -24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    animation:mnavSheet .46s cubic-bezier(.16,1,.3,1)}
+  .mnav-menu[hidden]{display:none}
+  .header>.mnav-menu::before{content:"₿   The book";display:block;flex:0 0 auto;
+    font:700 .72rem/1 Outfit,Inter,sans-serif;letter-spacing:.28em;text-transform:uppercase;color:#22d3ee;
+    padding:8px 6px 14px;animation:mnavRise .5s cubic-bezier(.16,1,.3,1) both}
+  .header>.mnav-menu::after{content:"Spot BTC is the hurdle  ·  Not financial advice";display:block;margin-top:auto;flex:0 0 auto;
+    padding:18px 6px 4px;font:600 .66rem/1.45 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#64748b;
+    animation:mnavRise .55s cubic-bezier(.16,1,.3,1) .28s both}
+  .header>.mnav-menu>.mnav-drop,
+  .header>.mnav-menu>a{position:relative;flex:0 0 auto;margin:0 0 10px;border:1px solid rgba(148,163,184,.18);border-radius:18px;
+    background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 10px 24px rgba(0,0,0,.18);
+    animation:mnavRise .52s cubic-bezier(.16,1,.3,1) both}
+  .header>.mnav-menu>.mnav-drop{animation-delay:.05s}
+  .header>.mnav-menu>a:nth-child(2){animation-delay:.1s}
+  .header>.mnav-menu>a:nth-child(3){animation-delay:.15s}
+  .header>.mnav-menu>a:nth-child(4){animation-delay:.2s}
+  .header>.mnav-menu>a:nth-child(5){animation-delay:.25s}
+  .header>.mnav-menu{counter-reset:mnav}
+  .header>.mnav-menu>.mnav-drop,
+  .header>.mnav-menu>a{counter-increment:mnav}
+  .header>.mnav-menu>a{display:flex;align-items:center;gap:12px;min-height:64px;padding:0 16px 0 14px;
+    color:#e8eef7;font:600 1.12rem/1.2 Outfit,Inter,sans-serif;letter-spacing:-.02em;text-decoration:none;-webkit-tap-highlight-color:transparent}
+  .header>.mnav-menu>a::after,
+  .header>.mnav-menu .mnav-tab::after{content:counter(mnav,decimal-leading-zero);order:-1;flex:0 0 auto;
+    font:700 .68rem/1 Outfit,Inter,sans-serif;letter-spacing:.14em;color:#22d3ee;width:1.8rem}
+  .header>.mnav-menu>a:hover,
+  .header>.mnav-menu>a:focus-visible,
+  .header>.mnav-menu>a.is-active{color:#f8fafc;border-color:rgba(34,211,238,.55);
+    background:linear-gradient(180deg,rgba(34,211,238,.16),rgba(255,255,255,.03))}
+  .header>.mnav-menu>a:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+  .header>.mnav-menu>a:active{transform:scale(.985)}
+  .header>.mnav-menu>a[href$="clock/index.html"]{color:#ecfeff;text-shadow:none;
+    border-color:rgba(34,211,238,.55);
+    background:linear-gradient(180deg,rgba(34,211,238,.2),rgba(34,211,238,.05));
+    box-shadow:0 0 0 1px rgba(34,211,238,.18), 0 12px 32px rgba(34,211,238,.12), inset 0 1px 0 rgba(255,255,255,.1)}
+  .header>.mnav-menu>a[href$="clock/index.html"]:hover{color:#fff;text-shadow:none}
+  .header>.mnav-menu>a[href$="screener.html"]{color:#e0f2fe;text-shadow:none;border-color:rgba(34,211,238,.32)}
+  .header>.mnav-menu>a[href$="screener.html"]:hover{color:#fff;text-shadow:none}
+}
+@media (max-width:480px){
+  .header>.header-inner>.hdr-tick{padding:4px 8px;font-size:.78rem}
+  /* Menu button move (6 Nov 2026): the header is still cramped at 390px and
+     the menu button was cut off at the right edge. Take it out of the header
+     row and float it under the Paperstreet logo (top-left, below the header).
+     Absolutely positioned against the sticky .header, so it tracks the header
+     as it sticks. The menu panel drops below the floater when open, so the
+     button stays visible and tappable to close.
+     480px covers all phones incl. Sunil's 430px Pro Max; tablets are >=768px. */
+  .header>.header-inner>.mnav-btn{position:absolute;top:calc(100% + 10px);left:14px;margin:0!important;z-index:30;background:var(--surface,#0f172a);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+  .header>.header-inner>.mnav-btn[aria-expanded="true"]{border-color:#22d3ee;color:#22d3ee;background:#071018;box-shadow:0 0 0 6px rgba(34,211,238,.16),0 0 22px rgba(34,211,238,.5),0 8px 24px rgba(0,0,0,.45)}
+  .header>.mnav-menu{top:calc(100% + 62px);height:calc(100dvh - 72px - env(safe-area-inset-top) - 62px)}
+}
+/* Chart chip (6 Nov 2026 evening): hide the chip only at <=420px.
+   It was hidden at <=480px, which also hid it on Sunil's 430px Pro Max —
+   he wants the Chart symbol back on his phone. At 430px the header fits
+   with the chip (the floater frees the hamburger's space); at 390px the
+   chip stays hidden so the header doesn't overflow (the pill grows to
+   ~186px with the chip and the header needs ~425px on a 390px screen).
+   Same for the screener pill (its 13px overflow was measured at 390px).
+   The pill itself still opens the chart either way. */
+@media (max-width:420px){
+  .header>.header-inner>.hdr-tick .lp-cv{display:none}
+  .btc-pill-row .hdr-tick .lp-cv{display:none}
+}
+@media (max-width:374px){.header>.header-inner>.mnav-btn{left:10px}} /* logo sits at 10px here */
+/* BTC chart */
+.bc-dim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60}
+.bc-w{position:fixed;z-index:61;background:#0b1224;border:1px solid rgba(34,211,238,.3);box-shadow:0 24px 60px rgba(0,0,0,.6);font-family:Inter,sans-serif;color:#e5e7eb}
+.bc-w.bc-morph{transition:transform .45s ease,border-radius .45s ease}
+@media (prefers-reduced-motion:reduce){.bc-w.bc-morph{transition:none}}
+.bc-w.pop{width:640px;max-width:calc(100vw - 32px);max-height:calc(100vh - 24px);overflow:auto;border-radius:14px;padding:16px 20px}
+@media (orientation:landscape) and (min-width:900px){.bc-w.pop{width:min(900px,calc(100vw - 32px));}}
+.bc-w.sheet{left:0;right:0;bottom:0;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;border-bottom:0;padding:10px 16px calc(20px + env(safe-area-inset-bottom))}
+.bc-grab{width:40px;height:5px;border-radius:9px;background:#334155;margin:0 auto 10px}
+.bc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.bc-px{font:700 1.9rem Outfit,sans-serif;margin-top:4px}.bc-px .hdr-chg{font-size:.9rem;font-weight:600;margin-left:6px}
+.bc-rr{color:#94a3b8;font-size:.8rem;margin-top:2px;min-height:1em}
+.bc-x{width:36px;height:36px;border-radius:10px;border:1px solid var(--border,#1e293b);background:transparent;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:1.1rem;cursor:pointer;flex:0 0 auto}
+.bc-rg{display:flex;flex-wrap:wrap;gap:5px;margin:14px 0 8px;align-items:center}
+.bc-rg-hint{display:none}
+.bc-rg button{font:600 .74rem Inter,sans-serif;padding:5px 9px;border-radius:999px;border:1px solid var(--border,#1e293b);color:#94a3b8;background:transparent;cursor:pointer}
+.bc-rg button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
+.bc-sc{display:inline-flex;border:1px solid var(--border,#1e293b);border-radius:8px;overflow:hidden;margin-left:auto}
+.bc-sc button{border:0!important;border-radius:0!important;padding:4px 9px!important}
+.bc-sc button.on{background:rgba(34,211,238,.15)!important;color:#22d3ee!important}
+.bc-box{position:relative;height:300px}#bcC{touch-action:pan-y}.bc-w.sheet .bc-box{height:min(380px,48vh)}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){.bc-box{height:380px;}}
+/* Short landscape (iPhone landscape 844x390, 8 Nov 2026, round 3):
+   the viewport is wide but only ~390px tall. The popover goes full
+   width (up to 900px) to take advantage of the wide screen, and its
+   chrome compacts so the chart fits without scrolling: the range
+   summary line is hidden (price + 24h change stay in the header),
+   the range/legend buttons drop to 32px, and the chart box is 165px.
+   The note + Compare link below the chart stay scrollable. Only
+   applies when the viewport is short (<500px tall), so iPad/desktop
+   landscape and portrait are untouched. */
+@media (orientation:landscape) and (max-height:500px){
+  .bc-w.pop{width:min(900px,calc(100vw - 32px));padding:12px 20px 8px;}
+  .bc-w.pop .bc-box{height:165px;}
+  .bc-w.pop .bc-px{font-size:1.4rem;}
+  .bc-w.pop .bc-rr{display:none;}
+  .bc-w.pop .bc-rg{margin:8px 0 6px;}
+  .bc-w.pop .bc-rgs button{min-height:32px;}
+  .bc-w.pop .bc-sc button{min-height:32px;}
+  .bc-w.pop .bc-rg-hint{display:none;}
+  .bc-w.pop .bc-lg{margin:0 0 6px;}
+  .bc-w.pop .bc-k-spx{min-height:32px;}
+  .bc-w.pop .bc-ct{margin:0 0 6px;}
+}
+.bc-nt{color:#94a3b8;font-size:.74rem;margin-top:8px;line-height:1.4}
+.bc-cl{display:inline-block;margin-top:10px;color:#22d3ee;font:600 .9rem Outfit,sans-serif;text-decoration:none}
+.bc-cl+.bc-cl{margin-left:18px} /* menu reorg 8 Nov 2026: popup footer now has two links (Live BTC chart + The Desk) */
+.rules-benchmarks{margin-top:36px;scroll-margin-top:96px}
+.rules-benchmarks h3{font-size:1.35rem;margin:0 0 10px}
+@media (max-width:640px){.header-inner>.hdr-tick .lp-lab{display:none}}
+@media (max-width:640px){.header .header-inner{gap:8px;padding:0 14px}.mnav-btn{margin-left:auto!important}}
+/* v5: Details + pop-up */
+.prd-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;min-width:44px;padding:0 18px;margin:4px 0 8px;border:1px solid var(--accent,#22d3ee);border-radius:10px;background:rgba(34,211,238,.08);color:var(--accent,#22d3ee);font:600 1rem Outfit,Inter,sans-serif;cursor:pointer}
+.prd-btn:hover{background:rgba(34,211,238,.16)}.prd-btn:focus-visible,.prd-x:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+.prd-btn span{font-size:1.2rem;line-height:1}
+.prd-dim{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:70}
+.prd-card{position:fixed;z-index:71;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,calc(100vw - 32px));max-height:min(82vh,820px);overflow:auto;overscroll-behavior:contain;background:#0b1224;border:1px solid rgba(34,211,238,.3);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.6);padding:22px 24px 26px}
+.prd-card[hidden],.prd-dim[hidden]{display:none}
+.prd-card h2{margin:0 52px 14px 0}
+.prd-x{position:sticky;top:0;float:right;margin:-6px -8px 0 0;width:44px;height:44px;border-radius:10px;border:1px solid var(--border,#1e293b);background:#0b1224;color:#cbd5e1;font-size:1.1rem;cursor:pointer;z-index:1}
+.prd-card li{scroll-margin-top:70px;transition:background .4s}.prd-card li.prd-hl{background:rgba(34,211,238,.1);border-radius:8px}
+html.prd-lock,html.prd-lock body{overflow:hidden}
+@media (max-width:640px){.prd-card{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));bottom:calc(8px + env(safe-area-inset-bottom));transform:none;width:auto;max-height:none;padding:18px 16px 22px}}
+/* v5: sticky header on phone/tablet (already sticky; make sure nothing disables it) */
+@media (max-width:1000px){.header{position:sticky!important;top:0;z-index:50;padding-top:env(safe-area-inset-top)}}
+/* v5: tap targets */
+.header-inner>.hdr-tick,.mnav-live .hdr-tick{min-height:44px}
+.mnav-btn{min-width:44px;min-height:44px}
+/* v5: scroll reveal (only applied by JS) */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .4s ease,transform .4s ease}
+.rv.rv-in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+/* chart range chips */
+.bc-rgs{display:contents}
+@media (max-width:1000px){
+  .bc-rg{flex-wrap:wrap}
+  .bc-rgs{display:flex;flex:1 1 100%;gap:6px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:0 14px 0 2px;margin:0 -2px;
+    -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent)}
+  .bc-rgs::-webkit-scrollbar{display:none}
+  .bc-rgs button{flex:0 0 auto;scroll-snap-align:center;min-height:44px;min-width:48px;white-space:nowrap}
+  .bc-rg-hint{display:block;flex:1 1 100%;text-align:right;color:#94a3b8;font:600 .7rem Inter,sans-serif;margin-top:2px}
+  .bc-sc button{min-height:36px}
+}
+/* v6: Details card shows the rules image */
+.prd-card.has-img{width:min(1060px,calc(100vw - 32px));padding:14px 14px 16px}
+.prd-card.has-img .prd-x{position:absolute;top:10px;right:10px;margin:0;float:none}
+.prd-img{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;touch-action:pan-x pan-y pinch-zoom}
+.prd-img img{display:block;width:100%;max-width:1500px;height:auto;margin:0 auto}
+@media (max-width:1000px){.prd-card.has-img{display:flex;flex-direction:column;justify-content:center;padding:56px 0 12px}
+  .prd-img img{width:900px;max-width:none}}
+.prd-btn-wrap{margin-top:14px}
+#portfolio-rules .rules-benchmarks{margin-top:0}
+/* v6: BTC vs S&P legend */
+.bc-lg{display:flex;align-items:center;gap:8px;margin:0 0 8px;flex-wrap:wrap}
+.bc-k{display:inline-flex;align-items:center;gap:7px;font:600 .78rem Inter,sans-serif;color:#cbd5e1;padding:0 10px;min-height:32px;border-radius:999px;border:1px solid var(--border,#1e293b);background:transparent}
+.bc-k i{display:inline-block;width:14px;height:3px;border-radius:2px}
+.bc-k-btc i{background:#22d3ee}.bc-k-spx i{background:#c4b5fd}
+.bc-k-spx{cursor:pointer}.bc-k-spx:hover{border-color:#c4b5fd}.bc-k-spx:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+.bc-k-spx.off{color:#94a3b8;border-style:dashed}.bc-k-spx.off i{opacity:.35}
+@media (max-width:1000px){.bc-k-spx{min-height:44px}}
+.prd-card.has-img[hidden]{display:none!important}
+/* footer: Canadian maple leaf in its own box, outside the source text */
+.src-row{position:relative;max-width:640px;margin:0 auto}
+.ca-leaf-box{position:absolute;right:100%;top:calc(.8em - 29.5px);margin-right:10px;width:52px;height:52px;line-height:0;pointer-events:none}
+.ca-leaf-box svg{display:block;width:52px;height:52px}
+@media (max-width:760px){.ca-leaf-box{position:static;display:block;margin:0 auto 8px}}
+@media (max-width:374px){.header .header-inner{gap:4px;padding:0 10px}.header .mnav-btn{margin-left:0!important}} /* 360px: keeps the menu button inside the screen */
+
+/* CR-002: bigger, more readable rules pop-up */
+.prd-card.has-img{width:min(1500px,calc(100vw - 24px));max-height:94vh}
+@media (max-width:1000px){.prd-img img{width:1250px}}
+
+/* CR-010: rules pop-up redesigned as real HTML (replaces image card) */
+.prd-card.prx-card{width:min(860px,calc(100vw - 48px));max-height:min(88vh,900px);padding:0;background:linear-gradient(180deg,#0e1730 0%,#0a1122 100%);border:1px solid rgba(34,211,238,.22);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.03) inset;
+  opacity:0;transform:translate(-50%,-48%) scale(.97);transition:opacity .22s ease,transform .22s cubic-bezier(.2,.8,.2,1)}
+.prd-card.prx-card.prx-on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.prd-card.prx-card[hidden]{display:none!important}
+.prd-dim{opacity:0;transition:opacity .22s ease;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}.prd-dim.prx-on{opacity:1}
+.prx-card .prd-x{position:absolute;top:14px;right:14px;margin:0;float:none;width:44px;height:44px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#cbd5e1;transition:background .15s}
+.prx-card .prd-x:hover{background:rgba(255,255,255,.12);color:#fff}
+.prx-grab{display:none}
+.prx{padding:30px 34px 34px;color:var(--text,#e8eef7);font-family:Inter,sans-serif}
+.prx-hd{padding:0 56px 18px 0;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:6px}
+.prx-kick{display:block;font:600 .72rem Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#22d3ee;margin-bottom:6px}
+.prx-hd h2{margin:0;font:700 clamp(1.5rem,3.2vw,2rem)/1.15 Outfit,sans-serif;letter-spacing:-.01em}
+.prx-rule{display:grid;grid-template-columns:52px 1fr;gap:4px 14px;padding:22px 0;border-bottom:1px solid rgba(255,255,255,.06);scroll-margin-top:20px;transition:background .4s;border-radius:12px}
+.prx-dca{border-bottom:0}
+.prx-rule.prd-hl{background:rgba(34,211,238,.07)}
+.prx-n{font:700 1.05rem Outfit,sans-serif;color:#22d3ee;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(34,211,238,.1);border:1px solid rgba(34,211,238,.25)}
+.prx-rule h3{margin:7px 0 4px;font:700 1.22rem/1.3 Outfit,sans-serif;color:#fff}
+.prx-rule p{margin:0;color:#b6c2d6;font-size:1rem;line-height:1.6}
+.prx-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.prx-pf{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.prx-wide{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
+.prx-wide .prx-route{grid-column:1/-1}
+.prx-pfn{font:600 1rem Outfit,sans-serif;color:#fff;margin-bottom:8px}
+.prx-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;gap:2px;background:rgba(255,255,255,.05)}
+.prx-bar i{display:block;height:100%}
+.prx-chips{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;font:500 .8rem Inter,sans-serif;color:#9aa6bc}
+.prx-chips span{display:inline-flex;align-items:center;gap:6px}.prx-chips b{width:8px;height:8px;border-radius:2px;display:inline-block}
+.prx-route{margin-top:auto;font:500 .9rem/1.45 Inter,sans-serif;color:#e8eef7;padding:9px 12px;border-radius:10px;background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.18)}
+.prx-dca h3{color:#22d3ee}
+@media (max-width:640px){
+  .prd-card.prx-card{left:0;right:0;top:auto;bottom:0;width:auto;max-height:calc(92vh - env(safe-area-inset-top));border-radius:22px 22px 0 0;border-bottom:0;transform:translateY(100%);opacity:1;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+  .prd-card.prx-card.prx-on{transform:translateY(0)}
+  .prx-grab{display:block;position:sticky;top:0;height:22px;margin-bottom:-22px;z-index:2;background:linear-gradient(#0e1730,rgba(14,23,48,0))}
+  .prx-grab:before{content:"";position:absolute;left:50%;top:8px;width:40px;height:5px;margin-left:-20px;border-radius:9px;background:rgba(255,255,255,.22)}
+  .prx-card .prd-x{position:sticky;top:12px;float:right;margin:12px 12px -56px 0;z-index:3;background:#16203a}
+  .prx{padding:26px 18px calc(28px + env(safe-area-inset-bottom))}
+  .prx-hd{padding-right:52px}
+  .prx-rule{grid-template-columns:40px 1fr;gap:4px 12px}.prx-rule>div{min-width:0}.prx-grid{margin-left:-52px}
+  .prx-grid,.prx-wide{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.prd-card.prx-card,.prd-dim{transition:none!important}}
+/* CR-010b: dividend lines as list; allocations below rules */
+.prx-routes{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.prx-routes li{position:relative;padding:8px 12px 8px 14px;border-left:3px solid rgba(34,211,238,.5);background:rgba(255,255,255,.03);border-radius:0 8px 8px 0;color:#e8eef7;font-size:.95rem;line-height:1.45}
+.prx-alloc{margin-top:22px;padding-top:22px;border-top:1px solid rgba(255,255,255,.08);scroll-margin-top:20px}
+.prx-alloc .prx-grid{margin:0;grid-template-columns:1fr 1fr}
+.prx-alloc .prx-pf{gap:0}
+@media (max-width:640px){.prx-alloc .prx-grid{grid-template-columns:1fr;margin-left:0}}
+/* CR-012: Gold toggle */
+.bc-k-gld i{background:#facc15}.bc-k-gld:hover{border-color:#facc15}
+.bc-k-gld:not(.off){border-color:#facc15!important}
+/* CR-013: sleeve allocation popover (reuses .prx-pf/.prx-bar/.prx-chips) */
+.slv-trg{cursor:pointer;border-radius:8px;text-decoration:underline dotted rgba(34,211,238,.5);text-underline-offset:4px;transition:color .15s}
+.slv-trg:hover{color:#22d3ee}.slv-trg:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
+.slv-dim{background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+.slv-pop{position:fixed;z-index:71;width:min(380px,calc(100vw - 32px));padding:14px;background:linear-gradient(180deg,#0e1730,#0a1122);border:1px solid rgba(34,211,238,.22);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.6);
+  opacity:0;transform:translateY(6px) scale(.98);transition:opacity .2s ease,transform .2s cubic-bezier(.2,.8,.2,1)}
+.slv-pop.prx-on{opacity:1;transform:none}.slv-pop[hidden]{display:none}
+.slv-pop .prx-pf{gap:0;padding-right:52px}
+.slv-pop .slv-x{position:absolute;top:16px;right:16px;margin:0;float:none;width:40px;height:40px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+@media (max-width:640px){.slv-pop{left:0;right:0;bottom:0;width:auto;border-radius:20px 20px 0 0;border-bottom:0;padding:18px 14px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);opacity:1;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+  .slv-pop.prx-on{transform:none}}
+@media (prefers-reduced-motion:reduce){.slv-pop{transition:none!important}}
+/* CR-015: Benchmarks + button and modal */
+.prd-btn-row{display:flex;flex-wrap:wrap;gap:10px}
+.prd-btn-row .prd-btn{margin:4px 0 8px}
+.bm-card .rules-benchmarks{margin:0;scroll-margin-top:0}
+.bm-card .rules-benchmarks h3{margin:0 56px 14px 0;font:700 clamp(1.5rem,3.2vw,2rem)/1.15 Outfit,sans-serif;color:#fff}
+.bm-card .rules-benchmarks p{color:#b6c2d6;line-height:1.6}
+.bm-card .benchmarks{margin:16px 0 18px}
+.bm-card .note{padding-top:16px;border-top:1px solid rgba(255,255,255,.07)}
+.prd-card.bm-card{width:min(640px,calc(100vw - 48px))}
+#portfolio-rules.bm-empty{display:none}
+/* CR-015: Benchmarks modal open/close animation (transform/opacity only) */
+.prd-card.bm-card{opacity:0;transform:translate(-50%,-50%) scale(.96);transition:opacity .28s cubic-bezier(.2,.8,.2,1),transform .28s cubic-bezier(.2,.8,.2,1);will-change:opacity,transform}
+.prd-card.bm-card.prx-on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.prd-card.bm-card.bm-closing{transition-duration:.2s;transition-timing-function:cubic-bezier(.4,0,1,1)}
+.prd-dim.bm-dim{transition:opacity .28s cubic-bezier(.2,.8,.2,1)}.prd-dim.bm-dim.bm-closing{transition-duration:.2s}
+@media (max-width:640px){.prd-card.bm-card{opacity:1;transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.8,.2,1)}
+  .prd-card.bm-card.prx-on{transform:translateY(0)}.prd-card.bm-card.bm-closing{transition-duration:.22s}}
+@media (prefers-reduced-motion:reduce){.prd-card.bm-card,.prd-card.bm-card.prx-on{transform:translate(-50%,-50%)!important;transition:opacity .15s linear!important;opacity:0}.prd-card.bm-card.prx-on{opacity:1}
+  .prd-dim.bm-dim{transition:opacity .15s linear!important}}
+@media (prefers-reduced-motion:reduce) and (max-width:640px){.prd-card.bm-card,.prd-card.bm-card.prx-on{transform:none!important}}
+@media (max-width:640px){.prd-card.bm-card{width:auto;left:0;right:0}}
+
+/* CR-013 follow-up: whole sleeve card opens its allocation pop-up */
+#sleeves .card.slv-card{cursor:pointer}
+/* Test branch 26 Oct 2026: MSTR toggle + 1D chart-type control */
+.bc-k-mstr i{background:#f97316}.bc-k-mstr:hover{border-color:#f97316}.bc-k-mstr:not(.off){border-color:#f97316!important}
+.bc-ct{display:flex;align-items:center;gap:6px;margin:0 0 8px;flex-wrap:wrap}
+.bc-ct-lab{font:600 .78rem Inter,sans-serif;color:#94a3b8}
+.bc-ct button{font:600 .74rem Inter,sans-serif;padding:5px 12px;border-radius:999px;border:1px solid var(--border,#1e293b);color:#94a3b8;background:transparent;cursor:pointer}
+.bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
+
+/* Vehicle toggle, Day 3: popover row, same language as the 1D chart-type control */
+.bc-veh{display:flex;align-items:center;gap:6px;margin:0 0 8px;flex-wrap:wrap}
+.bc-veh button{font:600 .74rem Inter,sans-serif;padding:5px 12px;border-radius:999px;border:1px solid var(--border,#1e293b);color:#94a3b8;background:transparent;cursor:pointer}
+.bc-veh button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
+.bc-veh button:disabled{opacity:.45;cursor:not-allowed}
+.bc-veh-nt{color:#94a3b8;font-size:.74rem;margin:-4px 0 8px}
+
+/* Menu reorg (8 Nov 2026, v3, Sunil-approved): five main tabs; Sleeves is a
+   click-to-open dropdown on desktop (>=1000px) and a tap-to-expand item in
+   the hamburger menu below 1000px. Clicking Sleeves only opens/closes its
+   menu; it never navigates. The "Sleeves" link inside each menu goes to
+   #sleeves. Breakpoint stays at 1000px as the live site does today (so
+   iPad portrait 768px keeps the hamburger). */
+/* Desktop Sleeves dropdown */
+.desk-drop{position:relative;display:flex;align-items:center}
+.desk-tab{background:none;border:0;padding:0;margin:0;color:var(--muted,#94a3b8);font:500 .95rem Inter,system-ui,-apple-system,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.desk-tab:hover{color:var(--text,#e8eef7)}
+.desk-tab:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+.desk-chev{font-size:.65rem;color:#94a3b8;transition:transform .2s}
+.desk-drop.open .desk-chev{transform:rotate(180deg)}
+.desk-panel{display:none;position:absolute;top:calc(100% + 10px);left:0;width:232px;background:rgba(15,23,42,.98);border:1px solid var(--border,#1e293b);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.45);padding:6px;z-index:30}
+.desk-drop.open .desk-panel{display:block}
+.desk-panel a{display:flex;align-items:center;min-height:44px;padding:0 12px;color:var(--muted,#94a3b8);font:500 .95rem Inter,system-ui,-apple-system,sans-serif;text-decoration:none;border-left:2px solid rgba(34,211,238,.35);margin:2px 6px;border-radius:6px}
+.desk-panel a:hover{color:#22d3ee}
+@media (max-width:1180px){.header nav .desk-tab{font-size:.82rem}.desk-panel a{font-size:.82rem}}
+@media (prefers-reduced-motion:reduce){.desk-chev{transition:none}}
+/* Mobile Sleeves dropdown inside the phone sheet (cr028) */
+.mnav-drop{border:0;background:transparent}
+.mnav-tab{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;min-height:64px;padding:0 16px 0 14px;background:none;border:0;border-radius:18px;color:#e8eef7;font:600 1.12rem/1.2 Outfit,Inter,sans-serif;letter-spacing:-.02em;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent}
+.mnav-tab:hover,.mnav-tab[aria-expanded="true"]{color:#fff}
+.mnav-tab:focus-visible{outline:2px solid #22d3ee;outline-offset:-4px}
+.nav-chev{margin-left:auto;width:9px;height:9px;font-size:0;color:#22d3ee;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .35s cubic-bezier(.16,1,.3,1)}
+.mnav-sub{display:block;max-height:0;overflow:hidden;opacity:0;padding:0 10px;transition:max-height .42s cubic-bezier(.16,1,.3,1),opacity .28s ease,padding .32s ease}
+.mnav-drop.open .mnav-sub{max-height:380px;opacity:1;padding:0 10px 12px}
+.mnav-drop.open .nav-chev{transform:rotate(225deg) translateY(-1px)}
+.mnav-sub a{display:flex;align-items:center;min-height:48px;margin:0 0 6px;padding:0 14px;color:#d5e2f2;font:550 .98rem/1.2 Outfit,Inter,sans-serif;letter-spacing:-.01em;text-decoration:none;border:1px solid rgba(148,163,184,.14);border-left:1px solid rgba(148,163,184,.14);border-radius:12px;background:rgba(2,6,18,.35)}
+.mnav-sub a:last-child{margin-bottom:0}
+.mnav-sub a:hover,.mnav-sub a:focus-visible,.mnav-sub a.is-active{color:#22d3ee;border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08)}
+.mnav-drop.open .mnav-sub a{animation:mnavRise .4s cubic-bezier(.16,1,.3,1) both}
+.mnav-drop.open .mnav-sub a:nth-child(1){animation-delay:.04s}
+.mnav-drop.open .mnav-sub a:nth-child(2){animation-delay:.08s}
+.mnav-drop.open .mnav-sub a:nth-child(3){animation-delay:.12s}
+.mnav-drop.open .mnav-sub a:nth-child(4){animation-delay:.16s}
+.mnav-drop.open .mnav-sub a:nth-child(5){animation-delay:.2s}
+/* Menu-tab vibrancy (8 Nov 2026, Sunil): "Live BTC Chart" and "The Desk"
+   share the BTC cyan — Desk now matches Live's colour. Live is still the
+   most alive tab: it alone gets the gently pulsing dot (plus a stronger
+   glow on hover); Desk has no dot, no motion. Both sit above the muted
+   tabs. Scoped to the nav (desktop) and hamburger menu (mobile) via the
+   tab hrefs, so the popup footer links and the screener's floating pill
+   are untouched. */
+@keyframes navLivePulse{0%,100%{opacity:1;box-shadow:0 0 8px rgba(34,211,238,.9)}50%{opacity:.45;box-shadow:0 0 2px rgba(34,211,238,.35)}}
+.header nav a[href$="clock/index.html"],
+.mnav-menu a[href$="clock/index.html"]{color:#22d3ee;text-shadow:0 0 12px rgba(34,211,238,.55)}
+.header nav a[href$="clock/index.html"]{display:inline-flex;align-items:center;gap:6px}
+.mnav-menu a[href$="clock/index.html"]{gap:8px}
+.header nav a[href$="clock/index.html"]::before,
+.mnav-menu a[href$="clock/index.html"]::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 8px rgba(34,211,238,.9);animation:navLivePulse 2.2s ease-in-out infinite}
+.header nav a[href$="clock/index.html"]:hover,
+.mnav-menu a[href$="clock/index.html"]:hover{color:#a5f3fc;text-shadow:0 0 16px rgba(34,211,238,.8)}
+.header nav a[href$="screener.html"],
+.mnav-menu a[href$="screener.html"]{color:#22d3ee;text-shadow:0 0 12px rgba(34,211,238,.55)}
+.header nav a[href$="screener.html"]:hover,
+.mnav-menu a[href$="screener.html"]:hover{color:#a5f3fc;text-shadow:0 0 16px rgba(34,211,238,.8)}
+/* Light theme: the bright cyan is unreadable on a light background, so
+   Live and Desk both drop to the site's light-mode accent text (#0e7490,
+   as used for .is-active links); the glow is dropped (invisible on light)
+   but the pulsing dot stays — it follows the text colour via currentColor.
+   These beat light.css (loaded after nav.css) on specificity. */
+html[data-theme="light"] .header nav a[href$="clock/index.html"],
+html[data-theme="light"] .mnav-menu a[href$="clock/index.html"]{color:#0e7490;text-shadow:none}
+html[data-theme="light"] .header nav a[href$="clock/index.html"]:hover,
+html[data-theme="light"] .mnav-menu a[href$="clock/index.html"]:hover{color:#155e75;text-shadow:none}
+html[data-theme="light"] .header nav a[href$="screener.html"],
+html[data-theme="light"] .mnav-menu a[href$="screener.html"]{color:#0e7490;text-shadow:none}
+html[data-theme="light"] .header nav a[href$="screener.html"]:hover,
+html[data-theme="light"] .mnav-menu a[href$="screener.html"]:hover{color:#155e75;text-shadow:none}
+/* Light theme, Sleeves menus: the desktop dropdown panel is hardcoded dark
+   navy, so it gets a white treatment in light mode (matching the hamburger
+   menu's light override in light.css); its links use var(--muted), which
+   is #475569 on light — readable on white. The cyan hovers on the panel
+   links and the mobile Sleeves rows are unreadable on white, so they drop
+   to #0e7490 like Live's light hover. */
+html[data-theme="light"] .desk-panel{background:rgba(255,255,255,.98);border-color:#e2e8f0;box-shadow:0 12px 30px rgba(15,23,42,.08)}
+html[data-theme="light"] .desk-panel a:hover,
+html[data-theme="light"] .mnav-tab:hover,
+html[data-theme="light"] .mnav-sub a:hover{color:#0e7490}
+@media (prefers-reduced-motion:reduce){
+  .header nav a[href$="clock/index.html"]::before,
+  .mnav-menu a[href$="clock/index.html"]::before{animation:none}
+  .header>.mnav-menu,
+  .header>.mnav-menu::before,
+  .header>.mnav-menu::after,
+  .header>.mnav-menu>.mnav-drop,
+  .header>.mnav-menu>a,
+  .mnav-drop.open .mnav-sub a{animation:none}
+  .nav-chev,.mnav-sub{transition:none}
+}
+
+/* Phone sheet, light mode. Beats light.css (loaded later) via the extra .header. */
+html[data-theme="light"] .header>.mnav-menu{
+  background:
+    linear-gradient(90deg,#c2410c,#0891b2 46%,#f59e0b 72%,#0891b2) top / 100% 2px no-repeat,
+    radial-gradient(120% 70% at 100% -10%,rgba(34,211,238,.2),transparent 52%),
+    linear-gradient(180deg,#f8fafc 0%,#eef6fb 100%);
+  box-shadow:0 -18px 50px rgba(15,23,42,.12), inset 0 1px 0 #fff;
+}
+html[data-theme="light"] .header>.mnav-menu::before{color:#0e7490}
+html[data-theme="light"] .header>.mnav-menu::after{color:#64748b}
+html[data-theme="light"] .header>.mnav-menu>.mnav-drop,
+html[data-theme="light"] .header>.mnav-menu>a{
+  background:linear-gradient(180deg,#fff,#f8fafc);
+  border-color:#e2e8f0;
+  box-shadow:0 8px 20px rgba(15,23,42,.05), inset 0 1px 0 #fff;
+  color:#0f172a;
+}
+html[data-theme="light"] .mnav-tab{color:#0f172a}
+html[data-theme="light"] .mnav-tab:hover,
+html[data-theme="light"] .mnav-tab[aria-expanded="true"]{color:#0e7490}
+html[data-theme="light"] .header>.mnav-menu>a::after,
+html[data-theme="light"] .header>.mnav-menu .mnav-tab::after{color:#0e7490}
+html[data-theme="light"] .mnav-sub a{color:#334155;background:#fff;border-color:#e2e8f0}
+html[data-theme="light"] .mnav-sub a:hover,
+html[data-theme="light"] .mnav-sub a:focus-visible,
+html[data-theme="light"] .mnav-sub a.is-active{color:#0e7490;background:rgba(34,211,238,.1);border-color:rgba(14,116,144,.35)}
+html[data-theme="light"] .header>.mnav-menu>a:hover,
+html[data-theme="light"] .header>.mnav-menu>a:focus-visible,
+html[data-theme="light"] .header>.mnav-menu>a.is-active{color:#0f172a;border-color:rgba(14,116,144,.45);background:linear-gradient(180deg,#fff,#ecfeff)}
+html[data-theme="light"] .header>.mnav-menu>a[href$="clock/index.html"],
+html[data-theme="light"] .header>.mnav-menu>a[href$="screener.html"]{color:#0e7490;text-shadow:none;border-color:rgba(14,116,144,.35);background:linear-gradient(180deg,#fff,#ecfeff)}
+html[data-theme="light"] .header>.mnav-menu>a[href$="clock/index.html"]:hover,
+html[data-theme="light"] .header>.mnav-menu>a[href$="screener.html"]:hover{color:#155e75;text-shadow:none}
+html[data-theme="light"] .header>.header-inner>.mnav-btn[aria-expanded="true"]{background:#fff;color:#0e7490;border-color:#22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.2),0 8px 24px rgba(15,23,42,.12)}
+body.mnav-open,html.mnav-open{overflow:hidden}
+@keyframes mnavSheet{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+@keyframes mnavRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (max-width:1000px) and (orientation:landscape) and (max-height:500px){
+  .header>.mnav-menu{padding-top:10px;padding-bottom:8px}
+  .header>.mnav-menu::before{padding-bottom:8px}
+  .header>.mnav-menu::after{display:none}
+  .header>.mnav-menu>a,.mnav-tab{min-height:48px}
+  .header>.mnav-menu>.mnav-drop,.header>.mnav-menu>a{margin-bottom:6px}
+}
