@@ -271,6 +271,9 @@ $('sats10100').textContent=(s*10).toLocaleString('en-US')+' / '+(s*100).toLocale
 var t='₿ '+fmtPrice(pv,ec)+' &nbsp;·&nbsp; '+s.toLocaleString('en-US')+' sats/'+sym+' &nbsp;·&nbsp; ';if(lastBlock)$('tick1').innerHTML=t+'Block #'+lastBlock.toLocaleString('en-US')+' &nbsp;·&nbsp; '+t+'Block #'+lastBlock.toLocaleString('en-US');$('tick2').innerHTML=$('tick1').innerHTML;}
 var ac=ec==='CAD'?lastCadChg:lastChg;
 if(typeof ac==='number'){$('chg').textContent=(ac>=0?'▲ ':'▼ ')+Math.abs(ac).toFixed(1)+'%';/* the muted ' · 24h' label beside #chg is static markup; adding it here too made it show twice */$('chg').className='chg '+(ac>=0?'up':'down');}
+/* Nov 15 r2: when a new poll has no change, clear the change text —
+   otherwise the old change stays on screen as if current. */
+else{$('chg').textContent='';$('chg').className='chg';}
 if(lastBlock!=null){$('height').textContent='#'+lastBlock.toLocaleString('en-US');
 var next=Math.ceil((lastBlock+1)/210000)*210000,rem=next-lastBlock,lastH=next-210000,pct=((lastBlock-lastH)/210000*100);
 $('halving').textContent=next.toLocaleString('en-US');$('halvingDetail').textContent=rem.toLocaleString('en-US')+' blocks to go · roughly '+(rem*10/1440).toFixed(0)+' days at 10 min per block';

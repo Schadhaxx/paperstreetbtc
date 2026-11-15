@@ -359,6 +359,67 @@ test('a good change restores the last-good value after a failure', async () => {
   assert.ok(Math.abs(p.btc.chg24h - want) < 1e-9, `got ${p.btc.chg24h}, want ${want}`);
 });
 
+// --- BTC 24h change: carried change expires after 10 minutes -------------
+//
+// Nov 15 r2 (Grok Bot must-fix): the last-good change was rewritten every
+// round the price was fresh, even when the value was itself carried over,
+// so a days-old change was served as current with stale:false (confirmed
+// at +1h, +6h, +30h and after a cold start). A carried change is now
+// reused only while it is at most 10 minutes old; past that, null is
+// served so the 15s refresh and the page's CoinGecko fill take over.
+
+test('a fresh change carries chgAt and chgStale:false', async () => {
+  assert.equal(__test.lastGoodChgMaxAgeMs, 10 * 60 * 1000, 'carried-change cap must be 10 minutes');
+  const { stub } = makeFetchStub();
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9);
+  assert.equal(typeof p.btc.chgAt, 'string', 'a fresh change must carry chgAt');
+  assert.ok(!Number.isNaN(Date.parse(p.btc.chgAt)), 'chgAt must be a parseable timestamp');
+  assert.equal(p.btc.chgStale, false, 'a fresh change is not stale');
+});
+
+test('a carried change within the cap is served and marked stale, chgAt not refreshed', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  const first = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(first.btc.chg24h - STATS_CHG24H) < 1e-9, 'good fetch must carry the stats change');
+  assert.equal(first.btc.chgStale, false);
+
+  // Both change sources now fail (price still answers). Expire fresh so the
+  // Worker must refresh — it must serve the carried change, marked stale.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'price still comes from Coinbase spot');
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9, `got ${p.btc.chg24h}, want carried ${STATS_CHG24H}`);
+  assert.equal(p.btc.chgStale, true, 'a carried change must be marked stale');
+  assert.equal(p.btc.chgAt, first.btc.chgAt, 'a carried change must not refresh chgAt');
+});
+
+test('a carried change older than the cap returns null (in-memory and cold-start)', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  const first = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(first.btc.chg24h - STATS_CHG24H) < 1e-9, 'good fetch must carry the stats change');
+
+  // Age both the in-memory last-good change and the cached copy past the
+  // cap, so neither the carried path nor the cold-start fill may reuse it.
+  const aged = Date.now() - __test.lastGoodChgMaxAgeMs - 60_000;
+  __test.setLastGoodChg(STATS_CHG24H, aged);
+  await __test.setLastGoodCacheChgAt(new Date(aged).toISOString());
+
+  // Both change sources now fail (price still answers). Expire fresh so the
+  // Worker must refresh — it must serve null, not the expired change.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'price still comes from Coinbase spot');
+  assert.equal(p.btc.chg24h, null, 'an expired carried change must not be served');
+});
+
 test('Finnhub returns an empty quote for a symbol: it is omitted, not priced at 0', async () => {
   const { stub } = makeFetchStub({
     finnhubPrices: Object.fromEntries(

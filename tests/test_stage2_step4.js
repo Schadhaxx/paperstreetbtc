@@ -131,13 +131,13 @@ function walk(d) {
   });
 }
 walk(R);
-let et26 = 0, other = [];
+let et27 = 0, other = [];
 html.forEach(function (p) {
   const s = fs2.readFileSync(p, 'utf8');
   const m = s.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et27') et26++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et27') et27++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et26', et26 === 16 && other.length === 0, 'et26=' + et26 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et27', et27 === 16 && other.length === 0, 'et27=' + et27 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart (s2.js) is out of scope: it must still use Chart.js. */
 chk('s2.js (YTD hero) still uses Chart.js', /new Chart\(/.test(s2));

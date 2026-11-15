@@ -50,6 +50,9 @@ if(!pill.getAttribute('aria-label'))pill.setAttribute('aria-label','Live BTC pri
 function chgTxt(c){return typeof c==='number'?(c>=0?'▲':'▼')+Math.abs(c).toFixed(1)+'%':'';}
 function paint(){if(live.usd==null)return;var cls='hdr-chg '+(live.chg>=0?'up':'down');
   var hp=$('hdrPx'),hc=$('hdrChg');if(hp){hp.textContent=fmt(live.usd);}if(hc&&typeof live.chg==='number'){hc.textContent=chgTxt(live.chg);hc.className=cls;}
+  /* Nov 15 r2: when a new poll has no change, clear the header change text
+     — otherwise the old change stays on screen as if current. */
+  else if(hc){hc.textContent='';hc.className='hdr-chg';}
   if(mp){mp.querySelector('.mpPx').textContent=fmt(live.usd);var m=mp.querySelector('.mpChg');m.textContent=chgTxt(live.chg);m.className=cls+' mpChg';}
   /* Live-price refresh into an open panel (head + tick flash + redraw)
      lives in the panel's onLive; before it loads there is nothing to forward to. */
