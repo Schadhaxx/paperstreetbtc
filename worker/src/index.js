@@ -202,7 +202,9 @@ async function fetchFinnhubQuotes(apiKey) {
     try {
       const res = await fetch(
         `${FINNHUB_BASE}/quote?symbol=${encodeURIComponent(finnhub)}`,
-        { headers: { 'X-Finnhub-Token': apiKey } },
+        // 4s timeout (Nov 15 r3): one hung Finnhub call used to hang the
+        // whole refresh. A timed-out symbol is just omitted (see below).
+        { headers: { 'X-Finnhub-Token': apiKey }, signal: AbortSignal.timeout(4000) },
       );
       if (!res.ok) return;
       const q = await res.json();
@@ -319,7 +321,10 @@ async function fetchBtc() {
     lastGoodBtcChg = null;
     chg24h = null;
   }
-  return { usd, chg24h, src: src || 'Coinbase', chgAt, chgStale };
+  // priceAt is the original capture time of this price (Nov 15 r3): the
+  // stale-price branch reuses it so a carried price keeps its age instead
+  // of getting a fresh timestamp on every re-save.
+  return { usd, chg24h, src: src || 'Coinbase', chgAt, chgStale, priceAt: new Date(now).toISOString() };
 }
 
 // ---------------------------------------------------------------------------
@@ -331,7 +336,11 @@ function buildPayload({ stocks, btc, asOf, stale, staleSymbols, missing }) {
     updated: asOf,
     asOf,
     btc: btc
-      ? { usd: btc.usd, chg24h: btc.chg24h, src: btc.src, time: asOf, chgAt: btc.chgAt ?? null, chgStale: !!btc.chgStale }
+      // time/priceAt are the price CAPTURE time (Nov 15 r3), not the
+      // payload build time: a carried price must keep its original
+      // timestamp, or the re-save below would refresh it every round and
+      // the price would never age out. No page consumer reads btc.time.
+      ? { usd: btc.usd, chg24h: btc.chg24h, src: btc.src, time: btc.priceAt ?? asOf, priceAt: btc.priceAt ?? asOf, chgAt: btc.chgAt ?? null, chgStale: !!btc.chgStale }
       : null,
     stocks,
     // Symbols omitted from this response (not covered by Finnhub, or failed
@@ -369,8 +378,13 @@ async function refreshQuotes(env) {
   const lastGood = await readCachedPayload(cache, LASTGOOD_CACHE_KEY);
 
   const apiKey = env && typeof env.FINNHUB_API_KEY === 'string' ? env.FINNHUB_API_KEY : '';
-  const finnhub = apiKey ? await fetchFinnhubQuotes(apiKey) : new Map();
-  const btc = await fetchBtc();
+  // Finnhub and BTC run together (Nov 15 r3): they used to run one after
+  // the other, so a slow Finnhub round delayed the BTC price too. Both
+  // sides are timeout-bounded (~4s each), so the worst case is about 4s.
+  const [finnhub, btc] = await Promise.all([
+    apiKey ? fetchFinnhubQuotes(apiKey) : Promise.resolve(new Map()),
+    fetchBtc(),
+  ]);
 
   const stocks = {};
   const staleSymbols = [];
@@ -395,8 +409,22 @@ async function refreshQuotes(env) {
   let btcOut = btc;
   let btcStale = false;
   if (!btcOut && lastGood?.btc && typeof lastGood.btc.usd === 'number' && lastGood.btc.usd > 0) {
-    btcOut = lastGood.btc;
-    btcStale = true;
+    // Price age check (Nov 15 r3, should-fix #1): a carried price older
+    // than ~10 minutes is not served at all — the pages fetch the price
+    // directly. The original capture time is priceAt (older cache entries
+    // carry time); without a usable timestamp, treat it as expired.
+    const priceAtMs = Date.parse(lastGood.btc.priceAt ?? lastGood.btc.time);
+    if (Number.isFinite(priceAtMs) && Date.now() - priceAtMs <= LASTGOOD_CHG_MAX_AGE_MS) {
+      // Change age check (Nov 15 r2 must-fix, applied here too): the
+      // carried change is reused only while it is at most 10 minutes old.
+      // Old cache entries with no chgAt serve null.
+      const at = Date.parse(lastGood.btc.chgAt);
+      const ok = typeof lastGood.btc.chg24h === 'number' && Number.isFinite(at) && Date.now() - at <= LASTGOOD_CHG_MAX_AGE_MS;
+      btcOut = { ...lastGood.btc, priceAt: lastGood.btc.priceAt ?? lastGood.btc.time, chg24h: ok ? lastGood.btc.chg24h : null, chgAt: ok ? lastGood.btc.chgAt : null, chgStale: true };
+      btcStale = true;
+    }
+    // Past the price cap (or no timestamp): leave btcOut null so the
+    // pages fetch the price directly.
   }
   // Cold-start protection (Nov 15): the in-memory last-good change is empty
   // on a fresh isolate, so a fresh price with a null change would clobber
@@ -554,6 +582,20 @@ export const __test = {
     const payload = await readCachedPayload(cache, LASTGOOD_CACHE_KEY);
     if (payload && payload.btc) {
       payload.btc.chgAt = iso;
+      await cache.put(
+        LASTGOOD_CACHE_KEY,
+        new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } }),
+      );
+    }
+  },
+  // Rewrite the last-good cache entry's BTC price timestamp (simulates
+  // an aged carried price for the price-expiry test).
+  async setLastGoodCachePriceAt(iso) {
+    const cache = getCache();
+    const payload = await readCachedPayload(cache, LASTGOOD_CACHE_KEY);
+    if (payload && payload.btc) {
+      payload.btc.priceAt = iso;
+      payload.btc.time = iso;
       await cache.put(
         LASTGOOD_CACHE_KEY,
         new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } }),

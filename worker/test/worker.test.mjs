@@ -420,6 +420,80 @@ test('a carried change older than the cap returns null (in-memory and cold-start
   assert.equal(p.btc.chg24h, null, 'an expired carried change must not be served');
 });
 
+// --- BTC stale-price branch: the carried change AND the carried price expire
+//
+// Nov 15 r3 (Grok Bot round-2 must-fix + should-fix #1): when no price
+// source answers, the Worker served lastGood.btc whole, so its old change
+// skipped the 10-minute cap (served at +1h, +6h, +30h with chgStale:false,
+// and old cache entries with no chgAt did the same). The carried change is
+// now capped in that branch too. And a carried price older than ~10
+// minutes is not served at all — the pages fetch the price directly.
+
+test('stale-price branch: all sources down and chgAt older than the cap returns chg24h null, price still served', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  const first = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(first.btc.chg24h - STATS_CHG24H) < 1e-9, 'good fetch must carry the stats change');
+
+  // Age only the change in the last-good cache past the cap; the price
+  // itself is still fresh, so it must be carried — but without a change.
+  const aged = Date.now() - __test.lastGoodChgMaxAgeMs - 60_000;
+  await __test.setLastGoodCacheChgAt(new Date(aged).toISOString());
+
+  // All BTC price and change sources now fail. Expire fresh so the Worker
+  // must refresh from the last-good cache.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'a fresh carried price must still be served');
+  assert.equal(p.btc.chg24h, null, 'an expired carried change must not ride along with the price');
+  assert.equal(p.btc.chgStale, true, 'a carried value is marked stale');
+});
+
+test('stale-price branch: chgAt missing from the cache returns chg24h null', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Drop chgAt from the cached entry (old cache entries predate it).
+  // JSON.stringify drops undefined, so the stored entry has no chgAt.
+  await __test.setLastGoodCacheChgAt(undefined);
+
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'a fresh carried price must still be served');
+  assert.equal(p.btc.chg24h, null, 'a carried change with no timestamp must not be served');
+});
+
+test('stale-price branch: a carried price older than ~10 minutes is not served (btc null)', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Age the cached price past the cap.
+  const aged = Date.now() - __test.lastGoodChgMaxAgeMs - 60_000;
+  await __test.setLastGoodCachePriceAt(new Date(aged).toISOString());
+
+  // All BTC sources down. Expire fresh so the Worker must refresh.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc, null, 'an expired carried price must not be served — the pages fetch directly');
+});
+
+test('a fresh price carries priceAt, and time is the capture time', async () => {
+  const { stub } = makeFetchStub();
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(typeof p.btc.priceAt, 'string', 'a fresh price must carry priceAt');
+  assert.ok(!Number.isNaN(Date.parse(p.btc.priceAt)), 'priceAt must be a parseable timestamp');
+  assert.equal(p.btc.time, p.btc.priceAt, 'time must be the price capture time, not the payload build time');
+});
+
 test('Finnhub returns an empty quote for a symbol: it is omitted, not priced at 0', async () => {
   const { stub } = makeFetchStub({
     finnhubPrices: Object.fromEntries(

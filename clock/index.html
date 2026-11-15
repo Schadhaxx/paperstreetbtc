@@ -213,7 +213,7 @@ var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,las
    last good one; the live fetch refreshes it, and "Updated" still shows
    when the last successful fetch landed. */
 var LG_KEY='ps-clock-cad';
-function loadLastGoodCad(){try{var raw=localStorage.getItem(LG_KEY);if(!raw)return;var o=JSON.parse(raw);if(o&&typeof o.cad==='number'&&o.cad>0){lastCad=o.cad;if(typeof o.cadChg==='number')lastCadChg=o.cadChg;if(typeof o.fx==='number'&&o.fx>0)fxRate=o.fx;else if(typeof o.usd==='number'&&o.usd>0)fxRate=o.cad/o.usd;}}catch(e){}}
+function loadLastGoodCad(){try{var raw=localStorage.getItem(LG_KEY);if(!raw)return;var o=JSON.parse(raw);if(o&&typeof o.cad==='number'&&o.cad>0){lastCad=o.cad;/* Nov 15 r3: the restored CAD change is capped by age (10 min, same as the Worker's carried-change cap) using the saved timestamp o.t — an old change must not come back as current. Entries with no usable t are treated as expired. The price/rate restore is uncapped (last-good by design). */if(typeof o.cadChg==='number'&&typeof o.t==='number'&&Date.now()-o.t<=10*60*1000)lastCadChg=o.cadChg;if(typeof o.fx==='number'&&o.fx>0)fxRate=o.fx;else if(typeof o.usd==='number'&&o.usd>0)fxRate=o.cad/o.usd;}}catch(e){}}
 function saveLastGoodCad(){try{if(typeof lastCad==='number'&&lastCad>0)localStorage.setItem(LG_KEY,JSON.stringify({cad:lastCad,cadChg:lastCadChg,usd:lastPrice,fx:fxRate,t:Date.now()}));}catch(e){}}
 loadLastGoodCad();
 /* The chart starts in USD unless a last-good CAD rate was restored above:
@@ -292,12 +292,15 @@ function update(){Promise.allSettled([fetchPrice(),fetchBlock(),fetchFees(),fetc
 var priceOk=false,blockOk=false,hero=$('hero');
 if(r[0].status==='fulfilled'){var np=r[0].value.usd;if(lastPrice!=null&&np!==lastPrice){hero.classList.remove('up','down');void hero.offsetWidth;hero.classList.add(np>lastPrice?'up':'down');}
 lastPrice=np;lastChg=r[0].value.chg;
-if(typeof r[0].value.cad==='number'){lastCad=r[0].value.cad;lastCadChg=r[0].value.cadChg;
+if(typeof r[0].value.cad==='number'){lastCad=r[0].value.cad;lastCadChg=typeof r[0].value.cadChg==='number'?r[0].value.cadChg:null;
 /* Keep the last valid exchange rate unless THIS response supplies both
    USD and CAD: a USD-only fallback (Coinbase) leaves lastCad stale, and
    dividing that older CAD price by the new USD price would recompute the
    rate from mismatched timestamps. (Grok live review, 6 Nov.) */
 if(lastPrice&&lastCad)fxRate=lastCad/lastPrice;saveLastGoodCad();}
+/* Nov 15 r3: no CAD this round (Worker-only or Coinbase fallback) — drop
+   the old CAD change instead of leaving it on screen as if current. */
+else{lastCadChg=null;}
 if(effCur()==='CAD')applyCurrency();
 priceOk=true;}
 if(r[1].status==='fulfilled'){lastBlock=r[1].value.height;lastBlockTs=r[1].value.ts;blockOk=true;}
