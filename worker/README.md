@@ -41,8 +41,11 @@ changes portfolio math, recaps, DCA, or official-close data.
   symbol, once per minute, for the 19 symbols Finnhub covers. The API key
   comes from a Worker secret (`FINNHUB_API_KEY`) — never in code.
 - **BTC spot — Coinbase spot (keyless), fallback CoinGecko `simple/price`.**
-  Coinbase gives the price; CoinGecko gives the 24h change (and the price
-  if Coinbase fails).
+  Coinbase gives the price; the 24h change comes from Coinbase Exchange
+  `stats` (`(last - open) / open * 100`), with CoinGecko's `usd_24h_change`
+  as the fallback. CoinGecko is the fallback for the change because its
+  fetch fails from the Worker's Cloudflare IP. CoinGecko is still the price
+  fallback if Coinbase spot fails.
 
 ## Coverage (Finnhub free `/quote`)
 

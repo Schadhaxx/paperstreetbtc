@@ -7,6 +7,9 @@
 //   - Desk quotes: Finnhub /quote (free tier, 60 calls/min). Key comes from a
 //     Worker SECRET (env.FINNHUB_API_KEY) — never hardcoded, never in code.
 //   - BTC spot: Coinbase spot (keyless), fallback CoinGecko simple/price.
+//   - BTC 24h change: Coinbase Exchange stats (keyless), fallback
+//     CoinGecko. (CoinGecko's fetch fails from the Worker's Cloudflare IP,
+//     so it is the fallback for the change, not the source.)
 //
 // Design:
 //   - Server-side cache (~55 s) so Finnhub is hit at most once per minute
@@ -26,6 +29,7 @@
 
 const FINNHUB_BASE = 'https://finnhub.io/api/v1';
 const COINBASE_SPOT_URL = 'https://api.coinbase.com/v2/prices/BTC-USD/spot';
+const COINBASE_STATS_URL = 'https://api.exchange.coinbase.com/products/BTC-USD/stats';
 const COINGECKO_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true';
 
@@ -206,10 +210,19 @@ async function fetchFinnhubQuotes(apiKey) {
 }
 
 async function fetchBtc() {
-  // Coinbase spot (primary, keyless) + CoinGecko (24h change + price
-  // fallback). Returns { usd, chg24h, src } or null if both fail.
-  const [coinbase, gecko] = await Promise.allSettled([
+  // Coinbase spot (primary, keyless) for the price; 24h change from
+  // Coinbase Exchange stats (keyless) with CoinGecko as the fallback.
+  // CoinGecko is also the price fallback. Returns { usd, chg24h, src }
+  // or null if no price source answers.
+  //
+  // Why stats, not CoinGecko, for the change: the CoinGecko fetch fails
+  // from the Worker's Cloudflare IP (rate-limited/blocked there), so
+  // chg24h was null live even though CoinGecko answers fine elsewhere.
+  // Stats gives {open, last} for the last 24h; the change is
+  // (last - open) / open * 100.
+  const [coinbase, stats, gecko] = await Promise.allSettled([
     fetch(COINBASE_SPOT_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error('coinbase ' + r.status)))),
+    fetch(COINBASE_STATS_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error('coinbase-stats ' + r.status)))),
     fetch(COINGECKO_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error('coingecko ' + r.status)))),
   ]);
 
@@ -224,11 +237,24 @@ async function fetchBtc() {
       src = 'Coinbase';
     }
   }
+  // 24h change, first choice: Coinbase Exchange stats. Guarded like every
+  // other upstream value: both numbers must be finite and open must be
+  // > 0 (no divide-by-zero, no NaN); a bad stats payload just means "no
+  // change from this source" and the CoinGecko fallback is tried next.
+  if (stats.status === 'fulfilled') {
+    const open = Number(stats.value?.open);
+    const last = Number(stats.value?.last);
+    if (Number.isFinite(open) && open > 0 && Number.isFinite(last)) {
+      chg24h = ((last - open) / open) * 100;
+    }
+  }
   if (gecko.status === 'fulfilled') {
     const b = gecko.value?.bitcoin;
     const gUsd = Number(b?.usd);
     const gChg = Number(b?.usd_24h_change);
-    if (Number.isFinite(gChg)) chg24h = gChg;
+    // CoinGecko's change is the fallback — only used when stats gave us
+    // nothing (stats down or unparseable).
+    if (chg24h === null && Number.isFinite(gChg)) chg24h = gChg;
     if (usd === null && Number.isFinite(gUsd) && gUsd > 0) {
       usd = gUsd;
       src = 'CoinGecko';

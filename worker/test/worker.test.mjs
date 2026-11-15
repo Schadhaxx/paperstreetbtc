@@ -28,8 +28,8 @@ const FINNHUB_PREV = Object.fromEntries(
   Object.entries(FINNHUB_PRICES).map(([k, v]) => [k, +(v * 0.99).toFixed(4)]),
 );
 
-function makeFetchStub({ finnhubOk = true, coinbaseOk = true, geckoOk = true, finnhubPrices = FINNHUB_PRICES } = {}) {
-  const calls = { finnhub: 0, coinbase: 0, gecko: 0 };
+function makeFetchStub({ finnhubOk = true, coinbaseOk = true, statsOk = true, geckoOk = true, finnhubPrices = FINNHUB_PRICES, statsOpen = '70000.00', statsLast = '67280.00' } = {}) {
+  const calls = { finnhub: 0, coinbase: 0, stats: 0, gecko: 0 };
   const stub = async (url, opts) => {
     const u = String(url);
     if (u.startsWith('https://finnhub.io/api/v1/quote')) {
@@ -49,6 +49,17 @@ function makeFetchStub({ finnhubOk = true, coinbaseOk = true, geckoOk = true, fi
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
+    if (u.startsWith('https://api.exchange.coinbase.com/products/BTC-USD/stats')) {
+      calls.stats += 1;
+      if (!statsOk) return new Response('error', { status: 500 });
+      // statsOpen/statsLast of null omit the field (missing-value case).
+      const payload = { open: statsOpen, high: '71000.00', low: '65000.00', last: statsLast, volume: '1000.0' };
+      if (statsOpen === null) delete payload.open;
+      if (statsLast === null) delete payload.last;
+      return new Response(JSON.stringify(payload), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    }
     if (u.startsWith('https://api.coingecko.com/api/v3/simple/price')) {
       calls.gecko += 1;
       if (!geckoOk) return new Response('error', { status: 500 });
@@ -60,6 +71,11 @@ function makeFetchStub({ finnhubOk = true, coinbaseOk = true, geckoOk = true, fi
   };
   return { stub, calls };
 }
+
+// The 24h change the stubbed Coinbase stats endpoint implies:
+// (67280 - 70000) / 70000 * 100. Kept in one place so the tests below
+// assert against the same computation the Worker performs.
+const STATS_CHG24H = ((67280 - 70000) / 70000) * 100;
 
 function req(path = '/', { origin, ip = '1.2.3.4', method = 'GET' } = {}) {
   const headers = new Headers();
@@ -87,7 +103,9 @@ test('response mirrors prices.json shape and keys', async () => {
   assert.equal(typeof p.updated, 'string');
   assert.equal(typeof p.asOf, 'string');
   assert.equal(p.btc.usd, 67280);
-  assert.equal(p.btc.chg24h, -4.59);
+  // 24h change comes from Coinbase Exchange stats first (not CoinGecko):
+  // (67280 - 70000) / 70000 * 100.
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9, `got ${p.btc.chg24h}, want ${STATS_CHG24H}`);
   assert.equal(p.btc.src, 'Coinbase');
   assert.equal(p.stocks['BRK.B'].c, 592.94);
   assert.equal(p.stocks['BRK.B'].pc, FINNHUB_PREV['BRK.B']);
@@ -133,6 +151,7 @@ test('second call within the window does NOT hit Finnhub again', async () => {
   // 19 Finnhub calls once (first refresh), then zero — the cache serves the rest.
   assert.equal(calls.finnhub, 19);
   assert.equal(calls.coinbase, 1);
+  assert.equal(calls.stats, 1);
   assert.equal(calls.gecko, 1);
 });
 
@@ -188,7 +207,9 @@ test('no Finnhub API key configured: Finnhub symbols omitted, BTC still served',
 });
 
 test('Coinbase fails: CoinGecko price is used; both fail: btc is null, never fabricated', async () => {
-  const noCoinbase = makeFetchStub({ coinbaseOk: false });
+  // "Coinbase fails" means both Coinbase endpoints (spot + stats) are down,
+  // so the 24h change must come from CoinGecko here.
+  const noCoinbase = makeFetchStub({ coinbaseOk: false, statsOk: false });
   globalThis.fetch = noCoinbase.stub;
   let p = await body(await worker.fetch(req('/'), ENV));
   assert.equal(p.btc.usd, 67250);
@@ -196,10 +217,65 @@ test('Coinbase fails: CoinGecko price is used; both fail: btc is null, never fab
   assert.equal(p.btc.chg24h, -4.59);
 
   __test.reset();
-  const bothDown = makeFetchStub({ coinbaseOk: false, geckoOk: false });
+  const bothDown = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
   globalThis.fetch = bothDown.stub;
   p = await body(await worker.fetch(req('/'), ENV));
   assert.equal(p.btc, null);
+});
+
+// --- BTC 24h change: Coinbase Exchange stats first, CoinGecko fallback ---
+//
+// Live, the CoinGecko fetch fails from the Worker's Cloudflare IP, so
+// chg24h was null. The change now comes from Coinbase Exchange stats
+// ((last - open) / open * 100), with CoinGecko as the fallback.
+
+test('24h change comes from Coinbase stats when CoinGecko fails', async () => {
+  const { stub } = makeFetchStub({ geckoOk: false });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(p.btc.src, 'Coinbase');
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9, `got ${p.btc.chg24h}, want ${STATS_CHG24H}`);
+});
+
+test('24h change falls back to CoinGecko when Coinbase stats fails', async () => {
+  const { stub } = makeFetchStub({ statsOk: false });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(p.btc.chg24h, -4.59);
+});
+
+test('stats and CoinGecko both fail: chg24h is null but the Coinbase spot price still serves', async () => {
+  const { stub } = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(p.btc.src, 'Coinbase');
+  assert.equal(p.btc.chg24h, null);
+});
+
+test('stats with a zero open: no divide-by-zero — chg24h is null, never Infinity or NaN', async () => {
+  const { stub } = makeFetchStub({ statsOpen: '0', geckoOk: false });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(p.btc.chg24h, null);
+});
+
+test('stats with a zero open and CoinGecko up: chg24h falls back to CoinGecko', async () => {
+  const { stub } = makeFetchStub({ statsOpen: '0' });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.chg24h, -4.59);
+});
+
+test('stats with a missing open: chg24h falls back to CoinGecko, never NaN', async () => {
+  const { stub } = makeFetchStub({ statsOpen: null });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.chg24h, -4.59);
+  assert.ok(Number.isFinite(p.btc.chg24h));
 });
 
 test('Finnhub returns an empty quote for a symbol: it is omitted, not priced at 0', async () => {
@@ -274,6 +350,7 @@ test('/health never touches an upstream provider', async () => {
   assert.equal((await body(res)).ok, true);
   assert.equal(calls.finnhub, 0);
   assert.equal(calls.coinbase, 0);
+  assert.equal(calls.stats, 0);
   assert.equal(calls.gecko, 0);
 });
 
