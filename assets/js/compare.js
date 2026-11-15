@@ -93,7 +93,7 @@ function cmpTipRow(ds, i){
   var y = ds.data[i];
   var lbl = ds.label;
   if (window.innerWidth < 520){
-    lbl = lbl.replace(/ \(close (?:provisional until [^)]*|from backup source until Yahoo's final bar)\)/, '');
+    lbl = lbl.replace(/ \((?:close (?:provisional until [^)]*|from backup source until Yahoo's final bar)|backup close)\)/, '');
     return { c: ds.borderColor, n: lbl, v: cmpFp(y) };
   }
   return { c: ds.borderColor, n: lbl, v: cmpUsd(ds.raw[i], 2) + ' (' + cmpFp(y) + ' vs range start)' };
@@ -123,7 +123,7 @@ function drawNativeCmp(lbls, datasets){
     var BFONT = '700 12px Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
     var TICK = psC('#9aa6bc', '#475569');
     var XGRID = psC('rgba(255,255,255,.05)', 'rgba(15,23,42,.08)');
-    var YGRID = 'rgba(255,255,255,.05)';
+    var YGRID = psC('rgba(255,255,255,.05)', 'rgba(15,23,42,.08)');
     /* data range over all visible series */
     var lo = Infinity, hi = -Infinity;
     datasets.forEach(function(ds){
@@ -345,7 +345,7 @@ strc:[['2026-01-15','2026-01-31',.916667],['2026-02-13','2026-02-28',.9375],['20
 let BPROV=[],BFB={}; /* OI-001: BFB=fallback_sources; hoist so fetch+draw share one binding */
 const isBtcFb=d=>{const base=String((BFB[d]&&BFB[d].BTC)||'yahoo').split('-')[0];return base!=='yahoo'&&base!=='ffill';};
 const fbDate=()=>{const ds=Object.keys(BFB).filter(isBtcFb).sort();return ds.length?ds[ds.length-1]:null;};
-const BACKUP_LBL='Spot BTC (close from backup source until Yahoo\'s final bar)';
+const BACKUP_LBL='Spot BTC (backup close)';
 const prov=()=>{const LAST=Object.keys(CL).sort().pop();if(fbDate())return true;return !!CL[LAST]&&BPROV.indexOf(LAST)>=0&&Date.now()<Date.parse(LAST+'T00:00:00Z')+864e5&&!isBtcFb(LAST);};
 let pvOn=null,pvRng='YTD',pvChartObj=null,refreshMsg='',refreshWired=false;
 function fmtDate(iso){const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const q=iso.split('-');return (+q[2])+' '+M[+q[1]-1]+' '+q[0];}
@@ -485,8 +485,8 @@ const sp=document.getElementById('pvSeries');sp.innerHTML=Object.keys(SER).map(k
 const rp=document.getElementById('pvRange');rp.innerHTML=['1W','1M','3M','6M','YTD','1Y'].map(r=>`<button class="bench-btn" data-r="${r}">${r}</button>`).join('');
 function cmpChartJsDraw(ds,datasets){if(typeof Chart==='undefined')return false;
  if(!pvChartObj){pvChartObj=new Chart(document.getElementById('pvChart'),{type:'line',data:{labels:[],datasets:[]},options:{maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
- plugins:{legend:{labels:{color:psC('#9aa6bc','#475569')}},tooltip:{bodyFont:{size:innerWidth<520?10:12},titleFont:{size:innerWidth<520?11:12},padding:innerWidth<520?6:8,boxWidth:innerWidth<520?8:12,boxHeight:innerWidth<520?8:12,callbacks:{label:c=>{const ds=c.dataset,raw=ds.raw[c.dataIndex];if(innerWidth<520)return `${ds.label.replace(/ \(close (?:provisional until [^)]*|from backup source until Yahoo's final bar)\)/,'')}: ${fp(c.parsed.y)}`;return `${ds.label}: ${usd(raw,2)} (${fp(c.parsed.y)} vs range start)`}}}},
- scales:{x:{ticks:{color:psC('#9aa6bc','#475569'),maxTicksLimit:8},grid:{color:psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)')}},y:{ticks:{color:psC('#9aa6bc','#475569'),callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.05)'}}}}});}
+ plugins:{legend:{labels:{color:psC('#9aa6bc','#475569')}},tooltip:{bodyFont:{size:innerWidth<520?10:12},titleFont:{size:innerWidth<520?11:12},padding:innerWidth<520?6:8,boxWidth:innerWidth<520?8:12,boxHeight:innerWidth<520?8:12,callbacks:{label:c=>{const ds=c.dataset,raw=ds.raw[c.dataIndex];if(innerWidth<520)return `${ds.label.replace(/ \((?:close (?:provisional until [^)]*|from backup source until Yahoo's final bar)|backup close)\)/,'')}: ${fp(c.parsed.y)}`;return `${ds.label}: ${usd(raw,2)} (${fp(c.parsed.y)} vs range start)`}}}},
+ scales:{x:{ticks:{color:psC('#9aa6bc','#475569'),maxTicksLimit:8},grid:{color:psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)')}},y:{ticks:{color:psC('#9aa6bc','#475569'),callback:v=>v+'%'},grid:{color:psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)')}}}}});}
  pvChartObj.data.labels=ds;pvChartObj.data.datasets=datasets;pvChartObj.update();return true;}
 function draw(){VEHGAP=null;syncVehSel();const ds=dates(),fd=fbDate();const datasets=[...on].filter(k=>k!=='CUSTOM').map(k=>{const v=ds.map(d=>SER[k].v[d]);const isB=k==='BTC';
  return{label:isB&&fd?BACKUP_LBL:(isB&&prov()?'Spot BTC (close provisional until '+ET.btcCloseLabel(LAST)+')':SER[k].n),raw:v,data:v.map(x=>pct(v[0],x)),borderColor:COL[k],backgroundColor:COL[k],borderWidth:isB?2.5:2,pointRadius:ds.length<10?3:0,tension:.2}});

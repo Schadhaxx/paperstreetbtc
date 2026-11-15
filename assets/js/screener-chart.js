@@ -1216,6 +1216,5 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       var sym = card.getAttribute('data-symbol');
       if (sym) setHighlight(sym, false);
     });
-    loadDaily();
   });
 })();

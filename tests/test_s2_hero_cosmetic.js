@@ -13,7 +13,7 @@
      tooltip text extends past the canvas right edge — the long label wraps
      inside the box instead of clipping.
    - document.fonts.ready hook is registered and fires a redraw once.
-   - Pin stays p9 (the branch has not gone live, so no bump).
+   - Pin is p11 (Batch A fix 4 bumped s2.js from p9; hero branch p10 must re-bump on rebase).
 */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const R = path.join(__dirname, '..');
@@ -148,9 +148,9 @@ chk('dark: light grid rgba never drawn', dark.strokes.indexOf('rgba(15,23,42,.08
 chk('dark: ticks are #9aa6bc (unchanged)', dark.fills.indexOf('#9aa6bc') >= 0);
 chk('dark: light tick #475569 never drawn', dark.fills.indexOf('#475569') === -1);
 
-/* ---- pin stays p9 (branch not live yet, so no bump) ---- */
-chk('index.html pins s2.js at p9', /s2\.js\?v=p9/.test(indexHtml));
-chk('no stale p8 pin for s2.js', !/s2\.js\?v=p8/.test(indexHtml));
+/* ---- pin is p11 (Batch A fix 4 bumped it from p9) ---- */
+chk('index.html pins s2.js at p11', /s2\.js\?v=p11/.test(indexHtml));
+chk('no stale p9 pin for s2.js', !/s2\.js\?v=p9/.test(indexHtml));
 
 console.log('S2 HERO COSMETIC TESTS', n, 'FAIL', f);
 process.exit(f ? 1 : 0);
