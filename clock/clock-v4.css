@@ -615,6 +615,13 @@ html.v4-fs-on body.ps-clock .v4-fs-bar .wl-btn[hidden]{display:none}
 html[data-theme="light"].v4-fs-on body.ps-clock .v4-fs-bar .wl-btn{background:rgba(255,255,255,.92)}
 html[data-theme="light"].v4-fs-on body.ps-clock .v4-fs-bar .wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}
 html.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-right:calc(var(--v4-fs-bar-w,140px) + 12px)}
+/* iPad native fullscreen (15 Nov 2026): Safari draws its own forced X
+   (top-left, ~50px) over the range row. Shift the row right so the 1M
+   pill clears it. Scoped to html.v4-ipad-fs (iPad + native fullscreen
+   only, set by clock-v4.js): iPhone never enters native fullscreen and
+   desktop has no X, so neither is affected. 56px + the stage's 14px left
+   padding = 70px clear of the left edge, ~20px past the X. */
+html.v4-ipad-fs.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-left:56px}
 /* Narrow screens (phone portrait): the bar gets its own row above the chart. */
 @media (max-width:620px){
   html.v4-fs-on body.ps-clock .v4-stage{padding-top:calc(54px + env(safe-area-inset-top,0px))}

@@ -18,6 +18,25 @@
     return !!(stage.requestFullscreen || stage.webkitRequestFullscreen) &&
       (document.fullscreenEnabled || document.webkitFullscreenEnabled);
   }
+  function isIPad() {
+    var ua = navigator.userAgent || '';
+    if (ua.indexOf('iPad') !== -1) return true;
+    /* iPadOS 13+ reports a desktop "Macintosh" UA; any touch point tells
+       it apart from a Mac (which has none). iPhone reports "iPhone", not
+       "Macintosh", so it is excluded. The threshold is > 0, not > 1: a
+       missed iPad leaves the X covering the pills, while a stray touch
+       device on desktop would only shift the row 56px in fullscreen. */
+    return ua.indexOf('Macintosh') !== -1 && navigator.maxTouchPoints > 0;
+  }
+  /* iPad Safari draws its own forced fullscreen X (top-left, ~50px) in
+     native fullscreen, over the range row. Shift the range row right so
+     the pills clear it. Only iPad + native fullscreen: iPhone never
+     enters native fullscreen and desktop has no X, so neither is
+     affected. Re-checked on every fullscreen change — native fullscreen
+     starts async after enter(), so apply() alone cannot see it. */
+  function syncIpadFs() {
+    root.classList.toggle('v4-ipad-fs', !!(mode && isIPad() && fsEl()));
+  }
   function kick() {
     try { window.dispatchEvent(new Event('resize')); } catch (e) {}
     setTimeout(function () { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, 120);
@@ -32,6 +51,7 @@
     root.classList.toggle('v4-fs-on', !!m);
     root.classList.toggle('v4-fs-chart', m === 'chart');
     root.classList.toggle('v4-fs-price', m === 'price');
+    syncIpadFs();
     placeWake();
     setBtns();
     kick();
@@ -78,7 +98,7 @@
   document.addEventListener('keydown', function (e) {
     if ((e.key === 'Escape' || e.key === 'Esc') && mode) exit();
   });
-  function onFsChange() { if (!fsEl() && mode) exit(); else kick(); }
+  function onFsChange() { syncIpadFs(); if (!fsEl() && mode) exit(); else kick(); }
   document.addEventListener('fullscreenchange', onFsChange);
   document.addEventListener('webkitfullscreenchange', onFsChange);
   /* The controls only exist in the split layout; if the screen rotates to
