@@ -58,10 +58,9 @@ window.addEventListener('btcprice',function(e){live.usd=e.detail.usd;live.chg=e.
 /* pages without the homepage price widget fetch the same feed themselves */
 if(!$('btcLive')){
   var tf=function(u){return fetch(u,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});};
-  /* CF-2: Cloudflare live-quote Worker — single configurable URL. The subdomain
-     is a placeholder (SUBDOMAIN) until Site Launch confirms the real subdomain; fill it in here. tfw has an
+  /* CF-2: Cloudflare live-quote Worker — single configurable URL. tfw has an
      8s timeout so a slow Worker falls back promptly (tf has none, as before). */
-  var WORKER='https://paperstreet-quotes.SUBDOMAIN.workers.dev/';
+  var WORKER='https://paperstreet-quotes.schadha08.workers.dev/';
   var tfw=function(u){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},8000):0;
     return fetch(u,{cache:'no-store',signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json();},function(e){clearTimeout(t);throw e;});};
   var load=function(){tfw(WORKER).then(function(d){var b=d&&d.btc;if(!b||typeof b.usd!=='number')throw 0;return {usd:b.usd,chg:typeof b.chg24h==='number'?b.chg24h:null};})

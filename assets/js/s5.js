@@ -6,9 +6,8 @@
   var timer;
   function schedule(ms){clearTimeout(timer);timer=setTimeout(load,ms);}
   var FB='https://api.coinbase.com/v2/prices/BTC-USD/spot';
-  /* CF-2: Cloudflare live-quote Worker — single configurable URL. The subdomain
-     is a placeholder (SUBDOMAIN) until Site Launch confirms the real subdomain; fill it in here. */
-  var WORKER='https://paperstreet-quotes.SUBDOMAIN.workers.dev/';
+  /* CF-2: Cloudflare live-quote Worker — single configurable URL. */
+  var WORKER='https://paperstreet-quotes.schadha08.workers.dev/';
   function tfetch(u,ms){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},ms):0;
     return fetch(u,{cache:'no-store',signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);if(!r.ok) throw new Error(r.status);return r.json();},function(e){clearTimeout(t);throw e;});}
   function getWorkerBtc(){return tfetch(WORKER,8000).then(function(d){var b=d&&d.btc;if(!b||typeof b.usd!=='number')throw new Error('bad data');return {usd:b.usd,usd_24h_change:typeof b.chg24h==='number'?b.chg24h:null,src:b.src||'Cloudflare'};});}

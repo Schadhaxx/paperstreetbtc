@@ -38,10 +38,8 @@
   // back silently to prices.json per symbol. The Worker covers 19 of
   // the 24 Desk symbols; WTI, GOLD, US10Y, VIX, DXY are not on
   // Finnhub's free /quote endpoint and always come from prices.json.
-  // The Worker URL is a single configurable constant; the SUBDOMAIN
-  // placeholder is filled in once Site Launch confirms the
-  // workers.dev subdomain.
-  var WORKER_URL = 'https://paperstreet-quotes.SUBDOMAIN.workers.dev/';
+  // The Worker URL is a single configurable constant.
+  var WORKER_URL = 'https://paperstreet-quotes.schadha08.workers.dev/';
   var PACK_ASOF = '2026-10-28';
   var state = { q: '', filter: 'all', sortKey: 'symbol', sortDir: 1 };
   var packRows = [];

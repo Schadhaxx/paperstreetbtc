@@ -238,7 +238,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // plus the screener's 30-min quote rule: on a weekend the Worker
   // still refreshes (fresh asOf) but Finnhub returns Friday's close,
   // whose t is days old — that must never become a point.
-  var WORKER_URL = 'https://paperstreet-quotes.SUBDOMAIN.workers.dev/';
+  var WORKER_URL = 'https://paperstreet-quotes.schadha08.workers.dev/';
   var WORKER_MAX_AGE_MS = 20 * 60 * 1000; // same ~20 min as desk-live
   var WORKER_QUOTE_MAX_AGE_MS = 30 * 60 * 1000; // same 30 min as screener.js
   var workerLive = null; // {asOfMs, bySym:{sym:{close, t}}} or null
