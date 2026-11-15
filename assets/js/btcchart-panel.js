@@ -1384,10 +1384,25 @@ window.__BTC_SET_NATIVE_LINE=P.setNativeLine;
 
 var chartP=null;
 function needChart(){
-  /* EXPERIMENT (Sun 15 Nov 2026, 30-min live test): Chart.js removed.
-     Native charts only — resolve immediately, never load the library.
-     REVERT AFTER TEST. */
-  return Promise.resolve();
+  if(window.Chart)return Promise.resolve();
+  if(chartP)return chartP;
+  chartP=new Promise(function(ok,no){
+    /* Leftover tags from a failed inject have no Chart and no second load event —
+       remove them so a retry starts a fresh script rather than hanging. */
+    document.querySelectorAll('script[src*="chart.umd.min.js"]').forEach(function(el){
+      if(!window.Chart)el.remove();
+    });
+    var s=document.createElement('script');
+    s.src=U('../vendor/chart.umd.min.js');
+    s.onload=function(){ok();};
+    s.onerror=function(){
+      if(s.parentNode)s.parentNode.removeChild(s);
+      chartP=null;
+      no(new Error('chart'));
+    };
+    document.head.appendChild(s);
+  });
+  return chartP;
 }
 /* Pill-expand morph, 3 Nov 2026: the dialog grows out of the pill that opened it (FLIP:
    measure the pill rect and the dialog's final rect, start the dialog scaled/translated
