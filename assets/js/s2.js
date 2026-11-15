@@ -106,6 +106,11 @@ let NATIVE_S2 = true;
 let nativeDrawn = false; /* true while the native YTD chart is on the canvas */
 let s2Hover = -1; /* hovered month index, -1 = none */
 let nativeGeom = null; /* {lbls, datasets, xs, plot} of the last native draw */
+/* Theme-aware colour helper (same rule as window.psC in index.html /
+   compare.js); defined locally so s2.js works standalone in tests. */
+var s2C = (typeof psC === 'function') ? psC : function(d, l){
+  return document.documentElement.getAttribute('data-theme') === 'light' ? l : d;
+};
 
 function s2NiceNum(x){
   /* Chart.js niceNum (vendored chart.umd.min.js, function B), copied from
@@ -186,8 +191,10 @@ function drawNativeYTD(lbls, datasets){
      objects render() builds for Chart.js (label, data, borderColor,
      backgroundColor, borderWidth, tension, fill, pointRadius,
      pointHoverRadius, borderDash). Returns true on success, false on any
-     failure (render() then falls back to Chart.js). Colours match the
-     Chart.js config exactly (#1e293b grid, #9aa6bc ticks/legend). */
+     failure (render() then falls back to Chart.js). Grid/tick/legend
+     colours match compare.js (dark #1e293b grid, #9aa6bc ticks; light
+     rgba(15,23,42,.08) grid, #475569 ticks). The hover tooltip keeps
+     compare.js's dark box in both themes, as compare.js does. */
   try{
     var cv = document.getElementById('ytdChart');
     if (!cv || !cv.getContext) return false;
@@ -202,25 +209,52 @@ function drawNativeYTD(lbls, datasets){
     var FONT = '12px Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
     var TFONT = '11px Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
     var BFONT = '700 12px Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
+    /* Grid/tick/legend colours, matching compare.js (dark grid #1e293b,
+       light grid rgba(15,23,42,.08); ticks #9aa6bc / #475569). Dark mode
+       is unchanged. Note: compare.js's native YGRID is a constant
+       rgba(255,255,255,.05) — invisible in light mode — so the hero uses
+       compare.js's light x-grid colour for both axes, keeping the grid
+       visible but soft. */
+    var TICK = s2C('#9aa6bc', '#475569');
+    var GRID = s2C('#1e293b', 'rgba(15,23,42,.08)');
     /* data range over all visible series */
     var lo = Infinity, hi = -Infinity;
     datasets.forEach(function(ds){
       ds.data.forEach(function(v){ if (v != null && !isNaN(v)){ if (v < lo) lo = v; if (v > hi) hi = v; } });
     });
     if (!isFinite(lo)) return false;
-    /* legend layout (top, the Chart.js default position), wrapping rows */
+    /* legend layout (top, the Chart.js default position), wrapping rows.
+       A single label wider than the canvas (the long backup-source
+       benchmark label at phone width) wraps onto extra lines instead of
+       overflowing — the wording is unchanged, only the line breaks. */
     ctx.font = FONT;
+    var gap = 16, rowH = 20;
+    function s2WrapLabel(text, maxW){
+      var words = String(text).split(' '), lines = [], line = '';
+      words.forEach(function(wd){
+        var t = line ? line + ' ' + wd : wd;
+        if (line && ctx.measureText(t).width > maxW){ lines.push(line); line = wd; }
+        else line = t;
+      });
+      if (line) lines.push(line);
+      return lines;
+    }
     var items = datasets.map(function(ds){
-      return { ds: ds, w: 12 + 4 + ctx.measureText(ds.label).width };
+      var lines = s2WrapLabel(ds.label, Math.max(40, W - 16));
+      var w = 16;
+      lines.forEach(function(ln){ var lw = 16 + ctx.measureText(ln).width; if (lw > w) w = lw; });
+      return { ds: ds, lines: lines, w: w, h: lines.length * rowH };
     });
-    var gap = 16, rowH = 20, rows = [], row = [], rowW = 0;
+    var rows = [], row = [], rowW = 0, rowHgt = rowH;
     items.forEach(function(it){
       var w = it.w + (row.length ? gap : 0);
-      if (row.length && rowW + w > W){ rows.push(row); row = []; rowW = 0; }
+      if (row.length && rowW + w > W){ rows.push({ items: row, h: rowHgt }); row = []; rowW = 0; rowHgt = rowH; }
       row.push(it); rowW += (row.length === 1 ? it.w : w);
+      if (it.h > rowHgt) rowHgt = it.h;
     });
-    if (row.length) rows.push(row);
-    var legendH = 4 + rows.length * rowH + 6;
+    if (row.length) rows.push({ items: row, h: rowHgt });
+    var legendH = 4 + rows.reduce(function(s, r){ return s + r.h; }, 0) + 6;
+    var legInfo = { rows: rows.length, maxLineW: Math.max.apply(null, items.map(function(it){ return it.w; })), canvasW: W };
     /* y ticks (Chart.js nice ticks) */
     var ticks = s2NiceTicks(lo, hi, H - legendH - 18);
     var yTop = ticks[ticks.length - 1], yBot = ticks[0];
@@ -235,30 +269,35 @@ function drawNativeYTD(lbls, datasets){
     for (var i = 0; i < n; i++) xs.push(padL + (n === 1 ? 0.5 : i / (n - 1)) * (W - padL - padR));
     /* legend */
     ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-    rows.forEach(function(rw, ri){
-      var y = 4 + ri * rowH + rowH / 2, x = 0;
-      rw.forEach(function(it){
+    var legY = 4;
+    rows.forEach(function(rw){
+      var x = 0;
+      rw.items.forEach(function(it){
         var ds = it.ds;
+        var cy = legY + rowH / 2;
         ctx.strokeStyle = ds.borderColor; ctx.lineWidth = ds.borderWidth || 2;
         ctx.setLineDash(ds.borderDash || []);
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 12, y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, cy); ctx.lineTo(x + 12, cy); ctx.stroke();
         ctx.setLineDash([]);
         if (!ds.borderDash){
-          ctx.beginPath(); ctx.arc(x + 6, y, 3, 0, Math.PI * 2);
+          ctx.beginPath(); ctx.arc(x + 6, cy, 3, 0, Math.PI * 2);
           ctx.fillStyle = ds.borderColor; ctx.fill();
         }
-        ctx.fillStyle = '#9aa6bc';
-        ctx.fillText(ds.label, x + 16, y);
+        ctx.fillStyle = TICK;
+        it.lines.forEach(function(ln, li){
+          ctx.fillText(ln, x + 16, legY + li * rowH + rowH / 2);
+        });
         x += it.w + gap;
       });
+      legY += rw.h;
     });
     /* y gridlines + labels */
     ctx.font = TFONT;
     ticks.forEach(function(t){
       var y = toY(t);
-      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+      ctx.strokeStyle = GRID; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-      ctx.fillStyle = '#9aa6bc'; ctx.textAlign = 'right';
+      ctx.fillStyle = TICK; ctx.textAlign = 'right';
       ctx.fillText(s2FmtVal(t), padL - 6, y);
     });
     ctx.textAlign = 'left';
@@ -270,9 +309,9 @@ function drawNativeYTD(lbls, datasets){
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     for (var xi = 0; xi < n; xi++){
       if (xi % step !== 0) continue;
-      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+      ctx.strokeStyle = GRID; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(xs[xi], padT); ctx.lineTo(xs[xi], padB); ctx.stroke();
-      ctx.fillStyle = '#9aa6bc';
+      ctx.fillStyle = TICK;
       ctx.fillText(lbls[xi], xs[xi], H - 5);
     }
     ctx.textAlign = 'left';
@@ -361,6 +400,7 @@ function drawNativeYTD(lbls, datasets){
       ctx.textBaseline = 'alphabetic';
     }
     nativeGeom = { lbls: lbls, datasets: datasets, xs: xs, plot: plot };
+    window.__S2_NATIVE_LEGEND = legInfo;
     window.__S2_NATIVE_LAYOUT = { labels: lbls.slice(), series: datasets.map(function(ds){ return ds.label; }), points: n, hover: s2Hover };
     window.__S2_NATIVE_HOVER = s2Hover;
     return true;
@@ -401,14 +441,19 @@ function s2SetHover(idx){
 
 /* Resize: coalesced via requestAnimationFrame (the Stage 2 nativeResize
    pattern — iOS fires many resize events while the toolbar collapses).
-   Re-rendering is idempotent (stats/buttons recompute identically). */
+   Re-rendering is idempotent (stats/buttons recompute identically).
+   The redraw is NOT gated on a previous successful draw: if the first
+   draw failed because the canvas was under 40px (hidden tab, collapsed
+   layout), a later resize or the tab becoming visible retries the native
+   draw instead of staying blank until a click. */
 var s2Raf = 0;
 function s2Resize(){
   if (s2Raf) return;
-  var f = function(){ s2Raf = 0; if (nativeDrawn) render(); };
+  var f = function(){ s2Raf = 0; render(); };
   s2Raf = window.requestAnimationFrame ? window.requestAnimationFrame(f) : setTimeout(f, 16);
 }
 window.addEventListener('resize', s2Resize);
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) s2Resize(); });
 try{
   if (window.ResizeObserver){
     var _cv = document.getElementById('ytdChart');
@@ -473,11 +518,15 @@ function render() {
   const lbls = meView ? (meView.extra ? labels.concat([meView.extra.label]) : labels.slice(0, meView.n)) : (liveNow ? labels.concat(['Now']) : labels.slice());
   ytdLbl();
   /* Stage 4: native first; Chart.js stays the fallback. A native draw
-     replaces any Chart.js instance on this canvas so the two never fight. */
+     replaces any Chart.js instance on this canvas so the two never fight.
+     Destroy the Chart.js instance BEFORE the native draw: Chart.js
+     destroy() restores the canvas's original size, which would clear a
+     native drawing done before it (seen when a tiny first draw fell back
+     to Chart.js and a later resize went native). */
   if (NATIVE_S2){
     s2Hover = -1;
+    if (chart){ chart.destroy(); chart = null; }
     if (drawNativeYTD(lbls, datasets)){
-      if (chart){ chart.destroy(); chart = null; }
       nativeDrawn = true;
       window.__S2_NATIVE_DRAWN = true;
       return;
@@ -497,10 +546,10 @@ function render() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: true, labels: { color: '#9aa6bc', boxWidth: 12 } } },
+      plugins: { legend: { display: true, labels: { color: s2C('#9aa6bc', '#475569'), boxWidth: 12 } } },
       scales: {
-        x: { grid: { color: '#1e293b' }, ticks: { color: '#9aa6bc' } },
-        y: { grid: { color: '#1e293b' }, ticks: { color: '#9aa6bc', callback: v => v } }
+        x: { grid: { color: s2C('#1e293b', 'rgba(15,23,42,.08)') }, ticks: { color: s2C('#9aa6bc', '#475569') } },
+        y: { grid: { color: s2C('#1e293b', 'rgba(15,23,42,.08)') }, ticks: { color: s2C('#9aa6bc', '#475569'), callback: v => v } }
       },
       interaction: { mode: 'index', intersect: false }
     }
