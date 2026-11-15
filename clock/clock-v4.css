@@ -731,6 +731,34 @@ html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-sym{color:#0e7490}
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.up{color:#15803d}
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.down{color:#b91c1c}
 
+/* Batch B item 12 (15 Nov 2026): "Drag to move" hint under the price
+   pill. Shown once, on entering full-screen chart mode, until the user
+   has moved the pill (localStorage ps-clock-pxpill-dragged); fades after
+   ~4s. Absolutely positioned under the pill, so the pill's transform
+   carries it along when dragged. pointer-events:none so it can never
+   steal a drag; aria-hidden so it never reaches a screen reader. */
+html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint{
+  position:absolute;left:50%;top:calc(100% + 12px);transform:translateX(-50%);
+  display:none;padding:7px 16px;border-radius:999px;
+  background:rgba(7,11,24,.85);color:#94a3b8;
+  border:1px solid rgba(148,163,184,.35);
+  font:600 15px/1.4 Inter,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .6s ease;
+}
+html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint.show{display:block;opacity:1}
+html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint.fade{opacity:0}
+html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint{
+  background:rgba(255,255,255,.94);color:#475569;border-color:rgba(15,23,42,.2);
+}
+@media (prefers-reduced-motion:reduce){
+  html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint{transition:none}
+}
+@media (max-width:620px),(max-height:500px){
+  html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint{
+    top:calc(100% + 8px);padding:5px 12px;font-size:12px;
+  }
+}
+
 /* ---- CF-4 add-on 3 (14 Nov 2026): theme dot, price-only view only ----
    The floating theme pill (z-index 50) sits behind the full-screen stage
    (z-index 100), so the price-only view has no theme control at all.

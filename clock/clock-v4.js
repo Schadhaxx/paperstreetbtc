@@ -54,6 +54,10 @@
     syncIpadFs();
     placeWake();
     setBtns();
+    /* Batch B item 12: the "Drag to move" hint shows on entering chart
+       mode and hides on leaving it (showPillHint is defined with the
+       pill code below; apply only runs from user events, so it exists). */
+    if (m === 'chart') showPillHint(); else hidePillHint();
     kick();
     after();
   }
@@ -164,6 +168,38 @@
   var chgEl = document.getElementById('chg');
   var plot = stage.querySelector('.v4-plot');
   var KEY = 'ps-clock-pxpill', pos = null, drag = null, fsExitPending = false;
+  /* Batch B item 12: "Drag to move" hint under the pill. Shown once, on
+     entering chart mode, until the user has moved the pill (flag in
+     localStorage, so it never shows again on that device); fades after
+     ~4s. A tap does not count — only a real drag or a keyboard move. */
+  var HINT_KEY = 'ps-clock-pxpill-dragged';
+  var hint = document.getElementById('pxPillHint'), hintTimer = null;
+  function hintSeen() {
+    try { return localStorage.getItem(HINT_KEY) === '1'; } catch (e) { return false; }
+  }
+  function hidePillHint() {
+    if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+    if (!hint) return;
+    hint.classList.remove('show');
+    hint.classList.remove('fade');
+  }
+  function fadePillHint() {
+    if (!hint || !hint.classList.contains('show')) return;
+    hint.classList.add('fade');
+    hintTimer = setTimeout(hidePillHint, 700);
+  }
+  function showPillHint() {
+    if (!hint || mode !== 'chart' || hintSeen()) return;
+    if (hint.classList.contains('show')) return;
+    hint.classList.remove('fade');
+    hint.classList.add('show');
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(fadePillHint, 4000);
+  }
+  function markPillDragged() {
+    try { localStorage.setItem(HINT_KEY, '1'); } catch (e) {}
+    hidePillHint();
+  }
   try { var sv = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (sv && isFinite(sv.fx) && isFinite(sv.fy)) pos = { fx: sv.fx, fy: sv.fy }; } catch (e) {}
   function syncPill() {
     if (!pill || !priceEl) return;
@@ -231,7 +267,7 @@
       var b = bounds(); if (!b) return;
       var m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(pill.style.transform || '');
       var cx = m ? +m[1] : b.x0, cy = m ? +m[2] : b.y0;
-      drag = { id: e.pointerId, dx: e.clientX - cx, dy: e.clientY - cy, b: b };
+      drag = { id: e.pointerId, dx: e.clientX - cx, dy: e.clientY - cy, b: b, x0: cx, y0: cy, moved: false };
       try { pill.setPointerCapture(e.pointerId); } catch (er) {}
       pill.classList.add('dragging');
       e.preventDefault(); e.stopPropagation();
@@ -248,6 +284,12 @@
     pill.addEventListener('pointermove', function (e) {
       if (!drag || e.pointerId !== drag.id) return;
       var b = drag.b;
+      /* Batch B item 12: a real drag (pointer actually moved from where
+         the drag started — a tap fires no pointermove, and a push against
+         the clamp still counts as trying to drag) hides the hint for good. */
+      if (!drag.moved && (e.clientX - drag.dx !== drag.x0 || e.clientY - drag.dy !== drag.y0)) {
+        drag.moved = true; markPillDragged();
+      }
       var x = Math.min(b.x0 + b.sx, Math.max(b.x0, e.clientX - drag.dx));
       var y = Math.min(b.y0 + b.sy, Math.max(b.y0, e.clientY - drag.dy));
       pos = { fx: b.sx ? (x - b.x0) / b.sx : 0, fy: b.sy ? (y - b.y0) / b.sy : 0 };
@@ -275,7 +317,11 @@
       if (k === 'Home') {
         pos = null;
         try { sessionStorage.removeItem(KEY); } catch (er) {}
-        placePill(); e.preventDefault(); e.stopPropagation(); return;
+        placePill();
+        /* Batch B item 12: a keyboard move is the same discovery as a
+           drag — the user knows the pill moves, so the hint is done. */
+        markPillDragged();
+        e.preventDefault(); e.stopPropagation(); return;
       }
       if (k === 'ArrowLeft') dx = -step; else if (k === 'ArrowRight') dx = step;
       else if (k === 'ArrowUp') dy = -step; else if (k === 'ArrowDown') dy = step;
@@ -288,6 +334,7 @@
       pos = { fx: b.sx ? (x - b.x0) / b.sx : 0, fy: b.sy ? (y - b.y0) / b.sy : 0 };
       pill.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
       try { sessionStorage.setItem(KEY, JSON.stringify(pos)); } catch (er) {}
+      markPillDragged(); /* Batch B item 12: keyboard move counts as a move */
       e.preventDefault(); e.stopPropagation();
     });
     syncPill();
