@@ -25,18 +25,23 @@ function etDateTime(ms){try{return new Date(ms).toLocaleString('en-US',{timeZone
    header was set but before the chart was created — labels/header updated, chart never redrew.
    Use ET when present, otherwise compute the same 00:00 UTC close in ET directly. */
 function provCloseLabel(){if(window.ET&&ET.btcCloseLabel)return ET.btcCloseLabel();try{return new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth(),new Date().getUTCDate()+1)).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric'})+' ET';}catch(e){return '7 PM ET';}}
+/* Batch B bug 12: 8s-timeout fetch, same pattern as the price path
+   (btcchart.js tf). A stalled external fetch must fail fast so the
+   fallbacks run — without a timeout the first paint waits on the network
+   stack (~30-60s) and the chart stays blank. */
+function tf8(u,o){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},8000):0;o=o||{};if(c)o.signal=c.signal;return fetch(u,o).then(function(r){clearTimeout(t);return r;},function(e){clearTimeout(t);throw e;});}
 function getIntraday(){
   if(intraP)return intraP;
   var now=Date.now();
   if(INTRA&&now-INTRA_AT<60000)return Promise.resolve(INTRA);
   var end=new Date(now).toISOString(),start=new Date(now-24*3600*1000).toISOString();
-  var cb=fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&start='+start+'&end='+end,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+  var cb=tf8('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&start='+start+'&end='+end,{cache:'no-store'}) /* Batch B bug 12: 8s abort */.then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
     if(!Array.isArray(j))throw new Error('bad candles');
     var pts=j.map(function(c){return {t:c[0]*1000,o:c[3],h:c[2],l:c[1],v:c[4]};}).filter(function(p){return isFinite(p.v)&&p.v>0&&p.t>now-24*3600*1000;}).sort(function(a,b){return a.t-b.t;});
     if(pts.length<2)throw new Error('too few candles');
     return {pts:pts.slice(-96),src:'coinbase'};
   });
-  var cg=cb.catch(function(){return fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+  var cg=cb.catch(function(){return tf8('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1',{cache:'no-store'}) /* Batch B bug 12: 8s abort */.then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
     if(!j||!Array.isArray(j.prices))throw new Error('bad market chart');
     var pts=j.prices.map(function(pr){return {t:pr[0],v:pr[1]};}).filter(function(p){return isFinite(p.v)&&p.v>0;}).sort(function(a,b){return a.t-b.t;});
     if(pts.length<2)throw new Error('too few prices');
@@ -681,12 +686,12 @@ function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&
 function onK(K,M,d){var lo=0,hi=K.length-1,a=-1;while(lo<=hi){var mid=(lo+hi)>>1;if(K[mid]<=d){a=mid;lo=mid+1;}else hi=mid-1;}return a<0?null:M[K[a]];}
 function spxOn(d){return onK(SPXK,SPX,d);}function gldOn(d){return onK(GOLDK,GOLD,d);}function mstrOn(d){return onK(MSTRK,MSTR,d);}
 function getData(){if(dataP)return dataP;
-  var st=fetch(U('../data/btc-daily.json')).then(function(r){return r.json();});
-  var sx=fetch(U('../data/spx-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  var gx=fetch(U('../data/gold-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  var mx=fetch(U('../data/mstr-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  var hj=fetch(RAW+'?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  var cb=fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var st=tf8(U('../data/btc-daily.json')).then(function(r){return r.json();}); /* Batch B bug 12: 8s abort */
+  var sx=tf8(U('../data/spx-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var gx=tf8(U('../data/gold-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var mx=tf8(U('../data/mstr-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var hj=tf8(RAW+'?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var cb=tf8('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
   dataP=Promise.all([st,hj,cb,sx,gx,mx]).then(function(r){var m={},s=r[0].d,end=r[0].end;s.forEach(function(p){m[p[0]]=p[1];});
     var today=new Date().toISOString().slice(0,10);
     if(Array.isArray(r[2]))r[2].forEach(function(c){var d=new Date(c[0]*1000).toISOString().slice(0,10);if(d>end&&d<today)m[d]=c[4];});
@@ -1437,7 +1442,7 @@ function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&
   Promise.all([getData(),needChart()]).then(draw).catch(function(){if(!window.Chart&&P.showErr){P.showErr();}else{$('bcRr').textContent='Chart data unavailable right now.';}});}
 function close(){if(INLINE)return;if(!dlg||dlg.hidden)return;
   var finish=function(){cancelNativeResize();dlg.hidden=true;dim.hidden=true;dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
-    [pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
+    [pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','false');}); /* Batch B bug 2: open() sets btcLive true; close() must reset it */
     var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();};
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
     var m=morphToPill(opener);

@@ -430,9 +430,9 @@
       })
       .catch(function () {
         var b = document.getElementById('screener-body');
-        if (b) b.innerHTML = '<tr><td colspan="5">Screener data could not be loaded.</td></tr>';
+        if (b) b.innerHTML = '<p>Screener data could not be loaded.</p>'; /* Batch B finding 7: <tr> in a <div> is dropped by the browser */
         var ib = document.getElementById('indicators-body');
-        if (ib) ib.innerHTML = '<tr><td colspan="4">Screener data could not be loaded.</td></tr>';
+        if (ib) ib.innerHTML = '<p>Screener data could not be loaded.</p>';
       });
     document.addEventListener('click', function (e) {
       var btn = e.target.closest ? e.target.closest('.note-btn') : null;
@@ -443,6 +443,17 @@
       if (e.key === 'Escape') closeNotePill();
     });
     window.addEventListener('scroll', closeNotePill, true);
+    /* Batch B bug 5: the floating 'Live BTC Chart' pill overlaps stock tile
+       prices while scrolling — hide it on scroll, show it again shortly
+       after the scroll stops. */
+    var clockFloat = document.querySelector('.clock-float'), scrollHideT = 0;
+    if (clockFloat) {
+      window.addEventListener('scroll', function () {
+        clockFloat.classList.add('scroll-hide');
+        clearTimeout(scrollHideT);
+        scrollHideT = setTimeout(function () { clockFloat.classList.remove('scroll-hide'); }, 200);
+      }, true);
+    }
     window.addEventListener('resize', closeNotePill);
     var search = document.getElementById('screener-search');
     if (search) search.addEventListener('input', function (e) { state.q = e.target.value; render(); });

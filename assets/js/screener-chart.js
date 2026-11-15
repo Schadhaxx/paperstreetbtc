@@ -133,6 +133,18 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   var hi = null;
   var native = null; // native line geometry for hover/click/redraw, or null
   STOCKS.forEach(function (s) { on[s] = (s === 'IBIT' || s === 'MSTR'); });
+  /* Batch B bug 8: persist the comparison selection in localStorage so a
+     fresh Desk tab shows the same selection as the tab it came from.
+     First visit keeps the IBIT+MSTR default; a saved selection wins.
+     render() syncs the chips from on[], so restoring here is enough. */
+  var SEL_KEY = 'ps-desk-sel';
+  function saveSel() { try { localStorage.setItem(SEL_KEY, JSON.stringify(STOCKS.filter(function (s) { return on[s]; }))); } catch (e) {} }
+  try {
+    var savedSel = JSON.parse(localStorage.getItem(SEL_KEY) || 'null');
+    if (Array.isArray(savedSel) && savedSel.length && savedSel.every(function (s) { return STOCKS.indexOf(s) !== -1; })) {
+      STOCKS.forEach(function (s) { on[s] = savedSel.indexOf(s) !== -1; });
+    }
+  } catch (e) {}
 
   function motionOK() {
     return !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -1052,7 +1064,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   }
   function setHighlight(sym, scrollCard) {
     if (!sym) return;
-    if (STOCKS.indexOf(sym) !== -1 && !on[sym]) on[sym] = true;
+    if (STOCKS.indexOf(sym) !== -1 && !on[sym]) { on[sym] = true; saveSel(); }
     if (BENCH.indexOf(sym) !== -1) benchOn[sym] = true;
     hi = sym;
     highlightCard(sym, scrollCard);
@@ -1096,6 +1108,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         var sym = b.getAttribute('data-cmp-symbol');
         on[sym] = !on[sym];
         if (!on[sym] && hi === sym) hi = null;
+        saveSel();
         render();
       });
     });

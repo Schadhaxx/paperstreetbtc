@@ -193,7 +193,12 @@ function drawNativeCmp(lbls, datasets){
       ctx.strokeStyle = XGRID; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(xs[xi], padT); ctx.lineTo(xs[xi], padB); ctx.stroke();
       ctx.fillStyle = TICK;
-      ctx.fillText(lbls[xi], xs[xi], H - 5);
+      /* Batch B bug 9: keep every x label fully inside the plot — the first
+         label is centred on the left edge (it overlapped the y-axis ticks)
+         and the last is centred on the right edge (it clipped, '2026-1'). */
+      var lw = ctx.measureText(lbls[xi]).width;
+      var cx = Math.max(padL + lw / 2, Math.min(W - padR - lw / 2, xs[xi]));
+      ctx.fillText(lbls[xi], cx, H - 5);
     }
     ctx.textAlign = 'left';
     /* series (split into segments at nulls, like Chart.js spanGaps:false) */
@@ -454,7 +459,7 @@ function lumpSeries(k,d,c){const s=L.sleeves[k],h={};const op=(dd,a)=>{const o=O
  return out}
 function customVals(){const cS=document.getElementById('pvS');if(!cS||!document.getElementById('pvCalc'))return null;
  const k=cS.value;if(!L.sleeves[k])return null;let a=+document.getElementById('pvA').value||0;if(!(a>0))return null;
- let d=document.getElementById('pvD').value||'2026-01-01';if(d<'2026-01-01')d='2026-01-01';
+ let d=document.getElementById('pvD').value||'2026-01-01';if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||isNaN(Date.parse(d+'T00:00:00Z')))d='2026-01-01';if(d<'2026-01-01')d='2026-01-01'; /* Batch B bug 10: validate the typed ISO date */
  const s0=d==='2026-01-01'?L.base:(lastOn(d)||L.base);const v=SER[k].v;const out={};
  for(const t of D){if(t<s0)continue;out[t]=a*v[t]/v[s0]}
  document.querySelectorAll('#pvX .pvx-row').forEach(r=>{const c=+r.querySelector('.pvx-a').value||0,dd=r.querySelector('.pvx-d').value;
@@ -594,7 +599,7 @@ function addRow(amt,dt){const r=document.createElement('div');r.className='pvx-r
  r.innerHTML='<label>Amount (USD)<input type="number" class="pvx-a" min="1" step="1" inputmode="numeric" value="'+(amt||1000)+'"></label><label>Date<input type="date" class="pvx-d" min="2026-01-01" max="'+LAST+'" value="'+(dt||LAST)+'"></label><button type="button" class="pvx-rm" aria-label="Remove contribution">✕</button><p class="note pvx-n"></p>';
  r.querySelector('.pvx-rm').onclick=()=>{r.remove();calc()};r.querySelectorAll('input').forEach(i=>i.oninput=calc);cW.appendChild(r);calc()}
 cAdd.onclick=()=>addRow();
-function calc(e){e&&e.preventDefault();VEHGAP=null;const k=cS.value;let a=+document.getElementById('pvA').value||0;let d=document.getElementById('pvD').value||'2026-01-01';if(d<'2026-01-01')d='2026-01-01';
+function calc(e){e&&e.preventDefault();VEHGAP=null;const k=cS.value;let a=+document.getElementById('pvA').value||0;let d=document.getElementById('pvD').value||'2026-01-01';if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||isNaN(Date.parse(d+'T00:00:00Z')))d='2026-01-01';if(d<'2026-01-01')d='2026-01-01'; /* Batch B bug 10: validate the typed ISO date */
  const s0=d==='2026-01-01'?L.base:(lastOn(d)||L.base);const v=SER[k].v;let sv=a*v[LAST]/v[s0],bv=a*CL[LAST].BTC/CL[s0].BTC,inv=a,nx=0;
  cW.querySelectorAll('.pvx-row').forEach(r=>{const c=+r.querySelector('.pvx-a').value||0,dd=r.querySelector('.pvx-d').value,n=r.querySelector('.pvx-n');
   if(!(c>0)){n.textContent='Enter an amount above $0 to include this contribution.';return}
