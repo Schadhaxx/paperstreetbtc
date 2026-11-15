@@ -487,7 +487,8 @@ html[data-theme="light"] body.ps-clock .v4-caption{color:#475569;}
 body.ps-clock .v4-fs{display:none;gap:6px;flex-wrap:wrap;margin-top:12px}
 body.ps-clock .v4-fs-btn,
 body.ps-clock .v4-fs-exit,
-body.ps-clock .v4-fs-tochart{
+body.ps-clock .v4-fs-tochart,
+body.ps-clock .v4-fs-toprice{
   display:inline-flex;align-items:center;gap:6px;
   background:transparent;color:#94a3b8;
   border:1px solid #1e293b;border-radius:999px;
@@ -500,10 +501,12 @@ body.ps-clock .v4-fs-exit svg,
 body.ps-clock .v4-fs-tochart svg{width:12px;height:12px;flex:0 0 auto;display:block}
 body.ps-clock .v4-fs-btn:hover,
 body.ps-clock .v4-fs-exit:hover,
-body.ps-clock .v4-fs-tochart:hover{color:#22d3ee;border-color:rgba(34,211,238,.55)}
+body.ps-clock .v4-fs-tochart:hover,
+body.ps-clock .v4-fs-toprice:hover{color:#22d3ee;border-color:rgba(34,211,238,.55)}
 body.ps-clock .v4-fs-btn:focus-visible,
 body.ps-clock .v4-fs-exit:focus-visible,
-body.ps-clock .v4-fs-tochart:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+body.ps-clock .v4-fs-tochart:focus-visible,
+body.ps-clock .v4-fs-toprice:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
 body.ps-clock .v4-fs-exit{
   display:none;position:absolute;z-index:5;
   top:calc(10px + env(safe-area-inset-top,0px));
@@ -513,6 +516,13 @@ body.ps-clock .v4-fs-exit{
 /* "Switch to chart" lives in the full-screen tools bar, price-only mode. */
 body.ps-clock .v4-fs-tochart{display:none;white-space:nowrap}
 html.v4-fs-price body.ps-clock .v4-fs-bar .v4-fs-tochart{
+  display:inline-flex;position:static;
+  background:rgba(7,11,24,.88);
+}
+/* CF-4 add-on 2: "Price clock" lives in the same bar, chart-only mode —
+   the mirror of "Switch to chart". Same pill style, same bar. */
+body.ps-clock .v4-fs-toprice{display:none;white-space:nowrap}
+html.v4-fs-chart body.ps-clock .v4-fs-bar .v4-fs-toprice{
   display:inline-flex;position:static;
   background:rgba(7,11,24,.88);
 }
@@ -556,12 +566,15 @@ html[data-theme="light"].v4-fs-on body.ps-clock .v4-stage{background:#f6f8fb}
 html[data-theme="light"] body.ps-clock .v4-stage::backdrop{background:#f6f8fb}
 html[data-theme="light"] body.ps-clock .v4-fs-btn,
 html[data-theme="light"] body.ps-clock .v4-fs-exit,
-html[data-theme="light"] body.ps-clock .v4-fs-tochart{color:#475569;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .v4-fs-tochart,
+html[data-theme="light"] body.ps-clock .v4-fs-toprice{color:#475569;border-color:#e2e8f0}
 html[data-theme="light"] body.ps-clock .v4-fs-exit,
-html[data-theme="light"] body.ps-clock .v4-fs-tochart{background:rgba(255,255,255,.92)}
+html[data-theme="light"] body.ps-clock .v4-fs-tochart,
+html[data-theme="light"] body.ps-clock .v4-fs-toprice{background:rgba(255,255,255,.92)}
 html[data-theme="light"] body.ps-clock .v4-fs-btn:hover,
 html[data-theme="light"] body.ps-clock .v4-fs-exit:hover,
-html[data-theme="light"] body.ps-clock .v4-fs-tochart:hover{color:#0e7490;border-color:#22d3ee}
+html[data-theme="light"] body.ps-clock .v4-fs-tochart:hover,
+html[data-theme="light"] body.ps-clock .v4-fs-toprice:hover{color:#0e7490;border-color:#22d3ee}
 /* 700-1199px split (e.g. iPad landscape 1024x768): drop the "Chart" label so
    the compare chips (+ MSTR) are not clipped. */
 @media (min-aspect-ratio:11/10) and (min-width:700px) and (max-width:1199px){
@@ -606,33 +619,97 @@ html.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-right:calc(var(--v4-fs-b
 }
 html.v4-fs-chart body.ps-clock .v4-plot{position:relative}
 body.ps-clock .v4-px-pill{display:none}
+/* CF-4 add-on 1 (14 Nov 2026): the pill is 2x on desktop/iPad (font,
+   padding, gap, border, change label, shadows all doubled). iPhone keeps
+   its smaller size — see the (max-width:620px),(max-height:500px) rule
+   below, which resets every scaled value. The calm pulse is a breathing
+   glow on a ::before halo: only its opacity animates (compositor-friendly,
+   no layout, no JS timers), so the pill never changes size. */
 html.v4-fs-chart body.ps-clock .v4-px-pill{
-  display:inline-flex;align-items:baseline;gap:16px;
+  display:inline-flex;align-items:baseline;gap:32px;
   position:absolute;z-index:4;left:0;top:0;
-  padding:14px 28px 14px 24px;border-radius:999px;
+  padding:28px 56px 28px 48px;border-radius:999px;
   background:rgba(7,11,24,.82);color:#e8eef7;
-  border:2px solid rgba(34,211,238,.45);
-  box-shadow:0 12px 44px rgba(0,0,0,.45),0 0 36px rgba(34,211,238,.12);
+  border:4px solid rgba(34,211,238,.45);
+  box-shadow:0 24px 88px rgba(0,0,0,.45),0 0 72px rgba(34,211,238,.12);
   -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
-  font:900 40px/1.1 Inter,system-ui,sans-serif;letter-spacing:-.02em;
+  font:900 80px/1.1 Inter,system-ui,sans-serif;letter-spacing:-.02em;
   font-variant-numeric:tabular-nums;white-space:nowrap;
   cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
 }
-html.v4-fs-chart body.ps-clock .v4-px-pill.dragging{cursor:grabbing;box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 44px rgba(34,211,238,.25)}
+html.v4-fs-chart body.ps-clock .v4-px-pill::before{
+  content:"";position:absolute;inset:-6px;border-radius:999px;
+  pointer-events:none;z-index:-1;
+  box-shadow:0 0 72px 8px rgba(34,211,238,.30);
+  animation:v4-px-glow 3.5s ease-in-out infinite;
+}
+@keyframes v4-px-glow{0%,100%{opacity:.35}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  html.v4-fs-chart body.ps-clock .v4-px-pill::before{animation:none}
+}
+html.v4-fs-chart body.ps-clock .v4-px-pill.dragging{cursor:grabbing;box-shadow:0 40px 120px rgba(0,0,0,.55),0 0 88px rgba(34,211,238,.25)}
 html.v4-fs-chart body.ps-clock .v4-px-pill:focus-visible{outline:4px solid #22d3ee;outline-offset:4px}
 body.ps-clock .v4-px-pill .v4-px-sym{color:#22d3ee}
-body.ps-clock .v4-px-pill .v4-px-chg{font-size:26px;font-weight:800}
+body.ps-clock .v4-px-pill .v4-px-chg{font-size:52px;font-weight:800}
 body.ps-clock .v4-px-pill .v4-px-chg.up{color:#22c55e}
 body.ps-clock .v4-px-pill .v4-px-chg.down{color:#ef4444}
+/* CF-4 add-on 1: iPhone keeps the pill exactly as it was (32px font,
+   12/24/12/20 padding, 16px gap, 2px border, 24px change label, the
+   original shadows) — the 2x scale above is desktop/iPad only. The
+   breathing glow is smaller here to match. */
 @media (max-width:620px),(max-height:500px){
-  html.v4-fs-chart body.ps-clock .v4-px-pill{font-size:32px;padding:12px 24px 12px 20px}
+  html.v4-fs-chart body.ps-clock .v4-px-pill{font-size:32px;padding:12px 24px 12px 20px;gap:16px;border-width:2px;box-shadow:0 12px 44px rgba(0,0,0,.45),0 0 36px rgba(34,211,238,.12)}
+  html.v4-fs-chart body.ps-clock .v4-px-pill.dragging{box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 44px rgba(34,211,238,.25)}
+  html.v4-fs-chart body.ps-clock .v4-px-pill::before{box-shadow:0 0 36px 4px rgba(34,211,238,.28)}
   body.ps-clock .v4-px-pill .v4-px-chg{font-size:24px}
+  html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill{box-shadow:0 6px 20px rgba(15,23,42,.14)}
+  html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill::before{box-shadow:0 0 32px 4px rgba(14,116,144,.40)}
 }
 html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill{
   background:rgba(255,255,255,.9);color:#0f172a;border-color:rgba(14,116,144,.4);
-  box-shadow:0 6px 20px rgba(15,23,42,.14);
+  box-shadow:0 12px 40px rgba(15,23,42,.14);
+}
+html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill::before{
+  box-shadow:0 0 64px 8px rgba(14,116,144,.45);
 }
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-sym{color:#0e7490}
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.up{color:#15803d}
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.down{color:#b91c1c}
+
+/* ---- CF-4 add-on 3 (14 Nov 2026): theme dot, price-only view only ----
+   The floating theme pill (z-index 50) sits behind the full-screen stage
+   (z-index 100), so the price-only view has no theme control at all.
+   This dot fixes that: a small circle in the bottom-right corner, shown
+   only in price mode. It lives INSIDE the stage (not on the body): on
+   desktop the Fullscreen API puts the stage in the top layer, above
+   everything in the document, so a dot outside the stage would be
+   covered and untappable; inside the stage it is part of the top layer
+   (and on iPhone, where there is no element fullscreen, the stage is a
+   fixed div and the dot sits above its content the same way). The colour
+   is the mode it switches TO — white in dark mode (tap for light), dark
+   blue in light mode (tap for dark) — so it stays obvious in both themes.
+   The visible dot is 20px; the button is 44px so it is easy to tap on
+   iPhone. Safe-area insets keep it clear of the home indicator. It
+   toggles ps-theme (localStorage), the same setting the rest of the
+   clock page uses. */
+body.ps-clock .v4-theme-dot{display:none}
+html.v4-fs-price body.ps-clock .v4-theme-dot{
+  display:grid;place-items:center;
+  position:absolute;z-index:7;
+  right:calc(16px + env(safe-area-inset-right,0px));
+  bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  width:44px;height:44px;padding:0;border:0;border-radius:50%;
+  background:transparent;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+html.v4-fs-price body.ps-clock .v4-theme-dot::after{
+  content:"";width:20px;height:20px;border-radius:50%;
+  background:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,.4),0 2px 10px rgba(0,0,0,.5);
+}
+html[data-theme="light"].v4-fs-price body.ps-clock .v4-theme-dot::after{
+  background:#0f172a;
+  box-shadow:0 0 0 1px rgba(15,23,42,.3),0 2px 10px rgba(15,23,42,.3);
+}
+html.v4-fs-price body.ps-clock .v4-theme-dot:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
