@@ -619,9 +619,11 @@ html.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-right:calc(var(--v4-fs-b
    (top-left, ~50px) over the range row. Shift the row right so the 1M
    pill clears it. Scoped to html.v4-ipad-fs (iPad + native fullscreen
    only, set by clock-v4.js): iPhone never enters native fullscreen and
-   desktop has no X, so neither is affected. 56px + the stage's 14px left
-   padding = 70px clear of the left edge, ~20px past the X. */
-html.v4-ipad-fs.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-left:56px}
+   desktop has no X, so neither is affected. 80px + the stage's 14px left
+   padding = 94px clear of the left edge, ~19px past the X's right edge
+   (~75px). v2 (15 Nov): 56px left the 1D pill touching the X (~5px
+   overlap); 80px clears it with a comfortable gap. */
+html.v4-ipad-fs.v4-fs-chart body.ps-clock .v4-stage .bc-rg{padding-left:80px}
 /* Narrow screens (phone portrait): the bar gets its own row above the chart. */
 @media (max-width:620px){
   html.v4-fs-on body.ps-clock .v4-stage{padding-top:calc(54px + env(safe-area-inset-top,0px))}
