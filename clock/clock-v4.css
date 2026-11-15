@@ -664,14 +664,14 @@ body.ps-clock .v4-px-pill .v4-px-chg.down{color:#ef4444}
   html.v4-fs-chart body.ps-clock .v4-px-pill::before{box-shadow:0 0 36px 4px rgba(34,211,238,.28)}
   body.ps-clock .v4-px-pill .v4-px-chg{font-size:24px}
   html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill{box-shadow:0 6px 20px rgba(15,23,42,.14)}
-  html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill::before{box-shadow:0 0 24px 3px rgba(14,116,144,.22)}
+  html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill::before{box-shadow:0 0 32px 4px rgba(14,116,144,.40)}
 }
 html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill{
   background:rgba(255,255,255,.9);color:#0f172a;border-color:rgba(14,116,144,.4);
   box-shadow:0 12px 40px rgba(15,23,42,.14);
 }
 html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill::before{
-  box-shadow:0 0 48px 6px rgba(14,116,144,.25);
+  box-shadow:0 0 64px 8px rgba(14,116,144,.45);
 }
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-sym{color:#0e7490}
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.up{color:#15803d}
