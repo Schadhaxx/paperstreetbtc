@@ -45,6 +45,13 @@
      nav.css still applies (chip hidden on the narrowest phones). */
   .btc-pill-row .lp-cv { font-size:.85rem; padding:5px 11px; gap:6px; }
   .btc-pill-row .lp-cv svg { width:16px; height:16px; }
+  /* Keep screen on (15 Nov 2026): same Screen Wake Lock pill as the
+     clock page, at the top of the Desk. Theme-aware via --card/--txt/
+     --line (light.css redefines them); the on state is the cyan fill,
+     like the Desk's .btn.active, so it is obvious when the screen is
+     being kept on. */
+  .wake-row{display:flex;margin:12px 0 0;}
+  .wl-btn{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;position:relative}.wl-btn::after{content:"";position:absolute;inset:-12px -6px}.wl-btn[aria-pressed="true"]{background:var(--cyan);color:#05070f;border-color:var(--cyan)}.wl-btn.wl-wait{border-style:dashed}.wl-btn[hidden]{display:none}.wl-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .pills { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 4px; }
   .pill { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:8px 16px; font-size:14px; }
   .pill b { color:var(--orange); }
@@ -224,6 +231,7 @@
     <a class="brand-row" href="index.html"><picture><source type="image/webp" srcset="assets/img/owl-220.webp"><img src="assets/img/owl-220.png" alt="Paperstreet BTC"></picture><span class="brand-name">Paperstreet <span class="brand-btc">BTC</span></span></a>
     <h1>The Desk.</h1>
     <div class="btc-pill-row"><button type="button" class="hdr-tick" id="hdrTick" title="Live BTC/USD (CoinGecko) · open chart"><span class="hdr-sym">₿</span> <span id="hdrPx" aria-live="polite">—</span> <span id="hdrChg" class="hdr-chg"></span></button></div>
+    <div class="wake-row"><button type="button" class="wl-btn" id="wakeBtn" aria-pressed="false" title="Keep this screen from sleeping while the page is open" hidden>Keep screen on</button></div>
   </header>
 
   <section aria-label="Market Indicators">
@@ -344,5 +352,27 @@
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>
 
 <a class="clock-float" href="clock/index.html"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.4 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Live BTC Chart</a>
+<script>/* Keep screen on (Screen Wake Lock API), 15 Nov 2026. Desk page.
+   Same implementation as the clock page (clock/index.html): hidden where
+   navigator.wakeLock is missing. Tap requests the lock (WebKit needs a tap);
+   the browser drops it when the tab is hidden, so it is re-requested when the page is
+   visible again; if that is refused the button asks for one more tap. Never logs errors. */
+(function(){var b=document.getElementById('wakeBtn');if(!b)return;
+var wl=navigator.wakeLock;if(!wl||typeof wl.request!=='function')return;
+var want=false,lock=null,busy=false;
+function ui(st){b.setAttribute('aria-pressed',st==='on'?'true':'false');b.classList.toggle('wl-wait',st==='wait');
+  b.textContent=st==='on'?'Screen kept on':st==='wait'?'Tap to keep screen on':'Keep screen on';
+  b.title=st==='on'?'Tap to let the screen sleep again':'Keep this screen from sleeping while the page is open';}
+function acquire(fromTap){if(busy||lock||!want)return;if(document.visibilityState!=='visible'){ui('wait');return;}busy=true;
+  var p;try{p=wl.request('screen');}catch(e){p=Promise.reject(e);}
+  Promise.resolve(p).then(function(s){busy=false;if(!want){try{Promise.resolve(s.release()).catch(function(){});}catch(e){}return;}lock=s;ui('on');
+    s.addEventListener('release',function(){if(lock===s)lock=null;ui(want?'wait':'off');});
+  },function(){busy=false;lock=null;if(fromTap||!want){want=false;ui('off');}else ui('wait');});}
+function drop(){want=false;var s=lock;lock=null;ui('off');if(s){try{Promise.resolve(s.release()).catch(function(){});}catch(e){}}}
+b.addEventListener('click',function(){if(lock||(busy&&want)){drop();}else{want=true;acquire(true);}});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&want&&!lock)acquire(false);});
+b.hidden=false;ui('off');
+window.__PS_WAKE={state:function(){return {want:want,locked:!!lock,label:b.textContent,pressed:b.getAttribute('aria-pressed')};}};
+})();</script>
 </body>
 </html>
