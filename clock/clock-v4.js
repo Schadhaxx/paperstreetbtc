@@ -18,6 +18,25 @@
     return !!(stage.requestFullscreen || stage.webkitRequestFullscreen) &&
       (document.fullscreenEnabled || document.webkitFullscreenEnabled);
   }
+  function isIPad() {
+    var ua = navigator.userAgent || '';
+    if (ua.indexOf('iPad') !== -1) return true;
+    /* iPadOS 13+ reports a desktop "Macintosh" UA; any touch point tells
+       it apart from a Mac (which has none). iPhone reports "iPhone", not
+       "Macintosh", so it is excluded. The threshold is > 0, not > 1: a
+       missed iPad leaves the X covering the pills, while a stray touch
+       device on desktop would only shift the row 56px in fullscreen. */
+    return ua.indexOf('Macintosh') !== -1 && navigator.maxTouchPoints > 0;
+  }
+  /* iPad Safari draws its own forced fullscreen X (top-left, ~50px) in
+     native fullscreen, over the range row. Shift the range row right so
+     the pills clear it. Only iPad + native fullscreen: iPhone never
+     enters native fullscreen and desktop has no X, so neither is
+     affected. Re-checked on every fullscreen change — native fullscreen
+     starts async after enter(), so apply() alone cannot see it. */
+  function syncIpadFs() {
+    root.classList.toggle('v4-ipad-fs', !!(mode && isIPad() && fsEl()));
+  }
   function kick() {
     try { window.dispatchEvent(new Event('resize')); } catch (e) {}
     setTimeout(function () { try { window.dispatchEvent(new Event('resize')); } catch (e) {} }, 120);
@@ -32,6 +51,7 @@
     root.classList.toggle('v4-fs-on', !!m);
     root.classList.toggle('v4-fs-chart', m === 'chart');
     root.classList.toggle('v4-fs-price', m === 'price');
+    syncIpadFs();
     placeWake();
     setBtns();
     kick();
@@ -78,7 +98,20 @@
   document.addEventListener('keydown', function (e) {
     if ((e.key === 'Escape' || e.key === 'Esc') && mode) exit();
   });
-  function onFsChange() { if (!fsEl() && mode) exit(); else kick(); }
+  /* Video fix (15 Nov 2026): if a pill drag is in progress when the browser
+     leaves full screen, don't kill the full-screen mode (and the pill) under
+     the user's finger — defer the exit until the drag ends (endDrag re-checks
+     and exits then). Exit button / Esc / a swipe-down with no drag still exit
+     at once. `drag` / `fsExitPending` live with the pill drag state below;
+     onFsChange only ever runs on a real event, after this script has run, so
+     the hoisted vars are assigned by then. */
+  function onFsChange() {
+    syncIpadFs();
+    if (!fsEl() && mode) {
+      if (drag) { fsExitPending = true; return; }
+      exit();
+    } else kick();
+  }
   document.addEventListener('fullscreenchange', onFsChange);
   document.addEventListener('webkitfullscreenchange', onFsChange);
   /* The controls only exist in the split layout; if the screen rotates to
@@ -125,7 +158,7 @@
   var pillVal = document.getElementById('pxPillVal'), pillChg = document.getElementById('pxPillChg');
   var chgEl = document.getElementById('chg');
   var plot = stage.querySelector('.v4-plot');
-  var KEY = 'ps-clock-pxpill', pos = null, drag = null;
+  var KEY = 'ps-clock-pxpill', pos = null, drag = null, fsExitPending = false;
   try { var sv = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (sv && isFinite(sv.fx) && isFinite(sv.fy)) pos = { fx: sv.fx, fy: sv.fy }; } catch (e) {}
   function syncPill() {
     if (!pill || !priceEl) return;
@@ -198,6 +231,15 @@
       pill.classList.add('dragging');
       e.preventDefault(); e.stopPropagation();
     });
+    /* Video fix (15 Nov 2026): own the touch outright. touch-action:none in
+       CSS is the main guard, but on iPad a touch starting on the pill can
+       still be claimed by the browser as a scroll / full-screen-exit swipe;
+       a non-passive touchstart + touchmove that preventDefault() stops the
+       browser ever starting that gesture from the pill. Must be non-passive
+       — a passive listener can't preventDefault. pointerdown already fired
+       by the time touchstart runs, so this can't suppress the drag. */
+    pill.addEventListener('touchstart', function (e) { if (mode === 'chart') { e.preventDefault(); e.stopPropagation(); } }, { passive: false });
+    pill.addEventListener('touchmove', function (e) { if (mode === 'chart') { e.preventDefault(); e.stopPropagation(); } }, { passive: false });
     pill.addEventListener('pointermove', function (e) {
       if (!drag || e.pointerId !== drag.id) return;
       var b = drag.b;
@@ -213,6 +255,9 @@
       try { pill.releasePointerCapture(e.pointerId); } catch (er) {}
       try { if (pos) sessionStorage.setItem(KEY, JSON.stringify(pos)); } catch (er) {}
       e.stopPropagation();
+      /* Video fix: a full-screen exit deferred mid-drag takes effect now that
+         the finger is up (only if the browser is still out of full screen). */
+      if (fsExitPending) { fsExitPending = false; if (!fsEl() && mode) exit(); }
     };
     pill.addEventListener('pointerup', endDrag);
     pill.addEventListener('pointercancel', endDrag);
