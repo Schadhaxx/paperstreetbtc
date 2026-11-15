@@ -13,7 +13,7 @@ changes portfolio math, recaps, DCA, or official-close data.
 {
   "updated": "2026-11-14T03:20:00Z",
   "asOf": "2026-11-14T03:20:00Z",
-  "btc": { "usd": 67280, "chg24h": -4.59, "src": "Coinbase", "time": "..." },
+  "btc": { "usd": 67280, "chg24h": -4.59, "src": "Coinbase", "time": "...", "priceAt": "...", "chgAt": "...", "chgStale": false },
   "stocks": {
     "AAPL": { "c": 261.74, "pc": 259.45, "t": 1582641000, "src": "Finnhub" },
     "USDCAD": { "c": 0.7009, "pc": 0.7018, "t": 1794609216, "src": "Finnhub" }
@@ -33,6 +33,14 @@ changes portfolio math, recaps, DCA, or official-close data.
   it, or because it failed and there is no last-good value. Never fabricated.
 - `stale` / `staleSymbols` — the payload (or those symbols) came from the
   last-good cache because an upstream fetch failed.
+- `btc.chgAt` — ISO timestamp of when the 24h change was captured. Fresh
+  change: now. Carried change: its original capture time (never refreshed).
+- `btc.chgStale` — `true` when the served change is a carried last-good
+  value; `false` when fresh.
+- `btc.priceAt` — ISO timestamp of when the price was captured (`time` is
+  the same value). The stale-price branch serves `btc: null` once the price
+  is more than ~10 minutes old, so the pages fetch the price directly
+  instead of showing a stale one.
 - `GET /health` returns `{ ok: true }` and never touches an upstream provider.
 
 ## Upstream sources
@@ -46,12 +54,18 @@ changes portfolio math, recaps, DCA, or official-close data.
   as the fallback. CoinGecko is the fallback for the change because its
   fetch fails from the Worker's Cloudflare IP. CoinGecko is still the price
   fallback if Coinbase spot fails.
-- **BTC 24h change — last-good + short TTL (Nov 15).** When both change
-  sources fail in a round, the Worker serves the last good change (kept in
-  memory, and in the last-good cache for a cold isolate) instead of null,
-  so the pills keep showing a change. A payload whose change is still null
-  (no last-good value anywhere) goes stale after 15 s, not the full 55 s,
-  so the next request retries the change sources soon. The page consumers
+- **BTC 24h change — last-good, capped at 10 minutes (Nov 15).** When both
+  change sources fail in a round, the Worker serves the last good change
+  (kept in memory, and in the last-good cache for a cold isolate) instead
+  of null, so the pills keep showing a change — but only while it is at
+  most 10 minutes old (`LASTGOOD_CHG_MAX_AGE_MS = 10 * 60 * 1000`),
+  checked against its capture time. A carried value never refreshes its
+  timestamp and is marked stale (`chgAt` keeps the original capture time,
+  `chgStale: true`); past the cap, null is served so the page consumers
+  fill the change from CoinGecko instead. Old cache entries with no `chgAt`
+  serve a null change. A payload whose change is still null (no last-good
+  value anywhere) goes stale after 15 s, not the full 55 s, so the next
+  request retries the change sources soon. The page consumers
   also fill a null Worker change from CoinGecko while keeping the Worker
   price (s5.js, btcchart.js, clock).
 
