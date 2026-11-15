@@ -32,6 +32,16 @@
 // No buy/sell action.
 (function () {
   var PRICES_URL = 'https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/prices.json';
+  // CF-3 (Cloudflare Worker, Nov 2026): the Desk pills/tiles take
+  // their live quotes from the Cloudflare live-quote Worker first
+  // (near-1-min Finnhub quotes, cached ~55s server-side), falling
+  // back silently to prices.json per symbol. The Worker covers 19 of
+  // the 24 Desk symbols; WTI, GOLD, US10Y, VIX, DXY are not on
+  // Finnhub's free /quote endpoint and always come from prices.json.
+  // The Worker URL is a single configurable constant; the SUBDOMAIN
+  // placeholder is filled in once Site Launch confirms the
+  // workers.dev subdomain.
+  var WORKER_URL = 'https://paperstreet-quotes.SUBDOMAIN.workers.dev/';
   var PACK_ASOF = '2026-10-28';
   var state = { q: '', filter: 'all', sortKey: 'symbol', sortDir: 1 };
   var packRows = [];
@@ -352,12 +362,51 @@
       .catch(function () { if (t) clearTimeout(t); return null; });
   }
 
+  // CF-3: Worker fetch (same 8s abort as fetchPrices). Any failure —
+  // network, HTTP error, bad JSON — is null; the caller falls back
+  // to prices.json for every symbol.
+  function fetchWorker() {
+    var c = window.AbortController ? new AbortController() : null;
+    var t = c ? setTimeout(function () { c.abort(); }, 8000) : 0;
+    return fetch(WORKER_URL, { cache: 'no-store', signal: c ? c.signal : undefined })
+      .then(function (res) { if (t) clearTimeout(t); if (!res.ok) throw new Error(res.status); return res.json(); })
+      .catch(function () { if (t) clearTimeout(t); return null; });
+  }
+  // Build the effective prices-shaped object the merge below reads:
+  // Worker entries win per symbol, but only when they carry a usable
+  // c + pc; prices.json fills every gap, including the 5 symbols the
+  // Worker never serves (WTI, GOLD, US10Y, VIX, DXY) and any symbol
+  // the Worker omits (e.g. USDCAD if OANDA:USD_CAD returns nothing
+  // live). `updated` is the newer of the two sources, for the
+  // file-freshness fallback in mergeList when a quote has no t.
+  function mergeQuotes(worker, prices) {
+    var stocks = {};
+    if (prices && prices.stocks && typeof prices.stocks === 'object') {
+      Object.keys(prices.stocks).forEach(function (k) { stocks[k] = prices.stocks[k]; });
+    }
+    var wAsOf = NaN;
+    if (worker && worker.stocks && typeof worker.stocks === 'object') {
+      Object.keys(worker.stocks).forEach(function (k) {
+        var q = worker.stocks[k];
+        if (q && typeof q.c === 'number' && q.c > 0 && typeof q.pc === 'number' && q.pc > 0) stocks[k] = q;
+      });
+      if (typeof worker.asOf === 'string') wAsOf = Date.parse(worker.asOf);
+    }
+    var updated = (prices && typeof prices.updated === 'string') ? prices.updated : null;
+    if (!isNaN(wAsOf) && (!updated || Date.parse(updated) < wAsOf)) updated = new Date(wAsOf).toISOString();
+    return { updated: updated, stocks: stocks };
+  }
+  function hasQuotes(eff) {
+    return !!(eff && eff.stocks && typeof eff.stocks === 'object' && Object.keys(eff.stocks).length > 0);
+  }
+
   function refreshLive() {
     if (!packRows.length) return;
-    fetchPrices().then(function (prices) {
-      pricesFailed = !prices;
-      rows = mergeList(packRows, prices);
-      indRows = mergeList(packIndicators, prices, indicatorLiveFn);
+    Promise.all([fetchWorker(), fetchPrices()]).then(function (pair) {
+      var eff = mergeQuotes(pair[0], pair[1]);
+      pricesFailed = !hasQuotes(eff);
+      rows = mergeList(packRows, eff);
+      indRows = mergeList(packIndicators, eff, indicatorLiveFn);
       render();
       notifyChart();
     });
@@ -370,12 +419,13 @@
         packRows = data.rows || [];
         packIndicators = data.indicators || [];
         packAsOf = data.asOf || PACK_ASOF;
-        return fetchPrices();
+        return Promise.all([fetchWorker(), fetchPrices()]);
       })
-      .then(function (prices) {
-        pricesFailed = !prices;
-        rows = mergeList(packRows, prices);
-        indRows = mergeList(packIndicators, prices, indicatorLiveFn);
+      .then(function (pair) {
+        var eff = mergeQuotes(pair[0], pair[1]);
+        pricesFailed = !hasQuotes(eff);
+        rows = mergeList(packRows, eff);
+        indRows = mergeList(packIndicators, eff, indicatorLiveFn);
         render();
         notifyChart();
         setInterval(refreshLive, 5 * 60 * 1000);
