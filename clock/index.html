@@ -240,7 +240,7 @@ var cgP=fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_curr
 return Promise.allSettled([fetchWorkerBtc(),cgP]).then(function(res){
 var w=res[0].status==='fulfilled'?res[0].value:null;
 var cg=res[1].status==='fulfilled'?res[1].value:null;
-if(w)return {usd:w.usd,cad:cg?cg.cad:null,chg:w.chg,cadChg:cg?cg.cadChg:null,src:w.src};
+if(w)return {usd:w.usd,cad:cg?cg.cad:null,chg:typeof w.chg==='number'?w.chg:(cg&&typeof cg.chg==='number'?cg.chg:null),cadChg:cg?cg.cadChg:null,src:w.src};
 if(cg)return cg;
 return fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,cad:null,chg:null,cadChg:null,src:'Coinbase'};});
 });}
@@ -314,7 +314,7 @@ $('refreshBtn').addEventListener('click',update);
 render();/* Paint the initial state at once (restored CAD, or the CAD loading state) instead of waiting for the first fetch. */update();tick();setInterval(tick,1000);setInterval(update,60000);
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
-<script src="../assets/js/btcchart.js?v=et26" defer></script>
+<script src="../assets/js/btcchart.js?v=et27" defer></script>
 <script src="clock-v4.js?v=v4l" defer></script>
 <script>
 /* V4: after the inlined chart mounts, fire one resize so the canvas

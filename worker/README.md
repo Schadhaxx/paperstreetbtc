@@ -41,8 +41,19 @@ changes portfolio math, recaps, DCA, or official-close data.
   symbol, once per minute, for the 19 symbols Finnhub covers. The API key
   comes from a Worker secret (`FINNHUB_API_KEY`) — never in code.
 - **BTC spot — Coinbase spot (keyless), fallback CoinGecko `simple/price`.**
-  Coinbase gives the price; CoinGecko gives the 24h change (and the price
-  if Coinbase fails).
+  Coinbase gives the price; the 24h change comes from Coinbase Exchange
+  `stats` (`(last - open) / open * 100`), with CoinGecko's `usd_24h_change`
+  as the fallback. CoinGecko is the fallback for the change because its
+  fetch fails from the Worker's Cloudflare IP. CoinGecko is still the price
+  fallback if Coinbase spot fails.
+- **BTC 24h change — last-good + short TTL (Nov 15).** When both change
+  sources fail in a round, the Worker serves the last good change (kept in
+  memory, and in the last-good cache for a cold isolate) instead of null,
+  so the pills keep showing a change. A payload whose change is still null
+  (no last-good value anywhere) goes stale after 15 s, not the full 55 s,
+  so the next request retries the change sources soon. The page consumers
+  also fill a null Worker change from CoinGecko while keeping the Worker
+  price (s5.js, btcchart.js, clock).
 
 ## Coverage (Finnhub free `/quote`)
 

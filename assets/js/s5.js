@@ -11,7 +11,14 @@
   function tfetch(u,ms){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},ms):0;
     return fetch(u,{cache:'no-store',signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);if(!r.ok) throw new Error(r.status);return r.json();},function(e){clearTimeout(t);throw e;});}
   function getWorkerBtc(){return tfetch(WORKER,8000).then(function(d){var b=d&&d.btc;if(!b||typeof b.usd!=='number')throw new Error('bad data');return {usd:b.usd,usd_24h_change:typeof b.chg24h==='number'?b.chg24h:null,src:b.src||'Cloudflare'};});}
+  /* Nov 15: the Worker can return a price with a null 24h change (both of
+     its change sources failed). Keep the Worker price and fetch only the
+     change from CoinGecko — do not re-fetch the price, do not treat the
+     Worker answer as a failure. If CoinGecko also fails, keep the price
+     and show no change (same as today's fallback). */
+  function fillChgFromCoinGecko(w){return tfetch(URL,8000).then(function(d){var b=d&&d.bitcoin;if(b&&typeof b.usd_24h_change==='number')w.usd_24h_change=b.usd_24h_change;return w;},function(){return w;});}
   function getBtc(){return getWorkerBtc()
+    .then(function(w){if(typeof w.usd_24h_change==='number')return w;return fillChgFromCoinGecko(w);})
     .catch(function(){return tfetch(URL,8000).then(function(d){var b=d&&d.bitcoin;if(!b||typeof b.usd!=='number')throw new Error('bad data');return b;});})
     .catch(function(){return tfetch(FB,8000).then(function(d){var a=d&&d.data&&parseFloat(d.data.amount);if(!(a>0))throw new Error('bad data');return {usd:a,usd_24h_change:null,src:'Coinbase'};});});}
   document.addEventListener('visibilitychange',function(){if(!document.hidden)schedule(0);});

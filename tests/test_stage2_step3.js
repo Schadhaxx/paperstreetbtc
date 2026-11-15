@@ -103,7 +103,7 @@ let et26 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et26') et26++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et27') et26++; else other.push(p + ':' + x); });
 });
 chk('all 16 callers pin et26', et26 === 16 && other.length === 0, 'et26=' + et26 + ' other=' + JSON.stringify(other));
 
