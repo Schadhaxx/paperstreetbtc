@@ -105,6 +105,8 @@ let chart;
 let NATIVE_S2 = true;
 let nativeDrawn = false; /* true while the native YTD chart is on the canvas */
 let s2Hover = -1; /* hovered month index, -1 = none */
+var s2KeepHover = false; /* true only during the fonts.ready redraw: the
+  tooltip must stay open if fonts finish while it is showing */
 let nativeGeom = null; /* {lbls, datasets, xs, plot} of the last native draw */
 /* Theme-aware colour helper (same rule as window.psC in index.html /
    compare.js); defined locally so s2.js works standalone in tests. */
@@ -231,11 +233,22 @@ function drawNativeYTD(lbls, datasets){
     var gap = 16, rowH = 20;
     function s2WrapLabel(text, maxW){
       var words = String(text).split(' '), lines = [], line = '';
-      words.forEach(function(wd){
+      function pushWord(wd){
+        /* A single word wider than maxW is split mid-word so it can never
+           overflow the box (real labels are fine; only an unbreakable name
+           would hit this). Progress is guaranteed: each cut removes at
+           least one character. */
+        while (wd.length > 1 && ctx.measureText(wd).width > maxW){
+          var cut = 1;
+          while (cut < wd.length && ctx.measureText(wd.slice(0, cut + 1)).width <= maxW) cut++;
+          lines.push(wd.slice(0, cut));
+          wd = wd.slice(cut);
+        }
         var t = line ? line + ' ' + wd : wd;
         if (line && ctx.measureText(t).width > maxW){ lines.push(line); line = wd; }
         else line = t;
-      });
+      }
+      words.forEach(pushWord);
       if (line) lines.push(line);
       return lines;
     }
@@ -370,12 +383,14 @@ function drawNativeYTD(lbls, datasets){
       ctx.font = BFONT;
       var tw = ctx.measureText(title).width;
       ctx.font = FONT;
-      /* Tooltip width is capped at the canvas width (4px margins): a long
+      /* Tooltip width is capped at the plot area (not the canvas): a long
          series label (the backup-source benchmark label at phone width)
          wraps onto extra lines instead of pushing the box past the canvas
-         edge and clipping. The value stays right-aligned on the first
-         line; continuation lines are label-only. */
-      var maxTw = Math.max(40, W - 8);
+         edge and clipping. The box also starts at or right of the plot's
+         left edge (padL), so it never covers the y-axis numbers. The
+         value stays right-aligned on the first line; continuation lines
+         are label-only. */
+      var maxTw = Math.max(40, W - padL - 4);
       var rowH = 17;
       trows.forEach(function(r){
         r.vw = ctx.measureText(r.v).width;
@@ -394,13 +409,15 @@ function drawNativeYTD(lbls, datasets){
       var th = 8 + 15 + 4 + trows.reduce(function(s, r){ return s + r.lines.length * rowH; }, 0) + 8;
       var tx = hx + 12;
       if (hx > padL + (W - padL - padR) * 0.6) tx = hx - 12 - tw;
-      tx = Math.max(4, Math.min(tx, W - tw - 4));
+      tx = Math.max(padL, Math.min(tx, W - tw - 4));
       var ty = topY - th - 10;
       if (ty < padT) ty = Math.min(botY + 12, H - th - 4);
       ty = Math.max(4, ty);
-      tipInfo = { x: tx, y: ty, w: tw, h: th, rows: trows.length };
+      tipInfo = { x: tx, y: ty, w: tw, h: th, rows: trows.length, plotL: padL };
       s2RoundRect(ctx, tx, ty, tw, th, 8);
-      ctx.fillStyle = 'rgba(7,11,24,.94)'; ctx.fill();
+      /* Fully opaque fill: at phone width the box spans almost the whole
+         plot, and the old .94 alpha let the y-axis numbers bleed through. */
+      ctx.fillStyle = 'rgba(7,11,24,1)'; ctx.fill();
       ctx.strokeStyle = 'rgba(148,163,184,.35)'; ctx.lineWidth = 1; ctx.stroke();
       ctx.font = BFONT; ctx.fillStyle = '#e8eef7'; ctx.textBaseline = 'middle';
       ctx.fillText(title, tx + 10, ty + 8 + 7);
@@ -546,7 +563,7 @@ function render() {
      native drawing done before it (seen when a tiny first draw fell back
      to Chart.js and a later resize went native). */
   if (NATIVE_S2){
-    s2Hover = -1;
+    if (!s2KeepHover) s2Hover = -1;
     if (chart){ chart.destroy(); chart = null; }
     if (drawNativeYTD(lbls, datasets)){
       nativeDrawn = true;
@@ -606,7 +623,12 @@ try{
   if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function'){
     document.fonts.ready.then(function(){
       window.__S2_FONTS_REDRAW = true;
+      /* Keep an open tooltip open: render() normally clears the hover
+         (the dataset may have changed), but the fonts redraw re-measures
+         the same data, so preserve it for this one redraw only. */
+      s2KeepHover = true;
       render();
+      s2KeepHover = false;
     }).catch(function(){});
   }
 }catch (e){}
