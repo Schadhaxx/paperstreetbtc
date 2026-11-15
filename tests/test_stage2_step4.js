@@ -119,7 +119,7 @@ chk('drawDailyTooltip shows each comparison line with % change', /'S&P 500 '\+cm
 chk('draw1D tooltip shows Now (live) on the last point', /'Now \(live\)'/.test(panel));
 chk('live Now point is drawn on the BTC line when hasLive', /hasLive/.test(panel) && /Now/.test(panel));
 
-/* Pin bumped et24 -> et24 (rebase onto main; main also used et24) (panel content changed in Step 4). */
+/* Pin bumped et24 -> et25 (CF-2: loader content changed; panel still et24) (panel content changed in Step 4). */
 chk('stub loads the panel with et24', /btcchart-panel\.js\?v=et24/.test(stub));
 const fs2 = require('fs');
 const html = [];
@@ -131,13 +131,13 @@ function walk(d) {
   });
 }
 walk(R);
-let et24 = 0, other = [];
+let et25 = 0, other = [];
 html.forEach(function (p) {
   const s = fs2.readFileSync(p, 'utf8');
   const m = s.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et24') et24++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et25') et25++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et24', et24 === 16 && other.length === 0, 'et24=' + et24 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et25', et25 === 16 && other.length === 0, 'et25=' + et25 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart (s2.js) is out of scope: it must still use Chart.js. */
 chk('s2.js (YTD hero) still uses Chart.js', /new Chart\(/.test(s2));

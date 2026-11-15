@@ -72,7 +72,7 @@ chk('panel: exposes _needChart test hook', /P\._needChart=needChart/.test(panel)
 chk('s2.js untouched (still Chart.js YTD — separate candidate)',
   /new Chart\s*\(/.test(s2));
 
-// --- pins: all 16 HTML refs on et24, panel pin matches ---
+// --- pins: all 16 HTML refs on et25 (CF-2), panel pin still et24 ---
 const htmls = [];
 (function walk(d) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -87,10 +87,10 @@ for (const h of htmls) {
   const t = fs.readFileSync(h, 'utf8');
   if (!/btcchart\.js/.test(t)) continue;
   refs++;
-  if (!/btcchart\.js\?v=et24/.test(t)) { bad++; console.log('FAIL stale btcchart pin', path.relative(R, h)); }
+  if (!/btcchart\.js\?v=et25/.test(t)) { bad++; console.log('FAIL stale btcchart pin', path.relative(R, h)); }
   if (/btcchart\.js\?v=et15/.test(t)) { bad++; console.log('FAIL still et15', path.relative(R, h)); }
 }
-chk('all btcchart.html refs use ?v=et24 (16 files)', bad === 0 && refs === 16);
+chk('all btcchart.html refs use ?v=et25 (16 files)', bad === 0 && refs === 16);
 chk('no burned btcchart pins (et5/et6/et7/et8/et12/et13/et14/et15/et21/et22/et23) in new files',
   !/btcchart(?:-panel)?\.js\?v=et(?:5|6|7|8|12|13|14|15|21|22|23)\b/.test(pill + panel));
 

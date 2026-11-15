@@ -134,7 +134,7 @@ html[data-theme="light"] body.ps-clock .bc-ct button{color:#475569;border-color:
 html[data-theme="light"] body.ps-clock .bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
 .wl-btn{background:transparent;color:#22d3ee;border:1px solid rgba(34,211,238,.5);border-radius:999px;padding:0 8px;line-height:13px;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit;margin-left:4px;position:relative}.wl-btn::after{content:"";position:absolute;inset:-12px -6px}.wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}.wl-btn.wl-wait{border-style:dashed}.wl-btn[hidden]{display:none}
 html[data-theme="light"] body.ps-clock .wl-btn{color:#0e7490;border-color:#0e7490}html[data-theme="light"] body.ps-clock .wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}
-</style><link rel="stylesheet" href="clock-v4.css?v=v4g"></head><body class="ps-clock"><div class="wrap">
+</style><link rel="stylesheet" href="clock-v4.css?v=v4i"></head><body class="ps-clock"><div class="wrap">
 <a class="brand" href="../index.html"><picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture><span class="brand-text">Paperstreet <span>BTC</span></span><span class="brand-clock">· Live BTC Chart</span></a>
 <div class="top"><span class="lab">₿ Live BTC Chart</span><span class="live"><i></i>LIVE · AUTO<button type="button" class="wl-btn" id="wakeBtn" aria-pressed="false" title="Keep this screen from sleeping while the page is open" hidden>Keep screen on</button></span><span class="et" id="now">—</span></div>
 
@@ -226,8 +226,24 @@ function fmt(n){return n.toLocaleString('en-US',{style:'currency',currency:'USD'
 function fmtPrice(n,code){if(n==null)return '—';var s=code==='CAD'?'C$':'$';return s+Math.round(n).toLocaleString('en-US');}
 function effCur(){return cur==='CAD'&&lastCad!=null?'CAD':'USD';}
 function etNow(){try{return new Date().toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit'})+' ET';}catch(e){return new Date().toLocaleString();}}
-function fetchPrice(){return fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,cad&include_24hr_change=true',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){if(!d.bitcoin||typeof d.bitcoin.usd!=='number')throw 0;return {usd:d.bitcoin.usd,cad:typeof d.bitcoin.cad==='number'?d.bitcoin.cad:null,chg:d.bitcoin.usd_24h_change,cadChg:typeof d.bitcoin.cad_24h_change==='number'?d.bitcoin.cad_24h_change:null,src:'CoinGecko'};})
-.catch(function(){return fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,cad:null,chg:null,cadChg:null,src:'Coinbase'};});});}
+/* CF-2: Cloudflare live-quote Worker — single configurable URL. The subdomain
+   is a placeholder (SUBDOMAIN) until Site Launch confirms the real subdomain; fill it in here. */
+var WORKER='https://paperstreet-quotes.SUBDOMAIN.workers.dev/';
+function fetchWorkerBtc(){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},8000):0;
+return fetch(WORKER,{cache:'no-store',signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);if(!r.ok)throw 0;return r.json();},function(e){clearTimeout(t);throw e;}).then(function(d){var b=d&&d.btc;if(!b||typeof b.usd!=='number')throw 0;return {usd:b.usd,chg:typeof b.chg24h==='number'?b.chg24h:null,src:b.src||'Cloudflare'};});}
+function fetchPrice(){
+/* USD from the Worker (primary), CAD from CoinGecko (the Worker is USD-only).
+   The two fetches run in parallel; if the Worker fails, CoinGecko's USD is used
+   instead (existing behaviour). If CoinGecko fails, USD still updates from the
+   Worker and CAD keeps its last-good value. If both fail, Coinbase (existing). */
+var cgP=fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,cad&include_24hr_change=true',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){if(!d.bitcoin||typeof d.bitcoin.usd!=='number')throw 0;return {usd:d.bitcoin.usd,cad:typeof d.bitcoin.cad==='number'?d.bitcoin.cad:null,chg:d.bitcoin.usd_24h_change,cadChg:typeof d.bitcoin.cad_24h_change==='number'?d.bitcoin.cad_24h_change:null,src:'CoinGecko'};});
+return Promise.allSettled([fetchWorkerBtc(),cgP]).then(function(res){
+var w=res[0].status==='fulfilled'?res[0].value:null;
+var cg=res[1].status==='fulfilled'?res[1].value:null;
+if(w)return {usd:w.usd,cad:cg?cg.cad:null,chg:w.chg,cadChg:cg?cg.cadChg:null,src:w.src};
+if(cg)return cg;
+return fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,cad:null,chg:null,cadChg:null,src:'Coinbase'};});
+});}
 function fetchBlock(){return fetch('https://mempool.space/api/blocks',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(a){if(!a||!a[0])throw 0;return {height:a[0].height,ts:a[0].timestamp*1000};});}
 function fetchFees(){return fetch('https://mempool.space/api/v1/fees/recommended',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).catch(function(){return null;});}
 function fetchMempool(){return fetch('https://mempool.space/api/mempool',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).catch(function(){return null;});}
@@ -298,8 +314,8 @@ $('refreshBtn').addEventListener('click',update);
 render();/* Paint the initial state at once (restored CAD, or the CAD loading state) instead of waiting for the first fetch. */update();tick();setInterval(tick,1000);setInterval(update,60000);
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
-<script src="../assets/js/btcchart.js?v=et24" defer></script>
-<script src="clock-v4.js?v=v4g" defer></script>
+<script src="../assets/js/btcchart.js?v=et25" defer></script>
+<script src="clock-v4.js?v=v4i" defer></script>
 <script>
 /* V4: after the inlined chart mounts, fire one resize so the canvas
    matches the contained stage (the page already redraws on resize). */

@@ -58,7 +58,14 @@ window.addEventListener('btcprice',function(e){live.usd=e.detail.usd;live.chg=e.
 /* pages without the homepage price widget fetch the same feed themselves */
 if(!$('btcLive')){
   var tf=function(u){return fetch(u,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});};
-  var load=function(){tf('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true').then(function(d){var b=d.bitcoin;if(!b||typeof b.usd!=='number')throw 0;return {usd:b.usd,chg:b.usd_24h_change};})
+  /* CF-2: Cloudflare live-quote Worker — single configurable URL. The subdomain
+     is a placeholder (SUBDOMAIN) until Site Launch confirms the real subdomain; fill it in here. tfw has an
+     8s timeout so a slow Worker falls back promptly (tf has none, as before). */
+  var WORKER='https://paperstreet-quotes.SUBDOMAIN.workers.dev/';
+  var tfw=function(u){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},8000):0;
+    return fetch(u,{cache:'no-store',signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json();},function(e){clearTimeout(t);throw e;});};
+  var load=function(){tfw(WORKER).then(function(d){var b=d&&d.btc;if(!b||typeof b.usd!=='number')throw 0;return {usd:b.usd,chg:typeof b.chg24h==='number'?b.chg24h:null};})
+    .catch(function(){return tf('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true').then(function(d){var b=d.bitcoin;if(!b||typeof b.usd!=='number')throw 0;return {usd:b.usd,chg:b.usd_24h_change};});})
     .catch(function(){return tf('https://api.coinbase.com/v2/prices/BTC-USD/spot').then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,chg:null};});})
     .then(function(b){live.usd=b.usd;live.chg=b.chg;paint();setTimeout(load,60000);},function(){setTimeout(load,90000);});};
   load();}
