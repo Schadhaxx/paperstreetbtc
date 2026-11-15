@@ -1,0 +1,14 @@
+# PaperStreet live-quote Worker (CF-1)
+# Deployed to workers.dev by Site Launch / Pepper (wrangler deploy).
+# The Finnhub API key is NOT in this file and NOT in the repo: Site Launch
+# adds it as a Worker SECRET in the Cloudflare dashboard
+# (wrangler secret put FINNHUB_API_KEY). The Worker reads it from the
+# environment at runtime (env.FINNHUB_API_KEY).
+
+name = "paperstreet-quotes"
+main = "src/index.js"
+compatibility_date = "2026-11-14"
+
+# No [vars] here on purpose: secrets are set in the dashboard, never in code.
+# No custom domain: the Worker is served on workers.dev only. Do NOT touch
+# DNS or the paperstreetbtc.com domain (separate Dec 20 transfer).
