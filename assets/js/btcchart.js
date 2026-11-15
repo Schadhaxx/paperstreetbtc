@@ -50,6 +50,9 @@ if(!pill.getAttribute('aria-label'))pill.setAttribute('aria-label','Live BTC pri
 function chgTxt(c){return typeof c==='number'?(c>=0?'▲':'▼')+Math.abs(c).toFixed(1)+'%':'';}
 function paint(){if(live.usd==null)return;var cls='hdr-chg '+(live.chg>=0?'up':'down');
   var hp=$('hdrPx'),hc=$('hdrChg');if(hp){hp.textContent=fmt(live.usd);}if(hc&&typeof live.chg==='number'){hc.textContent=chgTxt(live.chg);hc.className=cls;}
+  /* Nov 15 r2: when a new poll has no change, clear the header change text
+     — otherwise the old change stays on screen as if current. */
+  else if(hc){hc.textContent='';hc.className='hdr-chg';}
   if(mp){mp.querySelector('.mpPx').textContent=fmt(live.usd);var m=mp.querySelector('.mpChg');m.textContent=chgTxt(live.chg);m.className=cls+' mpChg';}
   /* Live-price refresh into an open panel (head + tick flash + redraw)
      lives in the panel's onLive; before it loads there is nothing to forward to. */
@@ -64,6 +67,12 @@ if(!$('btcLive')){
   var tfw=function(u){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},8000):0;
     return fetch(u,{cache:'no-store',signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json();},function(e){clearTimeout(t);throw e;});};
   var load=function(){tfw(WORKER).then(function(d){var b=d&&d.btc;if(!b||typeof b.usd!=='number')throw 0;return {usd:b.usd,chg:typeof b.chg24h==='number'?b.chg24h:null};})
+    /* Nov 15: the Worker can return a price with a null 24h change (both
+       of its change sources failed). Keep the Worker price and fetch only
+       the change from CoinGecko — do not re-fetch the price, do not treat
+       the Worker answer as a failure. If CoinGecko also fails, keep the
+       price and show no change. */
+    .then(function(w){if(typeof w.chg==='number')return w;return tfw('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true').then(function(d){var b=d.bitcoin;if(b&&typeof b.usd_24h_change==='number')w.chg=b.usd_24h_change;return w;},function(){return w;});})
     .catch(function(){return tf('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true').then(function(d){var b=d.bitcoin;if(!b||typeof b.usd!=='number')throw 0;return {usd:b.usd,chg:b.usd_24h_change};});})
     .catch(function(){return tf('https://api.coinbase.com/v2/prices/BTC-USD/spot').then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,chg:null};});})
     .then(function(b){live.usd=b.usd;live.chg=b.chg;paint();setTimeout(load,60000);},function(){setTimeout(load,90000);});};

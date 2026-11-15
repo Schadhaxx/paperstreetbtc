@@ -7,6 +7,9 @@
 //   - Desk quotes: Finnhub /quote (free tier, 60 calls/min). Key comes from a
 //     Worker SECRET (env.FINNHUB_API_KEY) — never hardcoded, never in code.
 //   - BTC spot: Coinbase spot (keyless), fallback CoinGecko simple/price.
+//   - BTC 24h change: Coinbase Exchange stats (keyless), fallback
+//     CoinGecko. (CoinGecko's fetch fails from the Worker's Cloudflare IP,
+//     so it is the fallback for the change, not the source.)
 //
 // Design:
 //   - Server-side cache (~55 s) so Finnhub is hit at most once per minute
@@ -26,6 +29,7 @@
 
 const FINNHUB_BASE = 'https://finnhub.io/api/v1';
 const COINBASE_SPOT_URL = 'https://api.coinbase.com/v2/prices/BTC-USD/spot';
+const COINBASE_STATS_URL = 'https://api.exchange.coinbase.com/products/BTC-USD/stats';
 const COINGECKO_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true';
 
@@ -33,9 +37,32 @@ const COINGECKO_URL =
 // re-fetches Finnhub at most once per this window, so upstream calls are
 // ~19/min against a 60/min free-tier limit.
 const CACHE_TTL_SECONDS = 55;
+// When the served BTC 24h change is null (no last-good value anywhere),
+// the cached payload goes stale after this many seconds instead of the
+// full window, so the next request retries the change sources soon
+// instead of serving a blank change for a minute. (Nov 15: a null change
+// was cached for the full 55s and the pills showed no 24h change.)
+const NULL_CHG_TTL_SECONDS = 15;
 // Treat a cached payload older than this as stale even if the cache still
 // holds it (belt-and-braces against early/late cache eviction).
 const MAX_PAYLOAD_AGE_SECONDS = 60;
+
+// Last good BTC 24h change, kept in memory so a transient failure of both
+// change sources (Coinbase stats + CoinGecko) does not blank the pills.
+// Stored as {chg, at} (value + the millisecond timestamp it was computed),
+// because a carried change must EXPIRE: Grok Bot (Nov 15) showed the old
+// plain-number value was rewritten every round the price was fresh, even
+// when the value was itself carried over, so a days-old change was served
+// as current with stale:false. A carried change is reused only while it is
+// at most LASTGOOD_CHG_MAX_AGE_MS old; past that, null is served so the
+// 15s refresh and the page's CoinGecko fill take over. Never persisted —
+// a cold Worker isolate has no value here, and the last-good cache (below)
+// covers that case instead (its btc.chgAt gets the same check).
+let lastGoodBtcChg = null;
+
+// A carried (not fresh this round) 24h change is reused only while it is
+// at most this old. Past it, the change is served as null.
+const LASTGOOD_CHG_MAX_AGE_MS = 10 * 60 * 1000;
 
 // Per-client rate limit: max requests per IP per rolling minute.
 const RATE_LIMIT_PER_MINUTE = 30;
@@ -175,7 +202,9 @@ async function fetchFinnhubQuotes(apiKey) {
     try {
       const res = await fetch(
         `${FINNHUB_BASE}/quote?symbol=${encodeURIComponent(finnhub)}`,
-        { headers: { 'X-Finnhub-Token': apiKey } },
+        // 4s timeout (Nov 15 r3): one hung Finnhub call used to hang the
+        // whole refresh. A timed-out symbol is just omitted (see below).
+        { headers: { 'X-Finnhub-Token': apiKey }, signal: AbortSignal.timeout(4000) },
       );
       if (!res.ok) return;
       const q = await res.json();
@@ -206,11 +235,22 @@ async function fetchFinnhubQuotes(apiKey) {
 }
 
 async function fetchBtc() {
-  // Coinbase spot (primary, keyless) + CoinGecko (24h change + price
-  // fallback). Returns { usd, chg24h, src } or null if both fail.
-  const [coinbase, gecko] = await Promise.allSettled([
-    fetch(COINBASE_SPOT_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error('coinbase ' + r.status)))),
-    fetch(COINGECKO_URL).then((r) => (r.ok ? r.json() : Promise.reject(new Error('coingecko ' + r.status)))),
+  // Coinbase spot (primary, keyless) for the price; 24h change from
+  // Coinbase Exchange stats (keyless) with CoinGecko as the fallback.
+  // CoinGecko is also the price fallback. Returns { usd, chg24h, src }
+  // or null if no price source answers.
+  //
+  // Why stats, not CoinGecko, for the change: the CoinGecko fetch fails
+  // from the Worker's Cloudflare IP (rate-limited/blocked there), so
+  // chg24h was null live even though CoinGecko answers fine elsewhere.
+  // Stats gives {open, last} for the last 24h; the change is
+  // (last - open) / open * 100.
+  // Each upstream fetch has a 4s timeout (Nov 15 r2): one hung source used
+  // to hang the whole response.
+  const [coinbase, stats, gecko] = await Promise.allSettled([
+    fetch(COINBASE_SPOT_URL, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : Promise.reject(new Error('coinbase ' + r.status)))),
+    fetch(COINBASE_STATS_URL, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : Promise.reject(new Error('coinbase-stats ' + r.status)))),
+    fetch(COINGECKO_URL, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : Promise.reject(new Error('coingecko ' + r.status)))),
   ]);
 
   let usd = null;
@@ -224,18 +264,67 @@ async function fetchBtc() {
       src = 'Coinbase';
     }
   }
+  // 24h change, first choice: Coinbase Exchange stats. Guarded like every
+  // other upstream value: both numbers must be finite and open must be
+  // > 0 (no divide-by-zero, no NaN); a bad stats payload just means "no
+  // change from this source" and the CoinGecko fallback is tried next.
+  if (stats.status === 'fulfilled') {
+    const open = Number(stats.value?.open);
+    const last = Number(stats.value?.last);
+    if (Number.isFinite(open) && open > 0 && Number.isFinite(last)) {
+      chg24h = ((last - open) / open) * 100;
+    }
+  }
   if (gecko.status === 'fulfilled') {
     const b = gecko.value?.bitcoin;
     const gUsd = Number(b?.usd);
     const gChg = Number(b?.usd_24h_change);
-    if (Number.isFinite(gChg)) chg24h = gChg;
+    // CoinGecko's change is the fallback — only used when stats gave us
+    // nothing (stats down or unparseable).
+    if (chg24h === null && Number.isFinite(gChg)) chg24h = gChg;
     if (usd === null && Number.isFinite(gUsd) && gUsd > 0) {
       usd = gUsd;
       src = 'CoinGecko';
     }
   }
+  const now = Date.now();
+  // A fresh change computed this round is saved to the in-memory last-good
+  // (with its timestamp) even when no price source answers — Nov 15 r2:
+  // the old early return for no price dropped a good change it already had.
+  if (Number.isFinite(chg24h)) {
+    lastGoodBtcChg = { chg: chg24h, at: now };
+  }
   if (usd === null) return null;
-  return { usd, chg24h, src: src || 'Coinbase' };
+  // Last-good 24h change (Nov 15, expiry added Nov 15 r2): when both
+  // change sources fail this round, serve the previous valid change
+  // instead of null so the pills keep showing a change — but ONLY while
+  // it is at most LASTGOOD_CHG_MAX_AGE_MS old. A carried value must not
+  // refresh chgAt, and is marked stale in the payload.
+  let chgAt = null;
+  let chgStale = false;
+  if (Number.isFinite(chg24h)) {
+    // Fresh change this round: timestamp is now.
+    chgAt = new Date(now).toISOString();
+  } else if (
+    lastGoodBtcChg &&
+    Number.isFinite(lastGoodBtcChg.chg) &&
+    now - lastGoodBtcChg.at <= LASTGOOD_CHG_MAX_AGE_MS
+  ) {
+    // Carried change, still within the cap. Keep its original timestamp.
+    chg24h = lastGoodBtcChg.chg;
+    chgAt = new Date(lastGoodBtcChg.at).toISOString();
+    chgStale = true;
+  } else {
+    // No fresh change and no usable carried change (or it expired): drop
+    // the stale in-memory value and serve null, so the 15s refresh and
+    // the page's CoinGecko fill take over.
+    lastGoodBtcChg = null;
+    chg24h = null;
+  }
+  // priceAt is the original capture time of this price (Nov 15 r3): the
+  // stale-price branch reuses it so a carried price keeps its age instead
+  // of getting a fresh timestamp on every re-save.
+  return { usd, chg24h, src: src || 'Coinbase', chgAt, chgStale, priceAt: new Date(now).toISOString() };
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +336,11 @@ function buildPayload({ stocks, btc, asOf, stale, staleSymbols, missing }) {
     updated: asOf,
     asOf,
     btc: btc
-      ? { usd: btc.usd, chg24h: btc.chg24h, src: btc.src, time: asOf }
+      // time/priceAt are the price CAPTURE time (Nov 15 r3), not the
+      // payload build time: a carried price must keep its original
+      // timestamp, or the re-save below would refresh it every round and
+      // the price would never age out. No page consumer reads btc.time.
+      ? { usd: btc.usd, chg24h: btc.chg24h, src: btc.src, time: btc.priceAt ?? asOf, priceAt: btc.priceAt ?? asOf, chgAt: btc.chgAt ?? null, chgStale: !!btc.chgStale }
       : null,
     stocks,
     // Symbols omitted from this response (not covered by Finnhub, or failed
@@ -285,8 +378,13 @@ async function refreshQuotes(env) {
   const lastGood = await readCachedPayload(cache, LASTGOOD_CACHE_KEY);
 
   const apiKey = env && typeof env.FINNHUB_API_KEY === 'string' ? env.FINNHUB_API_KEY : '';
-  const finnhub = apiKey ? await fetchFinnhubQuotes(apiKey) : new Map();
-  const btc = await fetchBtc();
+  // Finnhub and BTC run together (Nov 15 r3): they used to run one after
+  // the other, so a slow Finnhub round delayed the BTC price too. Both
+  // sides are timeout-bounded (~4s each), so the worst case is about 4s.
+  const [finnhub, btc] = await Promise.all([
+    apiKey ? fetchFinnhubQuotes(apiKey) : Promise.resolve(new Map()),
+    fetchBtc(),
+  ]);
 
   const stocks = {};
   const staleSymbols = [];
@@ -311,8 +409,38 @@ async function refreshQuotes(env) {
   let btcOut = btc;
   let btcStale = false;
   if (!btcOut && lastGood?.btc && typeof lastGood.btc.usd === 'number' && lastGood.btc.usd > 0) {
-    btcOut = lastGood.btc;
-    btcStale = true;
+    // Price age check (Nov 15 r3, should-fix #1; r4: no fallback to time):
+    // a carried price older than ~10 minutes is not served at all — the
+    // pages fetch the price directly. The original capture time is
+    // priceAt; entries without one (old cache entries predate it) are
+    // treated as expired, never as fresh via time.
+    const priceAtMs = Date.parse(lastGood.btc.priceAt);
+    if (Number.isFinite(priceAtMs) && Date.now() - priceAtMs <= LASTGOOD_CHG_MAX_AGE_MS) {
+      // Change age check (Nov 15 r2 must-fix, applied here too): the
+      // carried change is reused only while it is at most 10 minutes old.
+      // Old cache entries with no chgAt serve null.
+      const at = Date.parse(lastGood.btc.chgAt);
+      const ok = typeof lastGood.btc.chg24h === 'number' && Number.isFinite(at) && Date.now() - at <= LASTGOOD_CHG_MAX_AGE_MS;
+      btcOut = { ...lastGood.btc, priceAt: lastGood.btc.priceAt, chg24h: ok ? lastGood.btc.chg24h : null, chgAt: ok ? lastGood.btc.chgAt : null, chgStale: true };
+      btcStale = true;
+    }
+    // Past the price cap (or no timestamp): leave btcOut null so the
+    // pages fetch the price directly.
+  }
+  // Cold-start protection (Nov 15): the in-memory last-good change is empty
+  // on a fresh isolate, so a fresh price with a null change would clobber
+  // the cached good change. Fill it from the last-good cache instead, so
+  // the payload (and the cache) never carries a null change while a good
+  // one is cached. (Nov 15 r2): only reuse the cached change while it is
+  // at most LASTGOOD_CHG_MAX_AGE_MS old — the same cap as the in-memory
+  // value, checked against lastGood.btc.chgAt. Past that, leave null so
+  // the 15s refresh and the page's CoinGecko fill take over. A carried
+  // value keeps its original chgAt and is marked stale.
+  if (btcOut && typeof btcOut.chg24h !== 'number' && lastGood?.btc && typeof lastGood.btc.chg24h === 'number') {
+    const cachedAt = Date.parse(lastGood.btc.chgAt);
+    if (Number.isFinite(cachedAt) && Date.now() - cachedAt <= LASTGOOD_CHG_MAX_AGE_MS) {
+      btcOut = { ...btcOut, chg24h: lastGood.btc.chg24h, chgAt: lastGood.btc.chgAt, chgStale: true };
+    }
   }
 
   const allFinnhubFailed = finnhub.size === 0 && SYMBOLS.length > 0;
@@ -343,7 +471,15 @@ async function refreshQuotes(env) {
 async function getQuotes(env) {
   const cache = getCache();
   const fresh = await readCachedPayload(cache, FRESH_CACHE_KEY);
-  if (fresh && payloadAgeSeconds(fresh) < MAX_PAYLOAD_AGE_SECONDS) return fresh;
+  if (fresh) {
+    // A cached payload whose BTC change is null goes stale after the short
+    // TTL (Nov 15), so the next request retries the change sources soon
+    // instead of serving a blank change for the full window. A payload
+    // with a valid change keeps the normal window.
+    const chgNull = !fresh.btc || typeof fresh.btc.chg24h !== 'number';
+    const maxAge = chgNull ? NULL_CHG_TTL_SECONDS : MAX_PAYLOAD_AGE_SECONDS;
+    if (payloadAgeSeconds(fresh) < maxAge) return fresh;
+  }
   const payload = await refreshQuotes(env);
   // If the refresh produced nothing at all (no upstream, no last-good),
   // return the payload as-is (empty stocks, btc null, everything missing)
@@ -428,6 +564,61 @@ export const __test = {
   reset() {
     memoryCache.clear();
     rateLimitStore.clear();
+    lastGoodBtcChg = null;
+  },
+  // Clear only the in-memory last-good 24h change (simulates a cold
+  // isolate: the cache still holds a good change, the memory does not).
+  resetLastGoodChg() {
+    lastGoodBtcChg = null;
+  },
+  // Set the in-memory last-good 24h change with an explicit timestamp
+  // (simulates an aged carried change for the expiry test).
+  setLastGoodChg(chg, at) {
+    lastGoodBtcChg = { chg, at };
+  },
+  // Rewrite the last-good cache entry's BTC change timestamp (simulates
+  // an aged cached change for the cold-start expiry test).
+  async setLastGoodCacheChgAt(iso) {
+    const cache = getCache();
+    const payload = await readCachedPayload(cache, LASTGOOD_CACHE_KEY);
+    if (payload && payload.btc) {
+      payload.btc.chgAt = iso;
+      await cache.put(
+        LASTGOOD_CACHE_KEY,
+        new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } }),
+      );
+    }
+  },
+  // Rewrite the last-good cache entry's BTC price timestamp (simulates
+  // an aged carried price for the price-expiry test).
+  async setLastGoodCachePriceAt(iso) {
+    const cache = getCache();
+    const payload = await readCachedPayload(cache, LASTGOOD_CACHE_KEY);
+    if (payload && payload.btc) {
+      payload.btc.priceAt = iso;
+      payload.btc.time = iso;
+      await cache.put(
+        LASTGOOD_CACHE_KEY,
+        new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } }),
+      );
+    }
+  },
+  // Drop priceAt from the last-good cache entry and refresh time to now
+  // (simulates an old cache entry written by the pre-priceAt Worker, which
+  // refreshed time on every save but never wrote priceAt). Used by the
+  // no-priceAt expiry test: the old code fell back to time and served the
+  // days-old price as fresh; the fixed code treats it as expired.
+  async dropLastGoodCachePriceAt() {
+    const cache = getCache();
+    const payload = await readCachedPayload(cache, LASTGOOD_CACHE_KEY);
+    if (payload && payload.btc) {
+      delete payload.btc.priceAt;
+      payload.btc.time = new Date().toISOString();
+      await cache.put(
+        LASTGOOD_CACHE_KEY,
+        new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } }),
+      );
+    }
   },
   // Delete only the fresh cache entry so the next request must refresh from
   // upstream (exercising the last-good fallback path in tests).
@@ -437,4 +628,6 @@ export const __test = {
   coverageGaps: COVERAGE_GAPS,
   symbols: SYMBOLS,
   cacheTtlSeconds: CACHE_TTL_SECONDS,
+  nullChgTtlSeconds: NULL_CHG_TTL_SECONDS,
+  lastGoodChgMaxAgeMs: LASTGOOD_CHG_MAX_AGE_MS,
 };

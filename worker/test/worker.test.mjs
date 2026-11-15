@@ -28,8 +28,8 @@ const FINNHUB_PREV = Object.fromEntries(
   Object.entries(FINNHUB_PRICES).map(([k, v]) => [k, +(v * 0.99).toFixed(4)]),
 );
 
-function makeFetchStub({ finnhubOk = true, coinbaseOk = true, geckoOk = true, finnhubPrices = FINNHUB_PRICES } = {}) {
-  const calls = { finnhub: 0, coinbase: 0, gecko: 0 };
+function makeFetchStub({ finnhubOk = true, coinbaseOk = true, statsOk = true, geckoOk = true, finnhubPrices = FINNHUB_PRICES, statsOpen = '70000.00', statsLast = '67280.00' } = {}) {
+  const calls = { finnhub: 0, coinbase: 0, stats: 0, gecko: 0 };
   const stub = async (url, opts) => {
     const u = String(url);
     if (u.startsWith('https://finnhub.io/api/v1/quote')) {
@@ -49,6 +49,17 @@ function makeFetchStub({ finnhubOk = true, coinbaseOk = true, geckoOk = true, fi
         status: 200, headers: { 'Content-Type': 'application/json' },
       });
     }
+    if (u.startsWith('https://api.exchange.coinbase.com/products/BTC-USD/stats')) {
+      calls.stats += 1;
+      if (!statsOk) return new Response('error', { status: 500 });
+      // statsOpen/statsLast of null omit the field (missing-value case).
+      const payload = { open: statsOpen, high: '71000.00', low: '65000.00', last: statsLast, volume: '1000.0' };
+      if (statsOpen === null) delete payload.open;
+      if (statsLast === null) delete payload.last;
+      return new Response(JSON.stringify(payload), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    }
     if (u.startsWith('https://api.coingecko.com/api/v3/simple/price')) {
       calls.gecko += 1;
       if (!geckoOk) return new Response('error', { status: 500 });
@@ -60,6 +71,11 @@ function makeFetchStub({ finnhubOk = true, coinbaseOk = true, geckoOk = true, fi
   };
   return { stub, calls };
 }
+
+// The 24h change the stubbed Coinbase stats endpoint implies:
+// (67280 - 70000) / 70000 * 100. Kept in one place so the tests below
+// assert against the same computation the Worker performs.
+const STATS_CHG24H = ((67280 - 70000) / 70000) * 100;
 
 function req(path = '/', { origin, ip = '1.2.3.4', method = 'GET' } = {}) {
   const headers = new Headers();
@@ -87,7 +103,9 @@ test('response mirrors prices.json shape and keys', async () => {
   assert.equal(typeof p.updated, 'string');
   assert.equal(typeof p.asOf, 'string');
   assert.equal(p.btc.usd, 67280);
-  assert.equal(p.btc.chg24h, -4.59);
+  // 24h change comes from Coinbase Exchange stats first (not CoinGecko):
+  // (67280 - 70000) / 70000 * 100.
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9, `got ${p.btc.chg24h}, want ${STATS_CHG24H}`);
   assert.equal(p.btc.src, 'Coinbase');
   assert.equal(p.stocks['BRK.B'].c, 592.94);
   assert.equal(p.stocks['BRK.B'].pc, FINNHUB_PREV['BRK.B']);
@@ -133,6 +151,7 @@ test('second call within the window does NOT hit Finnhub again', async () => {
   // 19 Finnhub calls once (first refresh), then zero — the cache serves the rest.
   assert.equal(calls.finnhub, 19);
   assert.equal(calls.coinbase, 1);
+  assert.equal(calls.stats, 1);
   assert.equal(calls.gecko, 1);
 });
 
@@ -188,7 +207,9 @@ test('no Finnhub API key configured: Finnhub symbols omitted, BTC still served',
 });
 
 test('Coinbase fails: CoinGecko price is used; both fail: btc is null, never fabricated', async () => {
-  const noCoinbase = makeFetchStub({ coinbaseOk: false });
+  // "Coinbase fails" means both Coinbase endpoints (spot + stats) are down,
+  // so the 24h change must come from CoinGecko here.
+  const noCoinbase = makeFetchStub({ coinbaseOk: false, statsOk: false });
   globalThis.fetch = noCoinbase.stub;
   let p = await body(await worker.fetch(req('/'), ENV));
   assert.equal(p.btc.usd, 67250);
@@ -196,10 +217,324 @@ test('Coinbase fails: CoinGecko price is used; both fail: btc is null, never fab
   assert.equal(p.btc.chg24h, -4.59);
 
   __test.reset();
-  const bothDown = makeFetchStub({ coinbaseOk: false, geckoOk: false });
+  const bothDown = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
   globalThis.fetch = bothDown.stub;
   p = await body(await worker.fetch(req('/'), ENV));
   assert.equal(p.btc, null);
+});
+
+// --- BTC 24h change: Coinbase Exchange stats first, CoinGecko fallback ---
+//
+// Live, the CoinGecko fetch fails from the Worker's Cloudflare IP, so
+// chg24h was null. The change now comes from Coinbase Exchange stats
+// ((last - open) / open * 100), with CoinGecko as the fallback.
+
+test('24h change comes from Coinbase stats when CoinGecko fails', async () => {
+  const { stub } = makeFetchStub({ geckoOk: false });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(p.btc.src, 'Coinbase');
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9, `got ${p.btc.chg24h}, want ${STATS_CHG24H}`);
+});
+
+test('24h change falls back to CoinGecko when Coinbase stats fails', async () => {
+  const { stub } = makeFetchStub({ statsOk: false });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(p.btc.chg24h, -4.59);
+});
+
+test('stats and CoinGecko both fail: chg24h is null but the Coinbase spot price still serves', async () => {
+  const { stub } = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(p.btc.src, 'Coinbase');
+  assert.equal(p.btc.chg24h, null);
+});
+
+test('stats with a zero open: no divide-by-zero — chg24h is null, never Infinity or NaN', async () => {
+  const { stub } = makeFetchStub({ statsOpen: '0', geckoOk: false });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(p.btc.chg24h, null);
+});
+
+test('stats with a zero open and CoinGecko up: chg24h falls back to CoinGecko', async () => {
+  const { stub } = makeFetchStub({ statsOpen: '0' });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.chg24h, -4.59);
+});
+
+test('stats with a missing open: chg24h falls back to CoinGecko, never NaN', async () => {
+  const { stub } = makeFetchStub({ statsOpen: null });
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.chg24h, -4.59);
+  assert.ok(Number.isFinite(p.btc.chg24h));
+});
+
+// --- BTC 24h change: last-good change + short TTL when it is null --------
+//
+// Nov 15: when both change sources (Coinbase stats + CoinGecko) fail, the
+// Worker served chg24h null and cached it for the full 55s, so the pills
+// showed no 24h change. Now the last good change is kept (in memory, and
+// in the last-good cache for a cold isolate) and served instead, and a
+// payload whose change is still null goes stale after a short TTL.
+
+test('both change sources fail after a good fetch: last-good change is served, not null', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  const first = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(first.btc.chg24h - STATS_CHG24H) < 1e-9, 'good fetch must carry the stats change');
+
+  // Both change sources now fail (price still answers). Expire fresh so the
+  // Worker must refresh — it must serve the last-good change.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'price still comes from Coinbase spot');
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9, `got ${p.btc.chg24h}, want last-good ${STATS_CHG24H}`);
+});
+
+test('cold isolate: last-good change comes from the cache when memory is empty', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Simulate a cold isolate: memory cleared, cache still warm.
+  __test.resetLastGoodChg();
+  await __test.expireFresh();
+  const failing = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280);
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9, `got ${p.btc.chg24h}, want cached last-good ${STATS_CHG24H}`);
+});
+
+test('no last-good anywhere: chg24h is null, and the null payload is cached within the short window', async () => {
+  const { stub, calls } = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = stub;
+  const first = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(first.btc.usd, 67280);
+  assert.equal(first.btc.chg24h, null, 'with no last-good value the change is null');
+
+  // Immediate re-fetch serves the cached null payload (no new upstream
+  // calls) — the short TTL only shortens how long it stays fresh.
+  const callsBefore = { ...calls };
+  const second = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(second.btc.chg24h, null);
+  assert.deepEqual(calls, callsBefore, 'second request inside the window must not re-fetch upstream');
+});
+
+test('a null change goes stale after the short TTL, not the full window', async () => {
+  assert.equal(__test.nullChgTtlSeconds, 15, 'short TTL for a null change must be 15s');
+  assert.ok(__test.nullChgTtlSeconds < __test.cacheTtlSeconds, 'short TTL must be under the normal 55s window');
+});
+
+test('a good change restores the last-good value after a failure', async () => {
+  // Good fetch, then a failing round (serves last-good), then a good round
+  // again — the last-good value must be the fresh change, not the old one.
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  await __test.expireFresh();
+  const failing = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const mid = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(mid.btc.chg24h - STATS_CHG24H) < 1e-9);
+
+  // Fresh stats with a different change (open 68000, last 67280).
+  await __test.expireFresh();
+  const changed = makeFetchStub({ statsOpen: '68000.00', statsLast: '67280.00' });
+  globalThis.fetch = changed.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  const want = ((67280 - 68000) / 68000) * 100;
+  assert.ok(Math.abs(p.btc.chg24h - want) < 1e-9, `got ${p.btc.chg24h}, want ${want}`);
+});
+
+// --- BTC 24h change: carried change expires after 10 minutes -------------
+//
+// Nov 15 r2 (Grok Bot must-fix): the last-good change was rewritten every
+// round the price was fresh, even when the value was itself carried over,
+// so a days-old change was served as current with stale:false (confirmed
+// at +1h, +6h, +30h and after a cold start). A carried change is now
+// reused only while it is at most 10 minutes old; past that, null is
+// served so the 15s refresh and the page's CoinGecko fill take over.
+
+test('a fresh change carries chgAt and chgStale:false', async () => {
+  assert.equal(__test.lastGoodChgMaxAgeMs, 10 * 60 * 1000, 'carried-change cap must be 10 minutes');
+  const { stub } = makeFetchStub();
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9);
+  assert.equal(typeof p.btc.chgAt, 'string', 'a fresh change must carry chgAt');
+  assert.ok(!Number.isNaN(Date.parse(p.btc.chgAt)), 'chgAt must be a parseable timestamp');
+  assert.equal(p.btc.chgStale, false, 'a fresh change is not stale');
+});
+
+test('a carried change within the cap is served and marked stale, chgAt not refreshed', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  const first = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(first.btc.chg24h - STATS_CHG24H) < 1e-9, 'good fetch must carry the stats change');
+  assert.equal(first.btc.chgStale, false);
+
+  // Both change sources now fail (price still answers). Expire fresh so the
+  // Worker must refresh — it must serve the carried change, marked stale.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'price still comes from Coinbase spot');
+  assert.ok(Math.abs(p.btc.chg24h - STATS_CHG24H) < 1e-9, `got ${p.btc.chg24h}, want carried ${STATS_CHG24H}`);
+  assert.equal(p.btc.chgStale, true, 'a carried change must be marked stale');
+  assert.equal(p.btc.chgAt, first.btc.chgAt, 'a carried change must not refresh chgAt');
+});
+
+test('a carried change older than the cap returns null (in-memory and cold-start)', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  const first = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(first.btc.chg24h - STATS_CHG24H) < 1e-9, 'good fetch must carry the stats change');
+
+  // Age both the in-memory last-good change and the cached copy past the
+  // cap, so neither the carried path nor the cold-start fill may reuse it.
+  const aged = Date.now() - __test.lastGoodChgMaxAgeMs - 60_000;
+  __test.setLastGoodChg(STATS_CHG24H, aged);
+  await __test.setLastGoodCacheChgAt(new Date(aged).toISOString());
+
+  // Both change sources now fail (price still answers). Expire fresh so the
+  // Worker must refresh — it must serve null, not the expired change.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'price still comes from Coinbase spot');
+  assert.equal(p.btc.chg24h, null, 'an expired carried change must not be served');
+});
+
+// --- BTC stale-price branch: the carried change AND the carried price expire
+//
+// Nov 15 r3 (Grok Bot round-2 must-fix + should-fix #1): when no price
+// source answers, the Worker served lastGood.btc whole, so its old change
+// skipped the 10-minute cap (served at +1h, +6h, +30h with chgStale:false,
+// and old cache entries with no chgAt did the same). The carried change is
+// now capped in that branch too. And a carried price older than ~10
+// minutes is not served at all — the pages fetch the price directly.
+
+test('stale-price branch: all sources down and chgAt older than the cap returns chg24h null, price still served', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  const first = await body(await worker.fetch(req('/'), ENV));
+  assert.ok(Math.abs(first.btc.chg24h - STATS_CHG24H) < 1e-9, 'good fetch must carry the stats change');
+
+  // Age only the change in the last-good cache past the cap; the price
+  // itself is still fresh, so it must be carried — but without a change.
+  const aged = Date.now() - __test.lastGoodChgMaxAgeMs - 60_000;
+  await __test.setLastGoodCacheChgAt(new Date(aged).toISOString());
+
+  // All BTC price and change sources now fail. Expire fresh so the Worker
+  // must refresh from the last-good cache.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'a fresh carried price must still be served');
+  assert.equal(p.btc.chg24h, null, 'an expired carried change must not ride along with the price');
+  assert.equal(p.btc.chgStale, true, 'a carried value is marked stale');
+});
+
+test('stale-price branch: chgAt missing from the cache returns chg24h null', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Drop chgAt from the cached entry (old cache entries predate it).
+  // JSON.stringify drops undefined, so the stored entry has no chgAt.
+  await __test.setLastGoodCacheChgAt(undefined);
+
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'a fresh carried price must still be served');
+  assert.equal(p.btc.chg24h, null, 'a carried change with no timestamp must not be served');
+});
+
+test('stale-price branch: a carried price older than ~10 minutes is not served (btc null)', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Age the cached price past the cap.
+  const aged = Date.now() - __test.lastGoodChgMaxAgeMs - 60_000;
+  await __test.setLastGoodCachePriceAt(new Date(aged).toISOString());
+
+  // All BTC sources down. Expire fresh so the Worker must refresh.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc, null, 'an expired carried price must not be served — the pages fetch directly');
+});
+
+// --- BTC stale-price branch, round 4: no fallback to time -----------------
+//
+// Nov 15 r4 (Grok Bot round-3 must-fix): old cache entries have no
+// priceAt, so the code fell back to time. The old Worker refreshed time
+// on every save, so during a full BTC-source outage a days-old price
+// could look 0–1 min old and get served for up to 10 min right after
+// deploy. The branch now uses priceAt only; a missing priceAt means the
+// price is expired (btc null), however fresh time looks.
+
+test('stale-price branch: a cache entry with no priceAt and time = now returns btc null', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Simulate an old cache entry: no priceAt, but time refreshed to now.
+  await __test.dropLastGoodCachePriceAt();
+
+  // All BTC sources down. Expire fresh so the Worker must refresh.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc, null, 'a carried price with no priceAt must not be served, even with a fresh time');
+});
+
+test('stale-price branch: a carried price 9 minutes old is still served', async () => {
+  const good = makeFetchStub();
+  globalThis.fetch = good.stub;
+  await worker.fetch(req('/'), ENV);
+
+  // Age the cached price to 9 minutes — inside the ~10 min cap.
+  const nineMin = Date.now() - 9 * 60 * 1000;
+  await __test.setLastGoodCachePriceAt(new Date(nineMin).toISOString());
+
+  // All BTC sources down. Expire fresh so the Worker must refresh.
+  await __test.expireFresh();
+  const failing = makeFetchStub({ coinbaseOk: false, statsOk: false, geckoOk: false });
+  globalThis.fetch = failing.stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(p.btc.usd, 67280, 'a carried price inside the cap must still be served');
+  assert.equal(p.btc.chgStale, true, 'a carried value is marked stale');
+});
+
+test('a fresh price carries priceAt, and time is the capture time', async () => {
+  const { stub } = makeFetchStub();
+  globalThis.fetch = stub;
+  const p = await body(await worker.fetch(req('/'), ENV));
+  assert.equal(typeof p.btc.priceAt, 'string', 'a fresh price must carry priceAt');
+  assert.ok(!Number.isNaN(Date.parse(p.btc.priceAt)), 'priceAt must be a parseable timestamp');
+  assert.equal(p.btc.time, p.btc.priceAt, 'time must be the price capture time, not the payload build time');
 });
 
 test('Finnhub returns an empty quote for a symbol: it is omitted, not priced at 0', async () => {
@@ -274,6 +609,7 @@ test('/health never touches an upstream provider', async () => {
   assert.equal((await body(res)).ok, true);
   assert.equal(calls.finnhub, 0);
   assert.equal(calls.coinbase, 0);
+  assert.equal(calls.stats, 0);
   assert.equal(calls.gecko, 0);
 });
 

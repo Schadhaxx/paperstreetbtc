@@ -134,7 +134,7 @@ html[data-theme="light"] body.ps-clock .bc-ct button{color:#475569;border-color:
 html[data-theme="light"] body.ps-clock .bc-ct button.on{background:#22d3ee;color:#041018;border-color:#22d3ee}
 .wl-btn{background:transparent;color:#22d3ee;border:1px solid rgba(34,211,238,.5);border-radius:999px;padding:0 8px;line-height:13px;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit;margin-left:4px;position:relative}.wl-btn::after{content:"";position:absolute;inset:-12px -6px}.wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}.wl-btn.wl-wait{border-style:dashed}.wl-btn[hidden]{display:none}
 html[data-theme="light"] body.ps-clock .wl-btn{color:#0e7490;border-color:#0e7490}html[data-theme="light"] body.ps-clock .wl-btn[aria-pressed="true"]{background:#22d3ee;color:#041018;border-color:#22d3ee}
-</style><link rel="stylesheet" href="clock-v4.css?v=v4l"></head><body class="ps-clock"><div class="wrap">
+</style><link rel="stylesheet" href="clock-v4.css?v=v4m"></head><body class="ps-clock"><div class="wrap">
 <a class="brand" href="../index.html"><picture><source type="image/webp" srcset="../assets/img/owl-220.webp"><img src="../assets/img/owl-220.png" alt="Paperstreet BTC" class="logo"></picture><span class="brand-text">Paperstreet <span>BTC</span></span><span class="brand-clock">· Live BTC Chart</span></a>
 <div class="top"><span class="lab">₿ Live BTC Chart</span><span class="live"><i></i>LIVE · AUTO<button type="button" class="wl-btn" id="wakeBtn" aria-pressed="false" title="Keep this screen from sleeping while the page is open" hidden>Keep screen on</button></span><span class="et" id="now">—</span></div>
 
@@ -213,7 +213,7 @@ var lastPrice=null,lastBlock=null,lastBlockTs=null,lastChg=null,lastCad=null,las
    last good one; the live fetch refreshes it, and "Updated" still shows
    when the last successful fetch landed. */
 var LG_KEY='ps-clock-cad';
-function loadLastGoodCad(){try{var raw=localStorage.getItem(LG_KEY);if(!raw)return;var o=JSON.parse(raw);if(o&&typeof o.cad==='number'&&o.cad>0){lastCad=o.cad;if(typeof o.cadChg==='number')lastCadChg=o.cadChg;if(typeof o.fx==='number'&&o.fx>0)fxRate=o.fx;else if(typeof o.usd==='number'&&o.usd>0)fxRate=o.cad/o.usd;}}catch(e){}}
+function loadLastGoodCad(){try{var raw=localStorage.getItem(LG_KEY);if(!raw)return;var o=JSON.parse(raw);if(o&&typeof o.cad==='number'&&o.cad>0){lastCad=o.cad;/* Nov 15 r3: the restored CAD change is capped by age (10 min, same as the Worker's carried-change cap) using the saved timestamp o.t — an old change must not come back as current. Entries with no usable t are treated as expired. The price/rate restore is uncapped (last-good by design). */if(typeof o.cadChg==='number'&&typeof o.t==='number'&&Date.now()-o.t<=10*60*1000)lastCadChg=o.cadChg;if(typeof o.fx==='number'&&o.fx>0)fxRate=o.fx;else if(typeof o.usd==='number'&&o.usd>0)fxRate=o.cad/o.usd;}}catch(e){}}
 function saveLastGoodCad(){try{if(typeof lastCad==='number'&&lastCad>0)localStorage.setItem(LG_KEY,JSON.stringify({cad:lastCad,cadChg:lastCadChg,usd:lastPrice,fx:fxRate,t:Date.now()}));}catch(e){}}
 loadLastGoodCad();
 /* The chart starts in USD unless a last-good CAD rate was restored above:
@@ -236,11 +236,12 @@ function fetchPrice(){
    The two fetches run in parallel; if the Worker fails, CoinGecko's USD is used
    instead (existing behaviour). If CoinGecko fails, USD still updates from the
    Worker and CAD keeps its last-good value. If both fail, Coinbase (existing). */
-var cgP=fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,cad&include_24hr_change=true',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){if(!d.bitcoin||typeof d.bitcoin.usd!=='number')throw 0;return {usd:d.bitcoin.usd,cad:typeof d.bitcoin.cad==='number'?d.bitcoin.cad:null,chg:d.bitcoin.usd_24h_change,cadChg:typeof d.bitcoin.cad_24h_change==='number'?d.bitcoin.cad_24h_change:null,src:'CoinGecko'};});
+var cgSig=window.AbortSignal&&AbortSignal.timeout?AbortSignal.timeout(8000):undefined;
+var cgP=fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,cad&include_24hr_change=true',{cache:'no-store',signal:cgSig}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){if(!d.bitcoin||typeof d.bitcoin.usd!=='number')throw 0;return {usd:d.bitcoin.usd,cad:typeof d.bitcoin.cad==='number'?d.bitcoin.cad:null,chg:d.bitcoin.usd_24h_change,cadChg:typeof d.bitcoin.cad_24h_change==='number'?d.bitcoin.cad_24h_change:null,src:'CoinGecko'};});
 return Promise.allSettled([fetchWorkerBtc(),cgP]).then(function(res){
 var w=res[0].status==='fulfilled'?res[0].value:null;
 var cg=res[1].status==='fulfilled'?res[1].value:null;
-if(w)return {usd:w.usd,cad:cg?cg.cad:null,chg:w.chg,cadChg:cg?cg.cadChg:null,src:w.src};
+if(w)return {usd:w.usd,cad:cg?cg.cad:null,chg:typeof w.chg==='number'?w.chg:(cg&&typeof cg.chg==='number'?cg.chg:null),cadChg:cg?cg.cadChg:null,src:w.src};
 if(cg)return cg;
 return fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){var a=parseFloat(d.data.amount);if(!(a>0))throw 0;return {usd:a,cad:null,chg:null,cadChg:null,src:'Coinbase'};});
 });}
@@ -271,6 +272,9 @@ $('sats10100').textContent=(s*10).toLocaleString('en-US')+' / '+(s*100).toLocale
 var t='₿ '+fmtPrice(pv,ec)+' &nbsp;·&nbsp; '+s.toLocaleString('en-US')+' sats/'+sym+' &nbsp;·&nbsp; ';if(lastBlock)$('tick1').innerHTML=t+'Block #'+lastBlock.toLocaleString('en-US')+' &nbsp;·&nbsp; '+t+'Block #'+lastBlock.toLocaleString('en-US');$('tick2').innerHTML=$('tick1').innerHTML;}
 var ac=ec==='CAD'?lastCadChg:lastChg;
 if(typeof ac==='number'){$('chg').textContent=(ac>=0?'▲ ':'▼ ')+Math.abs(ac).toFixed(1)+'%';/* the muted ' · 24h' label beside #chg is static markup; adding it here too made it show twice */$('chg').className='chg '+(ac>=0?'up':'down');}
+/* Nov 15 r2: when a new poll has no change, clear the change text —
+   otherwise the old change stays on screen as if current. */
+else{$('chg').textContent='';$('chg').className='chg';}
 if(lastBlock!=null){$('height').textContent='#'+lastBlock.toLocaleString('en-US');
 var next=Math.ceil((lastBlock+1)/210000)*210000,rem=next-lastBlock,lastH=next-210000,pct=((lastBlock-lastH)/210000*100);
 $('halving').textContent=next.toLocaleString('en-US');$('halvingDetail').textContent=rem.toLocaleString('en-US')+' blocks to go · roughly '+(rem*10/1440).toFixed(0)+' days at 10 min per block';
@@ -289,12 +293,15 @@ function update(){Promise.allSettled([fetchPrice(),fetchBlock(),fetchFees(),fetc
 var priceOk=false,blockOk=false,hero=$('hero');
 if(r[0].status==='fulfilled'){var np=r[0].value.usd;if(lastPrice!=null&&np!==lastPrice){hero.classList.remove('up','down');void hero.offsetWidth;hero.classList.add(np>lastPrice?'up':'down');}
 lastPrice=np;lastChg=r[0].value.chg;
-if(typeof r[0].value.cad==='number'){lastCad=r[0].value.cad;lastCadChg=r[0].value.cadChg;
+if(typeof r[0].value.cad==='number'){lastCad=r[0].value.cad;lastCadChg=typeof r[0].value.cadChg==='number'?r[0].value.cadChg:null;
 /* Keep the last valid exchange rate unless THIS response supplies both
    USD and CAD: a USD-only fallback (Coinbase) leaves lastCad stale, and
    dividing that older CAD price by the new USD price would recompute the
    rate from mismatched timestamps. (Grok live review, 6 Nov.) */
 if(lastPrice&&lastCad)fxRate=lastCad/lastPrice;saveLastGoodCad();}
+/* Nov 15 r3: no CAD this round (Worker-only or Coinbase fallback) — drop
+   the old CAD change instead of leaving it on screen as if current. */
+else{lastCadChg=null;}
 if(effCur()==='CAD')applyCurrency();
 priceOk=true;}
 if(r[1].status==='fulfilled'){lastBlock=r[1].value.height;lastBlockTs=r[1].value.ts;blockOk=true;}
@@ -314,8 +321,8 @@ $('refreshBtn').addEventListener('click',update);
 render();/* Paint the initial state at once (restored CAD, or the CAD loading state) instead of waiting for the first fetch. */update();tick();setInterval(tick,1000);setInterval(update,60000);
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
-<script src="../assets/js/btcchart.js?v=et26" defer></script>
-<script src="clock-v4.js?v=v4l" defer></script>
+<script src="../assets/js/btcchart.js?v=et27" defer></script>
+<script src="clock-v4.js?v=v4m" defer></script>
 <script>
 /* V4: after the inlined chart mounts, fire one resize so the canvas
    matches the contained stage (the page already redraws on resize). */
