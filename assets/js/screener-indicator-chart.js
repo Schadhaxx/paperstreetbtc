@@ -576,7 +576,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       sum = 0; for (j = i - 19; j <= i; j++) sum += weeks[j].close;
       m = sum / 20; sd = 0;
       for (j = i - 19; j <= i; j++) sd += (weeks[j].close - m) * (weeks[j].close - m);
-      sd = Math.sqrt(sd / 19);
+      sd = Math.sqrt(sd / 20); /* Batch B finding 4: population SD (÷20), the standard 20,2σ recipe */
       sma.push(m); up.push(m + 2 * sd); lo.push(m - 2 * sd);
     }
     return { sma: sma, up: up, lo: lo };
@@ -614,7 +614,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       sum = 0; for (j = idx - 19; j <= idx; j++) sum += dailyDays[j].close;
       m = sum / 20; sd = 0;
       for (j = idx - 19; j <= idx; j++) sd += (dailyDays[j].close - m) * (dailyDays[j].close - m);
-      sd = Math.sqrt(sd / 19);
+      sd = Math.sqrt(sd / 20); /* Batch B finding 4: population SD (÷20) */
       sma.push(m); up.push(m + 2 * sd); lo.push(m - 2 * sd);
     }
     return { sma: sma, up: up, lo: lo };
@@ -624,6 +624,14 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // Default weekly — the switch only appears while Bollinger is on,
   // and a symbol change resets it to weekly.
   var bollMode = 'weekly';
+  /* Batch B bug 7: the dialog title is the candle mode ('YTD weekly
+     candles'), but the Daily switch only changes the Bollinger bands to
+     daily closes — the candles stay weekly. Say so in the title, so the
+     mode and the title cannot disagree. */
+  function syncTitle() {
+    var t = el('ind-title');
+    if (t && state.cfg) t.textContent = state.cfg.title + (bollMode === 'daily' ? ' \u00b7 daily Bollinger' : '');
+  }
   function syncBollModeUI() {
     var sw = el('ind-boll-mode');
     if (sw) sw.style.display = ENH.boll ? 'inline-flex' : 'none';
@@ -814,8 +822,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (!m) return;
     var switched = !state.cfg || state.cfg.symbol !== cfg.symbol;
     state.cfg = cfg;
-    var t = el('ind-title');
-    if (t) t.textContent = cfg.title;
+    syncTitle();
     var sub = el('ind-sub');
     if (sub) sub.textContent = (!switched && state.resolvedSub) ? state.resolvedSub : cfg.subBlurb;
     m.setAttribute('aria-label', cfg.stock
@@ -1135,7 +1142,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = w.close >= w.open ? psC('#22c55e','#15803d') : psC('#ef4444','#b91c1c');
         ctx.fillRect(cx - bw / 2, volTop + volH - bh, bw, bh); ctx.restore();
       });
-      if (avgVol > 0 && maxVol > 0) {
+      if (volCnt >= 2 && avgVol > 0 && maxVol > 0) { /* Batch B bug 6: a one-point 'average' is just that point */
         ctx.save(); ctx.strokeStyle = psC('#94a3b8','#475569'); ctx.setLineDash([4, 3]);
         ctx.beginPath(); ctx.moveTo(padL, volTop + volH - avgVol / maxVol * volH); ctx.lineTo(cssW - padR, volTop + volH - avgVol / maxVol * volH); ctx.stroke(); ctx.restore();
       }
@@ -1209,7 +1216,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       if (ENH.volume) {
         if (hasVol) {
           var vs = 0, vc = 0; viewWeeks.forEach(function (w) { if (typeof w.volume === 'number' && w.volume > 0) { vs += w.volume; vc++; } });
-          lines.push('Volume: latest week ' + fmtVol(dw[n - 1].volume) + ' · average ' + fmtVol(vc ? vs / vc : 0) + '.');
+          lines.push('Volume: latest week ' + fmtVol(dw[n - 1].volume) + (vc >= 2 ? ' · average ' + fmtVol(vs / vc) + '.' : ' (only week with volume data — no average).')); /* Batch B bug 6 */
         } else lines.push('Volume: no volume data in the shipped file for this symbol.');
       }
       if ((ENH.boll || ENH.drawdown) && (state.cfg.lastInProgress || state.progressNote)) lines.push(bollMode === 'daily' && ENH.boll ? 'Daily Bollinger for the in-progress week uses the latest completed session.' : 'Bollinger/drawdown include the in-progress latest week.');
@@ -1461,6 +1468,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         if (!ENH.boll) return;
         bollMode = m;
         syncBollModeUI();
+        syncTitle();
         if (m === 'daily') loadDailyBoll();
         else draw();
       });

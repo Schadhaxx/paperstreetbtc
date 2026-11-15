@@ -70,6 +70,11 @@
   }
   function exit() {
     if (!mode) return;
+    /* Batch B bug 11: a drag on the giant price can leave its text selected
+       (and an inline size from fitPrice); clear both so the exit cannot
+       leave the giant price rendered over the normal hero. */
+    try { var _sel = window.getSelection(); if (_sel) _sel.removeAllRanges(); } catch (e) {}
+    try { var _pe = document.getElementById('price'); if (_pe) _pe.style.fontSize = ''; } catch (e) {}
     var el = fsEl();
     if (el) {
       try {
