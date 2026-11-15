@@ -346,6 +346,7 @@ function drawNativeYTD(lbls, datasets){
     /* hover (index mode): guide line + enlarged points + one tooltip with
        every visible line at that month, like Chart.js interaction
        mode 'index', intersect false. */
+    var tipInfo = null;
     if (s2Hover >= 0 && s2Hover < n){
       var hx = xs[s2Hover];
       ctx.strokeStyle = 'rgba(148,163,184,.35)'; ctx.lineWidth = 1;
@@ -369,33 +370,53 @@ function drawNativeYTD(lbls, datasets){
       ctx.font = BFONT;
       var tw = ctx.measureText(title).width;
       ctx.font = FONT;
+      /* Tooltip width is capped at the canvas width (4px margins): a long
+         series label (the backup-source benchmark label at phone width)
+         wraps onto extra lines instead of pushing the box past the canvas
+         edge and clipping. The value stays right-aligned on the first
+         line; continuation lines are label-only. */
+      var maxTw = Math.max(40, W - 8);
+      var rowH = 17;
       trows.forEach(function(r){
-        var w = 10 + 4 + ctx.measureText(r.n).width + 8 + ctx.measureText(r.v).width;
+        r.vw = ctx.measureText(r.v).width;
+        var w = 10 + 4 + ctx.measureText(r.n).width + 8 + r.vw;
         if (w > tw) tw = w;
       });
       tw += 20;
-      var th = 8 + 15 + 4 + trows.length * 17 + 8;
+      if (tw > maxTw){
+        tw = maxTw;
+        trows.forEach(function(r){
+          r.lines = s2WrapLabel(r.n, Math.max(20, tw - 24 - 10 - 8 - r.vw));
+        });
+      } else {
+        trows.forEach(function(r){ r.lines = [r.n]; });
+      }
+      var th = 8 + 15 + 4 + trows.reduce(function(s, r){ return s + r.lines.length * rowH; }, 0) + 8;
       var tx = hx + 12;
       if (hx > padL + (W - padL - padR) * 0.6) tx = hx - 12 - tw;
       tx = Math.max(4, Math.min(tx, W - tw - 4));
       var ty = topY - th - 10;
       if (ty < padT) ty = Math.min(botY + 12, H - th - 4);
       ty = Math.max(4, ty);
+      tipInfo = { x: tx, y: ty, w: tw, h: th, rows: trows.length };
       s2RoundRect(ctx, tx, ty, tw, th, 8);
       ctx.fillStyle = 'rgba(7,11,24,.94)'; ctx.fill();
       ctx.strokeStyle = 'rgba(148,163,184,.35)'; ctx.lineWidth = 1; ctx.stroke();
       ctx.font = BFONT; ctx.fillStyle = '#e8eef7'; ctx.textBaseline = 'middle';
       ctx.fillText(title, tx + 10, ty + 8 + 7);
       ctx.font = FONT;
-      trows.forEach(function(r, ri){
-        var ry = ty + 8 + 15 + 4 + ri * 17 + 8;
+      var ry = ty + 8 + 15 + 4 + 8;
+      trows.forEach(function(r){
         ctx.fillStyle = r.c;
         ctx.fillRect(tx + 10, ry - 4, 10, 8);
         ctx.fillStyle = '#9aa6bc';
-        ctx.fillText(r.n, tx + 24, ry);
+        r.lines.forEach(function(ln, li){
+          ctx.fillText(ln, tx + 24, ry + li * rowH);
+        });
         ctx.fillStyle = '#e8eef7'; ctx.textAlign = 'right';
         ctx.fillText(r.v, tx + tw - 10, ry);
         ctx.textAlign = 'left';
+        ry += r.lines.length * rowH;
       });
       ctx.textBaseline = 'alphabetic';
     }
@@ -403,6 +424,7 @@ function drawNativeYTD(lbls, datasets){
     window.__S2_NATIVE_LEGEND = legInfo;
     window.__S2_NATIVE_LAYOUT = { labels: lbls.slice(), series: datasets.map(function(ds){ return ds.label; }), points: n, hover: s2Hover };
     window.__S2_NATIVE_HOVER = s2Hover;
+    window.__S2_NATIVE_TOOLTIP = tipInfo;
     return true;
   }catch (e){ return false; }
 }
@@ -574,3 +596,17 @@ document.querySelectorAll('.bench-selector .bench-btn').forEach(btn => {
 });
 
 if (window.PSBook) PSBook.ready.then(B => { BKREF = B; buildFromBook(B); render(); if (window.PSLive) applyLive(window.PSLive.state()); }).catch(() => {});
+
+/* Webfont: the first draw can measure labels in the fallback font if Inter
+   has not finished loading yet. Redraw once the document fonts are ready
+   so text is measured (and wrapped) in the right font. Fires once;
+   render() is idempotent and returns early before the book loads, so this
+   is safe at any time. Browsers without document.fonts skip it. */
+try{
+  if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function'){
+    document.fonts.ready.then(function(){
+      window.__S2_FONTS_REDRAW = true;
+      render();
+    }).catch(function(){});
+  }
+}catch (e){}
