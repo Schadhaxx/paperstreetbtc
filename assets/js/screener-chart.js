@@ -227,10 +227,68 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         deskLiveAt = Date.now();
       });
   }
+  // --- Cloudflare Worker live point (CF-3, Nov 2026) ---
+  // The comparison chart's live point takes the Worker's last price
+  // first (near-1-min Finnhub quote), then desk-live.json. The Worker
+  // covers the 16 Desk stocks; a symbol it omits (or a stale quote)
+  // falls back silently to desk-live.json, then to the shipped daily
+  // file. The Worker never supplies OHLC — it only patches the
+  // close (today's point), exactly like the desk-live point below.
+  // Freshness mirrors the desk-live rule (payload asOf < ~20 min)
+  // plus the screener's 30-min quote rule: on a weekend the Worker
+  // still refreshes (fresh asOf) but Finnhub returns Friday's close,
+  // whose t is days old — that must never become a point.
+  var WORKER_URL = 'https://paperstreet-quotes.SUBDOMAIN.workers.dev/';
+  var WORKER_MAX_AGE_MS = 20 * 60 * 1000; // same ~20 min as desk-live
+  var WORKER_QUOTE_MAX_AGE_MS = 30 * 60 * 1000; // same 30 min as screener.js
+  var workerLive = null; // {asOfMs, bySym:{sym:{close, t}}} or null
+  var workerLiveAt = 0;
+  function workerPointFor(sym) {
+    if (!workerLive || !workerLive.bySym) return null;
+    var e = workerLive.bySym[sym];
+    if (!e) return null;
+    if (typeof workerLive.asOfMs !== 'number' || !isFinite(workerLive.asOfMs)) return null;
+    var now = Date.now();
+    if (workerLive.asOfMs > now + 60000 || (now - workerLive.asOfMs) >= WORKER_MAX_AGE_MS) return null;
+    if (typeof e.t !== 'number' || !(e.t > 0)) return null;
+    if ((now - e.t * 1000) >= WORKER_QUOTE_MAX_AGE_MS) return null;
+    if (typeof e.close !== 'number' || !isFinite(e.close) || !(e.close > 0)) return null;
+    return Math.round(e.close * 100) / 100;
+  }
+  function fetchWorkerLive() {
+    var c = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var t = c ? setTimeout(function () { c.abort(); }, 8000) : 0;
+    fetch(WORKER_URL, { cache: 'no-store', signal: c ? c.signal : undefined })
+      .then(function (res) { if (t) clearTimeout(t); if (!res.ok) throw new Error('no worker'); return res.json(); })
+      .then(function (data) {
+        var asOfMs = (data && typeof data.asOf === 'string') ? Date.parse(data.asOf) : NaN;
+        var bySym = {};
+        if (data && data.stocks && typeof data.stocks === 'object') {
+          var syms = data.stocks, k, q;
+          for (k in syms) {
+            q = syms[k];
+            if (!q || typeof q.c !== 'number' || !isFinite(q.c) || !(q.c > 0)) continue;
+            bySym[k] = { close: q.c, t: (typeof q.t === 'number' ? q.t : 0) };
+          }
+        }
+        workerLive = { asOfMs: asOfMs, bySym: bySym };
+        workerLiveAt = Date.now();
+        render();
+      })
+      .catch(function () {
+        if (t) clearTimeout(t);
+        // Silent fallback: no Worker (or a bad one) just means the
+        // desk-live point below stands. Re-render so the fallback is
+        // visible instead of a stale Worker point.
+        workerLive = null;
+        workerLiveAt = Date.now();
+        render();
+      });
+  }
   // Update hook for the 5-min re-check (polling while a chart is open +
   // refresh on tab return, wired by the caller): re-fetches desk-live.json
   // and re-renders. No timer lives in this file.
-  window.ScreenerChartRefreshDeskLive = function () { fetchDeskLive(true); };
+  window.ScreenerChartRefreshDeskLive = function () { fetchDeskLive(true); fetchWorkerLive(); };
   function seriesFor(sym) {
     var s = daily && daily.symbols && daily.symbols[sym];
     if (!s || !s.dates || !s.closes) return null;
@@ -252,10 +310,14 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // of the week containing today. Otherwise the shipped daily file
     // stands (desk-live.json does not exist yet on some loads; a missing
     // or stale file is a silent fallback, never an error).
+    // CF-3: the Worker's last price is tried first (near-1-min, fresh
+    // quote only); desk-live.json is the fallback when the Worker
+    // fails, omits the symbol, or its quote is stale.
     var lastD = dates[dates.length - 1];
     var today = todayET();
     if (s.kind === 'stock' && today && lastD < today) {
-      var dl = deskLivePointFor(sym, today);
+      var wp = workerPointFor(sym);
+      var dl = (wp !== null) ? wp : deskLivePointFor(sym, today);
       if (dl !== null) {
         dates.push(today);
         closes.push(dl);
@@ -1145,6 +1207,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     }
     loadDaily();
     fetchDeskLive();
+    fetchWorkerLive();
     var body = document.getElementById('screener-body');
     if (body) body.addEventListener('click', function (e) {
       if (e.target.closest && e.target.closest('.note-btn')) return;

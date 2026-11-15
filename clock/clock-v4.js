@@ -71,6 +71,10 @@
   if (exitBtn) exitBtn.addEventListener('click', function (e) { e.stopPropagation(); exit(); });
   var toChart = stage.querySelector('.v4-fs-tochart');
   if (toChart) toChart.addEventListener('click', function (e) { e.stopPropagation(); enter('chart', this); });
+  /* CF-4 add-on 2: "Price clock" in the same bar, chart-only mode — the
+     mirror of "Switch to chart". */
+  var toPrice = stage.querySelector('.v4-fs-toprice');
+  if (toPrice) toPrice.addEventListener('click', function (e) { e.stopPropagation(); enter('price', this); });
   document.addEventListener('keydown', function (e) {
     if ((e.key === 'Escape' || e.key === 'Esc') && mode) exit();
   });
@@ -252,6 +256,45 @@
   }
   window.addEventListener('resize', function () { if (mode) after(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (mode) layout(); });
+
+  /* CF-4 add-on 3: theme dot in the price-only view. Toggles light/dark
+     live (no reload, so the price-only view stays put) and stores the
+     choice in ps-theme, the same setting the rest of the clock page
+     uses. The dot shows the mode it switches TO (white = light, dark
+     blue = dark). The BTC chart reads psC at draw time, so a resize
+     redraws it in the new theme; the hash chart redraws the same way
+     when its fetch lands, or at once if its draw function is available. */
+  var dot = document.getElementById('themeDot');
+  function syncDot() {
+    if (!dot) return;
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    dot.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
+    dot.setAttribute('aria-pressed', light ? 'true' : 'false');
+    /* Keep the floating theme pill's label in sync (it is covered by the
+       stage in full-screen mode, so it would otherwise be stale until
+       the next reload). */
+    var tp = document.getElementById('psThemePill');
+    if (tp) {
+      tp.textContent = light ? 'Dark' : 'Light';
+      tp.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
+      tp.setAttribute('aria-pressed', light ? 'true' : 'false');
+    }
+  }
+  if (dot) dot.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    if (light) {
+      document.documentElement.removeAttribute('data-theme');
+      try { localStorage.removeItem('ps-theme'); } catch (er) {}
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      try { localStorage.setItem('ps-theme', 'light'); } catch (er) {}
+    }
+    syncDot();
+    kick();
+    if (typeof window.drawHash === 'function') { try { window.drawHash(); } catch (er) {} }
+  });
+  syncDot();
 
   window.__psClockFs = { enter: enter, exit: exit, mode: function () { return mode; } };
 })();
