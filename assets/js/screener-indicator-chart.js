@@ -256,7 +256,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return out;
   }
   function isInProgress() {
-    return !!(state.progressNote || (state.cfg && state.cfg.lastInProgress));
+    // A desk-live new week is in progress too: on the first trading day
+    // of the week the shipped file is Friday's final (inProgress null
+    // for stocks), so without this the appended candle would draw with
+    // no LIVE tag and no live-price paint.
+    return !!(state.progressNote || (state.cfg && state.cfg.lastInProgress) ||
+      deskLiveNewWeek(state.weeks, state.deskLive));
   }
   // --- desk-live.json overlay (5-min current-week candle, stage 2) ---
   // The 5-min Desk job publishes desk-live.json to the data branch
@@ -326,6 +331,48 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       open: ov.open, high: ov.high, low: ov.low, close: ov.close,
       volume: (typeof ov.volume === 'number' ? ov.volume : (typeof w.volume === 'number' ? w.volume : null)) };
   }
+  // Monday-candle append (16 Nov 2026): the desk-live candle as a NEW
+  // week, for the first trading day of the week. The shipped file still
+  // ends at last week on that morning (weekly files only reach main on
+  // the after-close final run), and deskLiveWeekFor above can only patch
+  // a week that is already there — so without this, no current-week
+  // candle appears at all until after the close.
+  // The fresh-candle day is the FIRST TRADING DAY, not calendar Monday
+  // (Sunil, 16 Nov 2026): a holiday Monday shifts it to Tuesday, Mon+Tue
+  // closed shifts it to Wednesday. There is NO holiday calendar here:
+  // the desk-live feed is the signal — the job skips holidays, so on a
+  // closed day there is no fresh publish and the freshness guard below
+  // fails closed; on the first trading day the fresh entry appears and
+  // the week it names (still dated to that week's Monday) appends.
+  // Guards, all fail closed: fresh asOf (< ~20 min); monday/sunday valid
+  // YYYY-MM-DD with sunday after monday; today (ET) inside the new
+  // week; monday exactly 7 days after the last shipped monday (the
+  // patch path owns a matching monday; a bigger gap means the file is
+  // stale and a candle must not be invented across it); days 1-5;
+  // OHLC finite and high/low consistent. Never mutates the input weeks.
+  function deskLiveNewWeek(weeks, ov, nowMs) {
+    if (!weeks || !weeks.length || !ov) return null;
+    if (!deskLiveFresh(ov.asOfMs, nowMs)) return null;
+    if (typeof ov.monday !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(ov.monday)) return null;
+    if (typeof ov.sunday !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(ov.sunday)) return null;
+    if (ov.sunday <= ov.monday) return null;
+    if (!weekCoversToday({ monday: ov.monday, sunday: ov.sunday }, nowMs)) return null;
+    var lastMon = isoDay(weeks[weeks.length - 1].monday);
+    if (!lastMon) return null;
+    if (Date.parse(ov.monday) - Date.parse(lastMon) !== 7 * 86400000) return null;
+    if (typeof ov.days !== 'number' || !isFinite(ov.days) || ov.days < 1 || ov.days > 5 || ov.days !== Math.floor(ov.days)) return null;
+    if (typeof ov.open !== 'number' || !isFinite(ov.open) ||
+        typeof ov.high !== 'number' || !isFinite(ov.high) ||
+        typeof ov.low !== 'number' || !isFinite(ov.low) ||
+        typeof ov.close !== 'number' || !isFinite(ov.close)) return null;
+    if (ov.high < Math.max(ov.open, ov.close) || ov.low > Math.min(ov.open, ov.close)) return null;
+    var monD = new Date(ov.monday), sunD = new Date(ov.sunday);
+    if (isNaN(monD) || isNaN(sunD)) return null;
+    return { monday: monD, sunday: sunD,
+      label: fmtDateUTC(monD) + ' – ' + fmtDateUTC(sunD),
+      days: ov.days, open: ov.open, high: ov.high, low: ov.low, close: ov.close,
+      volume: (typeof ov.volume === 'number' ? ov.volume : null) };
+  }
   function fetchDeskLive() {
     if (!state.cfg) return;
     var token = ++state.deskLiveToken;
@@ -338,7 +385,8 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         var entry = deskLiveEntryFor(data, cfg);
         if (!entry || !deskLiveFresh(asOfMs)) { state.deskLive = null; }
         else {
-          state.deskLive = { monday: entry.monday, open: entry.open, high: entry.high, low: entry.low, close: entry.close,
+          state.deskLive = { monday: entry.monday, sunday: (typeof entry.sunday === 'string' ? entry.sunday : null),
+            open: entry.open, high: entry.high, low: entry.low, close: entry.close,
             volume: (typeof entry.volume === 'number' ? entry.volume : null),
             days: (typeof entry.days === 'number' ? entry.days : null), asOfMs: asOfMs };
         }
@@ -397,6 +445,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // this comment, per Grok Bot's final correction 6 Nov 2026.
   function nextWeekClose(isStock) {
     var last = state.weeks && state.weeks.length ? state.weeks[state.weeks.length - 1] : null;
+    // Monday-candle append: on the first trading day the displayed week
+    // is the desk-live new week, so the countdown targets THIS week's
+    // close — otherwise it would say "Week closed" all Monday.
+    var nw = deskLiveNewWeek(state.weeks, state.deskLive);
+    if (nw) last = nw;
     var now = Date.now(), target;
     if (isStock) {
       var monday = last && last.monday ? new Date(last.monday) : null;
@@ -639,7 +692,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return { pct: best, peak: bestPeak, trough: bestTrough };
   }
   function enhPattern(weeks, i) {
-    if (i <= 0) return null;
+    if (i <= 0 || i >= weeks.length) return null;
     var w = weeks[i], p = weeks[i - 1];
     var body = Math.abs(w.close - w.open), range = w.high - w.low;
     if (!(range > 0)) return null;
@@ -910,6 +963,13 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // extended to the live price (display only — the shipped week is
     // never mutated). When not live, dw is exactly viewWeeks.
     var dw = viewWeeks.slice();
+    // Monday-candle append (16 Nov 2026): on the first trading day of
+    // the week the shipped file still ends at last week, so the new
+    // week's candle comes from desk-live (display only — the shipped
+    // weeks are never mutated). The patch lines below then run on the
+    // appended week exactly as they would on a shipped current week.
+    var nw = deskLiveNewWeek(viewWeeks, state.deskLive);
+    if (nw) dw.push(nw);
     // 5-min desk-live overlay first (fresh + monday-matching only),
     // then the live-price close patch on top, as before.
     if (dw.length) dw[dw.length - 1] = deskLiveWeekFor(dw[dw.length - 1]);
@@ -1017,7 +1077,10 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     });
     // Enhancements, drawn over the candles: Bollinger bands (mockup 3)
     // and high/low lines (mockup 5). High/low use shown weeks only.
-    if (bands && bands.up[n - 1] != null) {
+    // Bands are computed on the shipped weeks only, so index the last
+    // shipped shown week — not n - 1, which is the appended desk-live
+    // week on the first trading day (it has no band value).
+    if (bands && bands.up[viewWeeks.length - 1] != null) {
       ctx.save();
       ctx.fillStyle = ENH.drawdown ? 'rgba(196,181,253,0.07)' : 'rgba(196,181,253,0.10)';
       ctx.beginPath();
@@ -1128,7 +1191,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         var needLab = bollMode === 'daily'
           ? 'Bollinger (daily) needs 20 daily closes before this week.'
           : 'Bollinger needs 20 weeks; this chart has ' + n + '.';
-        lines.push(bands && bands.up[n - 1] != null ? 'Bollinger (' + modeLab + ', 2σ): SMA ' + fmt(bands.sma[n - 1]) + ' · upper ' + fmt(bands.up[n - 1]) + ' · lower ' + fmt(bands.lo[n - 1]) : needLab);
+        lines.push(bands && bands.up[viewWeeks.length - 1] != null ? 'Bollinger (' + modeLab + ', 2σ): SMA ' + fmt(bands.sma[viewWeeks.length - 1]) + ' · upper ' + fmt(bands.up[viewWeeks.length - 1]) + ' · lower ' + fmt(bands.lo[viewWeeks.length - 1]) : needLab);
       }
       if (ENH.boll && state.dailyError) lines.push(state.dailyError);
       if (ENH.lines) lines.push('Highest shown ' + fmt(shownHi) + ' · lowest shown ' + fmt(shownLo) + ' — shown weeks only, not a lifetime high/low.');
@@ -1137,14 +1200,16 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       if (ENH.volume) {
         if (hasVol) {
           var vs = 0, vc = 0; viewWeeks.forEach(function (w) { if (typeof w.volume === 'number' && w.volume > 0) { vs += w.volume; vc++; } });
-          lines.push('Volume: latest week ' + fmtVol(viewWeeks[n - 1].volume) + ' · average ' + fmtVol(vc ? vs / vc : 0) + '.');
+          lines.push('Volume: latest week ' + fmtVol(dw[n - 1].volume) + ' · average ' + fmtVol(vc ? vs / vc : 0) + '.');
         } else lines.push('Volume: no volume data in the shipped file for this symbol.');
       }
       if ((ENH.boll || ENH.drawdown) && (state.cfg.lastInProgress || state.progressNote)) lines.push(bollMode === 'daily' && ENH.boll ? 'Daily Bollinger for the in-progress week uses the latest completed session.' : 'Bollinger/drawdown include the in-progress latest week.');
       if (lines.length) { note.textContent = lines.join(' '); note.style.display = 'block'; }
       else { note.style.display = 'none'; note.textContent = ''; }
     }
-    state.viewWeeks = viewWeeks; state.viewStart = viewStart;
+    // Tap targets are the DISPLAYED weeks (dw), so a tap on the
+    // appended desk-live candle maps to that candle, not to last week.
+    state.viewWeeks = dw; state.viewStart = viewStart;
     canvas._plot = { padL: padL, slot: slot, n: n };
     if (prog < 1 && !reducedM) requestAnimationFrame(function () { draw(); });
   }
@@ -1394,5 +1459,5 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveNewWeek: deskLiveNewWeek, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
 })();
