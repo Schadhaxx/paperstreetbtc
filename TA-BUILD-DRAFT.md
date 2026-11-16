@@ -82,7 +82,7 @@ Do not start a stage until the previous one meets its acceptance criteria. Keep 
 ## Per-stage review & sign-off (Sunil, Mon Nov 16 ~08:21)
 Each stage has its own review chain. A stage is not done until its reviewers have had their look and Pepper has applied the final touches. Do not start the next stage until the previous stage's final touches are done.
 - **Stage 1 — GUI shell:** Pepper builds → Site Launch reviews and signs off → Chief of Staff reviews → fixes and suggestions come back to Pepper for final touches.
-- **Stage 2 — Browser indicators:** Pepper builds → Chief reviews → Grok Bot reviews → back to Pepper for final touches.
+- **Stage 2 — Browser indicators:** Pepper builds → Chief reviews → Grok Bot reviews → back to Pepper for final touches. Site Launch can do a live review when all TA is live.
 - **Stage 3 — Python trendlines:** Pepper builds + tests → Market God reviews (a say, before final touches), working with Chief → Grok Bot takes a pass → back to Pepper for final touches. Portfolio Bot does a live check after the TA work is fully live, focusing on Stage 3.
 - **Stage 4 and everything after (rotate hint, handback):** Chief check → Grok Bot check → Pepper finalizes.
 - **When the job is final:** Grok Bot does a live check of everything.
