@@ -28,6 +28,7 @@ Browser maths for Bollinger/SMA/EMA/RSI on the native canvas, no Chart.js. Smart
 - **Concern:** Grok Bot is on fumes. If it cannot do a real review, the first-approver step is a formality and the real gate is Chief (Fri) + Sunil. Either reserve Grok Bot enough tokens for a genuine review, or be explicit that Chief's Friday review is the substantive check.
 - **Build start:** Pepper builds after Chief's revisions come back (not necessarily Monday after 10 AM). The exact start depends on when the revisions arrive. Nov 22 is moveable, so there is flexibility — do not rush to hit a date.
 - **Conflicts:** if the Chief-revised plan conflicts with the refined plan (or any two instructions conflict), Pepper flags it to Sunil and does not proceed on the disputed point until Sunil decides. Sunil is CEO — he decides who wins the argument.
+- **Authority (Sunil, Mon Nov 16 ~00:23):** Pepper is allowed — and expected — to challenge Chief of Staff's plan and speak clearly when Pepper thinks it is wrong. Chief outranks Pepper but is NOT Pepper's superior; Sunil is. If Sunil agrees with Pepper's judgement, Pepper effectively acts as Chief's superior in that decision. Do NOT treat Chief's plan as untouchable or defer to it when Pepper disagrees — raise the judgement to Sunil and let him decide.
 
 ---
 
@@ -53,11 +54,16 @@ Use **one hierarchy everywhere — Type first, then Size.**
 
 ---
 
+## Candle inset — item 1 of the TA build (Sunil, Mon Nov 16 ~00:26)
+Sunil decided (in the BTC chart cleanup side chat) that cleanup item 1 is rolled into the TA work as item 1. **Inset the first and last candles from the plot edges by half a slot**, so every candle sits fully inside the plot. It is done in **Stage 1, before the Stage 2 overlays are drawn** — the overlays must be built on the final geometry, so the indicator lines align with the inset candles. The candle inset changes the x positions of the candles, so Stage 2's overlay drawing must use the same inset x positions. The rest of the chart cleanup (items 2–16) stays on hold while tokens go to TA work.
+
+---
+
 ## Build path — four stages, in order, one commit per stage
 
 Do not start a stage until the previous one meets its acceptance criteria. Keep the per-stage commits so each stage can be reviewed on its own.
 
-**Stage 1 — GUI shell, no overlays.** Chart-type pill + menu (using the corrected labels above), TA pill, floating panel, RSI strip container. Toggles wired to state, saved per device. Nothing drawn yet. Panel is a child of the chart stage/dialog (never `body`) so it renders in Fullscreen-API mode. It must never cover the price pill, Keep screen on (`#wakeBtn`), Exit, Price clock, Switch to chart, or the theme dot. iPhone chart height unchanged with RSI off. Works in popover (desktop), bottom sheet (phone), clock inline, both full-screen modes. Existing tests pass.
+**Stage 1 — GUI shell, no overlays.** First, the **candle inset (item 1)** — inset the first and last candles from the plot edges by half a slot, so every candle sits fully inside the plot (see the Candle inset note above). Then the chart-type pill + menu (using the corrected labels above), TA pill, floating panel, RSI strip container. Toggles wired to state, saved per device. Nothing drawn yet. Panel is a child of the chart stage/dialog (never `body`) so it renders in Fullscreen-API mode. It must never cover the price pill, Keep screen on (`#wakeBtn`), Exit, Price clock, Switch to chart, or the theme dot. iPhone chart height unchanged with RSI off. Works in popover (desktop), bottom sheet (phone), clock inline, both full-screen modes. Existing tests pass.
 
 **Stage 2 — Browser indicators.** SMA/EMA (20/50/200, one at a time), Bollinger (20, 2σ), RSI (14, Wilder smoothing), computed in plain JS, drawn on `#bcC` after the price series, in every native view (1D line, 1D 1H/4H candles, range line, range candles all sizes). **Warm-up:** at least 200 extra candles before the visible window per timeframe. If warm-up data cannot be loaded, draw only from the point where it is valid. **Never draw a wrong value.** Live updates: when the live price ticks, indicators recompute and redraw, no flicker, no full refetch. **BTC only** — when a comparison asset (S&P/Gold/MSTR) is on, hide the overlays with the one-line note (proposed default, confirm Monday). Respect the log scale. RSI strip draws the line + 30/70, collapse tab works, shares x positions with the main plot. Tooltip/scrub shows indicator values for the hovered candle. New test file `tests/test_ta_indicators.js` with reference values. Acceptance: unit tests match reference values; overlays line up in every view, light/dark, 390px/iPad/desktop; drawing with all overlays on adds < ~4 ms per frame on desktop (report measured numbers); overlays off = pixel-identical chart to main.
 
