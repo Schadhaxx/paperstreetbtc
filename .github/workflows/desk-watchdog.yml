@@ -1,0 +1,44 @@
+name: desk-watchdog
+# Cancel GitHub Actions runs stuck in 'queued'/'in_progress'.
+#
+# Incident (Mon 2026-11-16): a desk-intraday dispatch (run 43888136076,
+# 9:40 AM ET) sat in 'queued' with ZERO jobs for ~50 min while the
+# dispatches before and after it all completed. The concurrency group
+# was free, so it was a GitHub-side glitch, not a workflow problem.
+# The run eventually started late and succeeded — but a 50-min-late
+# run is useless on a 5-min cadence — and the GitHub web UI refused
+# to cancel it ("Failed to cancel workflow", three attempts). This
+# workflow runs tools/desk_watchdog.py, which cancels stuck runs via
+# the REST API. The first manual dispatch of this workflow is the
+# test of whether the API cancel works where the web UI did not.
+#
+# Scope: desk-intraday and prices ONLY (the two 5-min workflows).
+# Normal runs take ~15-45 s and the job timeout is 10 min, so the
+# script treats a queued/in_progress run older than 15 min as stuck.
+# This workflow itself is never a target. It never touches repo
+# contents, branches, or any other workflow — it only cancels runs.
+#
+# NOTE: this file cannot be pushed by the GitHub App (it returns 403
+# on workflow files). It is added via GitHub web edit as Schadhaxx,
+# outside 9:00 AM-4:50 PM ET so it does not fire on the next tick.
+# Do not merge the code branch without it — the job would not exist.
+on:
+  schedule:
+    - cron: '*/15 13-21 * * 1-5'   # every 15 min, 13:00-21:59 UTC Mon-Fri; covers 9 AM-5 PM ET in EST and EDT (same range as desk-intraday.yml's backup cron)
+  workflow_dispatch:
+permissions:
+  actions: write   # cancel stuck runs (the whole point of this job)
+  contents: read   # checkout only
+jobs:
+  desk-watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2, pinned
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Cancel stuck desk-intraday / prices runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/desk_watchdog.py
