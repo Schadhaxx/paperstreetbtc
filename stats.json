@@ -2,11 +2,11 @@
  "as_of": "2026-11-16",
  "badges": [
   {
-   "date": "2026-11-16",
+   "date": "2026-11-13",
    "direction": "down",
    "kind": "btc_round",
-   "level": 65000,
-   "text": "BTC crossed below $65,000"
+   "level": 70000,
+   "text": "BTC crossed below $70,000"
   }
  ],
  "base": "2025-12-31",
@@ -238,36 +238,36 @@
    }
   ]
  },
- "generated": "2026-11-16T21:00:39Z",
+ "generated": "2026-11-16T21:30:12Z",
  "history_first": "2025-12-31",
  "history_last": "2026-11-16",
  "history_sessions": 221,
- "history_sha256": "4bc351d72510d9445c043e9f8f18a1be00ddd410c334c7351fa9472df49c6f8f",
+ "history_sha256": "5d95e02cf2a6ce57c4b8d8216d434b74863a762a2ec3687f765ec76537136899",
  "note": "Pre-computed by Python; the site displays these numbers, it does not re-derive them. Spot mode only.",
  "pulse": {
   "berkshire": {
-   "above_start": -13995.74,
-   "above_start_pct": -14.0,
-   "below_peak": 17890.68,
+   "above_start": -13884.04,
+   "above_start_pct": -13.88,
+   "below_peak": 17778.98,
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 86004.26
+   "value": 86115.96
   },
   "hf": {
-   "above_start": -24506.9,
-   "above_start_pct": -24.51,
-   "below_peak": 36861.47,
+   "above_start": -24360.73,
+   "above_start_pct": -24.36,
+   "below_peak": 36715.3,
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 75493.1
+   "value": 75639.27
   },
   "hodlr": {
-   "above_start": -23498.78,
-   "above_start_pct": -23.5,
-   "below_peak": 34765.27,
+   "above_start": -23311.54,
+   "above_start_pct": -23.31,
+   "below_peak": 34578.03,
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 76501.22
+   "value": 76688.46
   },
   "saylor": {
    "above_start": -11647.97,
@@ -284,7 +284,7 @@
     "date": "2026-02-06",
     "pct": 7.23
    },
-   "drawdown_pct": -17.22,
+   "drawdown_pct": -17.11,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-25",
    "max_drawdown_pct": -28.14,
@@ -299,27 +299,27 @@
     "2026-08": 21.91,
     "2026-09": 2.41,
     "2026-10": -0.19,
-    "2026-11": -9.0
+    "2026-11": -8.89
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -9.0,
+   "mtd_pct": -8.89,
    "name": "Berkshire Killer",
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 86004.26,
-   "vol_ann_pct": 31.17,
+   "value": 86115.96,
+   "vol_ann_pct": 31.16,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -7.63
    },
-   "ytd_pct": -14.0
+   "ytd_pct": -13.88
   },
   "brk": {
    "best_day": {
     "date": "2026-11-04",
     "pct": 3.95
    },
-   "drawdown_pct": 0.0,
+   "drawdown_pct": -0.02,
    "kind": "benchmark",
    "max_drawdown_date": "2026-04-22",
    "max_drawdown_pct": -8.4,
@@ -334,27 +334,27 @@
     "2026-08": -1.47,
     "2026-09": -1.21,
     "2026-10": 8.94,
-    "2026-11": 9.3
+    "2026-11": 9.28
    },
    "mtd_month": "2026-11",
-   "mtd_pct": 9.3,
+   "mtd_pct": 9.28,
    "name": "Berkshire (BRK.B)",
-   "peak_date": "2026-11-16",
+   "peak_date": "2026-11-13",
    "peak_value": 117.96,
-   "value": 117.96,
+   "value": 117.94,
    "vol_ann_pct": 15.3,
    "worst_day": {
     "date": "2026-03-02",
     "pct": -4.91
    },
-   "ytd_pct": 17.96
+   "ytd_pct": 17.94
   },
   "btc": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 12.52
    },
-   "drawdown_pct": -32.98,
+   "drawdown_pct": -32.75,
    "kind": "benchmark",
    "max_drawdown_date": "2026-06-30",
    "max_drawdown_pct": -39.59,
@@ -369,30 +369,30 @@
     "2026-08": 25.05,
     "2026-09": 6.37,
     "2026-10": -7.61,
-    "2026-11": -15.85
+    "2026-11": -15.56
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -15.85,
+   "mtd_pct": -15.56,
    "name": "Spot BTC",
    "peak_date": "2026-01-14",
    "peak_value": 110.77,
-   "value": 74.23,
-   "vol_ann_pct": 44.18,
+   "value": 74.49,
+   "vol_ann_pct": 44.14,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.13
    },
-   "ytd_pct": -25.77
+   "ytd_pct": -25.51
   },
   "gold": {
    "best_day": {
     "date": "2026-02-03",
     "pct": 6.36
    },
-   "drawdown_pct": -28.84,
+   "drawdown_pct": -28.83,
    "kind": "benchmark",
    "max_drawdown_date": "2026-11-16",
-   "max_drawdown_pct": -28.84,
+   "max_drawdown_pct": -28.83,
    "monthly": {
     "2026-01": 12.27,
     "2026-02": 8.72,
@@ -404,10 +404,10 @@
     "2026-08": 9.93,
     "2026-09": -6.75,
     "2026-10": -6.58,
-    "2026-11": -0.81
+    "2026-11": -0.8
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -0.81,
+   "mtd_pct": -0.8,
    "name": "Gold (GLD)",
    "peak_date": "2026-01-29",
    "peak_value": 125.13,
@@ -424,7 +424,7 @@
     "date": "2026-02-06",
     "pct": 16.17
    },
-   "drawdown_pct": -32.81,
+   "drawdown_pct": -32.68,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -42.45,
@@ -439,27 +439,27 @@
     "2026-08": 28.46,
     "2026-09": 9.05,
     "2026-10": -9.39,
-    "2026-11": -15.8
+    "2026-11": -15.64
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -15.8,
+   "mtd_pct": -15.64,
    "name": "Hedge Fund Killer",
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 75493.1,
-   "vol_ann_pct": 52.13,
+   "value": 75639.27,
+   "vol_ann_pct": 52.11,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.04
    },
-   "ytd_pct": -24.51
+   "ytd_pct": -24.36
   },
   "hodlr": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 14.21
    },
-   "drawdown_pct": -31.25,
+   "drawdown_pct": -31.08,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -39.89,
@@ -474,20 +474,20 @@
     "2026-08": 26.09,
     "2026-09": 7.74,
     "2026-10": -8.26,
-    "2026-11": -15.03
+    "2026-11": -14.82
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -15.03,
+   "mtd_pct": -14.82,
    "name": "Hodler Jam Sandwich",
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 76501.22,
-   "vol_ann_pct": 46.38,
+   "value": 76688.46,
+   "vol_ann_pct": 46.36,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -13.6
    },
-   "ytd_pct": -23.5
+   "ytd_pct": -23.31
   },
   "mstr": {
    "best_day": {
