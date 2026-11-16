@@ -67,8 +67,11 @@ jobs:
       # branch next to prices.json (raw.githubusercontent, no Pages build).
       # Only that one file is ever committed there; prices.yml owns every
       # other data-branch file. continue-on-error: a failed publish never
-      # blocks the main commit below; the page ignores a stale file
-      # (asOf too old) and keeps the Pages weekly candle.
+      # blocks the main commit below or the Pages build; the page ignores
+      # a stale file (asOf too old) and keeps the Pages weekly candle.
+      # The "Fail the run if the desk-live publish failed" step at the end
+      # of this job is what makes a failed publish visible (the run shows
+      # FAILED) instead of passing quietly.
       - name: Publish desk-live.json to the data branch (validated; rebase + retry, never force)
         id: live
         if: steps.gate.outputs.run == '1'
@@ -142,6 +145,22 @@ jobs:
         run: |
           for wait in 0 10 30; do sleep $wait; if gh api -X POST repos/${{ github.repository }}/pages/builds --jq .status; then echo "ok=1" >> $GITHUB_OUTPUT; exit 0; fi; done
           echo "::warning::Pages build request failed 3 times; the change IS on main and will deploy with the next Pages build"; exit 0
+            # Fail loudly on a failed desk-live publish. The publish step is
+      # continue-on-error (a failed publish must never block the main
+      # commit or the Pages build), so without this step the run would
+      # show green while the Desk served a stale desk-live.json. This
+      # step sits AFTER the Pages build on purpose: a failed step skips
+      # every later step without `if: always()`, so placing it before
+      # the Pages step would swallow the Pages build request on a final
+      # run. `if: always()` keeps it running even when an earlier step
+      # failed; steps.live.outcome is 'failure' only when the publish
+      # step itself failed (it is 'skipped' when the gate skipped the
+      # run or the refresh step failed, so those cases do not fire it).
+      - name: Fail the run if the desk-live publish failed
+        if: always() && steps.live.outcome == 'failure'
+        run: |
+          echo "::error::desk-live.json was not published to the data branch; the Desk is serving the last published candle"
+          exit 1
       - name: Summary
         if: always()
         run: |
