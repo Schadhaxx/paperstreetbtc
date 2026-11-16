@@ -121,8 +121,8 @@ The key move: prove the math offline before touching the chart. That is what kee
 
 ---
 
-## Screenshots — the token-saving plan (Pepper, Sun Nov 15 ~23:59 — approved by Sunil)
-The brief's §9 matrix (phone + SE + iPad both ways + desktop, light and dark, every state, before-and-after pairs) is the biggest hidden token cost — every image reviewed costs tokens. This plan replaces it. It is a deviation from §9, Sunil-approved; Chief sees it here.
+## Screenshots — the token-saving plan (Pepper, Sun Nov 15 ~23:59 — FINAL decision by Sunil, Mon Nov 16 ~00:31)
+The brief's §9 matrix (phone + SE + iPad both ways + desktop, light and dark, every state, before-and-after pairs) is the biggest hidden token cost — every image reviewed costs tokens. **The §9 matrix is trimmed — this is FINAL (Sunil, Mon Nov 16 ~00:31).** This plan replaces it. It is a deviation from §9; Chief sees it here.
 - **Automated checks instead of eyeballing.** The overlap check is already automated (`overlap-check.json`, text not an image) — use it for panel overlap. The "pixel-identical all-off" check is a programmatic image diff, reported as text ("0 pixels differ"). Do not eyeball what a script can check. This is the biggest saver.
 - **Two core setups, not the full matrix.** Phone 390 dark (primary device, primary theme) plus desktop 1440 light (the other extreme) for most states. iPad, SE, and the second theme only spot-checked — only if the core shots show a layout issue that might differ there, or only for the panel and fullscreen states where iPad layout actually differs.
 - **Screenshots live in the handback folder, not in chat.** They go in `handback/ta/` (or a zip), as the brief already says. Chief reviews the folder. Only the two or three key shots are shown to Sunil in chat (phone dark all-on, desktop light panel open). The rest never enter the conversation, so they cost nothing here.
