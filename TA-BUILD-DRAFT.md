@@ -13,7 +13,7 @@ Add an expandable TA pill to the Bitcoin charts (popups + `/clock/`) with four o
 
 Browser maths for Bollinger/SMA/EMA/RSI on the native canvas, no Chart.js. Smart Trendlines via `tools/ta_lines.py` + workflow `ta-lines.yml` writing `ta-lines.json` to the data branch. No AI in the job.
 
-**Schedule:** build Mon Nov 16 – Thu Nov 19 on branch `pepper-ta-1`. Hand back to Chief of Staff by Thu Nov 19, 11:59 PM ET. Chief reviews + fixes Fri Nov 20 10 AM ET, then regular Grok QA, then Sunil's go. **Branch only. No go-live. No workflow runs (no `workflow_dispatch`) without Sunil's explicit yes.** Sunil approves the plan, not the code.
+**Schedule:** build Mon Nov 16 – Thu Nov 19 on branch `pepper-ta-1`. Hand back to Chief of Staff by Thu Nov 19, 11:59 PM ET. Chief reviews + fixes Fri Nov 20 10 AM ET, then regular Grok QA, then Sunil's go. **Branch only. No go-live. No workflow runs (no `workflow_dispatch`) without Sunil's explicit yes.** Sunil approves the plan, not the code. **Token budget is the binding constraint:** weekends drain Grok to ~80% and Muse to ~60%; the remaining tokens are reserved for site maintenance and operations in a high-stress week. Keep the build tight — minimise rework and iteration.
 
 **Where TA appears:** every BTC popup chart + `/clock/` inline (both full-screen modes). Same code: `assets/js/btcchart-panel.js`. **NOT on the Desk charts** (`screener.html`, `screener-chart.js`, `screener-indicator-chart.js`). Do not touch them. Note: `screener.html` loads `btcchart.js` for its Live BTC pill, so the BTC popover there does get TA — that is expected.
 
@@ -71,7 +71,7 @@ Do not start a stage until the previous one meets its acceptance criteria. Keep 
 
 ## Concerns / open questions — for Monday 10 AM and Chief
 
-**1. Nov 22 build-slot ownership is still ambiguous.** The rollout plan puts Stage 1 on Sun Nov 22, but the handover builds Mon–Thu Nov 16–19 this week. Confirm Monday whether Nov 22 is a separate slot or already covered by this week's build.
+**1. Nov 22 — moveable, not a hard deadline (Sunil, Sun Nov 15 ~23:36).** The rollout plan puts Stage 1 on Sun Nov 22, but the handover builds Mon–Thu Nov 16–19 this week. Sunil: the date is moveable, there is a lot of flexibility, and if the build cannot make Nov 22 that is OK. Do not rush or cut corners to hit Nov 22.
 
 **2. Trendlines cannot be verified end-to-end until the workflow runs.** The workflow is written but never run (Sunil's call). Stage 4 can only be tested with a locally generated `ta-lines.json` fixture. The handback must state this plainly: the trendline path is untested against real scheduled data until the workflow runs.
 
