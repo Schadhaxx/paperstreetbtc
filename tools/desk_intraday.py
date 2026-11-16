@@ -39,8 +39,13 @@ run FAILS (exit 1) if more than 3 symbols fail, if every symbol fails,
 if a shipped file cannot be loaded, or if Yahoo rate-limits twice in a
 row: a single HTTP 429 fails closed for that symbol only, but two
 consecutive 429s abort the run (stop fetching, keep all last good files)
-instead of hammering Yahoo. The file is written ONLY if something
-changed (no empty writes, no timestamp-only writes).
+instead of hammering Yahoo. A transient Yahoo failure (HTTP 429, HTTP
+5xx, network error or timeout) is retried once, after ~10 s, before the
+symbol fails closed — so a single blip no longer loses a 15-minute
+tick. The retry lives inside the one fetch call, so a symbol that fails
+twice still counts once toward the two-consecutive-429 abort: the abort
+still means two consecutive SYMBOLS failing, not two attempts. The file
+is written ONLY if something changed (no empty writes, no timestamp-only writes).
 
 Exit 0: every symbol processed (refreshed, appended, already up-to-date,
 or skipped with no bars yet), with at most 3 failures (all named). A
@@ -121,6 +126,11 @@ EARLY_CLOSES = {
 # most of the Desk stale. The failing symbols are named in a ::warning::
 # (see main) either way.
 MAX_SYMBOL_FAILURES = 3
+
+# Backoff between the two attempts of one Yahoo fetch (see
+# fetch_yahoo_payload). One retry only; a blip costs ~10 s, a sustained
+# outage still aborts after two consecutive symbols (not attempts).
+FETCH_RETRY_BACKOFF_S = 10
 
 # --- live current-week file (desk-live.json, option b) ---
 #
@@ -386,22 +396,47 @@ def yahoo_url(ysym, since):
             f'?period1={p1}&period2={p2}&interval=1d')
 
 def fetch_yahoo_payload(ysym, since):
+    """Fetch one symbol's Yahoo daily bars, with ONE retry on a transient failure.
+
+    A transient failure (HTTP 429, HTTP 5xx, network error or timeout) is
+    retried once after FETCH_RETRY_BACKOFF_S before the symbol fails
+    closed. The retry lives inside this one call, so a symbol that fails
+    twice still raises a single exception: main()'s consecutive-429
+    counter counts the SYMBOL, not the attempt, and its meaning (two
+    consecutive symbols failing aborts the run) is unchanged. Non-transient
+    failures (other HTTP errors, a Yahoo response with no result) are not
+    retried — retrying those cannot help.
+    """
     url = yahoo_url(ysym, since)
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 paperstreet-desk-intraday'})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as f:
-            j = json.load(f)
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
-            raise YahooRateLimited(f'Yahoo rate-limited {ysym} (HTTP 429)')
-        raise RuntimeError(f'Yahoo fetch failed (HTTPError {e.code}: {e})')
-    except Exception as e:
-        raise RuntimeError(f'Yahoo fetch failed ({type(e).__name__}: {e})')
-    err = (j.get('chart') or {}).get('error')
-    res = (j.get('chart') or {}).get('result') or []
-    if not res:
-        raise RuntimeError(f'Yahoo returned no result ({err})')
-    return res[0]
+    last_err = None
+    for attempt in (1, 2):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as f:
+                j = json.load(f)
+        except urllib.error.HTTPError as e:
+            # HTTPError is a URLError subclass: it must be caught first.
+            if e.code == 429:
+                last_err = YahooRateLimited(f'Yahoo rate-limited {ysym} (HTTP 429)')
+            elif e.code >= 500:
+                last_err = RuntimeError(f'Yahoo fetch failed (HTTPError {e.code}: {e})')
+            else:
+                raise RuntimeError(f'Yahoo fetch failed (HTTPError {e.code}: {e})')
+        except (urllib.error.URLError, TimeoutError) as e:
+            last_err = RuntimeError(f'Yahoo fetch failed ({type(e).__name__}: {e})')
+        except Exception as e:
+            raise RuntimeError(f'Yahoo fetch failed ({type(e).__name__}: {e})')
+        else:
+            err = (j.get('chart') or {}).get('error')
+            res = (j.get('chart') or {}).get('result') or []
+            if not res:
+                raise RuntimeError(f'Yahoo returned no result ({err})')
+            return res[0]
+        # Transient failure: one retry after a short backoff, then give up.
+        if attempt == 1:
+            print(f'{ysym}: transient Yahoo failure ({last_err}) — retrying once after {FETCH_RETRY_BACKOFF_S}s', file=sys.stderr)
+            time.sleep(FETCH_RETRY_BACKOFF_S)
+    raise last_err
 
 def volumes_from_payload(payload, tz):
     """date -> summed-daily volume, from the same payload the OHLC came from.
