@@ -27,6 +27,7 @@ Browser maths for Bollinger/SMA/EMA/RSI on the native canvas, no Chart.js. Smart
 - **Grok Bot — first approver, then takes it home.** The primary bot, in charge in principle; nothing goes live without its approval (and Sunil's go). Reviews after the Friday token reset and finishes the job.
 - **Concern:** Grok Bot is on fumes. If it cannot do a real review, the first-approver step is a formality and the real gate is Chief (Fri) + Sunil. Either reserve Grok Bot enough tokens for a genuine review, or be explicit that Chief's Friday review is the substantive check.
 - **Build start:** Pepper builds after Chief's revisions come back (not necessarily Monday after 10 AM). The exact start depends on when the revisions arrive. Nov 22 is moveable, so there is flexibility — do not rush to hit a date.
+- **Conflicts:** if the Chief-revised plan conflicts with the refined plan (or any two instructions conflict), Pepper flags it to Sunil and does not proceed on the disputed point until Sunil decides. Sunil is CEO — he decides who wins the argument.
 
 ---
 
