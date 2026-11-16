@@ -19,14 +19,14 @@ Browser maths for Bollinger/SMA/EMA/RSI on the native canvas, no Chart.js. Smart
 
 ---
 
-## Workflow & roles (Sunil, Mon Nov 16 ~00:08 — refined plan, approved)
-**The flow:** refine the plan with Pepper → it goes back to Chief + Grok Bot for a look → they pass back detailed build plans → Pepper burns tokens to build all stages (first build) → Chief reviews and takes over as master builder → Grok Bot reviews (around the Friday Grok token reset) and takes it home.
-- **Pepper (Muse) — builds all stages (first build).** The only token supply left (Grok is on fumes). Builds Stages 1–4 on branch `pepper-ta-1` from the detailed build plans Chief + Grok Bot pass back, and hands back to Chief. This is a handover-week arrangement, not permanent — once Grok Bot's tokens recover, it goes back to being the primary builder with Pepper assisting.
+## Workflow & roles (Sunil, Mon Nov 16 ~00:14 — refined plan, approved)
+**The flow:** This draft IS the build plan. Sunil + Pepper refine it through conversations this week → send it to Chief for revisions → Chief revises it and sends it back to Pepper → Pepper builds all stages (first build) → Chief reviews and takes over as master builder → Grok Bot reviews (around the Friday Grok token reset) and takes it home.
+- **Pepper (Muse) — builds all stages (first build).** The only token supply left (Grok is on fumes). Builds Stages 1–4 on branch `pepper-ta-1` from the Chief-revised plan, and hands back to Chief. This is a handover-week arrangement, not permanent — once Grok Bot's tokens recover, it goes back to being the primary builder with Pepper assisting.
 - **Site Launch — GUI master builder.** Has basically already built the GUI (the option C mockup). Pepper communicates with Site Launch **through Sunil** for GUI adjustments — Pepper does not redesign the GUI. Surface GUI issues early in Stage 1 so the round-trip (Pepper → Sunil → Site Launch → back) does not block the build.
-- **Chief of Staff — project manager, then master builder.** Wrote the brief, manages the plan, passes back detailed build plans with Grok Bot. Reviews on Fri Nov 20 10 AM ET, then takes over as master builder.
+- **Chief of Staff — project manager, then master builder.** Wrote the brief, manages the plan, revises this build plan and sends it back to Pepper. Reviews on Fri Nov 20 10 AM ET, then takes over as master builder.
 - **Grok Bot — first approver, then takes it home.** The primary bot, in charge in principle; nothing goes live without its approval (and Sunil's go). Reviews after the Friday token reset and finishes the job.
 - **Concern:** Grok Bot is on fumes. If it cannot do a real review, the first-approver step is a formality and the real gate is Chief (Fri) + Sunil. Either reserve Grok Bot enough tokens for a genuine review, or be explicit that Chief's Friday review is the substantive check.
-- **Timing question (for Monday 10 AM):** Pepper needs the detailed build plans before starting to build. If they come out of the Monday 10 AM meeting, Pepper starts Monday after the meeting. If they arrive later, the build compresses. Confirm when they will be handed over.
+- **Build start:** Pepper builds after Chief's revisions come back (not necessarily Monday after 10 AM). The exact start depends on when the revisions arrive. Nov 22 is moveable, so there is flexibility — do not rush to hit a date.
 
 ---
 
