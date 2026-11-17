@@ -1,7 +1,7 @@
 {
   "source": "Yahoo DX-Y.NYB (ICE US Dollar Index), index points",
-  "asOf": "16 Nov 2026, 4:40 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Weekly snapshot \u2014 the latest week is in progress until it closes. Latest week (16 Nov 2026 \u2013 22 Nov 2026) refreshed in progress as of 16 Nov 2026, 4:40 PM ET; its close is not a final close.",
+  "asOf": "17 Nov 2026, 4:15 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Weekly snapshot \u2014 the latest week is in progress until it closes. Latest week (16 Nov 2026 \u2013 22 Nov 2026) refreshed in progress as of 17 Nov 2026, 4:15 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -467,12 +467,12 @@
       "monday": "2026-11-16",
       "sunday": "2026-11-22",
       "label": "16 Nov 2026 \u2013 22 Nov 2026",
-      "days": 1,
+      "days": 2,
       "open": 103.41,
-      "high": 103.64,
+      "high": 103.78,
       "low": 103.33,
-      "close": 103.59
+      "close": 103.52
     }
   ],
-  "inProgress": "in progress, as of 16 Nov 2026, 4:40 PM ET"
+  "inProgress": "in progress, as of 17 Nov 2026, 4:15 PM ET"
 }
