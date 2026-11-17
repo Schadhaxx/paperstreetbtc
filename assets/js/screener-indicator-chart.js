@@ -785,7 +785,13 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   function applyStockMeta(cfg, data) {
     var node = el('ind-cardline');
     if (!cfg.stock) {
-      state.base = null; state.progressNote = null; state.resolvedSub = '';
+      // Do NOT clear state.progressNote here: loadData already set it
+      // from the file's inProgress for every symbol (indicator files
+      // carry it too when their last week is partial), and clearing it
+      // killed the LIVE tag + live-price paint on indicator charts
+      // (17 Nov 2026 fix — stock modals showed LIVE, indicators did
+      // not, though both were live in header/status/data).
+      state.base = null; state.resolvedSub = '';
       if (node) { node.style.display = 'none'; node.textContent = ''; }
       return;
     }
@@ -887,9 +893,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         state.loadedSymbol = cfg.symbol;
         // In-progress marking is not stock-only: indicator files carry
         // inProgress too when their last week is partial (see the
-        // current-week-candle branch). applyStockMeta only sets it for
-        // stocks, so capture it here for every symbol.
-        if (typeof data.inProgress === 'string' && data.inProgress) state.progressNote = data.inProgress;
+        // current-week-candle branch). Set it here for every symbol,
+        // clearing it when the file has none, so a stale value cannot
+        // survive a reload. applyStockMeta must not clear it either
+        // (17 Nov 2026 fix: it used to null it for indicators, which
+        // killed their LIVE tag + live-price paint).
+        state.progressNote = (typeof data.inProgress === 'string' && data.inProgress) ? data.inProgress : null;
         applyStockMeta(cfg, data);
         state.drawStart = performance.now();
         // Loading is done: clear the flag BEFORE refreshLive() so
