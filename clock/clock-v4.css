@@ -179,6 +179,25 @@ body.ps-clock .v4-caption{
   flex:0 0 auto;
 }
 
+/* Desk link, 17 Nov 2026: a small text link to the Desk, sitting in the
+   chart caption under the plot — clock page only, no new row, no new space.
+   The caption already wraps, so narrow phones wrap cleanly instead of
+   overflowing. Hidden in full-screen modes (html.v4-fs-on). The padding
+   widens the tap target to ~32px tall without changing the caption's
+   visual height (negative margin cancels it). */
+body.ps-clock .v4-desk-link{
+  color:#22d3ee;
+  text-decoration:none;
+  font-weight:700;
+  white-space:nowrap;
+  padding:10px 6px;
+  margin:-10px -6px;
+}
+body.ps-clock .v4-desk-link:hover{text-decoration:underline;}
+body.ps-clock .v4-desk-link:focus-visible{outline:2px solid #22d3ee;outline-offset:2px;border-radius:4px;}
+html.v4-fs-on body.ps-clock .v4-desk-link{display:none;}
+html[data-theme="light"] body.ps-clock .v4-desk-link{color:#0e7490;}
+
 /* Light pill: keep off the y-axis on phones; desktop stays bottom-left
    (it then sits on the price column in the split). */
 @media (max-width:760px){
