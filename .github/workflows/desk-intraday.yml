@@ -50,8 +50,17 @@ jobs:
       # a row, or a critical file error), the run fails here and the push
       # step below is skipped — a failed run never publishes a partial
       # refresh. The good symbols are re-fetched on the next 15-min tick.
+            # A failed refresh no longer fails the run by itself: the live doc is
+      # still written (good symbols fresh, failed ones marked failed), the
+      # publish step below puts it out, and the next 5-min tick retries the
+      # failed symbols. A transient failure at the open used to fail three
+      # runs in a row and email Sunil every morning, then heal by 9:45.
+      # The run still fails loudly when the publish itself fails (step 8),
+      # and the final-run main commit is guarded on this step succeeding.
       - name: Refresh Desk weekly candles (current week only, fail closed per symbol)
+        id: refresh
         if: steps.gate.outputs.run == '1'
+        continue-on-error: true
         run: |
           # --live-json also writes the one small current-week candle file
           # for every Desk symbol (desk-live.json, option b), built from the
@@ -109,7 +118,7 @@ jobs:
       # failed publish never blocks this step.
       - name: Commit Desk data only and push (FINAL run only; fast-forward only, rebase + retry)
         id: push
-        if: steps.gate.outputs.run == '1' && steps.gate.outputs.final == '1'
+        if: steps.gate.outputs.run == '1' && steps.gate.outputs.final == '1' && steps.refresh.outcome == 'success'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
