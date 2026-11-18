@@ -1,7 +1,7 @@
 {
   "source": "Yahoo CADUSD=X (CAD/USD), USD per 1 CAD",
-  "asOf": "17 Nov 2026, 4:45 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Values are USD per 1 CAD (Yahoo CADUSD=X). Weekly snapshot \u2014 the latest week is in progress until it closes. Latest week (16 Nov 2026 \u2013 22 Nov 2026) refreshed in progress as of 17 Nov 2026, 4:45 PM ET; its close is not a final close.",
+  "asOf": "18 Nov 2026, 4:15 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Values are USD per 1 CAD (Yahoo CADUSD=X). Weekly snapshot \u2014 the latest week is in progress until it closes. Latest week (16 Nov 2026 \u2013 22 Nov 2026) refreshed in progress as of 18 Nov 2026, 4:15 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -467,12 +467,12 @@
       "monday": "2026-11-16",
       "sunday": "2026-11-22",
       "label": "16 Nov 2026 \u2013 22 Nov 2026",
-      "days": 2,
+      "days": 3,
       "open": 0.7009,
       "high": 0.7009,
-      "low": 0.6985,
-      "close": 0.6997
+      "low": 0.6973,
+      "close": 0.6983
     }
   ],
-  "inProgress": "in progress, as of 17 Nov 2026, 4:45 PM ET"
+  "inProgress": "in progress, as of 18 Nov 2026, 4:15 PM ET"
 }
