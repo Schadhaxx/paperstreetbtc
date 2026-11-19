@@ -168,7 +168,7 @@ The brief's §9 matrix (phone + SE + iPad both ways + desktop, light and dark, e
 
 **5. Chart.js removal lands Wed Nov 18, same file.** `btcchart-panel.js` is edited by both the TA build and the Chart.js removal. Coordinate the rebase; if the removal is on main by Thursday, rebase onto it before handback.
 
-**6. Three small calls (Chief asked Sunil):** (a) TA tools hide while S&P/Gold/MSTR comparison is on; (b) trendlines off on 5Y/10Y/Max; (c) each chart view uses the trendlines matching its timeframe. Sunil to say "fine" if all work.
+**6. Three small calls — DECIDED, all fine (Sunil, Thu Nov 19).** (a) TA tools hide while S&P/Gold/MSTR comparison is on; (b) trendlines off on 5Y/10Y/Max; (c) each chart view uses the trendlines matching its timeframe. Sunil said "fine" — all three work.
 
 ---
 
