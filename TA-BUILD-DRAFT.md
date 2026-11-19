@@ -85,7 +85,7 @@ Do not start a stage until the previous one meets its acceptance criteria. Keep 
 ---
 
 ## Per-stage review & sign-off (Sunil, Mon Nov 16 ~08:21)
-Each stage has its own review chain. A stage is not done until its reviewers have had their look and Pepper has applied the final touches. Do not start the next stage until the previous stage's final touches are done.
+Each stage has its own review chain. A stage is not done until its reviewers have had their look, Pepper has applied the final touches, and Sunil has given his go (per-stage go — DECIDED, Sunil Thu Nov 19). Do not start the next stage until Sunil's go for the previous stage.
 - **Stage 1 — GUI shell:** Pepper builds → Site Launch reviews and signs off → Chief of Staff reviews → fixes and suggestions come back to Pepper for final touches.
 - **Stage 2 — Browser indicators:** Pepper builds → Chief reviews → Grok Bot reviews → back to Pepper for final touches. Site Launch can do a live review when all TA is live.
 - **Stage 3 — Python trendlines:** Pepper builds + tests → Market God reviews (a say, before final touches), working with Chief → Grok Bot takes a pass → back to Pepper for final touches. Portfolio Bot does a live check after the TA work is fully live, focusing on Stage 3.
@@ -164,7 +164,7 @@ The brief's §9 matrix (phone + SE + iPad both ways + desktop, light and dark, e
 
 **3. Comparison-on behaviour — DECIDED (Sunil, Thu Nov 19).** When S&P/Gold/MSTR comparison is on, the chart is in % rebased mode. Sunil confirmed the proposed default: hide TA with the note "TA shows on BTC alone. Turn off comparisons to see it." The alternative (draw TA on the BTC line in % terms) is NOT used.
 
-**4. Build-through vs per-stage go.** The approved plan had Sunil stopping for his go after each stage; this week Sunil asked for build-through to the Friday review. Keep the per-stage commits so each stage can still be reviewed and approved on its own. Chief asked Sunil to confirm.
+**4. Build-through vs per-stage go — DECIDED: per-stage go (Sunil, Thu Nov 19).** The approved plan had Sunil stopping for his go after each stage. Sunil now confirms per-stage go: he gives his go after each stage before the next one starts. The earlier build-through ask (build all stages through to the Friday review) is withdrawn. Keep the per-stage commits so each stage can still be reviewed and approved on its own.
 
 **5. Chart.js removal lands Wed Nov 18, same file.** `btcchart-panel.js` is edited by both the TA build and the Chart.js removal. Coordinate the rebase; if the removal is on main by Thursday, rebase onto it before handback.
 
