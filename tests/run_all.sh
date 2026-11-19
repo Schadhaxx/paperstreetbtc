@@ -52,7 +52,9 @@ run desk_live python3 tests/test_desk_live.py                              # 5-m
 run candle_date_guardrail node tests/test_candle_date_guardrail.js             # Desk chart: live price only on the candle whose Mon-Sun range contains today (ET)
 run desk_monday_candle node tests/test_desk_monday_candle.js               # Desk chart: append the fresh desk-live candle as a new in-progress week on the first trading day (16 Nov 2026)
 run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
-run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et24): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
+run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et31): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
+run ta_floor_py python3 tests/test_ta_floor.py                              # skunkworks floor: tools/ta_floor.py reproduces the verified floor numbers + break rule
+run ta_floor_js node tests/test_ta_floor.js                                 # skunkworks floor: panel floorAt/floorBroken (P._floor hook) vs the ta-floor.json fixture
 run s2_hero_cosmetic node tests/test_s2_hero_cosmetic.js                     # YTD hero: legend wrap + light grid + tooltip no-clip + fonts.ready redraw (15 Nov 2026 nice-to-haves)
 run needchart_retry python3 tests/test_needchart_retry.py                    # needChart failure-then-retry (real _needChart, chart.umd aborted once)
 run oi001_label node tests/test_oi001_label.js                              # OI-001: backup-source BTC label keyed on fallback_sources

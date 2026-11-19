@@ -115,7 +115,7 @@ chk('panel keeps getData + getIntraday', /function getData\(\)/.test(panel) && /
 chk('panel keeps needChart', /function needChart\(\)/.test(panel));
 
 /* Pin bumped et25 -> et26 (subdomain fill: loader content changed; panel still et24) in Step 4 (panel content changed) */
-chk('stub loads the panel with et24', /btcchart-panel\.js\?v=et24/.test(stub));
+chk('stub loads the panel with et31', /btcchart-panel\.js\?v=et31/.test(stub));
 chk('stub does not load the panel with et19', !/btcchart-panel\.js\?v=et19/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',

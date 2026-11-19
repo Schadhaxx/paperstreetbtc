@@ -50,7 +50,7 @@ chk('drawDailyNative layout carries kind daily', /lineGeom=\{kind:'daily',pad/.t
 
 /* NATIVE_LINE flag + wiring for the range views */
 chk('drawDaily routes to drawDailyNative when NATIVE_LINE is true',
-  /if\(NATIVE_LINE\)\{if\(ch\)\{ch\.destroy\(\);ch=null;\}nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG\}\);lineDrawn=nativeOK;\}/.test(panel));
+  /if\(NATIVE_LINE\)\{if\(ch\)\{ch\.destroy\(\);ch=null;\}nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG,floor:\(FLOOR_ON&&\/\^\(5Y\|10Y\)\$\/\.test\(rng\)&&!sx\)\?FLOOR:null\}\);lineDrawn=nativeOK;\}/.test(panel));
 chk('drawDaily falls back to Chart.js when native fails or flag is off',
   /if\(!nativeOK\)\{if\(ch\)ch\.destroy\(\);ch=new Chart\(c,\{type:'line',data:\{labels:lab,datasets:ds\},options:opts\}\);lineDrawn=false;window\.__BTC_LINE_LAYOUT=null;window\.__BTC_LINE_HOVER=-1;cancelNativeResize\(\);\}\}/.test(panel));
 chk('drawDaily guard relaxed for the native path (no Chart.js needed when native is on)',
@@ -93,7 +93,7 @@ chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(pane
 chk('panel keeps needChart', /function needChart\(\)/.test(panel));
 
 /* Pin bumped et25 -> et26 (subdomain fill: loader content changed; panel still et24) in Step 4 (panel content changed) */
-chk('stub loads the panel with et24', /btcchart-panel\.js\?v=et24/.test(stub));
+chk('stub loads the panel with et31', /btcchart-panel\.js\?v=et31/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
