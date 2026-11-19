@@ -115,19 +115,19 @@ chk('panel keeps getData + getIntraday', /function getData\(\)/.test(panel) && /
 chk('panel keeps needChart', /function needChart\(\)/.test(panel));
 
 /* Pin bumped et25 -> et26 (subdomain fill: loader content changed; panel still et24) in Step 4 (panel content changed) */
-chk('stub loads the panel with et24', /btcchart-panel\.js\?v=et24/.test(stub));
+chk('stub loads the panel with et30', /btcchart-panel\.js\?v=et30/.test(stub));
 chk('stub does not load the panel with et19', !/btcchart-panel\.js\?v=et19/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
   'recap/2026-05/index.html', 'recap/2026-06/index.html', 'recap/2026-07/index.html', 'recap/2026-08/index.html',
   'recap/2026-09/index.html', 'recap/2026-10/index.html', 'recap/2026-11/index.html'];
-let et27 = 0, other = [];
+let et30 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et27') et27++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et30') et30++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et27', et27 === 16 && other.length === 0, 'et27=' + et27 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et30', et30 === 16 && other.length === 0, 'et30=' + et30 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart out of scope: still Chart.js */
 chk('s2.js still uses Chart.js (out of scope)', /new Chart\s*\(/.test(s2));

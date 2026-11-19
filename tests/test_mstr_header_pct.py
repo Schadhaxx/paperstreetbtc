@@ -94,8 +94,8 @@ def main():
             check(label + ": MSTR toggle active (MSTR x)",
                   pg.inner_text("#bcMstrT").strip() == "MSTR ✕",
                   pg.inner_text("#bcMstrT"))
-            check(label + ": note mentions MSTR source",
-                  "MSTR session closes" in pg.inner_text("#bcNt"),
+            check(label + ": note explains the % lines",
+                  "All lines: % change from the first close in range" in pg.inner_text("#bcNt"),
                   pg.inner_text("#bcNt")[:160])
             pg.screenshot(path=os.path.join(SHOTS, "after-%s-all-on.png" % label))
             # MSTR off -> its % leaves the header, others stay.

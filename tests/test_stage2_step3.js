@@ -64,7 +64,7 @@ chk('Gold rebased to 100 at its first non-null value', /gldY=cmp\.G\?cmp\.G\.map
 chk('MSTR rebased to 100 at its first non-null value', /mstrY=cmp\.M\?cmp\.M\.map\(function\(v\)\{return v!=null&&cmp\.m0\?100\*v\/cmp\.m0:null;\}\):null;/.test(panel));
 chk('log scale maps log10 values to the plot', /Y=function\(v\)\{return T\+ih\*\(1-\(Math\.log10\(v\)-llo\)\/\(lhi-llo\)\);};/.test(panel));
 chk('log ticks at 1/2/5 x 10^k within range', /\[1,2,5\]\.forEach\(function\(m\)\{var tv=m\*pw;if\(tv>=lo\*\(1-1e-9\)&&tv<=hi\*\(1\+1e-9\)\)yTicks\.push\(tv\);\}\);/.test(panel));
-chk('y-axis label margin: longest label measured and L widened (Max+compare labels fit)', /maxLabW/.test(panel) && /Math\.max\(62,Math\.ceil\(maxLabW\)\+12\)/.test(panel));
+chk('y-axis label margin: longest label measured and L widened (Max+compare labels fit)', /function plotLeftMargin/.test(panel) && /Math\.max\(62,Math\.ceil\(w\)\+12\)/.test(panel) && /plotLeftMargin\(ctx,yTicks\.map/.test(panel));
 chk('y-axis label margin: comment explains the Max+compare clipping fix', /sizes the left margin to fit the widest y-axis label/.test(panel));
 chk('linear scale uses nativeNiceTicks with the plot height (Chart.js tick limit)', /var ticks=nativeNiceTicks\(lo,hi,ih\);/.test(panel));
 chk('x labels show the year for n>400, else month-day', /n>400\?lab\[i\]\.slice\(0,4\):lab\[i\]\.slice\(5\)/.test(panel));
@@ -93,19 +93,19 @@ chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(pane
 chk('panel keeps needChart', /function needChart\(\)/.test(panel));
 
 /* Pin bumped et25 -> et26 (subdomain fill: loader content changed; panel still et24) in Step 4 (panel content changed) */
-chk('stub loads the panel with et24', /btcchart-panel\.js\?v=et24/.test(stub));
+chk('stub loads the panel with et30', /btcchart-panel\.js\?v=et30/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
   'recap/2026-05/index.html', 'recap/2026-06/index.html', 'recap/2026-07/index.html', 'recap/2026-08/index.html',
   'recap/2026-09/index.html', 'recap/2026-10/index.html', 'recap/2026-11/index.html'];
-let et27 = 0, other = [];
+let et30 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et27') et27++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et30') et30++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et27', et27 === 16 && other.length === 0, 'et27=' + et27 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et30', et30 === 16 && other.length === 0, 'et30=' + et30 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart out of scope: still Chart.js */
 chk('s2.js still uses Chart.js (out of scope)', /new Chart\s*\(/.test(s2));
