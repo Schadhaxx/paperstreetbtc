@@ -196,36 +196,36 @@
    }
   ]
  },
- "generated": "2026-11-19T22:31:44Z",
+ "generated": "2026-11-19T23:00:45Z",
  "history_first": "2025-12-31",
  "history_last": "2026-11-19",
  "history_sessions": 224,
- "history_sha256": "493063fd20ab24901192f09e78a142f69132e1d93be882337e70799655426bb1",
+ "history_sha256": "cb2f86eed9269ad0f256db6f0b691d169a5a8dcf1d5049875839d5a8548431ad",
  "note": "Pre-computed by Python; the site displays these numbers, it does not re-derive them. Spot mode only.",
  "pulse": {
   "berkshire": {
-   "above_start": -16998.66,
+   "above_start": -16998.27,
    "above_start_pct": -17.0,
-   "below_peak": 20893.6,
+   "below_peak": 20893.21,
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 83001.34
+   "value": 83001.73
   },
   "hf": {
-   "above_start": -30725.17,
-   "above_start_pct": -30.73,
-   "below_peak": 43079.74,
+   "above_start": -30724.65,
+   "above_start_pct": -30.72,
+   "below_peak": 43079.22,
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 69274.83
+   "value": 69275.35
   },
   "hodlr": {
-   "above_start": -28488.28,
+   "above_start": -28487.62,
    "above_start_pct": -28.49,
-   "below_peak": 39754.77,
+   "below_peak": 39754.11,
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 71511.72
+   "value": 71512.38
   },
   "saylor": {
    "above_start": -20118.29,
@@ -264,7 +264,7 @@
    "name": "Berkshire Killer",
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 83001.34,
+   "value": 83001.73,
    "vol_ann_pct": 31.05,
    "worst_day": {
     "date": "2026-02-05",
@@ -404,13 +404,13 @@
    "name": "Hedge Fund Killer",
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 69274.83,
+   "value": 69275.35,
    "vol_ann_pct": 52.05,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.04
    },
-   "ytd_pct": -30.73
+   "ytd_pct": -30.72
   },
   "hodlr": {
    "best_day": {
@@ -439,7 +439,7 @@
    "name": "Hodler Jam Sandwich",
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 71511.72,
+   "value": 71512.38,
    "vol_ann_pct": 46.28,
    "worst_day": {
     "date": "2026-02-05",
