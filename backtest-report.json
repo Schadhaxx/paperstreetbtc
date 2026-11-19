@@ -1,5 +1,5 @@
 {
- "as_of": "2026-11-18",
+ "as_of": "2026-11-19",
  "base": "2025-12-31",
  "baseline": {
   "contributions": 0,
@@ -11,33 +11,33 @@
   "berkshire": {
    "bought": [],
    "contributed": 0,
-   "final": 84506.06,
-   "gain": -15493.94,
-   "gain_pct": -15.49,
+   "final": 82866.21,
+   "gain": -17133.79,
+   "gain_pct": -17.13,
    "skipped": []
   },
   "hf": {
    "bought": [],
    "contributed": 0,
-   "final": 70961.3,
-   "gain": -29038.7,
-   "gain_pct": -29.04,
+   "final": 69098.17,
+   "gain": -30901.83,
+   "gain_pct": -30.9,
    "skipped": []
   },
   "hodlr": {
    "bought": [],
    "contributed": 0,
-   "final": 72924.58,
-   "gain": -27075.42,
-   "gain_pct": -27.08,
+   "final": 71285.39,
+   "gain": -28714.61,
+   "gain_pct": -28.71,
    "skipped": []
   },
   "saylor": {
    "bought": [],
    "contributed": 0,
-   "final": 82152.51,
-   "gain": -17847.49,
-   "gain_pct": -17.85,
+   "final": 79881.71,
+   "gain": -20118.29,
+   "gain_pct": -20.12,
    "skipped": []
   }
  },
