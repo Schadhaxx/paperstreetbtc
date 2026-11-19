@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Lazy BTC panel split (7 Nov 2026, rebuilt from main c9340ef7): btcchart.js is the eager pill only;
-   the chart panel lives in btcchart-panel.js?v=et24 and loads on first
+   the chart panel lives in btcchart-panel.js?v=et31 and loads on first
    open (or on page load on /clock/). Forked from btcchart.js et15 —
    live-feel, 1W 4H candles, FLIP morph, CAD and inline mount must survive.
    s2.js / the YTD chart are NOT part of this split (separate candidate). */
