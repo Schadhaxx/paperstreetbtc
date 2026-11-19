@@ -84,7 +84,7 @@ def main():
     title = f'{full} {y}' + ('' if final else f' (month to date, through {nicey(ME)})')
     s = src
     s = sub1(s, r'<title>[^<]*</title>', f'<title>{title} Recap · Paperstreet BTC</title>')
-    s = sub1(s, r'<h1>[^<]*</h1>', f'<h1>{title} recap</h1>')
+    s = sub1(s, r'<h1>[^<]*</h1>', f'<h1>{title}</h1>')
     s = sub1(s, r'(<p class="sub">)How the four sleeves did in [A-Za-z]+ against spot BTC, (?:latest|month-end) close [A-Za-z]+ \d+, \d{4}\.',
              f'<p class="sub">How the four sleeves did in {full} against spot BTC, {"month-end" if final else "latest"} close {nicey(ME)}.')
     days_txt = (f'all {ndays} calendar days{"" if final else " so far"} incl. weekends' if len(bdays) == ndays
