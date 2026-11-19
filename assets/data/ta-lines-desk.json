@@ -1,0 +1,1470 @@
+{
+ "TSLA": {
+  "lastClose": 374.41,
+  "atr": 35.16,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 443.13,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 26,
+    "ageCandles": 20,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.41
+   },
+   {
+    "price": 350.57,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 39,
+    "ageCandles": 7,
+    "brokenOnClose": 5,
+    "flipped": true,
+    "score": 0.88
+   },
+   {
+    "price": 297.38,
+    "type": "support",
+    "touches": 1,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.85
+   }
+  ],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": -1.22,
+    "anchor": [
+     5,
+     387.53
+    ],
+    "anchor2": [
+     39,
+     345.88
+    ],
+    "touches": 3,
+    "touchIdx": [
+     5,
+     25,
+     39
+    ],
+    "endPrice": 337.31
+   }
+  ],
+  "symbol": "TSLA",
+  "name": "Tesla",
+  "asOf": "2026-11-19"
+ },
+ "PLTR": {
+  "lastClose": 153.68,
+  "atr": 18.87,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 123.47,
+    "type": "support",
+    "touches": 6,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 4,
+    "flipped": true,
+    "score": 1.3
+   },
+   {
+    "price": 163.55,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 36,
+    "ageCandles": 10,
+    "brokenOnClose": 4,
+    "flipped": true,
+    "score": 1.01
+   },
+   {
+    "price": 212.94,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 41,
+    "ageCandles": 5,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.92
+   }
+  ],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": -0.35,
+    "anchor": [
+     6,
+     126.23
+    ],
+    "anchor2": [
+     30,
+     117.89
+    ],
+    "touches": 4,
+    "touchIdx": [
+     6,
+     14,
+     19,
+     30
+    ],
+    "endPrice": 112.33
+   },
+   {
+    "type": "resistance",
+    "slope": 2.59,
+    "anchor": [
+     22,
+     163.7
+    ],
+    "anchor2": [
+     41,
+     212.94
+    ],
+    "touches": 3,
+    "touchIdx": [
+     22,
+     34,
+     41
+    ],
+    "endPrice": 225.9
+   }
+  ],
+  "symbol": "PLTR",
+  "name": "Palantir",
+  "asOf": "2026-11-19"
+ },
+ "MSTR": {
+  "lastClose": 86.13,
+  "atr": 21.57,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 161.73,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 38,
+    "ageCandles": 8,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.1
+   },
+   {
+    "price": 91.73,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 5,
+    "flipped": true,
+    "score": 0.82
+   },
+   {
+    "price": 197.0,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 19,
+    "ageCandles": 27,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.81
+   }
+  ],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": -0.6,
+    "anchor": [
+     5,
+     104.17
+    ],
+    "anchor2": [
+     30,
+     89.21
+    ],
+    "touches": 3,
+    "touchIdx": [
+     5,
+     25,
+     30
+    ],
+    "endPrice": 79.64
+   }
+  ],
+  "symbol": "MSTR",
+  "name": "Strategy",
+  "asOf": "2026-11-19"
+ },
+ "IBIT": {
+  "lastClose": 35.08,
+  "atr": 3.29,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 47.98,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 39,
+    "ageCandles": 7,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.54
+   },
+   {
+    "price": 42.44,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 37,
+    "ageCandles": 9,
+    "brokenOnClose": 4,
+    "flipped": true,
+    "score": 0.79
+   },
+   {
+    "price": 35.8,
+    "type": "resistance",
+    "touches": 4,
+    "lastTouch": 29,
+    "ageCandles": 17,
+    "brokenOnClose": 9,
+    "flipped": true,
+    "score": 0.49
+   }
+  ],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": 0.22,
+    "anchor": [
+     5,
+     35.3
+    ],
+    "anchor2": [
+     37,
+     42.37
+    ],
+    "touches": 3,
+    "touchIdx": [
+     5,
+     12,
+     37
+    ],
+    "endPrice": 44.36
+   }
+  ],
+  "symbol": "IBIT",
+  "name": "iShares Bitcoin ETF",
+  "asOf": "2026-11-19"
+ },
+ "MU": {
+  "lastClose": 690.44,
+  "atr": 127.51,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 463.42,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 11,
+    "ageCandles": 35,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.14
+   },
+   {
+    "price": 1108.72,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 38,
+    "ageCandles": 8,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.9
+   },
+   {
+    "price": 1255.0,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 25,
+    "ageCandles": 21,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.82
+   }
+  ],
+  "sloped": [],
+  "symbol": "MU",
+  "name": "Micron",
+  "asOf": "2026-11-19"
+ },
+ "META": {
+  "lastClose": 596.22,
+  "atr": 54.54,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 528.31,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.57
+   },
+   {
+    "price": 761.91,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 38,
+    "ageCandles": 8,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.52
+   },
+   {
+    "price": 688.8,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 28,
+    "ageCandles": 18,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.03
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": -2.41,
+    "anchor": [
+     4,
+     744.0
+    ],
+    "anchor2": [
+     28,
+     686.08
+    ],
+    "touches": 3,
+    "touchIdx": [
+     4,
+     15,
+     28
+    ],
+    "endPrice": 642.64
+   },
+   {
+    "type": "support",
+    "slope": -2.8,
+    "anchor": [
+     3,
+     600.0
+    ],
+    "anchor2": [
+     30,
+     524.49
+    ],
+    "touches": 3,
+    "touchIdx": [
+     3,
+     25,
+     30
+    ],
+    "endPrice": 479.74
+   }
+  ],
+  "symbol": "META",
+  "name": "Meta",
+  "asOf": "2026-11-19"
+ },
+ "SPCX": {
+  "lastClose": 138.43,
+  "atr": 20.26,
+  "weeks": 24,
+  "levels": [
+   {
+    "price": 176.42,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 17,
+    "ageCandles": 6,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.91
+   },
+   {
+    "price": 104.83,
+    "type": "support",
+    "touches": 1,
+    "lastTouch": 8,
+    "ageCandles": 15,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.85
+   }
+  ],
+  "sloped": [],
+  "symbol": "SPCX",
+  "name": "SPDR S&P 500 ETF",
+  "asOf": "2026-11-19"
+ },
+ "BRK.B": {
+  "lastClose": 572.04,
+  "atr": 19.23,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 530.74,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 37,
+    "ageCandles": 9,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.28
+   },
+   {
+    "price": 472.49,
+    "type": "support",
+    "touches": 4,
+    "lastTouch": 29,
+    "ageCandles": 17,
+    "brokenOnClose": 4,
+    "flipped": true,
+    "score": 1.11
+   },
+   {
+    "price": 504.04,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 39,
+    "ageCandles": 7,
+    "brokenOnClose": 10,
+    "flipped": true,
+    "score": 0.3
+   }
+  ],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": 1.33,
+    "anchor": [
+     15,
+     464.01
+    ],
+    "anchor2": [
+     39,
+     495.96
+    ],
+    "touches": 4,
+    "touchIdx": [
+     15,
+     22,
+     29,
+     39
+    ],
+    "endPrice": 505.28
+   }
+  ],
+  "symbol": "BRK.B",
+  "name": "Berkshire Hathaway",
+  "asOf": "2026-11-19"
+ },
+ "AAPL": {
+  "lastClose": 349.21,
+  "atr": 16.85,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 244.46,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 13,
+    "ageCandles": 33,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.35
+   },
+   {
+    "price": 277.33,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 25,
+    "ageCandles": 21,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.01
+   },
+   {
+    "price": 300.0,
+    "type": "support",
+    "touches": 1,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.85
+   }
+  ],
+  "sloped": [],
+  "symbol": "AAPL",
+  "name": "Apple",
+  "asOf": "2026-11-19"
+ },
+ "AMZN": {
+  "lastClose": 257.37,
+  "atr": 17.7,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 225.38,
+    "type": "support",
+    "touches": 4,
+    "lastTouch": 43,
+    "ageCandles": 3,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 2.05
+   },
+   {
+    "price": 282.88,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 31,
+    "ageCandles": 15,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.44
+   },
+   {
+    "price": 197.57,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 12,
+    "ageCandles": 34,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.35
+   }
+  ],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": 1.61,
+    "anchor": [
+     7,
+     196.0
+    ],
+    "anchor2": [
+     37,
+     244.3
+    ],
+    "touches": 5,
+    "touchIdx": [
+     7,
+     12,
+     25,
+     30,
+     37
+    ],
+    "endPrice": 258.79
+   },
+   {
+    "type": "support",
+    "slope": 0.21,
+    "anchor": [
+     25,
+     225.55
+    ],
+    "anchor2": [
+     43,
+     229.36
+    ],
+    "touches": 3,
+    "touchIdx": [
+     25,
+     30,
+     43
+    ],
+    "endPrice": 230.0
+   }
+  ],
+  "symbol": "AMZN",
+  "name": "Amazon",
+  "asOf": "2026-11-19"
+ },
+ "MSFT": {
+  "lastClose": 498.3,
+  "atr": 29.91,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 352.74,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 25,
+    "ageCandles": 21,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.4
+   },
+   {
+    "price": 466.32,
+    "type": "support",
+    "touches": 1,
+    "lastTouch": 22,
+    "ageCandles": 24,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 0.69
+   },
+   {
+    "price": 517.78,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 34,
+    "ageCandles": 12,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 0.63
+   }
+  ],
+  "sloped": [],
+  "symbol": "MSFT",
+  "name": "Microsoft",
+  "asOf": "2026-11-19"
+ },
+ "NFLX": {
+  "lastClose": 58.46,
+  "atr": 5.23,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 83.6,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 35,
+    "ageCandles": 11,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.87
+   },
+   {
+    "price": 108.95,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 15,
+    "ageCandles": 31,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.8
+   },
+   {
+    "price": 65.08,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 28,
+    "ageCandles": 18,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 0.71
+   }
+  ],
+  "sloped": [],
+  "symbol": "NFLX",
+  "name": "Netflix",
+  "asOf": "2026-11-19"
+ },
+ "SPOT": {
+  "lastClose": 583.85,
+  "atr": 46.96,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 551.67,
+    "type": "support",
+    "touches": 5,
+    "lastTouch": 35,
+    "ageCandles": 11,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 2.06
+   },
+   {
+    "price": 437.48,
+    "type": "support",
+    "touches": 5,
+    "lastTouch": 40,
+    "ageCandles": 6,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 1.56
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": -3.33,
+    "anchor": [
+     10,
+     570.64
+    ],
+    "anchor2": [
+     21,
+     534.0
+    ],
+    "touches": 4,
+    "touchIdx": [
+     10,
+     15,
+     20,
+     21
+    ],
+    "endPrice": 450.73
+   },
+   {
+    "type": "resistance",
+    "slope": 1.62,
+    "anchor": [
+     15,
+     543.69
+    ],
+    "anchor2": [
+     35,
+     576.0
+    ],
+    "touches": 4,
+    "touchIdx": [
+     15,
+     20,
+     21,
+     35
+    ],
+    "endPrice": 593.77
+   }
+  ],
+  "symbol": "SPOT",
+  "name": "Spotify",
+  "asOf": "2026-11-19"
+ },
+ "XYZ": {
+  "lastClose": 74.23,
+  "atr": 6.73,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 68.49,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 39,
+    "ageCandles": 7,
+    "brokenOnClose": 5,
+    "flipped": true,
+    "score": 0.88
+   },
+   {
+    "price": 86.92,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 34,
+    "ageCandles": 12,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.87
+   },
+   {
+    "price": 55.86,
+    "type": "support",
+    "touches": 1,
+    "lastTouch": 12,
+    "ageCandles": 34,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.79
+   }
+  ],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": 0.73,
+    "anchor": [
+     6,
+     48.21
+    ],
+    "anchor2": [
+     39,
+     72.28
+    ],
+    "touches": 3,
+    "touchIdx": [
+     6,
+     12,
+     39
+    ],
+    "endPrice": 77.39
+   }
+  ],
+  "symbol": "XYZ",
+  "name": "Block",
+  "asOf": "2026-11-19"
+ },
+ "GOOGL": {
+  "lastClose": 272.66,
+  "atr": 23.58,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 324.28,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 36,
+    "ageCandles": 10,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 1.18
+   },
+   {
+    "price": 384.48,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 31,
+    "ageCandles": 15,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.85
+   },
+   {
+    "price": 408.61,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 20,
+    "ageCandles": 26,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.81
+   }
+  ],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": 2.42,
+    "anchor": [
+     13,
+     272.11
+    ],
+    "anchor2": [
+     36,
+     327.74
+    ],
+    "touches": 3,
+    "touchIdx": [
+     13,
+     29,
+     36
+    ],
+    "endPrice": 351.93
+   }
+  ],
+  "symbol": "GOOGL",
+  "name": "Alphabet",
+  "asOf": "2026-11-19"
+ },
+ "NVDA": {
+  "lastClose": 145.98,
+  "atr": 18.0,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 238.22,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 40,
+    "ageCandles": 6,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 2.0
+   },
+   {
+    "price": 192.98,
+    "type": "resistance",
+    "touches": 4,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 4,
+    "flipped": true,
+    "score": 1.12
+   },
+   {
+    "price": 167.65,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 13,
+    "ageCandles": 33,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 0.83
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": 1.3,
+    "anchor": [
+     4,
+     194.49
+    ],
+    "anchor2": [
+     35,
+     234.76
+    ],
+    "touches": 4,
+    "touchIdx": [
+     4,
+     8,
+     35,
+     40
+    ],
+    "endPrice": 249.05
+   },
+   {
+    "type": "support",
+    "slope": 0.76,
+    "anchor": [
+     5,
+     171.03
+    ],
+    "anchor2": [
+     30,
+     190.01
+    ],
+    "touches": 3,
+    "touchIdx": [
+     5,
+     26,
+     30
+    ],
+    "endPrice": 202.16
+   }
+  ],
+  "symbol": "NVDA",
+  "name": "Nvidia",
+  "asOf": "2026-11-19"
+ },
+ "GOLD": {
+  "lastClose": 3644.6,
+  "atr": 232.76,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 5510.15,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 9,
+    "ageCandles": 37,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.34
+   },
+   {
+    "price": 4836.35,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 34,
+    "ageCandles": 12,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.25
+   },
+   {
+    "price": 4027.7,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 26,
+    "ageCandles": 20,
+    "brokenOnClose": 5,
+    "flipped": true,
+    "score": 0.62
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": -27.71,
+    "anchor": [
+     4,
+     5586.2
+    ],
+    "anchor2": [
+     34,
+     4755.0
+    ],
+    "touches": 3,
+    "touchIdx": [
+     4,
+     9,
+     34
+    ],
+    "endPrice": 4422.52
+   }
+  ],
+  "symbol": "GOLD",
+  "name": "Gold",
+  "asOf": "19 Nov 2026, 4:35 PM ET"
+ },
+ "WTI": {
+  "lastClose": 83.18,
+  "atr": 10.47,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 113.59,
+    "type": "resistance",
+    "touches": 4,
+    "lastTouch": 42,
+    "ageCandles": 4,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 2.37
+   },
+   {
+    "price": 67.04,
+    "type": "support",
+    "touches": 1,
+    "lastTouch": 26,
+    "ageCandles": 20,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.83
+   },
+   {
+    "price": 86.97,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 40,
+    "ageCandles": 6,
+    "brokenOnClose": 8,
+    "flipped": true,
+    "score": 0.55
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": -0.28,
+    "anchor": [
+     10,
+     119.48
+    ],
+    "anchor2": [
+     42,
+     110.48
+    ],
+    "touches": 4,
+    "touchIdx": [
+     10,
+     14,
+     37,
+     42
+    ],
+    "endPrice": 109.36
+   }
+  ],
+  "symbol": "WTI",
+  "name": "WTI Crude",
+  "asOf": "19 Nov 2026, 4:45 PM ET"
+ },
+ "US10Y": {
+  "lastClose": 5.052,
+  "atr": 0.17,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 4.3,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 25,
+    "ageCandles": 21,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 1.11
+   },
+   {
+    "price": 5.36,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 40,
+    "ageCandles": 6,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.91
+   },
+   {
+    "price": 4.72,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 0.88
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": 0.02,
+    "anchor": [
+     3,
+     4.311
+    ],
+    "anchor2": [
+     30,
+     4.747
+    ],
+    "touches": 3,
+    "touchIdx": [
+     3,
+     12,
+     30
+    ],
+    "endPrice": 5.01
+   }
+  ],
+  "symbol": "US10Y",
+  "name": "10-Year Treasury",
+  "asOf": "19 Nov 2026, 4:15 PM ET"
+ },
+ "VIX": {
+  "lastClose": 28.44,
+  "atr": 5.36,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 16.75,
+    "type": "support",
+    "touches": 5,
+    "lastTouch": 37,
+    "ageCandles": 9,
+    "brokenOnClose": 4,
+    "flipped": true,
+    "score": 1.28
+   },
+   {
+    "price": 35.3,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 10,
+    "ageCandles": 36,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.79
+   },
+   {
+    "price": 23.22,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 23,
+    "ageCandles": 23,
+    "brokenOnClose": 5,
+    "flipped": true,
+    "score": 0.62
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": -0.09,
+    "anchor": [
+     5,
+     23.1
+    ],
+    "anchor2": [
+     30,
+     20.88
+    ],
+    "touches": 4,
+    "touchIdx": [
+     5,
+     23,
+     30,
+     37
+    ],
+    "endPrice": 19.46
+   },
+   {
+    "type": "resistance",
+    "slope": -0.61,
+    "anchor": [
+     10,
+     35.3
+    ],
+    "anchor2": [
+     37,
+     18.94
+    ],
+    "touches": 3,
+    "touchIdx": [
+     10,
+     30,
+     37
+    ],
+    "endPrice": 13.49
+   }
+  ],
+  "symbol": "VIX",
+  "name": "VIX",
+  "asOf": "19 Nov 2026, 4:30 PM ET"
+ },
+ "DIA": {
+  "lastClose": 490.79,
+  "atr": 14.55,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 539.64,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 31,
+    "ageCandles": 15,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.44
+   },
+   {
+    "price": 508.24,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 39,
+    "ageCandles": 7,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.43
+   },
+   {
+    "price": 450.44,
+    "type": "support",
+    "touches": 1,
+    "lastTouch": 13,
+    "ageCandles": 33,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.79
+   }
+  ],
+  "sloped": [],
+  "symbol": "DIA",
+  "name": "Dow Jones ETF",
+  "asOf": "19 Nov 2026, 4:15 PM ET"
+ },
+ "QQQ": {
+  "lastClose": 645.04,
+  "atr": 31.16,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 748.7,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 40,
+    "ageCandles": 6,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.45
+   },
+   {
+    "price": 648.87,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.04
+   },
+   {
+    "price": 693.18,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 37,
+    "ageCandles": 9,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 0.93
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": 3.51,
+    "anchor": [
+     4,
+     636.6
+    ],
+    "anchor2": [
+     40,
+     762.86
+    ],
+    "touches": 3,
+    "touchIdx": [
+     4,
+     33,
+     40
+    ],
+    "endPrice": 783.9
+   },
+   {
+    "type": "support",
+    "slope": 6.02,
+    "anchor": [
+     13,
+     555.6
+    ],
+    "anchor2": [
+     37,
+     700.0
+    ],
+    "touches": 3,
+    "touchIdx": [
+     13,
+     30,
+     37
+    ],
+    "endPrice": 754.15
+   }
+  ],
+  "symbol": "QQQ",
+  "name": "Nasdaq 100 ETF",
+  "asOf": "19 Nov 2026, 4:15 PM ET"
+ },
+ "USDCAD": {
+  "lastClose": 0.6981,
+  "atr": 0.01,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 0.7,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 41,
+    "ageCandles": 5,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.72
+   },
+   {
+    "price": 0.74,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 17,
+    "ageCandles": 29,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.49
+   },
+   {
+    "price": 0.73,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 33,
+    "ageCandles": 13,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.86
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": -0.0,
+    "anchor": [
+     4,
+     0.7416
+    ],
+    "anchor2": [
+     33,
+     0.7282
+    ],
+    "touches": 4,
+    "touchIdx": [
+     4,
+     10,
+     17,
+     33
+    ],
+    "endPrice": 0.72
+   }
+  ],
+  "symbol": "USDCAD",
+  "name": "CAD/USD",
+  "asOf": "18 Nov 2026, 4:45 PM ET"
+ },
+ "DXY": {
+  "lastClose": 103.95,
+  "atr": 1.11,
+  "weeks": 47,
+  "levels": [
+   {
+    "price": 97.94,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 33,
+    "ageCandles": 13,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.36
+   },
+   {
+    "price": 101.36,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 30,
+    "ageCandles": 16,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 1.14
+   },
+   {
+    "price": 102.95,
+    "type": "support",
+    "touches": 1,
+    "lastTouch": 41,
+    "ageCandles": 5,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 0.79
+   }
+  ],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": 0.08,
+    "anchor": [
+     13,
+     100.64
+    ],
+    "anchor2": [
+     41,
+     102.95
+    ],
+    "touches": 4,
+    "touchIdx": [
+     13,
+     25,
+     30,
+     41
+    ],
+    "endPrice": 103.36
+   }
+  ],
+  "symbol": "DXY",
+  "name": "US Dollar Index",
+  "asOf": "19 Nov 2026, 4:45 PM ET"
+ }
+}

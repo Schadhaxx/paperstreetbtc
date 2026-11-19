@@ -205,7 +205,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   }
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0 };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0, taData: null, taToken: 0, taLoadedSymbol: '' };
 
 
   // --- Experimental live feel: pure helpers (also exposed for harness) ---
@@ -278,6 +278,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   var DESK_LIVE_URL = 'https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/desk-live.json';
   var DESK_LIVE_MAX_AGE_MS = 20 * 60 * 1000; // ~20 min
   var DESK_LIVE_POLL_MS = 5 * 60 * 1000; // re-poll every 5 min while open
+  // Skunkworks TA 2.0 (test branch only): Python-computed Stage 3a
+  // trendlines for all 24 Desk assets, shipped as a static fixture.
+  // Same silent-fallback rule as desk-live: a missing or bad file
+  // draws nothing and shows no error.
+  var TA_LINES_URL = 'assets/data/ta-lines-desk.json';
   function deskLiveFileFor(cfg) {
     // Basename of the weekly file, e.g. "dia-weekly.json" or
     // "stock-weekly-TSLA.json". Matching by file (not by symbol key)
@@ -401,6 +406,46 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         state.deskLive = null;
         state.deskLiveAt = Date.now();
       });
+  }
+  // Skunkworks TA 2.0 (test branch only): fetch the Python-computed
+  // Stage 3a trendlines for the open symbol. Token-guarded like
+  // loadData: a response that arrives after the symbol changed is
+  // ignored. A missing or malformed file is a silent fallback —
+  // Trendlines simply draws nothing and shows no error.
+  function fetchTaLines() {
+    if (!state.cfg) return;
+    var token = ++state.taToken;
+    var cfg = state.cfg;
+    fetch(TA_LINES_URL, { cache: 'no-store' })
+      .then(function (res) { if (!res.ok) throw new Error('no ta-lines file'); return res.json(); })
+      .then(function (data) {
+        if (token !== state.taToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale response: ignore
+        var entry = (data && typeof data === 'object') ? data[cfg.symbol] : null;
+        if (!entry || !Array.isArray(entry.levels) || !Array.isArray(entry.sloped)) { state.taData = null; state.taLoadedSymbol = ''; return; }
+        state.taData = entry;
+        state.taLoadedSymbol = cfg.symbol;
+        var m = el('ind-modal');
+        if (m && m.classList.contains('open') && state.weeks.length && state.loadedSymbol === cfg.symbol) draw();
+      })
+      .catch(function () {
+        if (token !== state.taToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale failure: ignore
+        state.taData = null;
+        state.taLoadedSymbol = '';
+      });
+  }
+  // The TA entry for the symbol the modal is showing, or null when
+  // Trendlines is off, the file has not loaded, or it holds no entry
+  // for this symbol. The draw guard lives here, not in draw().
+  function taForSymbol() {
+    if (!ENH.ta || !state.taData || state.taLoadedSymbol !== (state.cfg && state.cfg.symbol)) return null;
+    return state.taData;
+  }
+  // Value of a sloped trendline at shipped week index idx: the anchor
+  // price plus slope per week. Pure maths, exposed for the harness.
+  function taSlopedValue(line, idx) {
+    if (!line || !Array.isArray(line.anchor) || typeof line.anchor[1] !== 'number' ||
+        typeof line.slope !== 'number' || typeof idx !== 'number' || !isFinite(idx)) return null;
+    return line.anchor[1] + line.slope * (idx - line.anchor[0]);
   }
   // Throttled re-fetch: only when > ~4 min since the last fetch, so a
   // burst of visibilitychange events cannot hammer the file.
@@ -562,7 +607,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // candles only. High/low lines use SHOWN weeks only — the shipped
   // file is YTD, so they are not a lifetime ATH or a full 52-week
   // history; the note under the chart says so plainly.
-  var ENH = { boll: false, lines: false, drawdown: false, patterns: false, volume: false, zoom: false };
+  var ENH = { boll: false, lines: false, drawdown: false, patterns: false, volume: false, zoom: false, ta: false };
   function fmtVol(v) {
     if (typeof v !== 'number' || !isFinite(v)) return '—';
     if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
@@ -829,6 +874,9 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // parallel with the weekly file, and re-poll every 5 min while
     // the modal is open. A missing/stale file is a silent fallback.
     fetchDeskLive();
+    // Skunkworks TA 2.0: fetch the Python trendlines in parallel, so
+    // turning Trendlines on later is instant. Also a silent fallback.
+    fetchTaLines();
     startDeskLiveTimer();
     if (switched) {
       state.resolvedSub = '';
@@ -981,6 +1029,20 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
       lo = Math.min(lo, state.base.value); hi = Math.max(hi, state.base.value);
     }
+    // Skunkworks TA 2.0: keep every shown trendline inside the y-range,
+    // the same way Bollinger bands extend it below. Levels are prices;
+    // sloped lines are valued at the first and last shown shipped
+    // index (one past the end, to cover the appended desk-live week).
+    var ta = taForSymbol();
+    if (ta) {
+      ta.levels.forEach(function (lv) { if (typeof lv.price === 'number' && isFinite(lv.price)) { lo = Math.min(lo, lv.price); hi = Math.max(hi, lv.price); } });
+      ta.sloped.forEach(function (ln) {
+        [viewStart, viewStart + viewWeeks.length].forEach(function (si) {
+          var v = taSlopedValue(ln, si);
+          if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+        });
+      });
+    }
     var fullBands = null;
     if (ENH.boll) {
       if (bollMode === 'daily' && state.dailyBoll) fullBands = state.dailyBoll;
@@ -1114,6 +1176,45 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       enhHLine(ctx, y(shownLo), padL, cssW, padR, psC('#94a3b8','#475569'), [6, 4], 'Lowest shown ' + fmt(shownLo), psC('#cbd5e1','#64748b'));
       enhLabelYs = [(y(shownHi) - 8 < 14 ? y(shownHi) + 16 : y(shownHi) - 8), (y(shownLo) - 8 < 14 ? y(shownLo) + 16 : y(shownLo) - 8)];
     }
+    // Skunkworks TA 2.0: Python Stage 3a trendlines, drawn on the same
+    // patched candle set (dw) the modal uses. Shipped index of dw
+    // position i is viewStart + i, so the line maths works under zoom
+    // and over the appended desk-live week. Support green, resistance
+    // red — the same colours as the candles, in both themes.
+    if (ta) {
+      ta.levels.forEach(function (lv) {
+        if (typeof lv.price !== 'number' || !isFinite(lv.price)) return;
+        var col = lv.type === 'support' ? '#22c55e' : '#ef4444';
+        enhHLine(ctx, y(lv.price), padL, cssW, padR, col, [6, 4], fmt(lv.price), col);
+        enhLabelYs.push(y(lv.price) - 8 < 14 ? y(lv.price) + 16 : y(lv.price) - 8);
+      });
+      ta.sloped.forEach(function (ln) {
+        var col = ln.type === 'support' ? '#22c55e' : '#ef4444';
+        ctx.save();
+        ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        var started = false;
+        for (var i = 0; i < n; i++) {
+          var v = taSlopedValue(ln, viewStart + i);
+          if (v == null || !isFinite(v)) continue;
+          var xx = padL + slot * i + slot / 2, yy = y(v);
+          if (!started) { ctx.moveTo(xx, yy); started = true; } else ctx.lineTo(xx, yy);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        var endV = taSlopedValue(ln, viewStart + n - 1);
+        if (endV != null && isFinite(endV)) {
+          ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+          var lab = fmt(endV);
+          var tw = ctx.measureText(lab).width, bx = cssW - padR - tw - 10, by = y(endV) - 8;
+          if (by < 14) by = y(endV) + 16;
+          ctx.fillStyle = psC('#0b1226', '#f1f5f9'); ctx.fillRect(bx - 4, by - 11, tw + 8, 16);
+          ctx.fillStyle = col; ctx.fillText(lab, bx, by);
+          enhLabelYs.push(by);
+        }
+        ctx.restore();
+      });
+    }
     // Mockup 1 volume pane (under the price plot, same x slots).
     if (hasVol) {
       var maxVol = 0, volSum = 0, volCnt = 0;
@@ -1195,6 +1296,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       }
       if (ENH.boll && state.dailyError) lines.push(state.dailyError);
       if (ENH.lines) lines.push('Highest shown ' + fmt(shownHi) + ' · lowest shown ' + fmt(shownLo) + ' — shown weeks only, not a lifetime high/low.');
+      if (ta && ta.levels.length) lines.push('Trendlines (Python): ' + ta.levels.map(function (lv) { return fmt(lv.price) + ' ' + lv.type; }).join(', ') + '.');
       if (ENH.drawdown && ddInfo) lines.push('Max drawdown ' + (ddInfo.pct * 100).toFixed(1) + '% · ' + viewWeeks[ddInfo.peak].label + ' → ' + viewWeeks[ddInfo.trough].label + '.');
       if (ENH.patterns) lines.push(patCount ? patCount + ' pattern hint' + (patCount === 1 ? '' : 's') + ' marked (white dots). Tap a candle to see its pattern.' : 'No pattern hints on these weeks.');
       if (ENH.volume) {
@@ -1327,7 +1429,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (e.target.closest && e.target.closest('#ind-close')) { closeModal(); return; }
     if (e.target.closest && e.target.closest('#ind-retry')) {
       var r = el('ind-retry'); if (r) r.style.display = 'none';
-      state.weeks = []; loadData(); fetchDeskLive(); return;
+      state.weeks = []; loadData(); fetchDeskLive(); fetchTaLines(); return;
     }
     var modal = el('ind-modal');
     if (modal && modal.classList.contains('open') && e.target === modal) closeModal();
@@ -1459,5 +1561,5 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveNewWeek: deskLiveNewWeek, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveNewWeek: deskLiveNewWeek, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol, _ta: { valueAt: taSlopedValue } };
 })();
