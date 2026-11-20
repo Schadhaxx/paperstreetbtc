@@ -94,6 +94,13 @@
   .ind-boll-mode { align-items:center; border:1px solid var(--line); border-radius:999px; overflow:hidden; }
   .ind-boll-mode-btn { height:36px; padding:0 12px; font-size:13px; border:0; border-radius:0; background:transparent; }
   .ind-boll-mode-btn[aria-pressed="true"] { background:var(--card2); color:var(--cyan); }
+  /* Moving-average selector (19 Nov 2026): same segmented-pill style as
+     the Bollinger Weekly/Daily switch — SMA/EMA, then 20/50/200. */
+  .ind-ma-mode { align-items:center; border:1px solid var(--line); border-radius:999px; overflow:hidden; }
+  .ind-ma-mode-btn { height:36px; padding:0 12px; font-size:13px; border:0; border-radius:0; background:transparent; }
+  .ind-ma-mode-btn[aria-pressed="true"] { background:var(--card2); color:var(--cyan); }
+  .ind-ma-mode-btn:disabled { opacity:.4; cursor:not-allowed; }
+  .ind-ma-mode-sep { width:1px; align-self:stretch; background:var(--line); margin:8px 0; }
   #ind-retry { display:none; margin-top:10px; }
   .ind-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .tile .k { font-size:11px; letter-spacing:.14em; color:var(--mut); font-weight:800; text-transform:uppercase; }
@@ -333,6 +340,8 @@
       <button type="button" class="btn ind-enh-btn" data-enh="boll" aria-pressed="false">Bollinger (20, 2σ)</button>
       <button type="button" class="btn ind-enh-btn" data-enh="ta" aria-pressed="false">Trendlines</button>
       <span id="ind-boll-mode" class="ind-boll-mode" style="display:none;"><button type="button" class="btn ind-boll-mode-btn" data-bollmode="weekly" aria-pressed="true">Weekly</button><button type="button" class="btn ind-boll-mode-btn" data-bollmode="daily" aria-pressed="false">Daily</button></span>
+      <button type="button" class="btn ind-enh-btn" data-enh="ma" aria-pressed="false">Moving averages</button>
+      <span id="ind-ma-mode" class="ind-ma-mode" style="display:none;"><button type="button" class="btn ind-ma-mode-btn" data-matype="sma" aria-pressed="true">SMA</button><button type="button" class="btn ind-ma-mode-btn" data-matype="ema" aria-pressed="false">EMA</button><span class="ind-ma-mode-sep"></span><button type="button" class="btn ind-ma-mode-btn" data-maperiod="20" aria-pressed="true">20</button><button type="button" class="btn ind-ma-mode-btn" data-maperiod="50" aria-pressed="false">50</button><button type="button" class="btn ind-ma-mode-btn" data-maperiod="200" aria-pressed="false">200</button></span>
       <button type="button" class="btn ind-enh-btn" data-enh="volume" aria-pressed="false">Volume</button>
       <button type="button" class="btn ind-enh-btn" data-enh="zoom" aria-pressed="false">Zoom: last 12 wks</button>
     </div>

@@ -606,7 +606,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // branch. All OFF by default; the modal's toggle row flips them.
   // Nothing here invents a value: everything is computed from the
   // shipped weekly candles only.
-  var ENH = { boll: false, volume: false, zoom: false, ta: false };
+  var ENH = { boll: false, volume: false, zoom: false, ta: false, ma: false };
   function fmtVol(v) {
     if (typeof v !== 'number' || !isFinite(v)) return '—';
     if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
@@ -663,6 +663,48 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     }
     return { sma: sma, up: up, lo: lo };
   }
+  // Weekly moving averages (skunkworks TA 2.0, 19 Nov 2026): SMA or EMA
+  // over the shipped weekly closes — the same set Bollinger uses, so the
+  // in-progress week's live price is never used as a close. Returns an
+  // array aligned to weeks, null where fewer than `period` closes are
+  // available. EMA seeds on the SMA of the first `period` closes, then
+  // EMA[i] = close[i]*k + EMA[i-1]*(1-k), k = 2/(period+1). A 200-week
+  // MA needs 200 weeks and a 50-week MA needs 50; the Desk files hold
+  // 47 (SPCX 24), so neither is ever drawn here — no partial-period
+  // line is ever labelled 50 or 200 (the UI disables them). Unknown
+  // type falls back to SMA; bad input fails closed (empty array / all
+  // nulls, never a made-up value).
+  function enhMA(weeks, type, period) {
+    var out = [], i, j, sum, m, k, prev;
+    if (!Array.isArray(weeks) || !weeks.length) return out;
+    if (typeof period !== 'number' || !isFinite(period) || period < 2) {
+      for (i = 0; i < weeks.length; i++) out.push(null);
+      return out;
+    }
+    period = Math.floor(period);
+    var ema = type === 'ema';
+    k = 2 / (period + 1);
+    prev = null;
+    for (i = 0; i < weeks.length; i++) {
+      if (typeof weeks[i].close !== 'number' || !isFinite(weeks[i].close)) { out.push(null); continue; }
+      if (i < period - 1) { out.push(null); continue; }
+      if (!ema || prev == null) {
+        sum = 0; var ok = true;
+        for (j = i - period + 1; j <= i; j++) {
+          if (typeof weeks[j].close !== 'number' || !isFinite(weeks[j].close)) { ok = false; break; }
+          sum += weeks[j].close;
+        }
+        if (!ok) { out.push(null); continue; }
+        m = sum / period;
+        out.push(m);
+        if (ema) prev = m;
+      } else {
+        prev = weeks[i].close * k + prev * (1 - k);
+        out.push(prev);
+      }
+    }
+    return out;
+  }
   // Bollinger mode: 'weekly' (20 weekly closes, the original) or
   // 'daily' (20 daily closes ending on each week's last session).
   // Default weekly — the switch only appears while Bollinger is on,
@@ -675,6 +717,38 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       var on = b.getAttribute('data-bollmode') === bollMode;
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       b.classList.toggle('active', on);
+    });
+  }
+  // Moving averages: SMA or EMA over weekly closes, period 20/50/200.
+  // Default SMA 20 when first enabled; a new symbol resets to it (like
+  // Bollinger's weekly default). Any period longer than the loaded file
+  // is disabled with the reason in its title — the Desk files hold 47
+  // weeks (SPCX 24), so 50 and 200 are both greyed out, never partial
+  // lines mislabelled 50 or 200. The selector only appears while
+  // Moving averages is on.
+  var maType = 'sma';
+  var maPeriod = 20;
+  // Last week-count syncMAUI ran with, so draw() refreshes the
+  // 200-week disabled state once a symbol's weeks have loaded.
+  var maWeeksSynced = -1;
+  function syncMAUI() {
+    var sw = el('ind-ma-mode');
+    if (sw) sw.style.display = ENH.ma ? 'inline-flex' : 'none';
+    document.querySelectorAll('[data-matype]').forEach(function (b) {
+      var on = b.getAttribute('data-matype') === maType;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.classList.toggle('active', on);
+    });
+    var have = state.weeks ? state.weeks.length : 0;
+    document.querySelectorAll('[data-maperiod]').forEach(function (b) {
+      var p = parseInt(b.getAttribute('data-maperiod'), 10);
+      var on = p === maPeriod;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.classList.toggle('active', on);
+      var dis = have < p;
+      b.disabled = dis;
+      if (dis) b.setAttribute('title', 'Needs ' + p + ' weeks — this chart has ' + have + '.');
+      else b.removeAttribute('title');
     });
   }
   function loadDailyBoll() {
@@ -864,6 +938,9 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       // A new symbol starts on weekly Bollinger with no daily data:
       // the daily file is per-symbol and is fetched on demand.
       bollMode = 'weekly';
+      // A new symbol starts on SMA 20 moving averages, same as Bollinger.
+      maType = 'sma'; maPeriod = 20;
+      syncMAUI();
       state.dailyDays = null; state.dailyBoll = null; state.dailyError = null;
       state.dailyLoading = false; state.loadedDailySymbol = '';
       syncBollModeUI();
@@ -1029,6 +1106,17 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       bands.up.forEach(function (v) { if (v != null) hi = Math.max(hi, v); });
       bands.lo.forEach(function (v) { if (v != null) lo = Math.min(lo, v); });
     }
+    // Weekly moving average: computed on the full shipped series, then
+    // sliced to the shown window — the same as Bollinger, so zoom keeps
+    // the line continuous. Refresh the 200-week disabled state once a
+    // symbol's weeks have loaded (the switch-time sync ran on empty).
+    if (state.weeks.length !== maWeeksSynced) { maWeeksSynced = state.weeks.length; syncMAUI(); }
+    var fullMA = null;
+    if (ENH.ma) fullMA = enhMA(state.weeks, maType, maPeriod);
+    var ma = fullMA ? fullMA.slice(viewStart) : null;
+    if (ma) {
+      ma.forEach(function (v) { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
+    }
     var span = hi - lo || 1;
     lo -= span * 0.05; hi += span * 0.05;
     var fmt = state.cfg.format;
@@ -1135,6 +1223,36 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       bandLine(bands.sma);
       ctx.restore();
     }
+    // Weekly moving average (skunkworks TA 2.0): SMA/EMA over the
+    // shipped weekly closes, drawn on the shown window. Solid orange,
+    // with an end tag at the last drawn value. The last point is the
+    // last shipped shown week — the in-progress week's live price is
+    // never a close, so the line never wiggles with the live tick.
+    if (ma) {
+      var maLast = -1;
+      for (var mai = viewWeeks.length - 1; mai >= 0; mai--) { if (ma[mai] != null) { maLast = mai; break; } }
+      if (maLast >= 0) {
+        ctx.save();
+        ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        var maStarted = false;
+        viewWeeks.forEach(function (w, i) {
+          if (ma[i] == null) return;
+          var x = padL + slot * i + slot / 2;
+          if (!maStarted) { ctx.moveTo(x, y(ma[i])); maStarted = true; } else ctx.lineTo(x, y(ma[i]));
+        });
+        ctx.stroke();
+        var maLab = fmt(ma[maLast]);
+        ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+        var maTw = ctx.measureText(maLab).width;
+        var maBx = padL + slot * maLast + slot / 2 - maTw - 12, maBy = y(ma[maLast]) - 8;
+        if (maBy < 14) maBy = y(ma[maLast]) + 16;
+        ctx.fillStyle = psC('#0b1226', '#f1f5f9'); ctx.fillRect(maBx - 4, maBy - 11, maTw + 8, 16);
+        ctx.fillStyle = '#f97316'; ctx.fillText(maLab, maBx, maBy);
+        enhLabelYs.push(maBy);
+        ctx.restore();
+      }
+    }
     // Skunkworks TA 2.0: Python Stage 3a trendlines, drawn on the same
     // patched candle set (dw) the modal uses. Shipped index of dw
     // position i is viewStart + i, so the line maths works under zoom
@@ -1236,6 +1354,13 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
           ? 'Bollinger (daily) needs 20 daily closes before this week.'
           : 'Bollinger needs 20 weeks; this chart has ' + n + '.';
         lines.push(bands && bands.up[viewWeeks.length - 1] != null ? 'Bollinger (' + modeLab + ', 2σ): SMA ' + fmt(bands.sma[viewWeeks.length - 1]) + ' · upper ' + fmt(bands.up[viewWeeks.length - 1]) + ' · lower ' + fmt(bands.lo[viewWeeks.length - 1]) : needLab);
+      }
+      if (ENH.ma) {
+        var maName = (maType === 'ema' ? 'EMA' : 'SMA') + ' ' + maPeriod;
+        if (ma && ma[viewWeeks.length - 1] != null) lines.push(maName + ' (weekly closes): ' + fmt(ma[viewWeeks.length - 1]) + '.');
+        else lines.push(maName + ' needs ' + maPeriod + ' weeks; this chart has ' + state.weeks.length + '.');
+        if (state.weeks.length < 50) lines.push('50- and 200-week need 50 and 200 weeks — this chart has ' + state.weeks.length + '.');
+        else if (state.weeks.length < 200) lines.push('200-week needs 200 weeks — this chart has ' + state.weeks.length + '.');
       }
       if (ENH.boll && state.dailyError) lines.push(state.dailyError);
       if (ta && ta.levels.length) lines.push('Trendlines (Python): ' + ta.levels.map(function (lv) { return fmt(lv.price) + ' ' + lv.type; }).join(', ') + '.');
@@ -1480,6 +1605,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
           syncBollModeUI();
           if (ENH.boll && bollMode === 'daily') loadDailyBoll();
         }
+        if (k === 'ma') syncMAUI();
         draw();
       });
     });
@@ -1497,8 +1623,33 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         else draw();
       });
     });
+    // Moving-average type/period switch: one set at a time, same pattern
+    // as the Bollinger switch. Shown only while Moving averages is on
+    // (syncMAUI). A period longer than the loaded file is disabled
+    // (syncMAUI), so it never fires.
+    document.querySelectorAll('[data-matype]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = b.getAttribute('data-matype');
+        if (m !== 'sma' && m !== 'ema') return;
+        if (!ENH.ma) return;
+        maType = m;
+        syncMAUI();
+        draw();
+      });
+    });
+    document.querySelectorAll('[data-maperiod]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.disabled) return;
+        var p = parseInt(b.getAttribute('data-maperiod'), 10);
+        if (p !== 20 && p !== 50 && p !== 200) return;
+        if (!ENH.ma) return;
+        maPeriod = p;
+        syncMAUI();
+        draw();
+      });
+    });
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveNewWeek: deskLiveNewWeek, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, fmtVol: fmtVol, _ta: { valueAt: taSlopedValue } };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveNewWeek: deskLiveNewWeek, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhMA: enhMA, fmtVol: fmtVol, _ta: { valueAt: taSlopedValue } };
 })();
