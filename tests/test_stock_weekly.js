@@ -34,6 +34,16 @@ SYMS.forEach((sym) => {
   chk(sym + ' unit usd', doc.unit === 'usd');
   chk(sym + ' weeks present', Array.isArray(doc.weeks) && doc.weeks.length > 1, doc.weeks && doc.weeks.length);
   const weeks = doc.weeks;
+  // Backfill (TA 2.0 test branch, Nov 2026): files hold history back to
+  // Nov 2021, so the 2026-only session-count and first-week checks below
+  // run on the YTD slice (weeks from 29 Dec 2025). The full file's
+  // contiguity/OHLC shape is checked for every week above.
+  const ytd = weeks.filter((w) => w.monday >= '2025-12-29');
+  const ytdStart = sym === 'SPCX' ? '2026-06-08' : '2025-12-29';
+  chk(sym + ' YTD slice starts ' + ytdStart, ytd.length > 0 && ytd[0].monday === ytdStart, ytd[0]);
+  if (sym === 'SPCX') chk('SPCX still 24 weeks (no earlier history)', weeks.length === 24, weeks.length);
+  else if (sym === 'IBIT') chk('IBIT 100-200 weeks (launched Jan 2024)', weeks.length >= 100 && weeks.length < 200, weeks.length);
+  else chk(sym + ' 200+ weeks after backfill', weeks.length >= 200, weeks.length);
   let prev = null;
   weeks.forEach((w, i) => {
     const mon = utc(w.monday);
@@ -56,7 +66,7 @@ SYMS.forEach((sym) => {
     chk(sym + ' asOf differs from pack so price is not forced equal', doc.asOf !== pack.asOf);
   }
   const firstSession = sym === 'SPCX' ? '2026-06-12' : '2026-01-02';
-  weeks.slice(1).forEach((w) => {
+  ytd.slice(1).forEach((w) => {
     const exp = expectedDays(w.monday, doc.asOf, firstSession);
     chk(sym + ' ' + w.monday + ' session count ' + exp, w.days === exp, w.days);
   });
@@ -68,7 +78,7 @@ SYMS.forEach((sym) => {
 });
 YTD.forEach((sym) => {
   const doc = JSON.parse(fs.readFileSync(path.join(R, 'assets/data', 'stock-weekly-' + sym + '.json'), 'utf8'));
-  const w0 = doc.weeks[0];
+  const w0 = doc.weeks.filter((w) => w.monday >= '2025-12-29')[0];
   chk(sym + ' basis ytd', doc.basis === 'ytd' && doc.baseSession === '2025-12-31' && doc.baseLabel === '31 Dec close');
   chk(sym + ' first week partial 29 Dec x1', w0.monday === '2025-12-29' && w0.days === 1 && w0.sunday === '2026-01-04');
   chk(sym + ' 31 Dec close is not the first candle close', w0.close !== doc.baseClose, [w0.close, doc.baseClose]);

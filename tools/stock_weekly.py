@@ -317,18 +317,24 @@ def validate_doc(doc, pack_row):
         if w.get('label') != expect:
             err(f'{w["monday"]} label {w.get("label")!r} != {expect!r}')
     if basis == 'ytd':
-        if weeks[0]['monday'] != '2025-12-29' or weeks[0].get('days') != 1:
-            err(f'YTD first week {weeks[0].get("monday")} days {weeks[0].get("days")} (want 2025-12-29 x1)')
+        # The YTD series starts at the week of 2025-12-29, which is
+        # weeks[0] on a fresh build — but a backfilled file (TA 2.0
+        # test branch, Nov 2026) holds earlier history too, so find
+        # the YTD week by its Monday instead of assuming it is first.
+        ytd0 = next((w for w in weeks if w['monday'] == '2025-12-29'), None)
+        if ytd0 is None or ytd0.get('days') != 1:
+            err('YTD first week missing or not 1 day (want 2025-12-29 x1)')
         if doc.get('baseSession') != '2025-12-31':
             err(f'baseSession {doc.get("baseSession")}')
     if basis == 'listing':
-        if weeks[0]['monday'] != '2026-06-08' or weeks[0].get('days') != 1:
-            err(f'listing first week {weeks[0].get("monday")} days {weeks[0].get("days")} (want 2026-06-08 x1)')
+        list0 = next((w for w in weeks if w['monday'] == '2026-06-08'), None)
+        if list0 is None or list0.get('days') != 1:
+            err('listing first week missing or not 1 day (want 2026-06-08 x1)')
         if doc.get('baseSession') != '2026-06-12':
             err(f'baseSession {doc.get("baseSession")}')
         if any(w['monday'] < '2026-06-08' for w in weeks):
             err('candle before listing')
-        if abs(weeks[0]['close'] - doc.get('baseClose', 0)) > 0.01:
+        if list0 is not None and abs(list0['close'] - doc.get('baseClose', 0)) > 0.01:
             err('first candle close is not the listing-close baseline')
     pb = pack_row.get('baseClose') if pack_row else None
     if isinstance(pb, (int, float)) and not isinstance(pb, bool):

@@ -436,9 +436,31 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // The TA entry for the symbol the modal is showing, or null when
   // Trendlines is off, the file has not loaded, or it holds no entry
   // for this symbol. The draw guard lives here, not in draw().
+  // Sloped-line anchors are indices into the week array the Python
+  // job ran on (entry.weeks, the recent 47). After the Nov 2026
+  // backfill the shipped files hold 200+ weeks, so an anchor would
+  // point at a 2021 week and the line would extrapolate off-chart.
+  // Shift the anchors into shipped-index space here, once, so every
+  // call site (y-range, draw, end label) stays unchanged and the
+  // fixture itself is never rewritten. Levels are prices and need
+  // no shift. When the file is no longer than the computation the
+  // entry is returned as-is.
   function taForSymbol() {
     if (!ENH.ta || !state.taData || state.taLoadedSymbol !== (state.cfg && state.cfg.symbol)) return null;
-    return state.taData;
+    var entry = state.taData;
+    var n = typeof entry.weeks === 'number' ? entry.weeks : 0;
+    if (!n || !state.weeks || state.weeks.length <= n) return entry;
+    var shift = state.weeks.length - n;
+    var sloped = (entry.sloped || []).map(function (ln) {
+      var cp = {};
+      for (var k in ln) if (Object.prototype.hasOwnProperty.call(ln, k)) cp[k] = ln[k];
+      if (Array.isArray(ln.anchor) && typeof ln.anchor[0] === 'number') cp.anchor = [ln.anchor[0] + shift, ln.anchor[1]];
+      return cp;
+    });
+    var out = {};
+    for (var k2 in entry) if (Object.prototype.hasOwnProperty.call(entry, k2)) out[k2] = entry[k2];
+    out.sloped = sloped;
+    return out;
   }
   // Value of a sloped trendline at shipped week index idx: the anchor
   // price plus slope per week. Pure maths, exposed for the harness.
@@ -722,9 +744,10 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // Moving averages: SMA or EMA over weekly closes, period 20/50/200.
   // Default SMA 20 when first enabled; a new symbol resets to it (like
   // Bollinger's weekly default). Any period longer than the loaded file
-  // is disabled with the reason in its title — the Desk files hold 47
-  // weeks (SPCX 24), so 50 and 200 are both greyed out, never partial
-  // lines mislabelled 50 or 200. The selector only appears while
+  // is disabled with the reason in its title — the Desk files hold 264
+  // weeks after the Nov 2026 backfill (SPCX 24, IBIT 150), so 50 and
+  // 200 are greyed out only on the short files, never partial lines
+  // mislabelled 50 or 200. The selector only appears while
   // Moving averages is on.
   var maType = 'sma';
   var maPeriod = 20;
@@ -1085,12 +1108,19 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // Skunkworks TA 2.0: keep every shown trendline inside the y-range,
     // the same way Bollinger bands extend it below. Levels are prices;
     // sloped lines are valued at the first and last shown shipped
-    // index (one past the end, to cover the appended desk-live week).
+    // index (one past the end, to cover the appended desk-live week) —
+    // but only from the line's anchor forward: valuing it before the
+    // anchor extrapolates the trend into history where it never
+    // existed, and on a backfilled 200+ week file that blows the
+    // y-range out (gold's anchor sits 221 weeks in, $11,710 at
+    // index 0) and squashes the candles.
     var ta = taForSymbol();
     if (ta) {
       ta.levels.forEach(function (lv) { if (typeof lv.price === 'number' && isFinite(lv.price)) { lo = Math.min(lo, lv.price); hi = Math.max(hi, lv.price); } });
       ta.sloped.forEach(function (ln) {
-        [viewStart, viewStart + viewWeeks.length].forEach(function (si) {
+        var first = viewStart;
+        if (Array.isArray(ln.anchor) && typeof ln.anchor[0] === 'number') first = Math.max(viewStart, ln.anchor[0]);
+        [first, viewStart + viewWeeks.length].forEach(function (si) {
           var v = taSlopedValue(ln, si);
           if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
         });
@@ -1140,6 +1170,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var slot = plotW / n;
     var bw = Math.max(2, Math.min(14, slot * 0.6));
     var seenMonths = {};
+    // X labels are one per month; with 200+ weeks they would land
+    // ~5px apart and smear into each other, so a label too close to
+    // the previous drawn one is skipped (same idea as the comparison
+    // chart's collision rule). The month is still recorded as seen.
+    var lastLabX = -1e9;
     // Draw-in: candles grow body-first over ~450ms from drawStart
     // (open, fresh load, or the moment the chart goes live). Reduced
     // motion draws instantly. The live candle never grows: it is
@@ -1188,7 +1223,8 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         ctx.fillStyle = psC('#94a3b8','#475569');
         ctx.font = '10px -apple-system, system-ui, sans-serif';
         var lab = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][thu.getUTCMonth()];
-        ctx.fillText(lab, Math.max(padL, Math.min(cx - 9, cssW - padR - 22)), cssH - 10);
+        var lx = Math.max(padL, Math.min(cx - 9, cssW - padR - 22));
+        if (lx >= lastLabX + 24) { ctx.fillText(lab, lx, cssH - 10); lastLabX = lx; }
         ctx.font = '11px -apple-system, system-ui, sans-serif';
       }
     });
@@ -1271,7 +1307,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
         ctx.beginPath();
         var started = false;
-        for (var i = 0; i < n; i++) {
+        // The line starts at its anchor — before that it never existed
+        // (see the y-range note above). Starting at i = 0 would draw a
+        // 200+ week backward extrapolation on a backfilled file.
+        var i0 = 0;
+        if (Array.isArray(ln.anchor) && typeof ln.anchor[0] === 'number') i0 = Math.max(0, ln.anchor[0] - viewStart);
+        for (var i = i0; i < n; i++) {
           var v = taSlopedValue(ln, viewStart + i);
           if (v == null || !isFinite(v)) continue;
           var xx = padL + slot * i + slot / 2, yy = y(v);

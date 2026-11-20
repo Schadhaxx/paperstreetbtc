@@ -3,8 +3,9 @@
    averages (SMA/EMA, periods 20/50/200). Loads the real
    assets/js/screener-indicator-chart.js in a vm sandbox and checks the
    IndicatorChart.enhMA test hook against hand-computed cases and the
-   shipped weekly files. The Desk files hold 47 weeks (SPCX 24), so a
-   50- or 200-period MA has no value anywhere — all nulls, never a
+   shipped weekly files. The Desk files hold 264 weeks after the Nov
+   2026 backfill (SPCX 24, IBIT 150), so a 50- or 200-period MA draws
+   on every file but SPCX and IBIT — those stay all null, never a
    partial-period line.
    Run: node tests/test_ta_lines_desk_ma.js */
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -69,29 +70,43 @@ chk('unknown type behaves as SMA',
 chk('non-finite close poisons its windows, never NaN',
   ma(W([10, 20, NaN, 40, 50]), 'sma', 3).every((v) => v === null));
 
-// Real shipped files: gold (47 weeks) and SPCX (24 weeks).
+// Real shipped files: gold (264 weeks) and SPCX (24 weeks).
 const goldWeeks = JSON.parse(fs.readFileSync(path.join(R, 'assets/data/gold-weekly.json'), 'utf8')).weeks;
 const goldCloses = goldWeeks.map((w) => w.close);
+const last = goldWeeks.length - 1;
 const meanLast = (arr, k) => arr.slice(-k).reduce((a, b) => a + b, 0) / k;
 const goldSma20 = ma(goldWeeks, 'sma', 20);
-chk('gold: 47 weeks', goldWeeks.length === 47, goldWeeks.length);
+chk('gold: 264 weeks', goldWeeks.length === 264, goldWeeks.length);
 chk('gold SMA 20 last = mean of last 20 closes',
-  close(goldSma20[46], meanLast(goldCloses, 20)), goldSma20[46]);
+  close(goldSma20[last], meanLast(goldCloses, 20)), goldSma20[last]);
 chk('gold SMA 20 first value at idx 19 = mean of first 20 closes',
   close(goldSma20[19], goldCloses.slice(0, 20).reduce((a, b) => a + b, 0) / 20), goldSma20[19]);
 const goldEma20 = ma(goldWeeks, 'ema', 20);
 chk('gold EMA 20 last is finite and differs from SMA 20 last',
-  isFinite(goldEma20[46]) && Math.abs(goldEma20[46] - goldSma20[46]) > 0.01,
-  { ema: goldEma20[46], sma: goldSma20[46] });
+  isFinite(goldEma20[last]) && Math.abs(goldEma20[last] - goldSma20[last]) > 0.01,
+  { ema: goldEma20[last], sma: goldSma20[last] });
 chk('gold EMA 20 seeds on SMA at idx 19',
   close(goldEma20[19], goldSma20[19]), goldEma20[19]);
-chk('gold SMA 50 = all null (47 weeks)', allNull(ma(goldWeeks, 'sma', 50)));
-chk('gold EMA 200 = all null', allNull(ma(goldWeeks, 'ema', 200)));
+// 50 and 200 draw now that the file holds 264 weeks.
+const goldSma50 = ma(goldWeeks, 'sma', 50);
+chk('gold SMA 50 last = mean of last 50 closes',
+  close(goldSma50[last], meanLast(goldCloses, 50)), goldSma50[last]);
+chk('gold SMA 50 first value at idx 49 = mean of first 50 closes',
+  close(goldSma50[49], goldCloses.slice(0, 50).reduce((a, b) => a + b, 0) / 50), goldSma50[49]);
+const goldEma200 = ma(goldWeeks, 'ema', 200);
+chk('gold EMA 200 last is finite',
+  isFinite(goldEma200[last]), goldEma200[last]);
+chk('gold EMA 200 first value at idx 199 = mean of first 200 closes',
+  close(goldEma200[199], goldCloses.slice(0, 200).reduce((a, b) => a + b, 0) / 200), goldEma200[199]);
 const spcxWeeks = JSON.parse(fs.readFileSync(path.join(R, 'assets/data/stock-weekly-SPCX.json'), 'utf8')).weeks;
 chk('SPCX: 24 weeks, SMA 20 last = mean of last 20 closes',
   spcxWeeks.length === 24 &&
   close(ma(spcxWeeks, 'sma', 20)[23], meanLast(spcxWeeks.map((w) => w.close), 20)),
   spcxWeeks.length);
+chk('SPCX SMA 50 = all null (24 weeks, still short)',
+  allNull(ma(spcxWeeks, 'sma', 50)));
+chk('SPCX EMA 200 = all null (24 weeks, still short)',
+  allNull(ma(spcxWeeks, 'ema', 200)));
 
 console.log(n - f + '/' + n + ' checks passed');
 process.exit(f ? 1 : 0);

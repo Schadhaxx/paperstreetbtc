@@ -8,6 +8,15 @@ $3,644.60, levels $5,510.15 / $4,836.35 / $4,027.70, sloped resistance
 must match a fresh compute, and every one of the 24 Desk symbols must
 be present with well-formed levels/sloped lists.
 
+The fixture was computed on the recent 47 weeks (29 Dec 2025 - 16 Nov
+2026). The weekly files were backfilled to 200+ weeks in Nov 2026
+(TA 2.0 test branch, tools/ta_backfill_weekly.py) and the fixture was
+deliberately NOT recomputed, so the regression below runs on the last
+47 weeks of the file — the same 47 the fixture came from. A fresh
+compute on the full 264 weeks gives different levels (ATR $227.45,
+support $3,152.03 / $3,506.77); that is the known recompute question,
+not a regression.
+
 usage: python3 tests/test_ta_lines_desk.py   exit 0 = all pass
 """
 import json
@@ -39,7 +48,9 @@ def chk(name, ok, info=''):
 
 with open(GOLD_FILE) as fh:
     gold_weeks = json.load(fh)['weeks']
-rec = TLD.compute(gold_weeks)
+chk('gold: file holds 264 weeks (backfilled)', len(gold_weeks) == 264, len(gold_weeks))
+chk('gold: last 47 weeks start 29 Dec 2025', gold_weeks[-47]['monday'] == '2025-12-29', gold_weeks[-47])
+rec = TLD.compute(gold_weeks[-47:])
 
 chk('gold: 47 weeks', rec['weeks'] == 47, rec['weeks'])
 chk('gold: ATR 232.76', rec['atr'] == 232.76, rec['atr'])

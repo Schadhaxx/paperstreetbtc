@@ -53,7 +53,8 @@ run candle_date_guardrail node tests/test_candle_date_guardrail.js             #
 run desk_monday_candle node tests/test_desk_monday_candle.js               # Desk chart: append the fresh desk-live candle as a new in-progress week on the first trading day (16 Nov 2026)
 run ta_lines_desk_py python3 tests/test_ta_lines_desk.py                        # skunkworks TA 2.0: tools/ta_lines_desk.py reproduces the verified gold site-file numbers for all 24 Desk assets
 run ta_lines_desk_js node tests/test_ta_lines_desk.js                           # skunkworks TA 2.0: panel _ta.valueAt sloped-line maths vs the ta-lines-desk.json fixture
-run ta_lines_desk_ma node tests/test_ta_lines_desk_ma.js                           # skunkworks TA 2.0: weekly SMA/EMA moving averages on the Desk modals (20/50/200, 47-week files)
+run ta_lines_desk_ma node tests/test_ta_lines_desk_ma.js                           # skunkworks TA 2.0: weekly SMA/EMA moving averages on the Desk modals (20/50/200, backfilled files)
+run ta_backfill_weekly python3 tests/test_ta_backfill_weekly.py                     # skunkworks TA 2.0: Desk weekly files backfilled to 200+ weeks, shipped 47 untouched (SPCX/IBIT short)
 run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
 run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et24): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
 run s2_hero_cosmetic node tests/test_s2_hero_cosmetic.js                     # YTD hero: legend wrap + light grid + tooltip no-clip + fonts.ready redraw (15 Nov 2026 nice-to-haves)
