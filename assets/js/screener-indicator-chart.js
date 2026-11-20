@@ -74,7 +74,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     GOLD: {
       symbol: 'GOLD',
       title: 'Gold — YTD weekly candles',
-      dataUrl: 'assets/data/gold-weekly.json?v=3',
+      dataUrl: 'assets/data/gold-weekly.json?v=4',
       dailyUrl: 'assets/data/ind-daily-gold.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Current ',
@@ -84,7 +84,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     WTI: {
       symbol: 'WTI',
       title: 'WTI — YTD weekly candles',
-      dataUrl: 'assets/data/wti-weekly.json?v=2',
+      dataUrl: 'assets/data/wti-weekly.json?v=3',
       dailyUrl: 'assets/data/ind-daily-wti.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Current ',
@@ -94,7 +94,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     US10Y: {
       symbol: 'US10Y',
       title: '10-Year — YTD weekly candles',
-      dataUrl: 'assets/data/us10y-weekly.json?v=2',
+      dataUrl: 'assets/data/us10y-weekly.json?v=3',
       dailyUrl: 'assets/data/ind-daily-us10y.json?v=' + DAILY_V,
       format: fmtYield,
       currentPrefix: 'Current ',
@@ -105,7 +105,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     VIX: {
       symbol: 'VIX',
       title: 'VIX — YTD weekly candles',
-      dataUrl: 'assets/data/vix-weekly.json?v=2',
+      dataUrl: 'assets/data/vix-weekly.json?v=3',
       dailyUrl: 'assets/data/ind-daily-vix.json?v=' + DAILY_V,
       format: fmtPoints,
       currentPrefix: 'Current ',
@@ -118,7 +118,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     DIA: {
       symbol: 'DIA',
       title: 'DIA — YTD weekly candles',
-      dataUrl: 'assets/data/dia-weekly.json?v=1',
+      dataUrl: 'assets/data/dia-weekly.json?v=2',
       dailyUrl: 'assets/data/ind-daily-dia.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Current ',
@@ -128,7 +128,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     QQQ: {
       symbol: 'QQQ',
       title: 'QQQ — YTD weekly candles',
-      dataUrl: 'assets/data/qqq-weekly.json?v=1',
+      dataUrl: 'assets/data/qqq-weekly.json?v=2',
       dailyUrl: null,
       format: fmtMoney,
       currentPrefix: 'Current ',
@@ -138,7 +138,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     USDCAD: {
       symbol: 'USDCAD',
       title: 'CAD/USD — YTD weekly candles',
-      dataUrl: 'assets/data/usdcad-weekly.json?v=cadusd1',
+      dataUrl: 'assets/data/usdcad-weekly.json?v=cadusd2',
       dailyUrl: null,
       format: fmtFx,
       currentPrefix: 'Current ',
@@ -148,7 +148,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     DXY: {
       symbol: 'DXY',
       title: 'DXY — YTD weekly candles',
-      dataUrl: 'assets/data/dxy-weekly.json?v=1',
+      dataUrl: 'assets/data/dxy-weekly.json?v=2',
       dailyUrl: null,
       format: fmtPoints,
       currentPrefix: 'Current ',
@@ -162,7 +162,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // weekly close ("Close $…"), never the live card price. "Current $…
   // YTD …" is drawn from the card's own merged row. Cache-bust STOCK_V
   // whenever the JSON is regenerated.
-  var STOCK_V = '20261109';
+  var STOCK_V = '20261119';
   function stockCfg(sym, basis) {
     var listing = basis === 'listing';
     return {
