@@ -25,18 +25,23 @@ function etDateTime(ms){try{return new Date(ms).toLocaleString('en-US',{timeZone
    header was set but before the chart was created — labels/header updated, chart never redrew.
    Use ET when present, otherwise compute the same 00:00 UTC close in ET directly. */
 function provCloseLabel(){if(window.ET&&ET.btcCloseLabel)return ET.btcCloseLabel();try{return new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth(),new Date().getUTCDate()+1)).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric'})+' ET';}catch(e){return '7 PM ET';}}
+/* Batch B bug 12: 8s-timeout fetch, same pattern as the price path
+   (btcchart.js tf). A stalled external fetch must fail fast so the
+   fallbacks run — without a timeout the first paint waits on the network
+   stack (~30-60s) and the chart stays blank. */
+function tf8(u,o){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},8000):0;o=o||{};if(c)o.signal=c.signal;return fetch(u,o).then(function(r){clearTimeout(t);return r;},function(e){clearTimeout(t);throw e;});}
 function getIntraday(){
   if(intraP)return intraP;
   var now=Date.now();
   if(INTRA&&now-INTRA_AT<60000)return Promise.resolve(INTRA);
   var end=new Date(now).toISOString(),start=new Date(now-24*3600*1000).toISOString();
-  var cb=fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&start='+start+'&end='+end,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+  var cb=tf8('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&start='+start+'&end='+end,{cache:'no-store'}) /* Batch B bug 12: 8s abort */.then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
     if(!Array.isArray(j))throw new Error('bad candles');
     var pts=j.map(function(c){return {t:c[0]*1000,o:c[3],h:c[2],l:c[1],v:c[4]};}).filter(function(p){return isFinite(p.v)&&p.v>0&&p.t>now-24*3600*1000;}).sort(function(a,b){return a.t-b.t;});
     if(pts.length<2)throw new Error('too few candles');
     return {pts:pts.slice(-96),src:'coinbase'};
   });
-  var cg=cb.catch(function(){return fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+  var cg=cb.catch(function(){return tf8('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1',{cache:'no-store'}) /* Batch B bug 12: 8s abort */.then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
     if(!j||!Array.isArray(j.prices))throw new Error('bad market chart');
     var pts=j.prices.map(function(pr){return {t:pr[0],v:pr[1]};}).filter(function(p){return isFinite(p.v)&&p.v>0;}).sort(function(a,b){return a.t-b.t;});
     if(pts.length<2)throw new Error('too few prices');
@@ -167,8 +172,11 @@ function drawCandles1D(candles,label,per){
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
-  var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
-  var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
+  /* TA Stage 1, candle inset (item 1): half a slot at each end, so the first
+     and last candles sit fully inside the plot instead of on its edges.
+     CANDGEOM carries these x positions, so later stages reuse the same inset. */
+  var X=function(i){return L+iw*(i+0.5)/candles.length;};
+  var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};;
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];drawCandles1D._lastTx=null;
@@ -209,7 +217,7 @@ function bindCandListeners(c){
   if(c._candBound)return;
   c._candBound=true;
   var pick=function(evt){var r=c.getBoundingClientRect(),x=(evt.clientX-r.left);var best=-1,bd=1e9;CANDGEOM.forEach(function(g,i){var d=Math.abs(g.x-x);if(d<bd){bd=d;best=i;}});return best;};
-  /* Guard: in a line view this canvas is a Chart.js line chart, not candles.
+  /* Guard: in a line view this canvas holds the native line chart, not candles.
      Without the guard, hover/click here used stale CANDGEOM and repainted
      old candles over the line chart. */
   /* Pointer scrub (mirrors the screener): drag across the chart and the pill follows
@@ -363,8 +371,19 @@ function drawCandlesRange(){
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
-  var L=62,R=(typeof RGLIVE!=='undefined'&&RGLIVE)?78:12,T=18,B=44,iw=W-L-R,ih=H-T-B;
-  var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
+  var L=62,T=18,B=44;
+  /* TA Stage 1, CAD live-tag fix (item 8): the LIVE tag was sized at USD width
+     (R=78), so in CAD the wider tag ran off the canvas edge. Measure the tag
+     in the displayed currency first and size the right margin to fit it.
+     When the tag will not be drawn (no live price) keep today's R=78. */
+  var R=12;
+  if(typeof RGLIVE!=='undefined'&&RGLIVE){
+    if(live.usd!=null){ctx.font='bold 11px Inter, sans-serif';R=Math.ceil(ctx.measureText('LIVE '+fmt(live.usd)).width)+16;}
+    else{R=78;}
+  }
+  var iw=W-L-R,ih=H-T-B;
+  /* TA Stage 1, candle inset (item 1): half a slot at each end — see drawCandles1D. */
+  var X=function(i){return L+iw*(i+0.5)/candles.length;};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
@@ -504,8 +523,7 @@ function syncCg(){
 function drawRange(){
   head();
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
-  $('bcSc').style.display='none';var _ct=$('bcCt');if(_ct)_ct.style.display='none';
-  var cg=$('bcCg');if(cg)cg.style.display='';
+  $('bcSc').style.display='none';
   /* Candles are BTC-only, same rule as the 1D view: the S&P 500 / Gold / MSTR
      buttons are greyed for the candle view and their line behaviour is untouched. */
   var sb=$('bcSpx');if(sb){sb.setAttribute('aria-pressed','false');sb.classList.add('off');$('bcSpxT').textContent='+ S&P 500';sb.setAttribute('aria-label','S&P 500 unavailable for candle view');}
@@ -526,7 +544,7 @@ function drawRange(){
   if(!RGSEEN[rng]){RGGRAN=defaultGran(rng);RGSEEN[rng]=true;}
   if(allowed.length&&allowed.indexOf(RGGRAN)<0)RGGRAN=defaultGran(rng);
   syncCg();
-  var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;if(cg)cg.style.display='';syncCg();};
+  var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;syncCg();};
   if(rng==='1W'&&RGGRAN==='4h'){
     if(!CB4H||Date.now()-CB4H_AT>5*60*1000){
       if(CB4H_ERR){RGGRAN='daily';clearCandState();fallback('Coinbase 4-hour candles unavailable — showing daily closes.');return;}
@@ -541,7 +559,7 @@ function drawRange(){
     $('bcRr').textContent='1W: BTC '+((pc04>=0?'+':'')+pc04.toFixed(2)+'%')+' · '+cand4.length+' 4-hour candles, from '+new Date(cand4[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a04)+')';
     $('bcNt').textContent='Coinbase 4-hour candles (UTC), in 4-hour blocks. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete 4-hour block; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view.';
     clearLineChart();
-    CANDSEL=-1;CANDHOV=-1;drawCandlesRange();return;
+    CANDSEL=-1;CANDHOV=-1;drawCandlesRange();taAfterDraw('candles-range');return;
   }
 
   var win,cut;
@@ -622,18 +640,17 @@ function drawRange(){
   clearLineChart();
   CANDSEL=-1;CANDHOV=-1;
   var cc=$('bcC');if(cc){cc.style.transition='opacity .3s ease';cc.style.opacity='0';requestAnimationFrame(function(){cc.style.opacity='1';});}
-  drawCandlesRange();
+  drawCandlesRange();taAfterDraw('candles-range');
 }
 function draw1D(){
-  if(!NATIVE_LINE&&!window.Chart)return;
   head();
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   $('bcSc').style.display='none';
   var sb=$('bcSpx');if(sb){sb.setAttribute('aria-pressed','false');sb.classList.add('off');$('bcSpxT').textContent='+ S&P 500';sb.setAttribute('aria-label','S&P 500 unavailable for 1D intraday');}
   var gb=$('bcGld');if(gb){gb.setAttribute('aria-pressed','false');gb.classList.add('off');$('bcGldT').textContent='+ Gold';gb.setAttribute('aria-label','Gold unavailable for 1D intraday');}
   var mb=$('bcMstr');if(mb){mb.setAttribute('aria-pressed','false');mb.classList.add('off');$('bcMstrT').textContent='+ MSTR';mb.setAttribute('aria-label','MSTR unavailable for 1D intraday');}
-  var ct=$('bcCt');if(ct){ct.style.display='';[].forEach.call(ct.querySelectorAll('[data-ct]'),function(b){b.classList.toggle('on',b.dataset.ct===CT);b.setAttribute('aria-pressed',b.dataset.ct===CT);});}
-  var cg1=$('bcCg');if(cg1)cg1.style.display='none';
+  var ct=$('bcCt');if(ct){[].forEach.call(ct.querySelectorAll('[data-ct]'),function(b){b.classList.toggle('on',b.dataset.ct===CT);b.setAttribute('aria-pressed',b.dataset.ct===CT);});}
+  var cg1=$('bcCg');if(cg1)syncCg();
   if(!INTRA){
     $('bcRr').textContent='Loading intraday…';
     getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){if(dlg&&!dlg.hidden){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' Intraday unavailable — showing daily closes.';}});
@@ -648,7 +665,7 @@ function draw1D(){
       $('bcRr').textContent='1D: BTC '+((pc0>=0?'+':'')+pc0.toFixed(2)+'%')+' · last 24 hours, '+CT+' candles, from '+etTime(cand[0].t)+' ET ('+fmt(a0)+')'+cadTag();
       $('bcNt').textContent='Coinbase '+CT+' candles, last 24 hours (ET). Green = close above open, Red = below. Tap a candle for its Open, High, Low, Close and Change. S&P 500, Gold and MSTR toggles are off for 1D only.';
       clearLineChart();
-      CANDSEL=-1;CANDHOV=-1;drawCandles1D(cand, CT==='1h'?'1-hour candles':'4-hour candles', per);
+      CANDSEL=-1;CANDHOV=-1;drawCandles1D(cand, CT==='1h'?'1-hour candles':'4-hour candles', per);taAfterDraw('candles-1d');
       return;
     }
   }
@@ -660,33 +677,25 @@ function draw1D(){
   var fp=function(x){return (x>=0?'+':'')+(Math.abs(x)>=1e4?Math.round(x).toLocaleString('en-US'):x.toFixed(1))+'%';};
   $('bcRr').textContent='1D: BTC '+fp(pc)+' · last 24 hours, from '+etTime(pts[0].t)+' ET ('+fmt(a)+')'+cadTag();
   $('bcNt').textContent='Intraday '+(INTRA.src==='coingecko'?'CoinGecko 1-day chart (Coinbase unavailable)':'Coinbase 15-minute candles')+', last 24 hours (ET); last point is the live price. S&P 500 and Gold toggles are off for 1D only (daily closes only).';
-  var c=$('bcC').getContext('2d'),H=$('bcC').parentNode.clientHeight||300,g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(34,211,238,.28)');g.addColorStop(1,'rgba(34,211,238,0)');
-  var lab=pts.map(function(p){return p.live?'Now (live)':etTime(p.t);});
-  var ds=[{label:'BTC',data:pts.map(function(p){return p.v;}),borderColor:'#22d3ee',backgroundColor:g,fill:true,borderWidth:2,tension:.15,pointRadius:pts.map(function(p,i){return i===n-1&&hasLive?4:0;}),pointHoverRadius:3,pointBackgroundColor:'#22d3ee'}];
-  var opts={animation:false,responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},
-    tooltip:{displayColors:false,callbacks:{title:function(i){var k=i[0].dataIndex,p=pts[k];return p.live?'Now (live)':etDateTime(p.t);},
-      label:function(i){return 'BTC '+fmt(i.parsed.y);}}}},
-    scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0}},
-      y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:function(v){var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);}}}}};
-  /* Stage 2 Step 2: native 1D line behind the NATIVE_LINE flag; Chart.js stays the fallback. */
-  var nativeOK=false;
-  if(NATIVE_LINE){if(ch){ch.destroy();ch=null;}nativeOK=draw1DNative(pts);lineDrawn=nativeOK;}
-  if(!nativeOK){if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});lineDrawn=false;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;cancelNativeResize();}
+  /* Native 1D line (Chart.js removed 20 Nov 2026; no fallback library). */
+  var nativeOK=draw1DNative(pts);lineDrawn=nativeOK;
+  if(nativeOK)lineRetry=false;else lineFail();
+  taAfterDraw('1d-line');
 }
 
 /* Range-row scroll hint, 29 Oct 2026: tabs run shortest (1D) to longest (Max) left to right, so on a phone the longer ranges sit off-screen to the right and are reached by swiping left. The hint shows only while there is still more to the right. */
 function syncRgHint(){var rs=$('bcRgs'),h=$('bcRgHint');if(!rs||!h)return;var moreRight=rs.scrollWidth-rs.clientWidth-rs.scrollLeft>8;h.style.display=moreRight?'':'none';}
-function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}syncRgHint();}
+function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}syncTypePill();syncRgHint();}
 
 function onK(K,M,d){var lo=0,hi=K.length-1,a=-1;while(lo<=hi){var mid=(lo+hi)>>1;if(K[mid]<=d){a=mid;lo=mid+1;}else hi=mid-1;}return a<0?null:M[K[a]];}
 function spxOn(d){return onK(SPXK,SPX,d);}function gldOn(d){return onK(GOLDK,GOLD,d);}function mstrOn(d){return onK(MSTRK,MSTR,d);}
 function getData(){if(dataP)return dataP;
-  var st=fetch(U('../data/btc-daily.json')).then(function(r){return r.json();});
-  var sx=fetch(U('../data/spx-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  var gx=fetch(U('../data/gold-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  var mx=fetch(U('../data/mstr-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  var hj=fetch(RAW+'?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
-  var cb=fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var st=tf8(U('../data/btc-daily.json')).then(function(r){return r.json();}); /* Batch B bug 12: 8s abort */
+  var sx=tf8(U('../data/spx-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var gx=tf8(U('../data/gold-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var mx=tf8(U('../data/mstr-daily.json')).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var hj=tf8(RAW+'?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  var cb=tf8('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
   dataP=Promise.all([st,hj,cb,sx,gx,mx]).then(function(r){var m={},s=r[0].d,end=r[0].end;s.forEach(function(p){m[p[0]]=p[1];});
     var today=new Date().toISOString().slice(0,10);
     if(Array.isArray(r[2]))r[2].forEach(function(c){var d=new Date(c[0]*1000).toISOString().slice(0,10);if(d>end&&d<today)m[d]=c[4];});
@@ -713,19 +722,56 @@ function getData(){if(dataP)return dataP;
   dataP.catch(function(){dataP=null;});return dataP;}
 /* dialog */
 var RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'],DAYS={'1D':1,'1W':7,'1M':31,'3M':92,'6M':183,'1Y':366,'5Y':1827,'10Y':3653};
-var rng='1D',LOG=false,dlg=null,dim=null,ch=null,opener=null;
+var rng='1D',LOG=false,dlg=null,dim=null,opener=null;
 function isPhone(){return window.innerWidth<=640;}
 /* Popover chart is Spot BTC only (owner decision 29 Oct 2026):
    the vehicle toggle was removed from this popover. The tracker
    BITCOIN VEHICLE toggle (vehicle.js, under the BTC live pill) remains
    the sole vehicle control; it is not touched here. */
+/* TA Stage 1 (20 Nov 2026): bridge for btcchart-ta.js. The TA module reads
+   panel state through window.__BCTA and registers its after-draw hook there;
+   the panel calls the hook after each native draw. Stage 1 draws nothing.
+   The chart-type pill label is synced here (the panel owns the state), so it
+   is right even before the TA script finishes loading. */
+window.__BCTA={
+  state:function(){return {rng:rng,CT:CT,RGCT:RGCT,RGGRAN:RGGRAN,CANDLE_RANGES:CANDLE_RANGES.slice(),defaultGran:defaultGran,candViewActive:candViewActive()};},
+  dlg:function(){return dlg;},
+  inline:function(){return INLINE;},
+  stage:function(){try{return dlg&&dlg.closest?dlg.closest('.v4-stage'):null;}catch(e){return null;}},
+  draw:draw,
+  syncTypePill:syncTypePill,
+  afterDraw:null
+};
+function taAfterDraw(kind){try{var h=window.__BCTA&&window.__BCTA.afterDraw;if(typeof h==='function')h(kind);}catch(e){}}
+function syncTypePill(){
+  var b=$('taTyp');if(!b)return;
+  var lab,dis=false;
+  if(/^(5Y|10Y|Max)$/.test(rng)){lab='Line';dis=true;}
+  else if(rng==='1D'){lab=CT==='line'?'Line':(CT==='1h'?'1H candles':'4H candles');}
+  else if(RGCT!=='candles'){lab='Line';}
+  else{lab=RGGRAN==='4h'?'4H candles':(RGGRAN==='daily'?'Candles \u00b7 Daily':RGGRAN==='weekly'?'Candles \u00b7 Weekly':'Candles \u00b7 Monthly');}
+  var s=b.querySelector('span');if(s)s.textContent=lab;
+  b.disabled=dis;b.setAttribute('aria-disabled',dis?'true':'false');
+  b.setAttribute('aria-label','Chart type: '+lab);
+}
+var taLoaded=false;
+function loadTA(){
+  if(taLoaded)return;taLoaded=true;
+  try{
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta1');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta1');
+    s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
+    s.onerror=function(){taLoaded=false;};
+    document.head.appendChild(s);
+  }catch(e){taLoaded=false;}
+}
 function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hidden=true;
   dlg=document.createElement('div');dlg.className=INLINE?'bc-w bc-inline':'bc-w';dlg.hidden=true;dlg.setAttribute('role','dialog');if(!INLINE)dlg.setAttribute('aria-modal','true');dlg.setAttribute('aria-labelledby','bcTitle');
   dlg.innerHTML='<div class="bc-grab" aria-hidden="true"></div><div class="bc-h"><div><span class="lp-lab" id="bcTitle"><span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+CUR.code+'</span><div class="bc-px"><span id="bcPx">—</span><span id="bcChg" class="hdr-chg"></span></div><div class="bc-rr" id="bcRr"></div></div><button type="button" class="bc-x" id="bcX" aria-label="Close BTC chart">✕</button></div>'
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-rg-hint" id="bcRgHint" aria-hidden="true">\u2190 Swipe for longer ranges</span><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
-   +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
+   +'<div class="bc-row2" id="bcRow2"><div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><button type="button" class="ta-typ" id="taTyp" aria-haspopup="true" aria-expanded="false" aria-label="Chart type: Line"><span>Line</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="ta-pill" id="taPill" aria-haspopup="dialog" aria-expanded="false" aria-label="Technical analysis"><span>TA</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
    +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="4h" style="display:none">4H</button><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
-   +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../clock/index.html')+'">Live BTC chart →</a><a class="bc-cl" href="'+U('../../screener.html')+'">The Desk →</a>';
+   +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="ta-rsi" id="taRsi" hidden><button type="button" class="ta-rsi-t" aria-expanded="true">RSI 14 <b>—</b><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><canvas></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../clock/index.html')+'">Live BTC chart →</a><a class="bc-cl" href="'+U('../../screener.html')+'">The Desk →</a>';
   if(INLINE)INLINEHOST.appendChild(dlg);else{document.body.appendChild(dim);document.body.appendChild(dlg);}
   /* Secret link, 4 Nov 2026: double-clicking anywhere on the Bitcoin price
      in this popover opens the block clock page in a new tab. No visible
@@ -749,7 +795,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
   dlg.addEventListener('touchend',function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>80)close();y0=null;},{passive:true});
-  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();nativeResize();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
+  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();nativeResize();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});loadTA();}
 function place(){if(INLINE)return;var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
   if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),isLand=window.innerWidth>window.innerHeight,shortLand=isLand&&window.innerHeight<500,wide=isLand&&(window.innerWidth>=900||window.innerHeight<500),wCap=wide?900:640,w=Math.min(wCap,window.innerWidth-32);
   /* Short landscape (iPhone landscape, viewport <500px tall, 8 Nov 2026,
@@ -765,7 +811,7 @@ function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   var last=new Date(d[d.length-1][0]+'T00:00:00Z'),st;
   if(rng==='Max')st='0000';else if(rng==='YTD')st=(last.getUTCFullYear()-1)+'-12-31';else st=new Date(last-DAYS[rng]*864e5).toISOString().slice(0,10);
   return d.filter(function(p){return p[0]>=st;});}
-function drawDaily(){if(!DATA)return;if(!NATIVE_LINE&&!window.Chart)return;clearCandState();lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(CANDLE_RANGES.indexOf(rng)>=0){_cg.style.display='';syncCg();}else _cg.style.display='none';}
+function drawDaily(){if(!DATA)return;clearCandState();lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;head();var _cg=$('bcCg');if(_cg)syncCg();
 var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   var onb=$('bcRgs').querySelector('.on'),rs=$('bcRgs');if(onb&&rs.scrollWidth>rs.clientWidth){var L=onb.offsetLeft-rs.offsetLeft,R=L+onb.offsetWidth;if(L<rs.scrollLeft+16||R>rs.scrollLeft+rs.clientWidth-16)rs.scrollTo({left:Math.max(0,L-(rs.clientWidth-onb.offsetWidth)/2),behavior:'smooth'});}
@@ -782,26 +828,10 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   var mpc=M&&m0?(M[n-1]/m0-1)*100:null;
   $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · from '+d[0][0]+' ('+pa+')'+cadTag();
   $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(LOG?' Log scale.':'');
-  var c=$('bcC').getContext('2d'),H=$('bcC').parentNode.clientHeight||300,g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'rgba(34,211,238,.28)');g.addColorStop(1,'rgba(34,211,238,0)');
-  var lab=d.map(function(p){return p[0];}),pr=function(i){return i===n-1&&hasLive?4:0;},ds;
-  if(sx){var bi=d.map(function(p){return 100*p[1]/a;}),si=(S||[]).map(function(v){return v!=null&&s0?100*v/s0:null;});
-    ds=[{label:'BTC',data:bi,raw:d.map(function(p){return p[1];}),borderColor:'#22d3ee',backgroundColor:'#22d3ee',fill:false,borderWidth:2,tension:.15,pointRadius:d.map(function(p,i){return pr(i);}),pointHoverRadius:3,pointBackgroundColor:'#22d3ee'},
-        ];if(sxo)ds.push({label:'S&P 500',data:si,raw:S,borderColor:'#c4b5fd',backgroundColor:'#c4b5fd',fill:false,borderWidth:1.6,tension:.15,pointRadius:0,pointHoverRadius:3,spanGaps:true});
-    if(gxo)ds.push({label:'Gold',data:G.map(function(v){return v!=null&&g0?100*v/g0:null;}),raw:G,borderColor:'#facc15',backgroundColor:'#facc15',fill:false,borderWidth:1.6,tension:.15,pointRadius:0,pointHoverRadius:3,spanGaps:false});
-    if(mxo){var M=d.map(function(p){return mstrOn(p[0]);}),m0=M.find(function(v){return v!=null;});ds.push({label:'MSTR',data:M.map(function(v){return v!=null&&m0?100*v/m0:null;}),raw:M,borderColor:'#f97316',backgroundColor:'#f97316',fill:false,borderWidth:1.6,tension:.15,pointRadius:0,pointHoverRadius:3,spanGaps:true});}}
-  else ds=[{label:'BTC',data:d.map(function(p){return p[1];}),borderColor:'#22d3ee',backgroundColor:g,fill:!LOG,borderWidth:2,tension:.15,pointRadius:d.map(function(p,i){return pr(i);}),pointHoverRadius:3,pointBackgroundColor:'#22d3ee'}];
-  var yTick=function(v){if(sx){if(LOG){var m=v/Math.pow(10,Math.floor(Math.log10(v)+1e-9));if([1,2,5].indexOf(Math.round(m*1000)/1000)<0)return null;}var q=v-100;return (q>0?'+':'')+(Math.abs(q)>=1000?Math.round(q).toLocaleString('en-US'):Math.round(q))+'%';}
-    if(LOG){var l=Math.log10(v);if(Math.abs(l-Math.round(l))>1e-6)return null;}var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);};
-  var opts={animation:false,responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},
-    tooltip:{displayColors:sx,callbacks:{title:function(i){var k=i[0].dataIndex;return k===n-1&&hasLive?'Now (live) · '+i[0].label:i[0].label;},
-      label:function(i){var raw=i.dataset.raw?i.dataset.raw[i.dataIndex]:i.parsed.y;if(!sx)return fmt(raw);if(raw==null)return null;var q=i.parsed.y-100;
-        return i.dataset.label==='BTC'?'BTC '+fmt(raw)+' ('+fp(q)+')':i.dataset.label==='Gold'?'Gold '+curSym()+curVal(raw).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')':i.dataset.label==='MSTR'?'MSTR '+curSym()+curVal(raw).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')':'S&P 500 '+raw.toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(q)+')';}}}},
-    scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',autoSkip:true,maxTicksLimit:isPhone()?5:7,maxRotation:0,callback:function(v){var s=this.getLabelForValue(v);return n>400?s.slice(0,4):s.slice(5);}}},
-      y:{type:LOG?'logarithmic':'linear',grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#9aa6bc',callback:yTick}}}};
-  /* Stage 2 Step 3: native range line behind the NATIVE_LINE flag; Chart.js stays the fallback. */
-  var nativeOK=false;
-  if(NATIVE_LINE){if(ch){ch.destroy();ch=null;}nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG});lineDrawn=nativeOK;}
-  if(!nativeOK){if(ch)ch.destroy();ch=new Chart(c,{type:'line',data:{labels:lab,datasets:ds},options:opts});lineDrawn=false;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;cancelNativeResize();}}
+  /* Native range line (Chart.js removed 20 Nov 2026; no fallback library). */
+  var nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG});lineDrawn=nativeOK;
+  if(nativeOK)lineRetry=false;else lineFail();
+  taAfterDraw('daily-line');syncTypePill();}
 /* ===== Stage 2 native line renderer — Step 2: 1D line (8 Nov 2026) =====
    draw1DNative implements the 1D intraday line natively (smooth curve,
    cyan gradient fill, axes, labels, live "Now" point, tap/hover tooltip).
@@ -814,30 +844,34 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
    and candle views share this canvas; a cap would make the line view
    blurrier than the candle view on a 3x phone).
    F6 — Colours: the hardcoded dark Chart.js values, not "improved".
-   The native line is behind the NATIVE_LINE flag (ON since 9 Nov 2026); the
-   Chart.js path stays the automatic fallback (draw*Native returns false on any failure). */
-var NATIVE_LINE=true; /* ON (Sunil, 9 Nov 2026): native line views; Chart.js stays the automatic fallback. Toggle via P.setNativeLine / window.__BTC_SET_NATIVE_LINE (test hook). */
+   The native line is the only line renderer: Chart.js and its fallback were
+   removed on 20 Nov 2026 (draw*Native returns false on any failure; the
+   caller then runs lineFail() and a later resize retries the draw). */
 var lineDrawn=false; /* F1: true while the native 1D line is on the canvas. */
 var linePts=null; /* pts array last drawn by draw1DNative (tooltip + redraw). */
 var lineHover=-1; /* index of the hovered/tapped point, -1 = none. */
 var lineGeom=null; /* layout of the last native 1D draw (hit-testing + parity). */
-/* F1: clear the line chart — destroys any Chart.js instance AND clears the
-   native line flag. Call this wherever the old code did `if(ch){ch.destroy();ch=null;}`
+var lineRetry=false; /* true after a failed native line draw: a resize or live tick retries it. */
+/* F1: clear the line chart — clears the native line state. Call this
    before drawing candles (the line view is leaving the canvas). */
-function clearLineChart(){if(ch){ch.destroy();ch=null;}lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;cancelNativeResize();}
+function clearLineChart(){lineRetry=false;lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;cancelNativeResize();}
+/* Failed native line draw (no fallback library): clear the line state but
+   keep a pending retry so the next resize or live tick draws again. */
+function lineFail(){lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;lineRetry=true;}
 /* F1: redraw the native line at the current size (Chart.js responsive:true
-   replacement — flag F4). No-op unless the native 1D line is showing. */
-function redrawLine(){if(lineDrawn)draw();}
+   replacement — flag F4). No-op unless the native line is showing or a
+   failed line draw is waiting for a retry. */
+function redrawLine(){if(lineDrawn||lineRetry)draw();}
 /* Resize coalescing: iOS fires many resize events while the toolbar collapses
    during scroll; redraw at most once per animation frame. Teardown
-   (clearLineChart), the Chart.js fallback and close() cancel a pending frame. */
+   (clearLineChart) and close() cancel a pending frame. */
 var nrRaf=0;
 function cancelNativeResize(){if(nrRaf){if(window.cancelAnimationFrame)window.cancelAnimationFrame(nrRaf);else clearTimeout(nrRaf);nrRaf=0;}}
 function nativeResize(){if(nrRaf)return;var f=function(){nrRaf=0;redrawLine();};nrRaf=window.requestAnimationFrame?window.requestAnimationFrame(f):setTimeout(f,16);}
 /* Redraw the native line with the current hover state (tooltip show/hide).
    Dispatches on the layout kind: the 1D line or the range daily line.
-   Guarded on lineDrawn so a scroll after switching back to the Chart.js
-   fallback cannot repaint the native line over it. */
+   Guarded on lineDrawn so a scroll after a failed line draw cannot
+   repaint a stale native line. */
 function redrawNativeLine(){
   if(!lineDrawn||!lineGeom)return;
   if(lineGeom.kind==='daily'&&linePts&&linePts.d)drawDailyNative(linePts.d,linePts.cmp);
@@ -845,7 +879,7 @@ function redrawNativeLine(){
 }
 
 function chartNiceNum(x){
-  /* Chart.js niceNum (vendored chart.umd.min.js, function B): round to the
+  /* Chart.js 4 niceNum (from the formerly vendored Chart.js build, function B): round to the
      nearest integer when within x/1000, then a 1/2/5/10 step at the decade
      below x (thresholds <=1 / <=2 / <=5). */
   var r=Math.round(x);
@@ -855,8 +889,8 @@ function chartNiceNum(x){
   return (s<=1?1:s<=2?2:s<=5?5:10)*p;
 }
 function nativeNiceTicks(min,max,plotH){
-  /* Chart.js linear-scale tick generation, replicated exactly (vendored
-     chart.umd.min.js: getTickLimit + the buildTicks tick function).
+  /* Chart.js linear-scale tick generation, replicated exactly (formerly
+     vendored Chart.js 4 build: getTickLimit + the buildTicks tick function).
      maxTicks = min(11, ceil(plotH/14.4)): 11 is Chart.js's default
      maxTicksLimit; computeTickLimit = ceil(plot height / tick-font
      lineHeight), the default 12px tick font at lineHeight 1.2 = 14.4px.
@@ -1074,8 +1108,8 @@ function nativeTooltipHide(){
 }
 function draw1DNative(pts){
   /* Stage 2 Step 2 — implemented. The 1D intraday line, drawn natively.
-     Same data, same labels, same colours as the Chart.js draw1D. Returns
-     true on success, false on failure (caller falls back to Chart.js). */
+     Same data, same labels, same colours as the old Chart.js draw1D. Returns
+     true on success, false on failure (caller runs lineFail()). */
   try{
     if(!pts||pts.length<2)return false;
     var c=$('bcC');if(!c)return false;
@@ -1203,11 +1237,11 @@ function drawDailyTooltip(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH){
 }
 function drawDailyNative(d,cmp){
   /* Stage 2 Step 3 — implemented. The range daily line, drawn natively.
-     Same data, same labels, same colours as the Chart.js drawDaily.
+     Same data, same labels, same colours as the old Chart.js drawDaily.
      cmp: {sx, S, G, M, s0, g0, m0, hasLive, log} (prepared by drawDaily;
      S/G/M are the raw comparison closes, s0/g0/m0 their first non-null
-     values). Returns true on success, false on failure (caller falls back
-     to Chart.js). */
+     values). Returns true on success, false on failure (caller runs
+     lineFail()). */
   try{
     if(!d||d.length<2||!cmp)return false;
     var c=$('bcC');if(!c)return false;
@@ -1376,34 +1410,7 @@ function drawDailyNative(d,cmp){
 }
 
 /* ===== end Stage 2 Step 2 native 1D line ===== */
-/* Stage 2 Step 2: test-only hook — lets the harness (and the console) turn the
-   native 1D line on/off without rebuilding. Not used by any live code path.
-   Step 4 decides whether it stays for the go-live. */
-P.setNativeLine=function(v){NATIVE_LINE=!!v;if(dlg&&!dlg.hidden)draw();};
-window.__BTC_SET_NATIVE_LINE=P.setNativeLine;
 
-var chartP=null;
-function needChart(){
-  if(window.Chart)return Promise.resolve();
-  if(chartP)return chartP;
-  chartP=new Promise(function(ok,no){
-    /* Leftover tags from a failed inject have no Chart and no second load event —
-       remove them so a retry starts a fresh script rather than hanging. */
-    document.querySelectorAll('script[src*="chart.umd.min.js"]').forEach(function(el){
-      if(!window.Chart)el.remove();
-    });
-    var s=document.createElement('script');
-    s.src=U('../vendor/chart.umd.min.js');
-    s.onload=function(){ok();};
-    s.onerror=function(){
-      if(s.parentNode)s.parentNode.removeChild(s);
-      chartP=null;
-      no(new Error('chart'));
-    };
-    document.head.appendChild(s);
-  });
-  return chartP;
-}
 /* Pill-expand morph, 3 Nov 2026: the dialog grows out of the pill that opened it (FLIP:
    measure the pill rect and the dialog's final rect, start the dialog scaled/translated
    to the pill rect, then animate transform + border-radius to the final rect). Reduced
@@ -1428,16 +1435,16 @@ function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&
          transform is cleared, otherwise the browser coalesces the two
          states into one frame and the grow is never seen. */
       requestAnimationFrame(function(){requestAnimationFrame(function(){dlg.style.transform='';dlg.style.borderRadius='';});});
-      var done=function(){dlg.removeEventListener('transitionend',done);dlg.classList.remove('bc-morph');if(ch&&ch.resize)ch.resize();nativeResize();};
+      var done=function(){dlg.removeEventListener('transitionend',done);dlg.classList.remove('bc-morph');nativeResize();};
       dlg.addEventListener('transitionend',done);}
     else{dlg.style.visibility='';place();}
   } else {place();}
   head();[pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','true');});
   $('bcRr').textContent='Loading…';$('bcX').focus();
-  Promise.all([getData(),needChart()]).then(draw).catch(function(){if(!window.Chart&&P.showErr){P.showErr();}else{$('bcRr').textContent='Chart data unavailable right now.';}});}
+  getData().then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
 function close(){if(INLINE)return;if(!dlg||dlg.hidden)return;
   var finish=function(){cancelNativeResize();dlg.hidden=true;dim.hidden=true;dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
-    [pill,mp].forEach(function(e){e&&e.setAttribute('aria-expanded','false');});
+    [pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','false');}); /* Batch B bug 2: open() sets btcLive true; close() must reset it */
     var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();};
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
     var m=morphToPill(opener);
@@ -1458,16 +1465,16 @@ P.onLive=function(){if(!dlg||dlg.hidden)return;head();
     (function(el){setTimeout(function(){el.style.color='';},700);})(px);
   }
   lastPaintUsdPanel=live.usd;
-  if(ch||lineDrawn||candViewActive())draw();};
+  if(lineDrawn||lineRetry||candViewActive())draw();};
 P.redraw=function(){if(dlg&&!dlg.hidden)draw();};
 P.isOpen=function(){return !!dlg&&!dlg.hidden;};
-P._needChart=needChart;P.remount=mountInline;
+P.remount=mountInline;
 P.open=open;P.close=close;P.panelReady=true;
 /* V2 6 Nov 2026: inline mount. On a page with a #bcInline host, build the
    chart once and show it there on page load — no pill, no dialog, no dim.
    Same data, same ranges (1D..Max), same candles, same compare toggles. */
 function mountInline(){if(!INLINE)return;if(!dlg)build();dlg.hidden=false;
-  Promise.all([getData(),needChart()]).then(draw).catch(function(){if(!window.Chart&&P.showErr){P.showErr();}else{$('bcRr').textContent='Chart data unavailable right now.';}});}
+  getData().then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
 if(INLINE)mountInline();
 })();
 /* re-land on #section after async content shifts layout (e.g. /#benchmarks, /#rules from other pages) */

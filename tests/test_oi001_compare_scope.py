@@ -84,12 +84,14 @@ def main():
             # wait for fetch+draw
             page.wait_for_timeout(4500)
             note = page.locator('#pvChartNote').inner_text()
-            # Chart.js legend is canvas; series buttons + note are the DOM contracts
+            # The chart legend is canvas; series buttons + note are the DOM contracts.
+            # Dataset labels come from the native renderer's layout hook (Chart.js
+            # was removed 20 Nov 2026, so there is no Chart.getChart any more).
             series = page.evaluate("""() => [...document.querySelectorAll('#pvSeries button')].map(b=>b.textContent).join('|')""")
             datasets = page.evaluate("""() => {
-              const ch = (window.Chart && Chart.getChart) ? Chart.getChart(document.getElementById('pvChart')) : null;
-              if (!ch) return [];
-              return (ch.data.datasets || []).map(d => d.label || '');
+              const L = window.__CMP_NATIVE_LAYOUT;
+              if (!window.__CMP_NATIVE_DRAWN || !L || !L.series) return [];
+              return L.series.map(x => x || '');
             }""")
             print('NOTE:', note)
             print('SERIES_BTNS:', series)
@@ -104,7 +106,7 @@ def main():
                 fail(f'#pvChartNote missing backup wording; got: {note!r}')
             if 'is final' in note:
                 fail(f'#pvChartNote still says is final: {note!r}')
-            # Dataset label (Chart.js) must use BACKUP_LBL when BTC is on
+            # Dataset label (native chart) must use BACKUP_LBL when BTC is on
             btc_labels = [x for x in datasets if 'BTC' in x or 'backup' in x.lower()]
             if not any(BACKUP_LBL == x or 'backup source' in x for x in datasets):
                 fail(f'chart dataset labels missing backup: {datasets}')

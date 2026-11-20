@@ -50,10 +50,11 @@ run stock_weekly_js node tests/test_stock_weekly.js                          # s
 run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
 run desk_live python3 tests/test_desk_live.py                              # 5-min Desk (option b): desk-live.json builder + validator (offline fixtures)
 run candle_date_guardrail node tests/test_candle_date_guardrail.js             # Desk chart: live price only on the candle whose Mon-Sun range contains today (ET)
+run desk_monday_candle node tests/test_desk_monday_candle.js               # Desk chart: append the fresh desk-live candle as a new in-progress week on the first trading day (16 Nov 2026)
 run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
 run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et24): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
 run s2_hero_cosmetic node tests/test_s2_hero_cosmetic.js                     # YTD hero: legend wrap + light grid + tooltip no-clip + fonts.ready redraw (15 Nov 2026 nice-to-haves)
-run needchart_retry python3 tests/test_needchart_retry.py                    # needChart failure-then-retry (real _needChart, chart.umd aborted once)
+run no_chartjs python3 tests/test_no_chartjs.py                              # Chart.js removed (20 Nov 2026): no refs, vendor files gone, BTC + YTD charts draw with chart.umd blocked
 run oi001_label node tests/test_oi001_label.js                              # OI-001: backup-source BTC label keyed on fallback_sources
 run oi001_compare_scope python3 tests/test_oi001_compare_scope.py           # OI-001: Compare #pvChartNote backup label with crafted Coinbase day (scope fix)
 run cmp_daily_py python3 tests/test_cmp_daily.py                             # comparison chart: daily-close generator fixtures + shipped file
@@ -91,6 +92,7 @@ if [ $ok -ne 1 ] || ! kill -0 $SRV 2>/dev/null; then echo "FATAL: local server o
 echo "server: pid $SRV on 127.0.0.1:$PORT, et.js matches staged build"
 run datatest_strict env DT_HISTORY="$WORK/history.json" python3 "$WORK/stage/tools/datatest.py" "http://127.0.0.1:$PORT"
 run headless python3 tests/headless_matrix.py "http://127.0.0.1:$PORT" "$WORK/shots"
+run ta_stage1 python3 tests/test_ta_stage1.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 1: chart-type pill + menu, TA pill/panel, RSI strip, overlap 0
 run ytd_chart_scroll python3 tests/test_ytd_chart_scroll.py "http://127.0.0.1:$PORT"  # YTD chart must not trap phone/iPad scroll (Speed Option 2 rollback)
 kill $SRV 2>/dev/null; wait $SRV 2>/dev/null || true; SRV=""
 dfcheck end

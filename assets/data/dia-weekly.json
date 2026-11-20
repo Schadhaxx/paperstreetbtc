@@ -1,7 +1,7 @@
 {
   "source": "Yahoo DIA (SPDR Dow Jones Industrial Average ETF Trust), USD",
-  "asOf": "13 Nov 2026, 4:16 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Weekly snapshot \u2014 the latest week is in progress until it closes. DIA (SPDR Dow Jones Industrial Average ETF) replaced the Dow index (^DJI, points) on the Desk on 13 Nov 2026. Latest week (9 Nov 2026 \u2013 15 Nov 2026) refreshed in progress as of 13 Nov 2026, 4:16 PM ET; its close is not a final close.",
+  "asOf": "20 Nov 2026, 4:30 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Weekly snapshot \u2014 the latest week is in progress until it closes. DIA (SPDR Dow Jones Industrial Average ETF) replaced the Dow index (^DJI, points) on the Desk on 13 Nov 2026. Latest week (16 Nov 2026 \u2013 22 Nov 2026) refreshed in progress as of 20 Nov 2026, 4:30 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -462,8 +462,19 @@
       "high": 527.05,
       "low": 517.24,
       "close": 523.15,
-      "volume": 13203159
+      "volume": 13503400
+    },
+    {
+      "monday": "2026-11-16",
+      "sunday": "2026-11-22",
+      "label": "16 Nov 2026 \u2013 22 Nov 2026",
+      "days": 5,
+      "open": 522.98,
+      "high": 523.09,
+      "low": 479.41,
+      "close": 481.08,
+      "volume": 22573876
     }
   ],
-  "inProgress": "in progress, as of 13 Nov 2026, 4:16 PM ET"
+  "inProgress": "in progress, as of 20 Nov 2026, 4:30 PM ET"
 }
