@@ -13,8 +13,24 @@ import json, math, os, subprocess, sys, threading, functools, http.server, socke
 from pathlib import Path
 
 R = Path(__file__).resolve().parents[1]
-EXE = next((p for p in ['/usr/bin/google-chrome', '/usr/bin/chromium'] if os.path.exists(p)), None)
-CHROME = os.environ.get('CHROME_PATH', EXE)
+
+def _find_chrome():
+    # System Chrome first, then the Playwright browser cache. Default
+    # Playwright launch needs the exact cached revision (installed 1.65.2
+    # wants r1255, this cache has r1248), so use the cached executable
+    # directly instead of relying on default discovery.
+    for p in ['/usr/bin/google-chrome', '/usr/bin/chromium']:
+        if os.path.exists(p):
+            return p
+    cache = Path.home() / '.cache' / 'ms-playwright'
+    for pat in ('chromium-*/chrome-linux*/chrome',
+                'chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell'):
+        hits = sorted(cache.glob(pat))
+        if hits:
+            return str(hits[0])
+    return None
+
+CHROME = os.environ.get('CHROME_PATH') or _find_chrome()
 FIXED = dt.datetime(2026, 10, 30, 20, tzinfo=dt.timezone.utc)
 fails, n = [], 0
 
