@@ -119,8 +119,8 @@ chk('drawDailyTooltip shows each comparison line with % change', /'S&P 500 '\+cm
 chk('draw1D tooltip shows Now (live) on the last point', /'Now \(live\)'/.test(panel));
 chk('live Now point is drawn on the BTC line when hasLive', /hasLive/.test(panel) && /Now/.test(panel));
 
-/* Batch B: loader et27 -> et29 (finding 3), panel et24 -> et29 (bug 2). */
-chk('stub loads the panel with et29', /btcchart-panel\.js\?v=et29/.test(stub));
+/* Chart.js removal (20 Nov 2026): loader + panel et29 -> et33. */
+chk('stub loads the panel with et33', /btcchart-panel\.js\?v=et33/.test(stub));
 const fs2 = require('fs');
 const html = [];
 function walk(d) {
@@ -131,16 +131,16 @@ function walk(d) {
   });
 }
 walk(R);
-let et29 = 0, other = [];
+let et33 = 0, other = [];
 html.forEach(function (p) {
   const s = fs2.readFileSync(p, 'utf8');
   const m = s.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et29') et29++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et33') et33++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et29', et29 === 16 && other.length === 0, 'et29=' + et29 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et33', et33 === 16 && other.length === 0, 'et33=' + et33 + ' other=' + JSON.stringify(other));
 
-/* YTD hero chart (s2.js) is out of scope: it must still use Chart.js. */
-chk('s2.js (YTD hero) still uses Chart.js', /new Chart\(/.test(s2));
+/* YTD hero (s2.js): native only since the Chart.js removal (20 Nov 2026). */
+chk('s2.js (YTD hero) has no Chart.js fallback', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));
 
 console.log('\n' + n + ' checks, ' + f + ' failed');
 process.exit(f ? 1 : 0);

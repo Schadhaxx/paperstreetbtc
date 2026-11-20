@@ -94,15 +94,13 @@ function ytdLbl(){ const l = document.getElementById('ytdLbl'); if (l) l.textCon
 
 let selected = new Set(['berkshire']);
 let currentBench = 'btc';
-let chart;
 
 /* ---- Stage 4: native YTD hero (Stage 2 helpers, copied here with an s2-
    prefix so they cannot collide with btcchart-panel.js, which shares the
-   global scope on the homepage). The native chart is behind the NATIVE_S2
-   flag (ON since 14 Nov 2026); Chart.js stays the automatic fallback
-   (drawNativeYTD returns false on any failure, and render() then takes the
-   Chart.js path). Toggle via window.__S2_SET_NATIVE (test hook). ---- */
-let NATIVE_S2 = true;
+   global scope on the homepage). The native chart is the only renderer:
+   Chart.js and its fallback were removed on 20 Nov 2026. drawNativeYTD
+   returns false on any failure (e.g. a canvas under 40px); the resize /
+   visibility redraw below then retries it. ---- */
 let nativeDrawn = false; /* true while the native YTD chart is on the canvas */
 let s2Hover = -1; /* hovered month index, -1 = none */
 var s2KeepHover = false; /* true only during the fonts.ready redraw: the
@@ -115,7 +113,7 @@ var s2C = (typeof psC === 'function') ? psC : function(d, l){
 };
 
 function s2NiceNum(x){
-  /* Chart.js niceNum (vendored chart.umd.min.js, function B), copied from
+  /* Chart.js 4 niceNum (from the formerly vendored Chart.js build, function B), copied from
      btcchart-panel.js: round to the nearest integer when within x/1000,
      then a 1/2/5/10 step at the decade below x. */
   var r = Math.round(x);
@@ -125,8 +123,8 @@ function s2NiceNum(x){
   return (s <= 1 ? 1 : s <= 2 ? 2 : s <= 5 ? 5 : 10) * p;
 }
 function s2NiceTicks(min, max, plotH){
-  /* Chart.js linear-scale tick generation, replicated exactly (vendored
-     chart.umd.min.js), copied from btcchart-panel.js. */
+  /* Chart.js linear-scale tick generation, replicated exactly (formerly
+     vendored Chart.js 4 build), copied from btcchart-panel.js. */
   if (!(max > min)) { max = min + 1; }
   var mt = Math.min(11, Math.ceil((plotH || 320) / 14.4));
   if (mt < 2) mt = 2;
@@ -190,10 +188,10 @@ function s2RoundRect(ctx, x, y, w, h, r){
 
 function drawNativeYTD(lbls, datasets){
   /* Draws the YTD hero natively on #ytdChart, reading the same dataset
-     objects render() builds for Chart.js (label, data, borderColor,
+     objects render() builds (label, data, borderColor,
      backgroundColor, borderWidth, tension, fill, pointRadius,
      pointHoverRadius, borderDash). Returns true on success, false on any
-     failure (render() then falls back to Chart.js). Grid/tick/legend
+     failure (a later resize retries it). Grid/tick/legend
      colours match compare.js (dark #1e293b grid, #9aa6bc ticks; light
      rgba(15,23,42,.08) grid, #475569 ticks). The hover tooltip keeps
      compare.js's dark box in both themes, as compare.js does. */
@@ -556,45 +554,12 @@ function render() {
 
   const lbls = meView ? (meView.extra ? labels.concat([meView.extra.label]) : labels.slice(0, meView.n)) : (liveNow ? labels.concat(['Now']) : labels.slice());
   ytdLbl();
-  /* Stage 4: native first; Chart.js stays the fallback. A native draw
-     replaces any Chart.js instance on this canvas so the two never fight.
-     Destroy the Chart.js instance BEFORE the native draw: Chart.js
-     destroy() restores the canvas's original size, which would clear a
-     native drawing done before it (seen when a tiny first draw fell back
-     to Chart.js and a later resize went native). */
-  if (NATIVE_S2){
-    if (!s2KeepHover) s2Hover = -1;
-    if (chart){ chart.destroy(); chart = null; }
-    if (drawNativeYTD(lbls, datasets)){
-      nativeDrawn = true;
-      window.__S2_NATIVE_DRAWN = true;
-      return;
-    }
-    nativeDrawn = false;
-    window.__S2_NATIVE_DRAWN = false;
-  }
-  /* Chart.js path: the native chart is not on the canvas any more. */
-  nativeDrawn = false;
-  window.__S2_NATIVE_DRAWN = false;
-  if (chart) { chart.data.labels = lbls; chart.data.datasets = datasets; chart.update('none'); return; }
-  if (typeof Chart === 'undefined') return;
-  const ctx = document.getElementById('ytdChart').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: { labels: lbls, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: true, labels: { color: s2C('#9aa6bc', '#475569'), boxWidth: 12 } } },
-      scales: {
-        x: { grid: { color: s2C('#1e293b', 'rgba(15,23,42,.08)') }, ticks: { color: s2C('#9aa6bc', '#475569') } },
-        y: { grid: { color: s2C('#1e293b', 'rgba(15,23,42,.08)') }, ticks: { color: s2C('#9aa6bc', '#475569'), callback: v => v } }
-      },
-      interaction: { mode: 'index', intersect: false }
-    }
-  });
+  /* Native only (Chart.js removed 20 Nov 2026). A failed draw (canvas
+     under 40px, hidden tab) leaves nativeDrawn false; s2Resize retries. */
+  if (!s2KeepHover) s2Hover = -1;
+  nativeDrawn = !!drawNativeYTD(lbls, datasets);
+  window.__S2_NATIVE_DRAWN = nativeDrawn;
 }
-window.__S2_SET_NATIVE = function(v){ NATIVE_S2 = !!v; render(); };
 
 document.querySelectorAll('.sleeve-btn').forEach(btn => {
   btn.addEventListener('click', () => {

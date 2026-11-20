@@ -19,7 +19,7 @@
      right edge — the long label wraps inside the box instead of clipping.
    - document.fonts.ready hook is registered, fires a redraw once, and
      keeps an open tooltip open (hover state survives the redraw).
-   - Pin is p13 (p9 hero deploy; p11/p12 served with Batch A; hero round 2 re-bumped to p13 at the Nov 20 combined deploy).
+   - Pin is p13 (p9 hero deploy; p11/p12 served with Batch A; hero round 2 re-bumped to p13 at the Nov 20 combined deploy; p14 for the Chart.js removal).
 */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const R = path.join(__dirname, '..');
@@ -201,8 +201,8 @@ chk('fonts redraw keeps the hover index (still 5)',
   sandbox.__S2_NATIVE_HOVER === 5, sandbox.__S2_NATIVE_HOVER);
 chk('fonts redraw keeps the tooltip open', !!sandbox.__S2_NATIVE_TOOLTIP, sandbox.__S2_NATIVE_TOOLTIP);
 
-/* ---- pin is p13 (p9 hero, p11/p12 served; round 2 re-bumped to p13) ---- */
-chk('index.html pins s2.js at p13', /s2\.js\?v=p13/.test(indexHtml));
+/* ---- pin is p14 (p9 hero, p11/p12 served; p13 Batch B; p14 Chart.js removal) ---- */
+chk('index.html pins s2.js at p14', /s2\.js\?v=p14/.test(indexHtml));
 chk('no stale p10/p11/p12 pin for s2.js', !/s2\.js\?v=p1[012]\b/.test(indexHtml));
 chk('no stale p9 pin for s2.js', !/s2\.js\?v=p9/.test(indexHtml));
 

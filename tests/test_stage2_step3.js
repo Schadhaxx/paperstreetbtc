@@ -2,8 +2,8 @@
 /* Stage 2 Step 3 (8 Nov 2026): structural guards for the native range line.
    - drawDailyNative is IMPLEMENTED (daily closes 1W-Max, S&P/Gold/MSTR
      comparisons rebased to 100, linear/log scale, axes, labels, tooltip).
-   - NATIVE_LINE flag wires drawDaily to the native renderer; the Chart.js
-     path stays as the fallback (both `new Chart(` call sites still exist).
+   - 20 Nov 2026: Chart.js removed. drawDaily draws natively only (no
+     NATIVE_LINE flag, no `new Chart(` fallback; failure runs lineFail()).
    - Comparison rebasing: BTC 100*p/a, S&P 100*v/s0, Gold 100*v/g0,
      MSTR 100*v/m0. Log scale: log10 mapping, ticks at 1/2/5 x 10^k,
      labels only where the yTick callback passes.
@@ -48,13 +48,10 @@ chk('nativeTooltipHide redraws via redrawNativeLine', /function nativeTooltipHid
 chk('draw1DNative layout carries kind 1d', /lineGeom=\{kind:'1d',pad/.test(panel));
 chk('drawDailyNative layout carries kind daily', /lineGeom=\{kind:'daily',pad/.test(panel));
 
-/* NATIVE_LINE flag + wiring for the range views */
-chk('drawDaily routes to drawDailyNative when NATIVE_LINE is true',
-  /if\(NATIVE_LINE\)\{if\(ch\)\{ch\.destroy\(\);ch=null;\}nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG\}\);lineDrawn=nativeOK;\}/.test(panel));
-chk('drawDaily falls back to Chart.js when native fails or flag is off',
-  /if\(!nativeOK\)\{if\(ch\)ch\.destroy\(\);ch=new Chart\(c,\{type:'line',data:\{labels:lab,datasets:ds\},options:opts\}\);lineDrawn=false;window\.__BTC_LINE_LAYOUT=null;window\.__BTC_LINE_HOVER=-1;cancelNativeResize\(\);\}\}/.test(panel));
-chk('drawDaily guard relaxed for the native path (no Chart.js needed when native is on)',
-  /function drawDaily\(\)\{if\(!DATA\)return;if\(!NATIVE_LINE&&!window\.Chart\)return;/.test(panel));
+/* Native-only wiring for the range views (Chart.js removed 20 Nov 2026) */
+chk('drawDaily draws natively, lineFail() on failure',
+  /var nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG\}\);lineDrawn=nativeOK;\n  if\(nativeOK\)lineRetry=false;else lineFail\(\);\}/.test(panel));
+chk('drawDaily has no Chart.js guard', /function drawDaily\(\)\{if\(!DATA\)return;clearCandState\(\);/.test(panel));
 chk('draw-failure isolation records __BTC_DRAWERR for the daily line', /window\.__BTC_DRAWERR=\{where:'drawDailyNative'/.test(panel));
 
 /* Comparison rebasing + log scale */
@@ -79,8 +76,7 @@ chk('hovered dots on every visible dataset at the hovered index', /var dots=\[\[
 chk('daily parity hook carries kind, sx and log', /window\.__BTC_LINE_LAYOUT=\{kind:'daily'/.test(panel) && /sx:sx,log:LOG\};/.test(panel));
 
 /* Chart.js fallback still present */
-const chartCalls = (panel.match(/ch=new Chart\(c,\{type:'line'/g) || []).length;
-chk('both Chart.js call sites still exist as fallback (draw1D + drawDaily)', chartCalls === 2, 'found ' + chartCalls);
+chk('no Chart.js call sites left (removed 20 Nov 2026)', !/new Chart\s*\(/.test(panel) && !/window\.Chart/.test(panel));
 
 /* F3 — tooltip safety: no scroll trap */
 chk('native tooltip never sets touch-action none', !/touchAction\s*=\s*['"]none['"]/.test(panel));
@@ -90,25 +86,25 @@ chk('native tooltip never calls setPointerCapture', !/setPointerCapture\s*\(/.te
 chk('draw1DNative still implemented', /function draw1DNative\(pts\)\{[\s\S]*?return true;\n  \}catch/.test(panel));
 chk('panel keeps drawCandles1D + drawCandlesRange', /function drawCandles1D\(/.test(panel) && /function drawCandlesRange\(/.test(panel));
 chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(panel));
-chk('panel keeps needChart', /function needChart\(\)/.test(panel));
+chk('needChart removed with Chart.js', !/needChart/.test(panel));
 
-/* Batch B: loader et27 -> et29 (finding 3), panel et24 -> et29 (bug 2) */
-chk('stub loads the panel with et29', /btcchart-panel\.js\?v=et29/.test(stub));
+/* Chart.js removal (20 Nov 2026): loader + panel et29 -> et33 */
+chk('stub loads the panel with et33', /btcchart-panel\.js\?v=et33/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
   'recap/2026-05/index.html', 'recap/2026-06/index.html', 'recap/2026-07/index.html', 'recap/2026-08/index.html',
   'recap/2026-09/index.html', 'recap/2026-10/index.html', 'recap/2026-11/index.html'];
-let et29 = 0, other = [];
+let et33 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et29') et29++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et33') et33++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et29', et29 === 16 && other.length === 0, 'et29=' + et29 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et33', et33 === 16 && other.length === 0, 'et33=' + et33 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart out of scope: still Chart.js */
-chk('s2.js still uses Chart.js (out of scope)', /new Chart\s*\(/.test(s2));
+chk('s2.js has no Chart.js fallback (removed 20 Nov 2026)', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));
 
 console.log('STAGE2 STEP3 TESTS', n, 'FAIL', f);
 process.exit(f ? 1 : 0);
