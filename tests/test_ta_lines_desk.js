@@ -28,16 +28,16 @@ const at = IC._ta.valueAt;
 const gold = fix.GOLD;
 const ln = gold.sloped[0];
 
-chk('gold sloped line is resistance -27.71/wk, 3 touches',
-  ln && ln.type === 'resistance' && ln.slope === -27.71 && ln.touches === 3, ln);
-chk('value at anchor idx 4 = $5,586.20', close(at(ln, 4), 5586.2), at(ln, 4));
-chk('value at last idx 46 ~= endPrice $4,422.52 (50c tolerance)',
-  close(at(ln, 46), 4422.52, 0.50), at(ln, 46));
-chk('value at idx 0 = $5,697.04 (extrapolated back)', close(at(ln, 0), 5697.04), at(ln, 0));
-chk('value at idx 20 = $5,142.84', close(at(ln, 20), 5142.84), at(ln, 20));
+chk('gold sloped line is support +15.14/wk, 11 touches',
+  ln && ln.type === 'support' && ln.slope === 15.14 && ln.touches === 11, ln);
+chk('value at anchor idx 135 = $2,304.20', close(at(ln, 135), 2304.2), at(ln, 135));
+chk('value at last idx 263 ~= endPrice $4,242.24 (50c tolerance)',
+  close(at(ln, 263), 4242.24, 0.50), at(ln, 263));
+chk('value at idx 0 = $260.30 (extrapolated back)', close(at(ln, 0), 260.3), at(ln, 0));
+chk('value at idx 200 = $3,288.30', close(at(ln, 200), 3288.3), at(ln, 200));
 chk('null / bad input fails closed',
-  at(null, 4) === null && at(ln, 'x') === null && at({}, 4) === null &&
-  at({ anchor: [4, 5586.2] }, 4) === null && at(ln, NaN) === null);
+  at(null, 135) === null && at(ln, 'x') === null && at({}, 135) === null &&
+  at({ anchor: [135, 2304.2] }, 135) === null && at(ln, NaN) === null);
 
 chk('fixture: 24 symbols', Object.keys(fix).length === 24, Object.keys(fix).length);
 const EXPECTED = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX', 'BRK.B', 'AAPL', 'AMZN',
@@ -55,8 +55,8 @@ for (const s of EXPECTED) {
   }
 }
 chk('fixture: every symbol has <=3 levels, <=2 sloped, well-formed entries', shapeOk);
-chk('fixture: GOLD levels are the verified site-file numbers',
-  JSON.stringify(gold.levels.map((l) => l.price)) === JSON.stringify([5510.15, 4836.35, 4027.7]),
+chk('fixture: GOLD levels are the verified full-series numbers',
+  JSON.stringify(gold.levels.map((l) => l.price)) === JSON.stringify([3152.03, 3506.77, 5510.15]),
   gold.levels.map((l) => l.price));
 
 console.log(n - f + '/' + n + ' checks passed');

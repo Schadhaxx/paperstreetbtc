@@ -2,20 +2,16 @@
 """Tests for tools/ta_lines_desk.py (skunkworks TA 2.0, Desk trendlines).
 
 Pure Python, no network, no browser. Gold is the regression check: the
-job MUST reproduce the site-file run exactly (ATR $232.76, last close
-$3,644.60, levels $5,510.15 / $4,836.35 / $4,027.70, sloped resistance
--$27.71/wk, 3 touches off the Jan 2026 high). The committed fixture
+job MUST reproduce the site-file run exactly (ATR $227.45, last close
+$3,644.60, levels $3,152.03 / $3,506.77 / $5,510.15, sloped supports
++$15.14/+$15.39 per week, 11 touches each). The committed fixture
 must match a fresh compute, and every one of the 24 Desk symbols must
 be present with well-formed levels/sloped lists.
 
-The fixture was computed on the recent 47 weeks (29 Dec 2025 - 16 Nov
-2026). The weekly files were backfilled to 200+ weeks in Nov 2026
-(TA 2.0 test branch, tools/ta_backfill_weekly.py) and the fixture was
-deliberately NOT recomputed, so the regression below runs on the last
-47 weeks of the file — the same 47 the fixture came from. A fresh
-compute on the full 264 weeks gives different levels (ATR $227.45,
-support $3,152.03 / $3,506.77); that is the known recompute question,
-not a regression.
+The fixture is computed on the full backfilled series (264 weeks for
+21 symbols, IBIT 150, SPCX 24). The original 47-week run gave
+ATR $232.76, levels $5,510.15 / $4,836.35 / $4,027.70 and one sloped
+resistance -$27.71/wk; those numbers are history, not a regression.
 
 usage: python3 tests/test_ta_lines_desk.py   exit 0 = all pass
 """
@@ -49,24 +45,28 @@ def chk(name, ok, info=''):
 with open(GOLD_FILE) as fh:
     gold_weeks = json.load(fh)['weeks']
 chk('gold: file holds 264 weeks (backfilled)', len(gold_weeks) == 264, len(gold_weeks))
-chk('gold: last 47 weeks start 29 Dec 2025', gold_weeks[-47]['monday'] == '2025-12-29', gold_weeks[-47])
-rec = TLD.compute(gold_weeks[-47:])
+rec = TLD.compute(gold_weeks)
 
-chk('gold: 47 weeks', rec['weeks'] == 47, rec['weeks'])
-chk('gold: ATR 232.76', rec['atr'] == 232.76, rec['atr'])
+chk('gold: 264 weeks', rec['weeks'] == 264, rec['weeks'])
+chk('gold: ATR 227.45', rec['atr'] == 227.45, rec['atr'])
 chk('gold: last close 3644.6', rec['lastClose'] == 3644.6, rec['lastClose'])
 chk('gold: 3 levels',
-    [lv['price'] for lv in rec['levels']] == [5510.15, 4836.35, 4027.7],
+    [lv['price'] for lv in rec['levels']] == [3152.03, 3506.77, 5510.15],
     rec['levels'])
-chk('gold: levels all resistance',
-    all(lv['type'] == 'resistance' for lv in rec['levels']), rec['levels'])
-chk('gold: levels 2 touches each',
-    all(lv['touches'] == 2 for lv in rec['levels']), rec['levels'])
-chk('gold: 1 sloped line', len(rec['sloped']) == 1, rec['sloped'])
+chk('gold: levels support/support/resistance',
+    [lv['type'] for lv in rec['levels']] == ['support', 'support', 'resistance'],
+    rec['levels'])
+chk('gold: levels 4/3/2 touches',
+    [lv['touches'] for lv in rec['levels']] == [4, 3, 2], rec['levels'])
+chk('gold: 2 sloped lines', len(rec['sloped']) == 2, rec['sloped'])
 sl = rec['sloped'][0]
-chk('gold: sloped resistance -27.71/wk, 3 touches, anchor [4, 5586.2], end 4422.52',
-    sl['type'] == 'resistance' and sl['slope'] == -27.71 and sl['touches'] == 3
-    and sl['anchor'] == [4, 5586.2] and sl['endPrice'] == 4422.52, sl)
+chk('gold: sloped[0] support +15.14/wk, 11 touches, anchor [135, 2304.2], end 4242.24',
+    sl['type'] == 'support' and sl['slope'] == 15.14 and sl['touches'] == 11
+    and sl['anchor'] == [135, 2304.2] and sl['endPrice'] == 4242.24, sl)
+sl2 = rec['sloped'][1]
+chk('gold: sloped[1] support +15.39/wk, 11 touches, anchor [179, 2970.4], end 4263.21',
+    sl2['type'] == 'support' and sl2['slope'] == 15.39 and sl2['touches'] == 11
+    and sl2['anchor'] == [179, 2970.4] and sl2['endPrice'] == 4263.21, sl2)
 
 with open(FIXTURE) as fh:
     fix = json.load(fh)

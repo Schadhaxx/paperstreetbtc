@@ -17,10 +17,13 @@ as a locally generated fixture. There is NO workflow file: this is a
 test-branch prototype, the fixture is committed as generated.
 
 Gold is the regression check: it MUST reproduce the site-file run
-exactly (ATR $232.76, last close $3,644.60, levels $5,510.15 /
-$4,836.35 / $4,027.70, sloped resistance -$27.71/wk, 3 touches off the
-Jan 2026 high). The gold mockup artifact used a longer Yahoo series
-and different numbers; the branch uses the site's 47-week file.
+exactly (ATR $227.45, last close $3,644.60, levels $3,152.03 /
+$3,506.77 / $5,510.15, sloped supports +$15.14/+$15.39 per week,
+11 touches each). The gold mockup artifact used a longer Yahoo series
+and different numbers; the branch uses the site's backfilled
+264-week file (Nov 2026 recompute; the original 47-week run gave
+ATR $232.76, levels $5,510.15 / $4,836.35 / $4,027.70, one sloped
+resistance -$27.71/wk).
 
 usage: python3 tools/ta_lines_desk.py   (from the repo root)
 """

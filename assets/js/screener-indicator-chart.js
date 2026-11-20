@@ -437,14 +437,15 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // Trendlines is off, the file has not loaded, or it holds no entry
   // for this symbol. The draw guard lives here, not in draw().
   // Sloped-line anchors are indices into the week array the Python
-  // job ran on (entry.weeks, the recent 47). After the Nov 2026
-  // backfill the shipped files hold 200+ weeks, so an anchor would
-  // point at a 2021 week and the line would extrapolate off-chart.
-  // Shift the anchors into shipped-index space here, once, so every
-  // call site (y-range, draw, end label) stays unchanged and the
-  // fixture itself is never rewritten. Levels are prices and need
-  // no shift. When the file is no longer than the computation the
-  // entry is returned as-is.
+  // job ran on (entry.weeks, the full backfilled series since the
+  // Nov 2026 recompute). If a stale fixture ever covered fewer weeks
+  // than the shipped file, an anchor would point at an old week and
+  // the line would extrapolate off-chart. Shift the anchors into
+  // shipped-index space here, once, so every call site (y-range,
+  // draw, end label) stays unchanged and the fixture itself is never
+  // rewritten. Levels are prices and need no shift. When the file is
+  // no longer than the computation the entry is returned as-is
+  // (shift 0 on the current full-series fixture).
   function taForSymbol() {
     if (!ENH.ta || !state.taData || state.taLoadedSymbol !== (state.cfg && state.cfg.symbol)) return null;
     var entry = state.taData;
@@ -1112,8 +1113,8 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // but only from the line's anchor forward: valuing it before the
     // anchor extrapolates the trend into history where it never
     // existed, and on a backfilled 200+ week file that blows the
-    // y-range out (gold's anchor sits 221 weeks in, $11,710 at
-    // index 0) and squashes the candles.
+    // y-range out (a pre-backfill fixture's anchor shifted 217 weeks
+    // in valued gold at $11,710 at index 0) and squashes the candles.
     var ta = taForSymbol();
     if (ta) {
       ta.levels.forEach(function (lv) { if (typeof lv.price === 'number' && isFinite(lv.price)) { lo = Math.min(lo, lv.price); hi = Math.max(hi, lv.price); } });

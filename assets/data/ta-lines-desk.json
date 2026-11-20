@@ -1,59 +1,90 @@
 {
  "TSLA": {
   "lastClose": 374.41,
-  "atr": 35.16,
-  "weeks": 47,
+  "atr": 35.45,
+  "weeks": 264,
   "levels": [
    {
-    "price": 443.13,
+    "price": 469.74,
     "type": "resistance",
-    "touches": 2,
-    "lastTouch": 26,
+    "touches": 6,
+    "lastTouch": 243,
     "ageCandles": 20,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 1.41
-   },
-   {
-    "price": 350.57,
-    "type": "support",
-    "touches": 3,
-    "lastTouch": 39,
-    "ageCandles": 7,
-    "brokenOnClose": 5,
+    "brokenOnClose": 2,
     "flipped": true,
-    "score": 0.88
+    "score": 1.76
    },
    {
-    "price": 297.38,
+    "price": 101.81,
     "type": "support",
     "touches": 1,
-    "lastTouch": 30,
-    "ageCandles": 16,
+    "lastTouch": 61,
+    "ageCandles": 202,
     "brokenOnClose": 0,
     "flipped": false,
-    "score": 0.85
+    "score": 0.72
+   },
+   {
+    "price": 347.31,
+    "type": "support",
+    "touches": 8,
+    "lastTouch": 256,
+    "ageCandles": 7,
+    "brokenOnClose": 9,
+    "flipped": true,
+    "score": 0.66
    }
   ],
   "sloped": [
    {
     "type": "support",
-    "slope": -1.22,
+    "slope": 1.01,
     "anchor": [
-     5,
-     387.53
+     61,
+     101.81
     ],
     "anchor2": [
-     39,
-     345.88
+     175,
+     217.02
     ],
-    "touches": 3,
+    "touches": 9,
     "touchIdx": [
-     5,
-     25,
-     39
+     61,
+     118,
+     123,
+     136,
+     144,
+     155,
+     175,
+     179,
+     247
     ],
-    "endPrice": 337.31
+    "endPrice": 305.95
+   },
+   {
+    "type": "support",
+    "slope": 0.55,
+    "anchor": [
+     77,
+     152.37
+    ],
+    "anchor2": [
+     118,
+     175.01
+    ],
+    "touches": 9,
+    "touchIdx": [
+     71,
+     77,
+     118,
+     123,
+     136,
+     144,
+     155,
+     175,
+     179
+    ],
+    "endPrice": 255.08
    }
   ],
   "symbol": "TSLA",
@@ -62,79 +93,99 @@
  },
  "PLTR": {
   "lastClose": 153.68,
-  "atr": 18.87,
-  "weeks": 47,
+  "atr": 18.89,
+  "weeks": 264,
   "levels": [
    {
-    "price": 123.47,
+    "price": 13.93,
     "type": "support",
+    "touches": 26,
+    "lastTouch": 144,
+    "ageCandles": 119,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 2.08
+   },
+   {
+    "price": 197.65,
+    "type": "resistance",
     "touches": 6,
-    "lastTouch": 30,
-    "ageCandles": 16,
-    "brokenOnClose": 4,
-    "flipped": true,
-    "score": 1.3
-   },
-   {
-    "price": 163.55,
-    "type": "resistance",
-    "touches": 3,
-    "lastTouch": 36,
-    "ageCandles": 10,
-    "brokenOnClose": 4,
-    "flipped": true,
-    "score": 1.01
-   },
-   {
-    "price": 212.94,
-    "type": "resistance",
-    "touches": 1,
-    "lastTouch": 41,
+    "lastTouch": 258,
     "ageCandles": 5,
+    "brokenOnClose": 4,
+    "flipped": true,
+    "score": 1.42
+   },
+   {
+    "price": 64.76,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 179,
+    "ageCandles": 84,
     "brokenOnClose": 0,
     "flipped": false,
-    "score": 0.92
+    "score": 1.27
    }
   ],
   "sloped": [
    {
     "type": "support",
-    "slope": -0.35,
+    "slope": 0.06,
     "anchor": [
-     6,
-     126.23
+     16,
+     9.74
     ],
     "anchor2": [
-     30,
-     117.89
+     85,
+     13.56
     ],
-    "touches": 4,
+    "touches": 16,
     "touchIdx": [
-     6,
-     14,
-     19,
-     30
+     16,
+     27,
+     46,
+     53,
+     60,
+     71,
+     78,
+     85,
+     93,
+     98,
+     104,
+     109,
+     113,
+     117,
+     128,
+     144
     ],
-    "endPrice": 112.33
+    "endPrice": 23.41
    },
    {
-    "type": "resistance",
-    "slope": 2.59,
+    "type": "support",
+    "slope": 0.68,
     "anchor": [
-     22,
-     163.7
+     167,
+     63.4
     ],
     "anchor2": [
-     41,
-     212.94
+     247,
+     117.89
     ],
-    "touches": 3,
+    "touches": 11,
     "touchIdx": [
-     22,
-     34,
-     41
+     71,
+     78,
+     85,
+     93,
+     98,
+     104,
+     109,
+     167,
+     179,
+     242,
+     247
     ],
-    "endPrice": 225.9
+    "endPrice": 128.79
    }
   ],
   "symbol": "PLTR",
@@ -143,59 +194,98 @@
  },
  "MSTR": {
   "lastClose": 86.13,
-  "atr": 21.57,
-  "weeks": 47,
+  "atr": 22.05,
+  "weeks": 264,
   "levels": [
    {
-    "price": 161.73,
+    "price": 103.61,
     "type": "resistance",
-    "touches": 2,
-    "lastTouch": 38,
-    "ageCandles": 8,
+    "touches": 8,
+    "lastTouch": 247,
+    "ageCandles": 16,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 1.63
+   },
+   {
+    "price": 192.72,
+    "type": "resistance",
+    "touches": 4,
+    "lastTouch": 236,
+    "ageCandles": 27,
     "brokenOnClose": 2,
     "flipped": true,
-    "score": 1.1
+    "score": 1.48
    },
    {
-    "price": 91.73,
+    "price": 356.52,
     "type": "resistance",
-    "touches": 3,
-    "lastTouch": 30,
-    "ageCandles": 16,
-    "brokenOnClose": 5,
+    "touches": 4,
+    "lastTouch": 205,
+    "ageCandles": 58,
+    "brokenOnClose": 2,
     "flipped": true,
-    "score": 0.82
-   },
-   {
-    "price": 197.0,
-    "type": "resistance",
-    "touches": 1,
-    "lastTouch": 19,
-    "ageCandles": 27,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.81
+    "score": 1.39
    }
   ],
   "sloped": [
    {
     "type": "support",
-    "slope": -0.6,
+    "slope": 0.32,
     "anchor": [
-     5,
-     104.17
+     27,
+     13.41
     ],
     "anchor2": [
-     30,
-     89.21
+     242,
+     81.81
     ],
-    "touches": 3,
+    "touches": 13,
     "touchIdx": [
-     5,
-     25,
-     30
+     27,
+     32,
+     46,
+     55,
+     60,
+     70,
+     79,
+     84,
+     93,
+     100,
+     116,
+     242,
+     247
     ],
-    "endPrice": 79.64
+    "endPrice": 88.49
+   },
+   {
+    "type": "support",
+    "slope": 0.34,
+    "anchor": [
+     79,
+     26.65
+    ],
+    "anchor2": [
+     242,
+     81.81
+    ],
+    "touches": 13,
+    "touchIdx": [
+     27,
+     32,
+     46,
+     55,
+     60,
+     70,
+     79,
+     84,
+     93,
+     100,
+     116,
+     242,
+     247
+    ],
+    "endPrice": 88.92
    }
   ],
   "symbol": "MSTR",
@@ -204,59 +294,82 @@
  },
  "IBIT": {
   "lastClose": 35.08,
-  "atr": 3.29,
-  "weeks": 47,
+  "atr": 3.3,
+  "weeks": 150,
   "levels": [
    {
-    "price": 47.98,
+    "price": 70.39,
     "type": "resistance",
-    "touches": 2,
-    "lastTouch": 39,
-    "ageCandles": 7,
+    "touches": 3,
+    "lastTouch": 91,
+    "ageCandles": 58,
     "brokenOnClose": 0,
     "flipped": false,
-    "score": 1.54
+    "score": 1.67
    },
    {
-    "price": 42.44,
+    "price": 30.97,
+    "type": "support",
+    "touches": 5,
+    "lastTouch": 128,
+    "ageCandles": 21,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.65
+   },
+   {
+    "price": 56.11,
     "type": "resistance",
     "touches": 2,
-    "lastTouch": 37,
-    "ageCandles": 9,
-    "brokenOnClose": 4,
+    "lastTouch": 105,
+    "ageCandles": 44,
+    "brokenOnClose": 1,
     "flipped": true,
-    "score": 0.79
-   },
-   {
-    "price": 35.8,
-    "type": "resistance",
-    "touches": 4,
-    "lastTouch": 29,
-    "ageCandles": 17,
-    "brokenOnClose": 9,
-    "flipped": true,
-    "score": 0.49
+    "score": 1.12
    }
   ],
   "sloped": [
    {
-    "type": "support",
-    "slope": 0.22,
+    "type": "resistance",
+    "slope": -0.03,
     "anchor": [
-     5,
-     35.3
+     9,
+     41.99
     ],
     "anchor2": [
-     37,
-     42.37
+     132,
+     37.93
     ],
-    "touches": 3,
+    "touches": 5,
     "touchIdx": [
-     5,
-     12,
-     37
+     9,
+     13,
+     21,
+     29,
+     132
     ],
-    "endPrice": 44.36
+    "endPrice": 37.37
+   },
+   {
+    "type": "support",
+    "slope": 0.05,
+    "anchor": [
+     26,
+     31.34
+    ],
+    "anchor2": [
+     108,
+     35.3
+    ],
+    "touches": 5,
+    "touchIdx": [
+     16,
+     26,
+     34,
+     108,
+     115
+    ],
+    "endPrice": 37.28
    }
   ],
   "symbol": "IBIT",
@@ -265,14 +378,14 @@
  },
  "MU": {
   "lastClose": 690.44,
-  "atr": 127.51,
-  "weeks": 47,
+  "atr": 126.75,
+  "weeks": 264,
   "levels": [
    {
     "price": 463.42,
     "type": "support",
     "touches": 2,
-    "lastTouch": 11,
+    "lastTouch": 228,
     "ageCandles": 35,
     "brokenOnClose": 1,
     "flipped": true,
@@ -282,7 +395,7 @@
     "price": 1108.72,
     "type": "resistance",
     "touches": 1,
-    "lastTouch": 38,
+    "lastTouch": 255,
     "ageCandles": 8,
     "brokenOnClose": 0,
     "flipped": false,
@@ -292,92 +405,182 @@
     "price": 1255.0,
     "type": "resistance",
     "touches": 1,
-    "lastTouch": 25,
+    "lastTouch": 242,
     "ageCandles": 21,
     "brokenOnClose": 0,
     "flipped": false,
     "score": 0.82
    }
   ],
-  "sloped": [],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": 0.27,
+    "anchor": [
+     9,
+     98.45
+    ],
+    "anchor2": [
+     126,
+     130.54
+    ],
+    "touches": 22,
+    "touchIdx": [
+     9,
+     15,
+     21,
+     30,
+     40,
+     54,
+     64,
+     73,
+     82,
+     90,
+     98,
+     112,
+     116,
+     126,
+     137,
+     151,
+     157,
+     163,
+     168,
+     172,
+     176,
+     190
+    ],
+    "endPrice": 168.12
+   },
+   {
+    "type": "support",
+    "slope": 0.34,
+    "anchor": [
+     19,
+     68.34
+    ],
+    "anchor2": [
+     128,
+     105.72
+    ],
+    "touches": 21,
+    "touchIdx": [
+     12,
+     19,
+     25,
+     34,
+     46,
+     59,
+     71,
+     87,
+     93,
+     99,
+     103,
+     109,
+     120,
+     128,
+     144,
+     149,
+     159,
+     163,
+     179,
+     195,
+     211
+    ],
+    "endPrice": 152.02
+   }
+  ],
   "symbol": "MU",
   "name": "Micron",
   "asOf": "2026-11-19"
  },
  "META": {
   "lastClose": 596.22,
-  "atr": 54.54,
-  "weeks": 47,
+  "atr": 54.41,
+  "weeks": 264,
   "levels": [
    {
-    "price": 528.31,
-    "type": "support",
-    "touches": 3,
-    "lastTouch": 30,
-    "ageCandles": 16,
-    "brokenOnClose": 1,
-    "flipped": true,
-    "score": 1.57
-   },
-   {
-    "price": 761.91,
+    "price": 788.96,
     "type": "resistance",
-    "touches": 2,
-    "lastTouch": 38,
+    "touches": 3,
+    "lastTouch": 255,
     "ageCandles": 8,
     "brokenOnClose": 0,
     "flipped": false,
-    "score": 1.52
+    "score": 1.96
    },
    {
-    "price": 688.8,
-    "type": "resistance",
-    "touches": 2,
-    "lastTouch": 28,
-    "ageCandles": 18,
-    "brokenOnClose": 2,
+    "price": 458.14,
+    "type": "support",
+    "touches": 4,
+    "lastTouch": 181,
+    "ageCandles": 82,
+    "brokenOnClose": 1,
     "flipped": true,
-    "score": 1.03
+    "score": 1.61
+   },
+   {
+    "price": 349.82,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 107,
+    "ageCandles": 156,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.35
    }
   ],
   "sloped": [
    {
-    "type": "resistance",
-    "slope": -2.41,
+    "type": "support",
+    "slope": 1.79,
     "anchor": [
-     4,
-     744.0
+     33,
+     154.25
     ],
     "anchor2": [
-     28,
-     686.08
+     103,
+     279.4
     ],
-    "touches": 3,
+    "touches": 10,
     "touchIdx": [
-     4,
-     15,
-     28
+     33,
+     38,
+     77,
+     93,
+     99,
+     103,
+     109,
+     229,
+     242,
+     247
     ],
-    "endPrice": 642.64
+    "endPrice": 565.46
    },
    {
     "type": "support",
-    "slope": -2.8,
+    "slope": 1.78,
     "anchor": [
-     3,
-     600.0
+     93,
+     274.38
     ],
     "anchor2": [
-     30,
-     524.49
+     242,
+     540.18
     ],
-    "touches": 3,
+    "touches": 10,
     "touchIdx": [
-     3,
      25,
-     30
+     33,
+     38,
+     93,
+     99,
+     103,
+     109,
+     229,
+     242,
+     247
     ],
-    "endPrice": 479.74
+    "endPrice": 577.64
    }
   ],
   "symbol": "META",
@@ -417,60 +620,90 @@
  },
  "BRK.B": {
   "lastClose": 572.04,
-  "atr": 19.23,
-  "weeks": 47,
+  "atr": 19.25,
+  "weeks": 264,
   "levels": [
    {
-    "price": 530.74,
+    "price": 266.11,
     "type": "support",
-    "touches": 2,
-    "lastTouch": 37,
+    "touches": 3,
+    "lastTouch": 49,
+    "ageCandles": 214,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.58
+   },
+   {
+    "price": 531.88,
+    "type": "support",
+    "touches": 5,
+    "lastTouch": 254,
     "ageCandles": 9,
-    "brokenOnClose": 1,
+    "brokenOnClose": 3,
     "flipped": true,
-    "score": 1.28
+    "score": 1.51
    },
    {
-    "price": 472.49,
+    "price": 366.69,
     "type": "support",
-    "touches": 4,
-    "lastTouch": 29,
-    "ageCandles": 17,
-    "brokenOnClose": 4,
+    "touches": 3,
+    "lastTouch": 98,
+    "ageCandles": 165,
+    "brokenOnClose": 3,
     "flipped": true,
-    "score": 1.11
-   },
-   {
-    "price": 504.04,
-    "type": "support",
-    "touches": 2,
-    "lastTouch": 39,
-    "ageCandles": 7,
-    "brokenOnClose": 10,
-    "flipped": true,
-    "score": 0.3
+    "score": 0.98
    }
   ],
   "sloped": [
    {
-    "type": "support",
-    "slope": 1.33,
+    "type": "resistance",
+    "slope": 0.93,
     "anchor": [
-     15,
-     464.01
+     10,
+     324.4
     ],
     "anchor2": [
-     39,
-     495.96
+     205,
+     504.97
     ],
-    "touches": 4,
+    "touches": 9,
     "touchIdx": [
-     15,
-     22,
-     29,
-     39
+     10,
+     121,
+     126,
+     141,
+     200,
+     205,
+     212,
+     222,
+     249
     ],
-    "endPrice": 505.28
+    "endPrice": 558.68
+   },
+   {
+    "type": "resistance",
+    "slope": 1.24,
+    "anchor": [
+     92,
+     364.63
+    ],
+    "anchor2": [
+     205,
+     504.97
+    ],
+    "touches": 9,
+    "touchIdx": [
+     41,
+     56,
+     62,
+     92,
+     98,
+     132,
+     200,
+     205,
+     212
+    ],
+    "endPrice": 577.0
    }
   ],
   "symbol": "BRK.B",
@@ -479,121 +712,194 @@
  },
  "AAPL": {
   "lastClose": 349.21,
-  "atr": 16.85,
-  "weeks": 47,
+  "atr": 16.77,
+  "weeks": 264,
   "levels": [
    {
-    "price": 244.46,
+    "price": 219.48,
     "type": "support",
-    "touches": 2,
-    "lastTouch": 13,
-    "ageCandles": 33,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 1.35
-   },
-   {
-    "price": 277.33,
-    "type": "support",
-    "touches": 2,
-    "lastTouch": 25,
-    "ageCandles": 21,
+    "touches": 6,
+    "lastTouch": 192,
+    "ageCandles": 71,
     "brokenOnClose": 2,
     "flipped": true,
-    "score": 1.01
+    "score": 1.6
    },
    {
-    "price": 300.0,
+    "price": 132.82,
     "type": "support",
-    "touches": 1,
-    "lastTouch": 30,
-    "ageCandles": 16,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.85
+    "touches": 5,
+    "lastTouch": 69,
+    "ageCandles": 194,
+    "brokenOnClose": 4,
+    "flipped": true,
+    "score": 1.04
+   },
+   {
+    "price": 276.14,
+    "type": "support",
+    "touches": 5,
+    "lastTouch": 242,
+    "ageCandles": 21,
+    "brokenOnClose": 5,
+    "flipped": true,
+    "score": 1.02
    }
   ],
-  "sloped": [],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": 0.61,
+    "anchor": [
+     32,
+     129.04
+    ],
+    "anchor2": [
+     220,
+     243.42
+    ],
+    "touches": 13,
+    "touchIdx": [
+     28,
+     32,
+     49,
+     69,
+     93,
+     99,
+     103,
+     113,
+     117,
+     144,
+     168,
+     220,
+     230
+    ],
+    "endPrice": 269.58
+   },
+   {
+    "type": "support",
+    "slope": 0.71,
+    "anchor": [
+     113,
+     180.17
+    ],
+    "anchor2": [
+     168,
+     219.38
+    ],
+    "touches": 13,
+    "touchIdx": [
+     32,
+     49,
+     69,
+     93,
+     99,
+     103,
+     113,
+     117,
+     144,
+     150,
+     157,
+     168,
+     242
+    ],
+    "endPrice": 287.11
+   }
+  ],
   "symbol": "AAPL",
   "name": "Apple",
   "asOf": "2026-11-19"
  },
  "AMZN": {
   "lastClose": 257.37,
-  "atr": 17.7,
-  "weeks": 47,
+  "atr": 17.58,
+  "weeks": 264,
   "levels": [
    {
-    "price": 225.38,
+    "price": 156.25,
     "type": "support",
-    "touches": 4,
-    "lastTouch": 43,
-    "ageCandles": 3,
-    "brokenOnClose": 1,
+    "touches": 8,
+    "lastTouch": 179,
+    "ageCandles": 84,
+    "brokenOnClose": 3,
     "flipped": true,
-    "score": 2.05
+    "score": 1.44
    },
    {
     "price": 282.88,
     "type": "resistance",
     "touches": 2,
-    "lastTouch": 31,
+    "lastTouch": 248,
     "ageCandles": 15,
     "brokenOnClose": 0,
     "flipped": false,
     "score": 1.44
    },
    {
-    "price": 197.57,
+    "price": 89.17,
     "type": "support",
-    "touches": 2,
-    "lastTouch": 12,
-    "ageCandles": 34,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 1.35
+    "touches": 4,
+    "lastTouch": 71,
+    "ageCandles": 192,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.32
    }
   ],
   "sloped": [
    {
     "type": "support",
-    "slope": 1.61,
+    "slope": 0.38,
     "anchor": [
-     7,
-     196.0
+     12,
+     135.35
     ],
     "anchor2": [
-     37,
-     244.3
+     260,
+     229.36
     ],
-    "touches": 5,
+    "touches": 11,
     "touchIdx": [
-     7,
      12,
-     25,
-     30,
-     37
+     18,
+     134,
+     153,
+     196,
+     206,
+     211,
+     215,
+     242,
+     247,
+     260
     ],
-    "endPrice": 258.79
+    "endPrice": 230.5
    },
    {
     "type": "support",
-    "slope": 0.21,
+    "slope": 0.58,
     "anchor": [
-     25,
-     225.55
+     129,
+     166.32
     ],
     "anchor2": [
-     43,
-     229.36
+     153,
+     180.25
     ],
-    "touches": 3,
+    "touches": 11,
     "touchIdx": [
-     25,
-     30,
-     43
+     29,
+     129,
+     134,
+     153,
+     196,
+     206,
+     211,
+     215,
+     242,
+     247,
+     254
     ],
-    "endPrice": 230.0
+    "endPrice": 244.1
    }
   ],
   "symbol": "AMZN",
@@ -602,152 +908,282 @@
  },
  "MSFT": {
   "lastClose": 498.3,
-  "atr": 29.91,
-  "weeks": 47,
+  "atr": 29.69,
+  "weeks": 264,
   "levels": [
    {
-    "price": 352.74,
+    "price": 351.81,
     "type": "support",
-    "touches": 2,
-    "lastTouch": 25,
+    "touches": 9,
+    "lastTouch": 242,
     "ageCandles": 21,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 1.4
-   },
-   {
-    "price": 466.32,
-    "type": "support",
-    "touches": 1,
-    "lastTouch": 22,
-    "ageCandles": 24,
     "brokenOnClose": 1,
     "flipped": true,
-    "score": 0.69
+    "score": 2.24
    },
    {
-    "price": 517.78,
+    "price": 554.59,
     "type": "resistance",
-    "touches": 1,
-    "lastTouch": 34,
-    "ageCandles": 12,
-    "brokenOnClose": 2,
+    "touches": 2,
+    "lastTouch": 208,
+    "ageCandles": 55,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.3
+   },
+   {
+    "price": 244.14,
+    "type": "support",
+    "touches": 9,
+    "lastTouch": 69,
+    "ageCandles": 194,
+    "brokenOnClose": 6,
     "flipped": true,
-    "score": 0.63
+    "score": 0.87
    }
   ],
-  "sloped": [],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": 0.62,
+    "anchor": [
+     3,
+     349.67
+    ],
+    "anchor2": [
+     118,
+     420.82
+    ],
+    "touches": 10,
+    "touchIdx": [
+     3,
+     8,
+     118,
+     124,
+     150,
+     156,
+     162,
+     169,
+     218,
+     251
+    ],
+    "endPrice": 510.53
+   },
+   {
+    "type": "resistance",
+    "slope": 0.66,
+    "anchor": [
+     118,
+     420.82
+    ],
+    "anchor2": [
+     150,
+     441.85
+    ],
+    "touches": 10,
+    "touchIdx": [
+     3,
+     8,
+     118,
+     124,
+     150,
+     156,
+     162,
+     169,
+     218,
+     251
+    ],
+    "endPrice": 516.11
+   }
+  ],
   "symbol": "MSFT",
   "name": "Microsoft",
   "asOf": "2026-11-19"
  },
  "NFLX": {
   "lastClose": 58.46,
-  "atr": 5.23,
-  "weeks": 47,
+  "atr": 5.25,
+  "weeks": 264,
   "levels": [
    {
-    "price": 83.6,
+    "price": 125.78,
     "type": "resistance",
-    "touches": 1,
-    "lastTouch": 35,
-    "ageCandles": 11,
+    "touches": 2,
+    "lastTouch": 207,
+    "ageCandles": 56,
     "brokenOnClose": 0,
     "flipped": false,
-    "score": 0.87
+    "score": 1.3
    },
    {
-    "price": 108.95,
-    "type": "resistance",
-    "touches": 1,
-    "lastTouch": 15,
-    "ageCandles": 31,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.8
-   },
-   {
-    "price": 65.08,
-    "type": "resistance",
-    "touches": 1,
-    "lastTouch": 28,
-    "ageCandles": 18,
-    "brokenOnClose": 1,
+    "price": 27.54,
+    "type": "support",
+    "touches": 5,
+    "lastTouch": 78,
+    "ageCandles": 185,
+    "brokenOnClose": 3,
     "flipped": true,
-    "score": 0.71
+    "score": 1.23
+   },
+   {
+    "price": 82.69,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 252,
+    "ageCandles": 11,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 1.17
    }
   ],
-  "sloped": [],
+  "sloped": [
+   {
+    "type": "support",
+    "slope": 0.38,
+    "anchor": [
+     32,
+     16.43
+    ],
+    "anchor2": [
+     144,
+     58.7
+    ],
+    "touches": 11,
+    "touchIdx": [
+     27,
+     32,
+     36,
+     44,
+     49,
+     60,
+     71,
+     78,
+     93,
+     129,
+     144
+    ],
+    "endPrice": 103.61
+   },
+   {
+    "type": "support",
+    "slope": 0.42,
+    "anchor": [
+     49,
+     21.17
+    ],
+    "anchor2": [
+     93,
+     39.81
+    ],
+    "touches": 11,
+    "touchIdx": [
+     32,
+     36,
+     44,
+     49,
+     60,
+     71,
+     78,
+     93,
+     129,
+     149,
+     154
+    ],
+    "endPrice": 111.83
+   }
+  ],
   "symbol": "NFLX",
   "name": "Netflix",
   "asOf": "2026-11-19"
  },
  "SPOT": {
   "lastClose": 583.85,
-  "atr": 46.96,
-  "weeks": 47,
+  "atr": 46.8,
+  "weeks": 264,
   "levels": [
    {
-    "price": 551.67,
+    "price": 185.67,
     "type": "support",
-    "touches": 5,
-    "lastTouch": 35,
-    "ageCandles": 11,
-    "brokenOnClose": 1,
+    "touches": 6,
+    "lastTouch": 113,
+    "ageCandles": 150,
+    "brokenOnClose": 2,
     "flipped": true,
-    "score": 2.06
+    "score": 1.55
    },
    {
-    "price": 437.48,
-    "type": "support",
-    "touches": 5,
-    "lastTouch": 40,
-    "ageCandles": 6,
-    "brokenOnClose": 3,
+    "price": 759.43,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 202,
+    "ageCandles": 61,
+    "brokenOnClose": 1,
     "flipped": true,
-    "score": 1.56
+    "score": 1.41
+   },
+   {
+    "price": 442.06,
+    "type": "support",
+    "touches": 9,
+    "lastTouch": 257,
+    "ageCandles": 6,
+    "brokenOnClose": 5,
+    "flipped": true,
+    "score": 1.3
    }
   ],
   "sloped": [
    {
     "type": "resistance",
-    "slope": -3.33,
+    "slope": 2.11,
     "anchor": [
-     10,
-     570.64
+     31,
+     119.0
     ],
     "anchor2": [
-     21,
-     534.0
+     232,
+     543.69
     ],
-    "touches": 4,
+    "touches": 10,
     "touchIdx": [
-     10,
-     15,
-     20,
-     21
+     31,
+     40,
+     129,
+     135,
+     143,
+     151,
+     232,
+     237,
+     238,
+     252
     ],
-    "endPrice": 450.73
+    "endPrice": 609.19
    },
    {
     "type": "resistance",
-    "slope": 1.62,
+    "slope": 2.18,
     "anchor": [
-     15,
-     543.69
+     129,
+     319.3
     ],
     "anchor2": [
-     35,
-     576.0
+     232,
+     543.69
     ],
-    "touches": 4,
+    "touches": 10,
     "touchIdx": [
-     15,
-     20,
-     21,
-     35
+     31,
+     40,
+     129,
+     135,
+     143,
+     151,
+     232,
+     237,
+     238,
+     252
     ],
-    "endPrice": 593.77
+    "endPrice": 611.22
    }
   ],
   "symbol": "SPOT",
@@ -756,59 +1192,93 @@
  },
  "XYZ": {
   "lastClose": 74.23,
-  "atr": 6.73,
-  "weeks": 47,
+  "atr": 6.71,
+  "weeks": 264,
   "levels": [
    {
-    "price": 68.49,
+    "price": 43.78,
     "type": "support",
     "touches": 3,
-    "lastTouch": 39,
-    "ageCandles": 7,
-    "brokenOnClose": 5,
-    "flipped": true,
-    "score": 0.88
+    "lastTouch": 223,
+    "ageCandles": 40,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.71
    },
    {
-    "price": 86.92,
+    "price": 92.47,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 169,
+    "ageCandles": 94,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 1.17
+   },
+   {
+    "price": 99.26,
     "type": "resistance",
     "touches": 1,
-    "lastTouch": 34,
-    "ageCandles": 12,
+    "lastTouch": 161,
+    "ageCandles": 102,
     "brokenOnClose": 0,
     "flipped": false,
-    "score": 0.87
-   },
-   {
-    "price": 55.86,
-    "type": "support",
-    "touches": 1,
-    "lastTouch": 12,
-    "ageCandles": 34,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.79
+    "score": 0.74
    }
   ],
   "sloped": [
    {
     "type": "support",
-    "slope": 0.73,
+    "slope": 0.07,
     "anchor": [
-     6,
-     48.21
+     60,
+     58.34
     ],
     "anchor2": [
-     39,
+     256,
      72.28
     ],
-    "touches": 3,
+    "touches": 11,
     "touchIdx": [
-     6,
-     12,
-     39
+     32,
+     60,
+     72,
+     86,
+     116,
+     120,
+     130,
+     137,
+     198,
+     203,
+     256
     ],
-    "endPrice": 77.39
+    "endPrice": 72.78
+   },
+   {
+    "type": "support",
+    "slope": 0.12,
+    "anchor": [
+     116,
+     61.83
+    ],
+    "anchor2": [
+     198,
+     71.45
+    ],
+    "touches": 10,
+    "touchIdx": [
+     52,
+     60,
+     72,
+     80,
+     86,
+     116,
+     120,
+     130,
+     198,
+     203
+    ],
+    "endPrice": 79.08
    }
   ],
   "symbol": "XYZ",
@@ -817,59 +1287,96 @@
  },
  "GOOGL": {
   "lastClose": 272.66,
-  "atr": 23.58,
-  "weeks": 47,
+  "atr": 23.48,
+  "weeks": 264,
   "levels": [
    {
-    "price": 324.28,
-    "type": "resistance",
-    "touches": 3,
-    "lastTouch": 36,
-    "ageCandles": 10,
+    "price": 195.68,
+    "type": "support",
+    "touches": 4,
+    "lastTouch": 170,
+    "ageCandles": 93,
     "brokenOnClose": 3,
     "flipped": true,
-    "score": 1.18
+    "score": 1.15
    },
    {
-    "price": 384.48,
+    "price": 319.56,
     "type": "resistance",
-    "touches": 1,
-    "lastTouch": 31,
-    "ageCandles": 15,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.85
+    "touches": 5,
+    "lastTouch": 253,
+    "ageCandles": 10,
+    "brokenOnClose": 5,
+    "flipped": true,
+    "score": 1.08
    },
    {
-    "price": 408.61,
-    "type": "resistance",
-    "touches": 1,
-    "lastTouch": 20,
-    "ageCandles": 26,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.81
+    "price": 245.92,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 205,
+    "ageCandles": 58,
+    "brokenOnClose": 2,
+    "flipped": true,
+    "score": 0.94
    }
   ],
   "sloped": [
    {
-    "type": "support",
-    "slope": 2.42,
+    "type": "resistance",
+    "slope": 0.99,
     "anchor": [
-     13,
-     272.11
+     56,
+     102.25
     ],
     "anchor2": [
-     36,
-     327.74
+     83,
+     129.04
     ],
-    "touches": 3,
+    "touches": 12,
     "touchIdx": [
-     13,
-     29,
-     36
+     51,
+     56,
+     66,
+     74,
+     83,
+     90,
+     101,
+     117,
+     140,
+     163,
+     170,
+     202
     ],
-    "endPrice": 351.93
+    "endPrice": 307.64
+   },
+   {
+    "type": "resistance",
+    "slope": 0.9,
+    "anchor": [
+     83,
+     129.04
+    ],
+    "anchor2": [
+     163,
+     201.42
+    ],
+    "touches": 12,
+    "touchIdx": [
+     51,
+     56,
+     66,
+     74,
+     83,
+     90,
+     101,
+     107,
+     117,
+     140,
+     163,
+     170
+    ],
+    "endPrice": 291.89
    }
   ],
   "symbol": "GOOGL",
@@ -878,79 +1385,96 @@
  },
  "NVDA": {
   "lastClose": 145.98,
-  "atr": 18.0,
-  "weeks": 47,
+  "atr": 18.09,
+  "weeks": 264,
   "levels": [
    {
     "price": 238.22,
     "type": "resistance",
     "touches": 3,
-    "lastTouch": 40,
+    "lastTouch": 257,
     "ageCandles": 6,
     "brokenOnClose": 0,
     "flipped": false,
     "score": 2.0
    },
    {
-    "price": 192.98,
+    "price": 164.53,
     "type": "resistance",
-    "touches": 4,
-    "lastTouch": 30,
-    "ageCandles": 16,
-    "brokenOnClose": 4,
+    "touches": 7,
+    "lastTouch": 230,
+    "ageCandles": 33,
+    "brokenOnClose": 2,
     "flipped": true,
-    "score": 1.12
+    "score": 1.75
    },
    {
-    "price": 167.65,
-    "type": "resistance",
-    "touches": 2,
-    "lastTouch": 13,
-    "ageCandles": 33,
-    "brokenOnClose": 3,
+    "price": 20.34,
+    "type": "support",
+    "touches": 12,
+    "lastTouch": 60,
+    "ageCandles": 203,
+    "brokenOnClose": 2,
     "flipped": true,
-    "score": 0.83
+    "score": 1.71
    }
   ],
   "sloped": [
    {
-    "type": "resistance",
-    "slope": 1.3,
+    "type": "support",
+    "slope": 0.91,
     "anchor": [
-     4,
-     194.49
+     60,
+     13.88
     ],
     "anchor2": [
-     35,
-     234.76
+     144,
+     90.69
     ],
-    "touches": 4,
+    "touches": 12,
     "touchIdx": [
-     4,
-     8,
-     35,
-     40
+     49,
+     60,
+     93,
+     98,
+     128,
+     144,
+     148,
+     170,
+     222,
+     230,
+     243,
+     247
     ],
-    "endPrice": 249.05
+    "endPrice": 199.5
    },
    {
     "type": "support",
-    "slope": 0.76,
+    "slope": 1.05,
     "anchor": [
-     5,
-     171.03
+     98,
+     40.98
     ],
     "anchor2": [
-     30,
-     190.01
+     222,
+     171.03
     ],
-    "touches": 3,
+    "touches": 12,
     "touchIdx": [
-     5,
-     26,
-     30
+     93,
+     98,
+     104,
+     109,
+     128,
+     144,
+     148,
+     170,
+     212,
+     222,
+     243,
+     247
     ],
-    "endPrice": 202.16
+    "endPrice": 214.03
    }
   ],
   "symbol": "NVDA",
@@ -959,59 +1483,94 @@
  },
  "GOLD": {
   "lastClose": 3644.6,
-  "atr": 232.76,
-  "weeks": 47,
+  "atr": 227.45,
+  "weeks": 264,
   "levels": [
+   {
+    "price": 3152.03,
+    "type": "support",
+    "touches": 4,
+    "lastTouch": 195,
+    "ageCandles": 68,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.91
+   },
+   {
+    "price": 3506.77,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 196,
+    "ageCandles": 67,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.41
+   },
    {
     "price": 5510.15,
     "type": "resistance",
     "touches": 2,
-    "lastTouch": 9,
+    "lastTouch": 226,
     "ageCandles": 37,
     "brokenOnClose": 0,
     "flipped": false,
     "score": 1.34
-   },
-   {
-    "price": 4836.35,
-    "type": "resistance",
-    "touches": 2,
-    "lastTouch": 34,
-    "ageCandles": 12,
-    "brokenOnClose": 1,
-    "flipped": true,
-    "score": 1.25
-   },
-   {
-    "price": 4027.7,
-    "type": "resistance",
-    "touches": 2,
-    "lastTouch": 26,
-    "ageCandles": 20,
-    "brokenOnClose": 5,
-    "flipped": true,
-    "score": 0.62
    }
   ],
   "sloped": [
    {
-    "type": "resistance",
-    "slope": -27.71,
+    "type": "support",
+    "slope": 15.14,
     "anchor": [
-     4,
-     5586.2
+     135,
+     2304.2
     ],
     "anchor2": [
-     34,
-     4755.0
+     179,
+     2970.4
     ],
-    "touches": 3,
+    "touches": 11,
     "touchIdx": [
-     4,
-     9,
-     34
+     100,
+     106,
+     119,
+     130,
+     135,
+     158,
+     179,
+     184,
+     191,
+     195,
+     243
     ],
-    "endPrice": 4422.52
+    "endPrice": 4242.24
+   },
+   {
+    "type": "support",
+    "slope": 15.39,
+    "anchor": [
+     179,
+     2970.4
+    ],
+    "anchor2": [
+     243,
+     3955.4
+    ],
+    "touches": 11,
+    "touchIdx": [
+     100,
+     106,
+     119,
+     130,
+     135,
+     158,
+     179,
+     184,
+     191,
+     195,
+     243
+    ],
+    "endPrice": 4263.21
    }
   ],
   "symbol": "GOLD",
@@ -1020,60 +1579,98 @@
  },
  "WTI": {
   "lastClose": 83.18,
-  "atr": 10.47,
-  "weeks": 47,
+  "atr": 10.37,
+  "weeks": 264,
   "levels": [
    {
-    "price": 113.59,
+    "price": 115.6,
     "type": "resistance",
-    "touches": 4,
-    "lastTouch": 42,
+    "touches": 5,
+    "lastTouch": 259,
     "ageCandles": 4,
     "brokenOnClose": 0,
     "flipped": false,
-    "score": 2.37
+    "score": 2.6
    },
    {
-    "price": 67.04,
+    "price": 65.29,
     "type": "support",
-    "touches": 1,
-    "lastTouch": 26,
+    "touches": 21,
+    "lastTouch": 243,
     "ageCandles": 20,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.83
-   },
-   {
-    "price": 86.97,
-    "type": "resistance",
-    "touches": 3,
-    "lastTouch": 40,
-    "ageCandles": 6,
     "brokenOnClose": 8,
     "flipped": true,
-    "score": 0.55
+    "score": 0.75
+   },
+   {
+    "price": 130.5,
+    "type": "resistance",
+    "touches": 1,
+    "lastTouch": 18,
+    "ageCandles": 245,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 0.72
    }
   ],
   "sloped": [
    {
-    "type": "resistance",
-    "slope": -0.28,
+    "type": "support",
+    "slope": -0.12,
     "anchor": [
-     10,
-     119.48
+     47,
+     76.25
     ],
     "anchor2": [
-     42,
-     110.48
+     207,
+     56.35
     ],
-    "touches": 4,
+    "touches": 13,
     "touchIdx": [
-     10,
-     14,
-     37,
-     42
+     47,
+     57,
+     66,
+     84,
+     110,
+     149,
+     159,
+     174,
+     179,
+     183,
+     200,
+     207,
+     215
     ],
-    "endPrice": 109.36
+    "endPrice": 49.39
+   },
+   {
+    "type": "support",
+    "slope": -0.12,
+    "anchor": [
+     110,
+     67.71
+    ],
+    "anchor2": [
+     207,
+     56.35
+    ],
+    "touches": 13,
+    "touchIdx": [
+     47,
+     57,
+     66,
+     84,
+     110,
+     149,
+     159,
+     174,
+     179,
+     183,
+     200,
+     207,
+     215
+    ],
+    "endPrice": 49.79
    }
   ],
   "symbol": "WTI",
@@ -1083,58 +1680,89 @@
  "US10Y": {
   "lastClose": 5.052,
   "atr": 0.17,
-  "weeks": 47,
+  "weeks": 264,
   "levels": [
    {
-    "price": 4.3,
+    "price": 3.29,
     "type": "support",
-    "touches": 3,
-    "lastTouch": 25,
-    "ageCandles": 21,
+    "touches": 5,
+    "lastTouch": 78,
+    "ageCandles": 185,
     "brokenOnClose": 3,
     "flipped": true,
-    "score": 1.11
+    "score": 1.23
    },
    {
-    "price": 5.36,
-    "type": "resistance",
-    "touches": 1,
-    "lastTouch": 40,
-    "ageCandles": 6,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.91
-   },
-   {
-    "price": 4.72,
+    "price": 4.76,
     "type": "support",
-    "touches": 2,
-    "lastTouch": 30,
+    "touches": 3,
+    "lastTouch": 247,
     "ageCandles": 16,
     "brokenOnClose": 3,
     "flipped": true,
-    "score": 0.88
+    "score": 1.14
+   },
+   {
+    "price": 1.69,
+    "type": "support",
+    "touches": 2,
+    "lastTouch": 17,
+    "ageCandles": 246,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.04
    }
   ],
   "sloped": [
    {
     "type": "resistance",
-    "slope": 0.02,
+    "slope": 0.0,
     "anchor": [
-     3,
-     4.311
+     94,
+     4.362
     ],
     "anchor2": [
-     30,
-     4.747
+     158,
+     4.505
     ],
-    "touches": 3,
+    "touches": 9,
     "touchIdx": [
-     3,
-     12,
-     30
+     50,
+     94,
+     120,
+     139,
+     158,
+     179,
+     185,
+     237,
+     247
     ],
-    "endPrice": 5.01
+    "endPrice": 4.74
+   },
+   {
+    "type": "resistance",
+    "slope": 0.0,
+    "anchor": [
+     158,
+     4.505
+    ],
+    "anchor2": [
+     237,
+     4.687
+    ],
+    "touches": 9,
+    "touchIdx": [
+     50,
+     94,
+     120,
+     139,
+     158,
+     179,
+     185,
+     237,
+     247
+    ],
+    "endPrice": 4.75
    }
   ],
   "symbol": "US10Y",
@@ -1144,78 +1772,108 @@
  "VIX": {
   "lastClose": 28.44,
   "atr": 5.36,
-  "weeks": 47,
+  "weeks": 264,
   "levels": [
    {
-    "price": 16.75,
-    "type": "support",
-    "touches": 5,
-    "lastTouch": 37,
-    "ageCandles": 9,
-    "brokenOnClose": 4,
+    "price": 36.27,
+    "type": "resistance",
+    "touches": 7,
+    "lastTouch": 227,
+    "ageCandles": 36,
+    "brokenOnClose": 2,
     "flipped": true,
-    "score": 1.28
+    "score": 1.74
    },
    {
-    "price": 35.3,
+    "price": 60.13,
     "type": "resistance",
     "touches": 1,
-    "lastTouch": 10,
-    "ageCandles": 36,
+    "lastTouch": 179,
+    "ageCandles": 84,
     "brokenOnClose": 0,
     "flipped": false,
-    "score": 0.79
+    "score": 0.75
    },
    {
-    "price": 23.22,
-    "type": "support",
-    "touches": 2,
-    "lastTouch": 23,
-    "ageCandles": 23,
-    "brokenOnClose": 5,
+    "price": 29.1,
+    "type": "resistance",
+    "touches": 4,
+    "lastTouch": 211,
+    "ageCandles": 52,
+    "brokenOnClose": 6,
     "flipped": true,
-    "score": 0.62
+    "score": 0.73
    }
   ],
   "sloped": [
    {
-    "type": "resistance",
-    "slope": -0.09,
+    "type": "support",
+    "slope": -0.01,
     "anchor": [
-     5,
-     23.1
+     168,
+     14.58
     ],
     "anchor2": [
-     30,
-     20.88
+     252,
+     13.8
     ],
-    "touches": 4,
+    "touches": 19,
     "touchIdx": [
-     5,
-     23,
-     30,
-     37
+     9,
+     22,
+     65,
+     78,
+     85,
+     90,
+     97,
+     124,
+     146,
+     151,
+     161,
+     168,
+     177,
+     199,
+     208,
+     216,
+     239,
+     244,
+     252
     ],
-    "endPrice": 19.46
+    "endPrice": 13.7
    },
    {
-    "type": "resistance",
-    "slope": -0.61,
+    "type": "support",
+    "slope": -0.03,
     "anchor": [
-     10,
-     35.3
+     22,
+     18.45
     ],
     "anchor2": [
-     37,
-     18.94
+     168,
+     14.58
     ],
-    "touches": 3,
+    "touches": 18,
     "touchIdx": [
-     10,
-     30,
-     37
+     9,
+     14,
+     22,
+     40,
+     56,
+     65,
+     78,
+     146,
+     151,
+     161,
+     168,
+     177,
+     199,
+     208,
+     216,
+     239,
+     244,
+     252
     ],
-    "endPrice": 13.49
+    "endPrice": 12.06
    }
   ],
   "symbol": "VIX",
@@ -1225,13 +1883,13 @@
  "DIA": {
   "lastClose": 490.79,
   "atr": 14.55,
-  "weeks": 47,
+  "weeks": 264,
   "levels": [
    {
     "price": 539.64,
     "type": "resistance",
     "touches": 2,
-    "lastTouch": 31,
+    "lastTouch": 248,
     "ageCandles": 15,
     "brokenOnClose": 0,
     "flipped": false,
@@ -1241,102 +1899,175 @@
     "price": 508.24,
     "type": "resistance",
     "touches": 3,
-    "lastTouch": 39,
+    "lastTouch": 256,
     "ageCandles": 7,
     "brokenOnClose": 2,
     "flipped": true,
     "score": 1.43
    },
    {
-    "price": 450.44,
+    "price": 374.77,
     "type": "support",
-    "touches": 1,
-    "lastTouch": 13,
-    "ageCandles": 33,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.79
+    "touches": 6,
+    "lastTouch": 179,
+    "ageCandles": 84,
+    "brokenOnClose": 3,
+    "flipped": true,
+    "score": 1.35
    }
   ],
-  "sloped": [],
+  "sloped": [
+   {
+    "type": "resistance",
+    "slope": 1.12,
+    "anchor": [
+     78,
+     342.59
+    ],
+    "anchor2": [
+     223,
+     505.3
+    ],
+    "touches": 12,
+    "touchIdx": [
+     78,
+     84,
+     91,
+     120,
+     124,
+     132,
+     141,
+     169,
+     210,
+     214,
+     223,
+     244
+    ],
+    "endPrice": 550.19
+   },
+   {
+    "type": "resistance",
+    "slope": 1.13,
+    "anchor": [
+     91,
+     356.7
+    ],
+    "anchor2": [
+     223,
+     505.3
+    ],
+    "touches": 12,
+    "touchIdx": [
+     78,
+     84,
+     91,
+     120,
+     124,
+     132,
+     141,
+     169,
+     210,
+     214,
+     223,
+     244
+    ],
+    "endPrice": 550.33
+   }
+  ],
   "symbol": "DIA",
   "name": "Dow Jones ETF",
   "asOf": "19 Nov 2026, 4:15 PM ET"
  },
  "QQQ": {
   "lastClose": 645.04,
-  "atr": 31.16,
-  "weeks": 47,
+  "atr": 31.18,
+  "weeks": 264,
   "levels": [
+   {
+    "price": 640.99,
+    "type": "support",
+    "touches": 4,
+    "lastTouch": 247,
+    "ageCandles": 16,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.82
+   },
+   {
+    "price": 545.19,
+    "type": "support",
+    "touches": 3,
+    "lastTouch": 230,
+    "ageCandles": 33,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.48
+   },
    {
     "price": 748.7,
     "type": "resistance",
     "touches": 3,
-    "lastTouch": 40,
+    "lastTouch": 257,
     "ageCandles": 6,
     "brokenOnClose": 2,
     "flipped": true,
     "score": 1.45
-   },
-   {
-    "price": 648.87,
-    "type": "resistance",
-    "touches": 2,
-    "lastTouch": 30,
-    "ageCandles": 16,
-    "brokenOnClose": 2,
-    "flipped": true,
-    "score": 1.04
-   },
-   {
-    "price": 693.18,
-    "type": "resistance",
-    "touches": 2,
-    "lastTouch": 37,
-    "ageCandles": 9,
-    "brokenOnClose": 3,
-    "flipped": true,
-    "score": 0.93
    }
   ],
   "sloped": [
    {
     "type": "resistance",
-    "slope": 3.51,
+    "slope": 2.25,
     "anchor": [
-     4,
-     636.6
+     163,
+     539.15
     ],
     "anchor2": [
-     40,
-     762.86
+     250,
+     734.58
     ],
-    "touches": 3,
+    "touches": 11,
     "touchIdx": [
-     4,
-     33,
-     40
+     58,
+     65,
+     84,
+     89,
+     95,
+     124,
+     146,
+     163,
+     208,
+     250,
+     257
     ],
-    "endPrice": 783.9
+    "endPrice": 763.78
    },
    {
-    "type": "support",
-    "slope": 6.02,
+    "type": "resistance",
+    "slope": 2.32,
     "anchor": [
-     13,
-     555.6
+     208,
+     637.01
     ],
     "anchor2": [
-     37,
-     700.0
+     250,
+     734.58
     ],
-    "touches": 3,
+    "touches": 11,
     "touchIdx": [
-     13,
-     30,
-     37
+     58,
+     65,
+     95,
+     101,
+     124,
+     146,
+     163,
+     172,
+     208,
+     250,
+     257
     ],
-    "endPrice": 754.15
+    "endPrice": 764.78
    }
   ],
   "symbol": "QQQ",
@@ -1346,37 +2077,37 @@
  "USDCAD": {
   "lastClose": 0.6981,
   "atr": 0.01,
-  "weeks": 47,
+  "weeks": 264,
   "levels": [
+   {
+    "price": 0.76,
+    "type": "resistance",
+    "touches": 5,
+    "lastTouch": 112,
+    "ageCandles": 151,
+    "brokenOnClose": 1,
+    "flipped": true,
+    "score": 1.71
+   },
+   {
+    "price": 0.8,
+    "type": "resistance",
+    "touches": 3,
+    "lastTouch": 31,
+    "ageCandles": 232,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.57
+   },
    {
     "price": 0.7,
     "type": "resistance",
-    "touches": 3,
-    "lastTouch": 41,
+    "touches": 5,
+    "lastTouch": 258,
     "ageCandles": 5,
-    "brokenOnClose": 1,
+    "brokenOnClose": 5,
     "flipped": true,
-    "score": 1.72
-   },
-   {
-    "price": 0.74,
-    "type": "resistance",
-    "touches": 3,
-    "lastTouch": 17,
-    "ageCandles": 29,
-    "brokenOnClose": 1,
-    "flipped": true,
-    "score": 1.49
-   },
-   {
-    "price": 0.73,
-    "type": "resistance",
-    "touches": 1,
-    "lastTouch": 33,
-    "ageCandles": 13,
-    "brokenOnClose": 0,
-    "flipped": false,
-    "score": 0.86
+    "score": 1.14
    }
   ],
   "sloped": [
@@ -1384,21 +2115,55 @@
     "type": "resistance",
     "slope": -0.0,
     "anchor": [
-     4,
-     0.7416
+     65,
+     0.754
     ],
     "anchor2": [
-     33,
-     0.7282
+     151,
+     0.7452
     ],
-    "touches": 4,
+    "touches": 11,
     "touchIdx": [
-     4,
-     10,
-     17,
-     33
+     54,
+     65,
+     75,
+     98,
+     122,
+     147,
+     151,
+     188,
+     221,
+     227,
+     234
     ],
-    "endPrice": 0.72
+    "endPrice": 0.73
+   },
+   {
+    "type": "resistance",
+    "slope": -0.0,
+    "anchor": [
+     151,
+     0.7452
+    ],
+    "anchor2": [
+     227,
+     0.7393
+    ],
+    "touches": 11,
+    "touchIdx": [
+     54,
+     65,
+     75,
+     98,
+     122,
+     147,
+     151,
+     188,
+     221,
+     227,
+     234
+    ],
+    "endPrice": 0.74
    }
   ],
   "symbol": "USDCAD",
@@ -1408,59 +2173,85 @@
  "DXY": {
   "lastClose": 103.95,
   "atr": 1.11,
-  "weeks": 47,
+  "weeks": 264,
   "levels": [
    {
-    "price": 97.94,
+    "price": 95.09,
     "type": "support",
-    "touches": 3,
-    "lastTouch": 33,
-    "ageCandles": 13,
+    "touches": 2,
+    "lastTouch": 221,
+    "ageCandles": 42,
+    "brokenOnClose": 0,
+    "flipped": false,
+    "score": 1.32
+   },
+   {
+    "price": 109.74,
+    "type": "resistance",
+    "touches": 2,
+    "lastTouch": 167,
+    "ageCandles": 96,
     "brokenOnClose": 2,
     "flipped": true,
-    "score": 1.36
+    "score": 0.91
    },
    {
-    "price": 101.36,
+    "price": 97.29,
     "type": "support",
-    "touches": 3,
-    "lastTouch": 30,
-    "ageCandles": 16,
-    "brokenOnClose": 3,
+    "touches": 9,
+    "lastTouch": 235,
+    "ageCandles": 28,
+    "brokenOnClose": 7,
     "flipped": true,
-    "score": 1.14
-   },
-   {
-    "price": 102.95,
-    "type": "support",
-    "touches": 1,
-    "lastTouch": 41,
-    "ageCandles": 5,
-    "brokenOnClose": 1,
-    "flipped": true,
-    "score": 0.79
+    "score": 0.83
    }
   ],
   "sloped": [
    {
     "type": "resistance",
-    "slope": 0.08,
+    "slope": -0.04,
     "anchor": [
-     13,
-     100.64
+     100,
+     107.35
     ],
     "anchor2": [
-     41,
-     102.95
+     247,
+     101.64
     ],
-    "touches": 4,
+    "touches": 7,
     "touchIdx": [
-     13,
-     25,
-     30,
-     41
+     36,
+     100,
+     104,
+     128,
+     138,
+     242,
+     247
     ],
-    "endPrice": 103.36
+    "endPrice": 101.02
+   },
+   {
+    "type": "support",
+    "slope": -0.02,
+    "anchor": [
+     30,
+     101.41
+    ],
+    "anchor2": [
+     216,
+     97.75
+    ],
+    "touches": 7,
+    "touchIdx": [
+     30,
+     65,
+     75,
+     181,
+     216,
+     232,
+     235
+    ],
+    "endPrice": 96.83
    }
   ],
   "symbol": "DXY",
