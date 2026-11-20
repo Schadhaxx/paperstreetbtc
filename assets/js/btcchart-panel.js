@@ -154,6 +154,159 @@ function showCandInfo(i,geomX,geomTop){
   if(geomX!=null&&bw>640){left=geomX-ew/2;if(left<8)left=8;if(left+ew>bw-8)left=bw-ew-8;top=geomTop!=null?Math.max(8,geomTop-eh-16):12;}
   el.style.left=left+'px';el.style.top=top+'px';
 }
+/* ===== Pinch-to-zoom (branch pepper-pinch-to-zoom, Nov 2026) =====
+   Bounded zoom only, BOTH views locked (Sunil, Thu 19 Nov ~11:00):
+   pinch zooms in place, centred, never crosses the period; no pan;
+   drag is scrub only, always; double-tap / double-click resets to the
+   full range; tapping a range/type pill resets to full. Desktop: the
+   mouse wheel zooms centred on the cursor, click-drag scrubs,
+   double-click resets. The zoom window is a fractional slice of the
+   current dataset, [f0,f1] of (n-1). It survives redraws of the same
+   dataset (live ticks included) and resets when the dataset changes
+   (new range, size, or fetch) or on an explicit reset. */
+var ZOOM={f0:0,f1:1,key:null};
+var ZOOMGEOM=null; /* {x0,x1,z0,z1,n} of the last drawn view (gesture math) */
+var ZOOM_MINPTS=5; /* smallest visible point count */
+var pinchActive=false,pinchSuppressUntil=0;
+function zoomKey(n,firstT,lastT){return n+':'+firstT+':'+lastT;}
+function zoomReset(){ZOOM.f0=0;ZOOM.f1=1;ZOOM.key=null;}
+function zoomIsFull(){return ZOOM.f0<=0&&ZOOM.f1>=1;}
+function zoomWindow(n,key){
+  if(n<2)return {a:0,b:0,v0:0,v1:0,vn:1};
+  if(ZOOM.key!==key){ZOOM.key=key;ZOOM.f0=0;ZOOM.f1=1;}
+  var a=ZOOM.f0*(n-1),b=ZOOM.f1*(n-1);
+  var v0=Math.max(0,Math.floor(a)),v1=Math.min(n-1,Math.ceil(b));
+  if(v1<v0)v1=v0;
+  return {a:a,b:b,v0:v0,v1:v1,vn:v1-v0+1};
+}
+function zoomSetWindow(a,b,n){
+  if(n<2){zoomReset();return;}
+  var minSpan=Math.min(n-1,ZOOM_MINPTS-1);
+  var span=b-a;
+  if(span<minSpan){var c=(a+b)/2;a=c-minSpan/2;b=c+minSpan/2;}
+  /* Float snap: zooming back out by the exact inverse factor lands a hair
+     short of full (e.g. f0=1.4e-16), which left isFull() false and the zoom
+     buttons stuck visible at "1x". A window within epsilon of full IS full. */
+  if(b-a>=n-1-1e-9){ZOOM.f0=0;ZOOM.f1=1;return;}
+  if(a<0){b-=a;a=0;}
+  if(b>n-1){a-=(b-(n-1));b=n-1;}
+  if(a<0)a=0;
+  if(b-a<minSpan){
+    if(a<=0){b=Math.min(n-1,minSpan);}else{a=Math.max(0,(n-1)-minSpan);}
+  }
+  ZOOM.f0=a/(n-1);ZOOM.f1=b/(n-1);
+}
+function zoomAroundCentre(n,centre,factor){
+  if(n<2||!isFinite(factor)||factor<=0)return;
+  var w=zoomWindow(n,ZOOM.key); /* current window (key already set by the last draw) */
+  var span=(w.b-w.a)/factor;
+  zoomSetWindow(centre-span/2,centre+span/2,n);
+}
+function zoomPinch(n,startWin,startMid,scale){
+  if(n<2||!isFinite(scale)||scale<=0)return;
+  var span=(startWin.b-startWin.a)/scale;
+  zoomSetWindow(startMid-span/2,startMid+span/2,n);
+}
+function zoomFracIndex(x){
+  if(!ZOOMGEOM||ZOOMGEOM.x1<=ZOOMGEOM.x0)return null;
+  var t=(x-ZOOMGEOM.x0)/(ZOOMGEOM.x1-ZOOMGEOM.x0);
+  var idx=ZOOMGEOM.z0+t*(ZOOMGEOM.z1-ZOOMGEOM.z0);
+  return Math.max(0,Math.min(ZOOMGEOM.n-1,idx));
+}
+function zoomActiveView(){return !!dlg&&!dlg.hidden&&(candViewActive()||lineDrawn);}
+function clearZoomSelection(){clearCandState();lineHover=-1;}
+function redrawZoom(){
+  syncZoomButtons();
+  if(candViewActive()){redrawCandles();return;}
+  if(lineDrawn){redrawNativeLine();return;}
+  draw();
+}
+function syncZoomButtons(){
+  var zb=$('bcZoom');if(!zb)return;
+  zb.style.display=(!zoomIsFull()&&zoomActiveView())?'flex':'none';
+  var ro=$('bcZoomRo');
+  if(ro&&ZOOMGEOM){
+    var w=zoomWindow(ZOOMGEOM.n,ZOOM.key);
+    var f=w.b>w.a?(ZOOMGEOM.n-1)/(w.b-w.a):1;
+    ro.textContent=(Math.round(f*10)/10)+'× · '+w.vn+'/'+ZOOMGEOM.n;
+  }
+}
+function bindZoomListeners(c){
+  if(c._zoomBound)return;
+  c._zoomBound=true;
+  /* Mouse wheel: zoom centred on the cursor (desktop + trackpad pinch,
+     which arrives as a wheel event with ctrlKey). The wheel over the
+     chart is a zoom by design, never a page scroll here. */
+  c.addEventListener('wheel',function(e){
+    if(!zoomActiveView()||!ZOOMGEOM)return;
+    e.preventDefault();
+    var r=c.getBoundingClientRect();
+    var centre=zoomFracIndex(e.clientX-r.left);
+    if(centre==null)return;
+    zoomAroundCentre(ZOOMGEOM.n,centre,e.deltaY<0?1.25:0.8);
+    clearZoomSelection();redrawZoom();
+  },{passive:false});
+  /* Double-click (desktop) resets to the full range. */
+  c.addEventListener('dblclick',function(){
+    if(!zoomActiveView())return;
+    zoomReset();clearZoomSelection();redrawZoom();
+  });
+  /* Two-finger pinch (touch): Touch Events with a non-passive touchmove
+     that only preventDefaults while two fingers are down — one finger
+     keeps scrolling the page (F3: never touch-action:none on this
+     canvas). While a pinch is active the scrub/tooltip press handlers
+     stand down (pinchActive), and the press-end handlers stay
+     suppressed briefly after it ends (pinchSuppressUntil) so the
+     pinch never selects a candle or shows a tooltip. */
+  var touches={},pinchStart=null,lastTap=null;
+  function tDist(){var ks=Object.keys(touches);if(ks.length<2)return 0;var a=touches[ks[0]],b=touches[ks[1]];return Math.hypot(a.x-b.x,a.y-b.y);}
+  function tMidX(){var ks=Object.keys(touches);if(ks.length<2)return 0;var a=touches[ks[0]],b=touches[ks[1]];return (a.x+b.x)/2;}
+  c.addEventListener('touchstart',function(e){
+    if(!zoomActiveView()||!ZOOMGEOM)return;
+    for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];touches[t.identifier]={x:t.clientX,y:t.clientY};}
+    if(Object.keys(touches).length===2){
+      var r=c.getBoundingClientRect();
+      var mid=zoomFracIndex(tMidX()-r.left);
+      if(mid==null){pinchStart=null;return;}
+      var w=zoomWindow(ZOOMGEOM.n,ZOOM.key);
+      pinchStart={d:tDist(),a:w.a,b:w.b,mid:mid,n:ZOOMGEOM.n};
+      pinchActive=true;pinchSuppressUntil=Infinity;
+    }
+  },{passive:true});
+  c.addEventListener('touchmove',function(e){
+    if(!zoomActiveView())return;
+    for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(touches[t.identifier]){touches[t.identifier].x=t.clientX;touches[t.identifier].y=t.clientY;}}
+    if(Object.keys(touches).length===2&&pinchStart){
+      e.preventDefault();
+      var scale=tDist()/pinchStart.d;
+      zoomPinch(pinchStart.n,pinchStart,pinchStart.mid,scale);
+      clearZoomSelection();redrawZoom();
+    }
+  },{passive:false});
+  function endTouch(e){
+    var now=Date.now();
+    /* Double-tap (touch) resets to the full range. Tracked here on the
+       tap that ends a single-finger press: a second tap within 350ms
+       and 30px of the previous one is a double-tap. This listener runs
+       in the capture phase so it fires before the candle/line press-end
+       handlers, and the reset suppresses them via pinchSuppressUntil so
+       the second tap never selects a candle. */
+    if(e.changedTouches&&e.changedTouches.length===1&&Object.keys(touches).length<=1){
+      var t=e.changedTouches[0],tap={t:now,x:t.clientX,y:t.clientY};
+      if(lastTap&&now-lastTap.t<350&&Math.hypot(tap.x-lastTap.x,tap.y-lastTap.y)<30){
+        lastTap=null;
+        if(zoomActiveView()&&!zoomIsFull()){
+          pinchSuppressUntil=now+300;
+          zoomReset();clearZoomSelection();redrawZoom();
+        }
+      }else lastTap=tap;
+    }
+    for(var i=0;i<e.changedTouches.length;i++){delete touches[e.changedTouches[i].identifier];}
+    if(Object.keys(touches).length<2&&pinchActive){pinchActive=false;pinchStart=null;pinchSuppressUntil=now+300;}
+  }
+  c.addEventListener('touchend',endTouch,{passive:true,capture:true});
+  c.addEventListener('touchcancel',endTouch,{passive:true,capture:true});
+}
 function drawCandles1D(candles,label,per){
   if(!candles.length)return false;
   CANDRANGE=false;
@@ -164,18 +317,21 @@ function drawCandles1D(candles,label,per){
   /* short fade-in for the razzle layer, only when the candle set changes (not on hover redraws, or it would flicker) */
   if(!prevCAND || prevCAND.length!==candles.length || prevCAND[0].t!==candles[0].t || prevCAND!==candles){ /* first draw of a new set fades in; hover redraws reuse the same array object, so they skip the fade */ if(prevCAND!==candles){c.style.transition='opacity .3s ease';c.style.opacity='0';requestAnimationFrame(function(){c.style.opacity='1';});} }
   ctx.clearRect(0,0,W,H);
-  var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
+  var zw=zoomWindow(candles.length,zoomKey(candles.length,candles[0].t,candles[candles.length-1].t));
+  var v0=zw.v0,v1=zw.v1,vn=zw.vn;
+  var vis=candles.slice(v0,v1+1);
+  var lo=Math.min.apply(null,vis.map(function(k){return k.l;})), hi=Math.max.apply(null,vis.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
-  var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
+  var X=function(i){return L+iw*(vn===1?0.5:(i-v0)/(vn-1));};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];drawCandles1D._lastTx=null;
-  candles.forEach(function(k,i){
-    var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
+  for(var i=v0;i<=v1;i++){var k=candles[i];
+    var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/vn*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
-    CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
+    CANDGEOM[i]={x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)};
     ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
     ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
     /* X-axis, iPhone-first, two clean rows so date and time never overlap and never overlap each other:
@@ -183,8 +339,8 @@ function drawCandles1D(candles,label,per){
        - upper row (H-24): date only ("Oct 27"), only at the first candle and when the day changes, clamped inside the chart
        - labels are also spaced by measured width: a label is skipped if it would come within 62px of the previous one */
     var phoneW=W<=640;
-    var step=phoneW?Math.max(1,Math.ceil(candles.length/4)):Math.max(1,Math.floor(candles.length/6));
-    if(i%step===0&&x>L+32&&x<W-R-32){
+    var step=phoneW?Math.max(1,Math.ceil(vn/4)):Math.max(1,Math.floor(vn/6));
+    if((i-v0)%step===0&&x>L+32&&x<W-R-32){
       var _prevX=drawCandles1D._lastTx;if(_prevX==null||x-_prevX>=62){ctx.fillText(etTime(k.t),x,H-8);drawCandles1D._lastTx=x;}
     }
     var prev=candles[i-1],dayChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
@@ -193,14 +349,15 @@ function drawCandles1D(candles,label,per){
       ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric'}),dx,H-24);
       ctx.fillStyle=psC('#9aa6bc','#475569');
     }
-  });
+  }
   /* selected / hovered candle: white outline + glow + vertical guide, drawn last so it sits on top */
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
-    if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
+    if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx];if(!g)return;var k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
     if(layer===0){ctx.strokeStyle=psC('rgba(255,255,255,.25)','rgba(15,23,42,.35)');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle=psC('#ffffff','#0f172a');ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
   ctx.fillStyle=psC('#9aa6bc','#475569');ctx.textAlign='left';ctx.fillText(label, L, 12);
+  ZOOMGEOM={x0:X(v0),x1:X(v1),z0:zw.a,z1:zw.b,n:candles.length};
   /* interaction listeners, attached once (shared with the range candle view) */
   bindCandListeners(c);
   return true;
@@ -257,6 +414,7 @@ function bindCandListeners(c){
      is ever dropped. */
   var scrubbing=false,scrubChanged=false,downX=0,downY=0,downCandle=-1,pressDone=false,SCRUB_PX=24;
   function endPress(){
+    if(Date.now()<pinchSuppressUntil)return;
     if(pressDone)return;
     if(!candViewActive())return;
     pressDone=true;
@@ -270,7 +428,7 @@ function bindCandListeners(c){
   function armPress(x,y){if(!candViewActive())return;scrubbing=true;scrubChanged=false;pressDone=false;downX=x;downY=y;downCandle=pick({clientX:x});}
   c.addEventListener('pointerdown',function(e){armPress(e.clientX,e.clientY);});
   c.addEventListener('touchstart',function(e){if(!e.touches||!e.touches.length)return;var t=e.touches[0];armPress(t.clientX,t.clientY);},{passive:true});
-  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive())return;var d=Math.max(Math.abs(e.clientX-downX),Math.abs(e.clientY-downY));if(d<=SCRUB_PX)return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  c.addEventListener('pointermove',function(e){if(!scrubbing||!candViewActive()||pinchActive)return;var d=Math.max(Math.abs(e.clientX-downX),Math.abs(e.clientY-downY));if(d<=SCRUB_PX)return;var i=pick(e);if(i<0||i===CANDSEL)return;CANDSEL=i;scrubChanged=true;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
   c.addEventListener('pointerup',function(){scrubbing=false;endPress();});
   c.addEventListener('pointercancel',function(){scrubbing=false;endPress();});
   c.addEventListener('touchend',function(){scrubbing=false;endPress();},{passive:true});
@@ -284,6 +442,7 @@ function bindCandListeners(c){
      highest wick / below the lowest, e.g. the label strips) dismisses the
      pill instead of selecting a candle. */
   c.addEventListener('click',function(e){if(!candViewActive())return;if(pressDone){pressDone=false;return;}var r=c.getBoundingClientRect(),y=e.clientY-r.top;if(CANDGEOM.length){var pt=1e9,pb=-1e9;CANDGEOM.forEach(function(g){if(g.wickTop<pt)pt=g.wickTop;if(g.wickBot>pb)pb=g.wickBot;});if(y<pt-6||y>pb+6){dismissCandInfo();return;}}var i=pick(e);if(i===CANDSEL){dismissCandInfo();return;}CANDSEL=i;redrawCandles();var g=CANDSEL>=0?CANDGEOM[CANDSEL]:null;showCandInfo(CANDSEL,g?g.x:null,g?g.top:null);});
+  bindZoomListeners(c);
 }
 /* Candle ranges, Day 1: aggregate Coinbase daily candles into range candles.
    Daily mode is identity (one candle per UTC day). Weekly mode buckets by the
@@ -361,19 +520,22 @@ function drawCandlesRange(){
   var c=$('bcC'),ctx=c.getContext('2d'),W=c.parentNode.clientWidth||640,H=c.parentNode.clientHeight||300;
   var dpr=window.devicePixelRatio||1;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
-  var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
+  var zw=zoomWindow(candles.length,zoomKey(candles.length,candles[0].t,candles[candles.length-1].t));
+  var v0=zw.v0,v1=zw.v1,vn=zw.vn;
+  var vis=candles.slice(v0,v1+1);
+  var lo=Math.min.apply(null,vis.map(function(k){return k.l;})), hi=Math.max.apply(null,vis.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   var L=62,R=(typeof RGLIVE!=='undefined'&&RGLIVE)?78:12,T=18,B=44,iw=W-L-R,ih=H-T-B;
-  var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
+  var X=function(i){return L+iw*(vn===1?0.5:(i-v0)/(vn-1));};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];
-  var lastTx=null,labIdx=rangeLabelIndices(candles.length,iw);
-  candles.forEach(function(k,i){
-    var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
+  var lastTx=null,labIdx=rangeLabelIndices(vn,iw);
+  for(var i=v0;i<=v1;i++){var k=candles[i];
+    var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/vn*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
-    CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
+    CANDGEOM[i]={x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)};
     ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
     ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
     /* X-axis: date only (month + day), evenly spaced via rangeLabelIndices
@@ -382,13 +544,13 @@ function drawCandlesRange(){
        after the first, as the old first-plus-month-change rule did. The old
        separate last-candle label on a second row is gone: the last candle
        is in this row, so it is no longer skipped by its own x test. */
-    if(labIdx.indexOf(i)>=0){
+    if(labIdx.indexOf(i-v0)>=0){
       var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});
       var dx=Math.max(24,Math.min(W-24,x));
       if(lastTx==null||dx-lastTx>=56){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastTx=dx;}
     }
-  });
-  if(typeof RGLIVE!=='undefined'&&RGLIVE&&live.usd!=null&&candles.length){
+  }
+  if(typeof RGLIVE!=='undefined'&&RGLIVE&&live.usd!=null&&candles.length&&CANDGEOM[candles.length-1]){
     var lg=CANDGEOM[candles.length-1], ly2=Y(live.usd);
     ctx.save();
     // Live-overlay colors are theme-aware via psC (the bright dark-theme
@@ -405,11 +567,12 @@ function drawCandlesRange(){
     ctx.restore();
   }
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
-    if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx],k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
+    if(idx<0||idx>=candles.length)return;var g=CANDGEOM[idx];if(!g)return;var k=candles[idx],col=k.c>=k.o?'#22c55e':'#ef4444';
     if(layer===0){ctx.strokeStyle=psC('rgba(255,255,255,.25)','rgba(15,23,42,.35)');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle=psC('#ffffff','#0f172a');ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
   ctx.fillStyle=psC('#9aa6bc','#475569');ctx.textAlign='left';ctx.fillText(RGLBL, L, 12);
+  ZOOMGEOM={x0:X(v0),x1:X(v1),z0:zw.a,z1:zw.b,n:candles.length};
   bindCandListeners(c);
   return true;
 }
@@ -676,7 +839,7 @@ function draw1D(){
 
 /* Range-row scroll hint, 29 Oct 2026: tabs run shortest (1D) to longest (Max) left to right, so on a phone the longer ranges sit off-screen to the right and are reached by swiping left. The hint shows only while there is still more to the right. */
 function syncRgHint(){var rs=$('bcRgs'),h=$('bcRgHint');if(!rs||!h)return;var moreRight=rs.scrollWidth-rs.clientWidth-rs.scrollLeft>8;h.style.display=moreRight?'':'none';}
-function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}syncRgHint();}
+function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}syncRgHint();syncZoomButtons();}
 
 function onK(K,M,d){var lo=0,hi=K.length-1,a=-1;while(lo<=hi){var mid=(lo+hi)>>1;if(K[mid]<=d){a=mid;lo=mid+1;}else hi=mid-1;}return a<0?null:M[K[a]];}
 function spxOn(d){return onK(SPXK,SPX,d);}function gldOn(d){return onK(GOLDK,GOLD,d);}function mstrOn(d){return onK(MSTRK,MSTR,d);}
@@ -727,6 +890,23 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
    +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="4h" style="display:none">4H</button><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../clock/index.html')+'">Live BTC chart →</a><a class="bc-cl" href="'+U('../../screener.html')+'">The Desk →</a>';
   if(INLINE)INLINEHOST.appendChild(dlg);else{document.body.appendChild(dim);document.body.appendChild(dlg);}
+  /* Pinch-to-zoom controls: − / + / Reset + a zoom readout, top-right of
+     the chart box, visible only while zoomed (syncZoomButtons). The box
+     is made position:relative here (the candle pill already does this
+     lazily on first select). Buttons are real buttons, so the popover
+     click handler's closest('canvas,button,a') exclusion keeps them
+     from dismissing the candle pill. */
+  var zbox=dlg.querySelector('.bc-box');
+  if(zbox){
+    zbox.style.position='relative';
+    var zb=document.createElement('div');zb.id='bcZoom';
+    zb.style.cssText='display:none;position:absolute;top:8px;right:8px;z-index:6;align-items:center;gap:6px;background:'+psC('rgba(7,11,24,.82)','rgba(255,255,255,.88)')+';border:1px solid '+psC('rgba(148,163,184,.35)','#cbd5e1')+';border-radius:999px;padding:3px 4px;';
+    zb.innerHTML='<span id="bcZoomRo" style="font:11px Inter,sans-serif;color:'+psC('#9aa6bc','#475569')+';padding:0 4px;white-space:nowrap;"></span><button type="button" id="bcZoomOut" aria-label="Zoom out" style="width:28px;height:28px;border-radius:50%;border:1px solid '+psC('rgba(148,163,184,.4)','#cbd5e1')+';background:transparent;color:'+psC('#e8eef7','#0f172a')+';font:16px/28px Inter,sans-serif;cursor:pointer;padding:0;">−</button><button type="button" id="bcZoomIn" aria-label="Zoom in" style="width:28px;height:28px;border-radius:50%;border:1px solid '+psC('rgba(148,163,184,.4)','#cbd5e1')+';background:transparent;color:'+psC('#e8eef7','#0f172a')+';font:16px/28px Inter,sans-serif;cursor:pointer;padding:0;">+</button><button type="button" id="bcZoomReset" aria-label="Reset zoom" style="height:28px;border-radius:999px;border:1px solid '+psC('rgba(148,163,184,.4)','#cbd5e1')+';background:transparent;color:'+psC('#e8eef7','#0f172a')+';font:12px Inter,sans-serif;cursor:pointer;padding:0 10px;">Reset</button>';
+    zbox.appendChild(zb);
+    $('bcZoomIn').addEventListener('click',function(){if(!zoomActiveView()||!ZOOMGEOM)return;zoomAroundCentre(ZOOMGEOM.n,(ZOOMGEOM.z0+ZOOMGEOM.z1)/2,1.5);clearZoomSelection();redrawZoom();});
+    $('bcZoomOut').addEventListener('click',function(){if(!zoomActiveView()||!ZOOMGEOM)return;zoomAroundCentre(ZOOMGEOM.n,(ZOOMGEOM.z0+ZOOMGEOM.z1)/2,1/1.5);clearZoomSelection();redrawZoom();});
+    $('bcZoomReset').addEventListener('click',function(){if(!zoomActiveView())return;zoomReset();clearZoomSelection();redrawZoom();});
+  }
   /* Secret link, 4 Nov 2026: double-clicking anywhere on the Bitcoin price
      in this popover opens the block clock page in a new tab. No visible
      link or hint anywhere on the site points to it; the clock page itself
@@ -736,15 +916,15 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
      the clock, so it is skipped in inline mode. */
   if(pxEl&&!INLINE)pxEl.addEventListener('dblclick',function(e){e.preventDefault();window.open(U('../../clock/index.html'),'_blank','noopener');});
   dim.addEventListener('click',close);
-  $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
-  $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
+  $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;zoomReset();draw();});
+  $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;zoomReset();draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;zoomReset();draw();}});
   $('bcX').addEventListener('click',close);
   /* Tapping a non-interactive part of the popover (header, note, gaps) dismisses
      the candle pill — a way out of candle-select without closing the graph.
      Canvas taps, buttons and links are excluded: the canvas has its own handler,
      buttons/links do their own thing, and the pill ✕ stops propagation. */
   dlg.addEventListener('click',function(e){if(!candViewActive())return;if(e.target.closest('canvas,button,a'))return;dismissCandInfo();});
-  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
+  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);}else if(b.dataset.s){LOG=b.dataset.s==='log';}zoomReset();draw();});
   document.addEventListener('keydown',function(e){if(INLINE||dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
@@ -1012,7 +1192,10 @@ function nativeTooltipBind(c){
     if(x<L-8||x>L+iw+12)return -1;
     x=Math.max(L,Math.min(L+iw,x));
     var t=(x-L)/iw;
-    return Math.max(0,Math.min(n-1,Math.round(t*Math.max(1,n-1))));
+    /* Pinch-to-zoom: the visible window is [z0,z1] in full-array indices;
+       a tap maps back to the full index. Full view: z0=0, z1=n-1. */
+    var z0=lineGeom.z0||0,z1=(lineGeom.z1!=null?lineGeom.z1:(n-1)),fullN=lineGeom.fullN||n;
+    return Math.max(0,Math.min(fullN-1,Math.round(z0+t*(z1-z0))));
   }
   function show(i){if(i===lineHover)return;lineHover=i;redrawNativeLine();}
   function hide(){if(lineHover===-1)return;lineHover=-1;redrawNativeLine();}
@@ -1051,6 +1234,7 @@ function nativeTooltipBind(c){
   });
   function endLinePress(){
     if(pressDone)return;
+    if(Date.now()<pinchSuppressUntil)return;
     if(candViewActive()||!lineDrawn)return;
     pressDone=true;
     window.__BTC_LINE_PRESS={downIdx:downIdx,pressMoved:pressMoved,hover:lineHover,ended:true};
@@ -1066,6 +1250,7 @@ function nativeTooltipBind(c){
   /* Dismiss the sticky tooltip when the page scrolls. */
   window.addEventListener('scroll',function(){hide();},{passive:true,capture:true});
   document.addEventListener('touchmove',function(e){if(!c.contains(e.target))hide();},{passive:true});
+  bindZoomListeners(c);
 }
 function nativeTooltipHide(){
   if(lineHover===-1)return;
@@ -1086,8 +1271,10 @@ function draw1DNative(pts){
     c.style.width=W+'px';c.style.height=H+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,W,H);
-    var hasLive=pts[pts.length-1].live===true;
-    var vals=pts.map(function(p){return p.v;});
+    var zw=zoomWindow(pts.length,zoomKey(pts.length,pts[0].t,pts[pts.length-1].t));
+    var v0=zw.v0,v1=zw.v1,vp=pts.slice(v0,v1+1);
+    var hasLive=vp[vp.length-1].live===true;
+    var vals=vp.map(function(p){return p.v;});
     var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
     /* No explicit pad: Chart.js does not pad the data range — its nice
        ticks provide the padding. An 8% pad (the candle pattern) would
@@ -1095,10 +1282,10 @@ function draw1DNative(pts){
     var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
     var ticks=nativeNiceTicks(lo,hi,ih);
     if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
-    var n=pts.length;
+    var n=vp.length;
     var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
     var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
-    var xs=pts.map(function(p,i){return X(i);}),ys=vals.map(function(v){return Y(v);});
+    var xs=vp.map(function(p,i){return X(i);}),ys=vals.map(function(v){return Y(v);});
     /* Y gridlines + labels (same format as the Chart.js yTick callback). */
     ctx.strokeStyle=psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)');ctx.fillStyle=psC('#9aa6bc','#475569');
     ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
@@ -1114,7 +1301,7 @@ function draw1DNative(pts){
        same points Chart.js picks. */
     var maxX=isPhone()?5:7,step=Math.max(1,Math.ceil(n/maxX)),xIdx=[];
     for(var i=0;i<n;i+=step)xIdx.push(i);
-    var lab=pts.map(function(p){return p.live?'Now (live)':etTime(p.t);});
+    var lab=vp.map(function(p){return p.live?'Now (live)':etTime(p.t);});
     /* Vertical gridlines at each x tick (Chart.js scales.x.grid). */
     xIdx.forEach(function(i){
       var x=X(i);
@@ -1133,11 +1320,13 @@ function draw1DNative(pts){
     ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.stroke();
     /* Live "Now" dot (4px, same as Chart.js pointRadius) + hovered dot (3px, same as pointHoverRadius). */
     if(hasLive){ctx.beginPath();ctx.arc(xs[n-1],ys[n-1],4,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
-    if(lineHover>=0&&lineHover<n){ctx.beginPath();ctx.arc(xs[lineHover],ys[lineHover],3,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
-    if(lineHover>=0&&lineHover<n)drawLineTooltip(ctx,pts[lineHover],xs[lineHover],ys[lineHover],W,T,ih);
+    var hov=lineHover-v0;
+    if(hov>=0&&hov<n){ctx.beginPath();ctx.arc(xs[hov],ys[hov],3,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
+    if(hov>=0&&hov<n)drawLineTooltip(ctx,vp[hov],xs[hov],ys[hov],W,T,ih);
     linePts=pts;
-    lineGeom={kind:'1d',pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,n:n,xs:xs,ys:ys,hasLive:hasLive};
-    window.__BTC_LINE_LAYOUT={w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:ticks,xLabels:xIdx.map(function(i){return lab[i];}),hasLive:hasLive,livePrice:hasLive?pts[n-1].v:null};
+    lineGeom={kind:'1d',pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,n:n,xs:xs,ys:ys,hasLive:hasLive,z0:zw.a,z1:zw.b,fullN:pts.length};
+    ZOOMGEOM={x0:xs[0],x1:xs[n-1],z0:zw.a,z1:zw.b,n:pts.length};
+    window.__BTC_LINE_LAYOUT={w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:ticks,xLabels:xIdx.map(function(i){return lab[i];}),hasLive:hasLive,livePrice:hasLive?vp[n-1].v:null};
     window.__BTC_LINE_HOVER=lineHover;
     nativeTooltipBind(c);
     /* Redraw once Inter loads, so canvas text sharpens (YTD backup pattern). */
@@ -1220,16 +1409,20 @@ function drawDailyNative(d,cmp){
     ctx.clearRect(0,0,W,H);
     var n=d.length,hasLive=!!cmp.hasLive,sx=!!cmp.sx,LOG=!!cmp.log;
     var a=d[0][1];
+    var zw=zoomWindow(d.length,zoomKey(d.length,d[0][0],d[d.length-1][0]));
+    var v0=zw.v0,v1=zw.v1,vd=d.slice(v0,v1+1);
+    var vS=cmp.S?cmp.S.slice(v0,v1+1):null,vG=cmp.G?cmp.G.slice(v0,v1+1):null,vM=cmp.M?cmp.M.slice(v0,v1+1):null;
+    var viewLive=hasLive&&v1===d.length-1;
     /* Plotted values: dollars when alone, rebased to 100 at the first close
        when comparing (Chart.js drawDaily datasets). */
     var btcY,spxY,gldY,mstrY;
     if(sx){
-      btcY=d.map(function(p){return 100*p[1]/a;});
-      spxY=cmp.S?cmp.S.map(function(v){return v!=null&&cmp.s0?100*v/cmp.s0:null;}):null;
-      gldY=cmp.G?cmp.G.map(function(v){return v!=null&&cmp.g0?100*v/cmp.g0:null;}):null;
-      mstrY=cmp.M?cmp.M.map(function(v){return v!=null&&cmp.m0?100*v/cmp.m0:null;}):null;
+      btcY=vd.map(function(p){return 100*p[1]/a;});
+      spxY=vS?vS.map(function(v){return v!=null&&cmp.s0?100*v/cmp.s0:null;}):null;
+      gldY=vG?vG.map(function(v){return v!=null&&cmp.g0?100*v/cmp.g0:null;}):null;
+      mstrY=vM?vM.map(function(v){return v!=null&&cmp.m0?100*v/cmp.m0:null;}):null;
     }else{
-      btcY=d.map(function(p){return p[1];});
+      btcY=vd.map(function(p){return p[1];});
       spxY=gldY=mstrY=null;
     }
     /* Y range over all plotted (non-null) values. */
@@ -1274,8 +1467,9 @@ function drawDailyNative(d,cmp){
     var maxLabW=0;
     yTicks.forEach(function(v){var s=yTickDaily(v,sx,LOG);if(s!=null)maxLabW=Math.max(maxLabW,ctx.measureText(s).width);});
     var L=Math.max(62,Math.ceil(maxLabW)+12),iw=W-L-R;
+    n=vd.length;
     var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
-    var xs=d.map(function(p,i){return X(i);});
+    var xs=vd.map(function(p,i){return X(i);});
     var btcYs=btcY.map(function(v){return Y(v);});
     var spxYs=spxY?spxY.map(function(v){return v==null?null:Y(v);}):null;
     var gldYs=gldY?gldY.map(function(v){return v==null?null:Y(v);}):null;
@@ -1302,7 +1496,7 @@ function drawDailyNative(d,cmp){
        5 phone); the callback shows the year for n>400, else month-day. */
     var maxX=isPhone()?5:7,step=Math.max(1,Math.ceil(n/maxX)),xIdx=[];
     for(var i=0;i<n;i+=step)xIdx.push(i);
-    var lab=d.map(function(p){return p[0];});
+    var lab=vd.map(function(p){return p[0];});
     xIdx.forEach(function(i){
       var x=X(i);
       ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
@@ -1347,20 +1541,20 @@ function drawDailyNative(d,cmp){
       if(mstrYs){ctx.strokeStyle='#f97316';ctx.lineWidth=1.6;traceDS(mstrYs,true);}
     }
     /* Live "Now" dot (4px, same as Chart.js pointRadius) on the BTC line. */
-    if(hasLive){ctx.beginPath();ctx.arc(xs[n-1],btcYs[n-1],4,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
-    /* Hovered dots (3px, same as pointHoverRadius) on every visible
-       dataset with a value at the hovered index. */
-    if(lineHover>=0&&lineHover<n){
+    if(viewLive){ctx.beginPath();ctx.arc(xs[n-1],btcYs[n-1],4,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
+    var hov=lineHover-v0;
+    if(hov>=0&&hov<n){
       var dots=[['#22d3ee',btcYs],['#c4b5fd',spxYs],['#facc15',gldYs],['#f97316',mstrYs]];
       dots.forEach(function(dp){
         var ys=dp[1];
-        if(ys&&ys[lineHover]!=null){ctx.beginPath();ctx.arc(xs[lineHover],ys[lineHover],3,0,Math.PI*2);ctx.fillStyle=dp[0];ctx.fill();}
+        if(ys&&ys[hov]!=null){ctx.beginPath();ctx.arc(xs[hov],ys[hov],3,0,Math.PI*2);ctx.fillStyle=dp[0];ctx.fill();}
       });
-      drawDailyTooltip(ctx,lineHover,d,cmp,{btc:btcY,spx:spxY,gld:gldY,mstr:mstrY},xs,{btc:btcYs,spx:spxYs,gld:gldYs,mstr:mstrYs},W,T,ih);
+      drawDailyTooltip(ctx,hov,vd,{sx:sx,S:vS,G:vG,M:vM,s0:cmp.s0,g0:cmp.g0,m0:cmp.m0,hasLive:viewLive},{btc:btcY,spx:spxY,gld:gldY,mstr:mstrY},xs,{btc:btcYs,spx:spxYs,gld:gldYs,mstr:mstrYs},W,T,ih);
     }
     linePts={d:d,cmp:cmp};
-    lineGeom={kind:'daily',pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,n:n,xs:xs,ys:btcYs,ysSPX:spxYs,ysGLD:gldYs,ysMSTR:mstrYs,hasLive:hasLive,sx:sx,log:LOG};
-    window.__BTC_LINE_LAYOUT={kind:'daily',w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:drawnY,xLabels:xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);}),hasLive:hasLive,livePrice:hasLive?d[n-1][1]:null,sx:sx,log:LOG};
+    lineGeom={kind:'daily',pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,n:n,xs:xs,ys:btcYs,ysSPX:spxYs,ysGLD:gldYs,ysMSTR:mstrYs,hasLive:viewLive,sx:sx,log:LOG,z0:zw.a,z1:zw.b,fullN:d.length};
+    ZOOMGEOM={x0:xs[0],x1:xs[n-1],z0:zw.a,z1:zw.b,n:d.length};
+    window.__BTC_LINE_LAYOUT={kind:'daily',w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:drawnY,xLabels:xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);}),hasLive:viewLive,livePrice:viewLive?vd[n-1][1]:null,sx:sx,log:LOG};
     window.__BTC_LINE_HOVER=lineHover;
     nativeTooltipBind(c);
     /* Redraw once Inter loads, so canvas text sharpens (YTD backup pattern). */
@@ -1416,7 +1610,7 @@ function morphToPill(el){
   if(!pr.width||!pr.height||!fr.width||!fr.height)return null;
   return {dx:pr.left-fr.left,dy:pr.top-fr.top,sx:pr.width/fr.width,sy:pr.height/fr.height};}
 function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
-  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;
+  rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();zoomReset();dim.hidden=false;dlg.hidden=false;
   var morph=null;
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
     dlg.style.visibility='hidden';place();morph=morphToPill(opener);
@@ -1462,7 +1656,14 @@ P.onLive=function(){if(!dlg||dlg.hidden)return;head();
 P.redraw=function(){if(dlg&&!dlg.hidden)draw();};
 P.isOpen=function(){return !!dlg&&!dlg.hidden;};
 P._needChart=needChart;P.remount=mountInline;
-P.open=open;P.close=close;P.panelReady=true;
+P.open=open;P.close=close;
+/* Test hook for the pinch-to-zoom harness (headless Node): the pure
+   window math + the gesture binders, driven by the harness with a stub
+   canvas and a stub DOM. setState puts the panel into a candle or line
+   view for the harness (the real code reaches those states through the
+   pill handlers). Not used by any live code path. */
+window.__BTC_ZOOM={state:function(){return {f0:ZOOM.f0,f1:ZOOM.f1,key:ZOOM.key};},key:zoomKey,reset:zoomReset,view:zoomWindow,set:zoomSetWindow,around:zoomAroundCentre,pinch:zoomPinch,isFull:zoomIsFull,frac:zoomFracIndex,geom:function(){return ZOOMGEOM;},bindZoom:bindZoomListeners,bindCand:bindCandListeners,bindLine:nativeTooltipBind,redraw:redrawZoom,setState:function(s){if(s.rng!=null)rng=s.rng;if(s.ct!=null)CT=s.ct;if(s.rgct!=null)RGCT=s.rgct;if(s.lineDrawn!=null)lineDrawn=s.lineDrawn;if(s.dlg!=null)dlg=s.dlg;if(s.geom!=null)ZOOMGEOM=s.geom;if(s.lineGeom!=null)lineGeom=s.lineGeom;if(s.candGeom!=null)CANDGEOM=s.candGeom;}};
+P.panelReady=true;
 /* V2 6 Nov 2026: inline mount. On a page with a #bcInline host, build the
    chart once and show it there on page load — no pill, no dialog, no dim.
    Same data, same ranges (1D..Max), same candles, same compare toggles. */

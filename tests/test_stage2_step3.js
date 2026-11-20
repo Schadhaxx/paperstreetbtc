@@ -15,8 +15,8 @@
      on the layout kind (redrawNativeLine), guarded on lineDrawn so a scroll
      after switching back to the Chart.js fallback cannot repaint the
      native line over it.
-   - Pin bumped et24 -> et24 (rebase onto main; main also used et24) in Step 4 (panel content changed): all 16
-     HTML callers pin et24, and the stub loads the panel with et24.
+   - Pin bumped et31 -> et31 (rebase onto main; main also used et31) in Step 4 (panel content changed): all 16
+     HTML callers pin et31, and the stub loads the panel with et31.
    - The YTD hero chart (s2.js) is out of scope: it must still use Chart.js.
 */
 const fs = require('fs'), path = require('path');
@@ -57,11 +57,14 @@ chk('drawDaily guard relaxed for the native path (no Chart.js needed when native
   /function drawDaily\(\)\{if\(!DATA\)return;if\(!NATIVE_LINE&&!window\.Chart\)return;/.test(panel));
 chk('draw-failure isolation records __BTC_DRAWERR for the daily line', /window\.__BTC_DRAWERR=\{where:'drawDailyNative'/.test(panel));
 
-/* Comparison rebasing + log scale */
-chk('BTC rebased to 100 at the first close', /btcY=d\.map\(function\(p\)\{return 100\*p\[1\]\/a;\}\);/.test(panel));
-chk('S&P rebased to 100 at its first non-null value', /spxY=cmp\.S\?cmp\.S\.map\(function\(v\)\{return v!=null&&cmp\.s0\?100\*v\/cmp\.s0:null;\}\):null;/.test(panel));
-chk('Gold rebased to 100 at its first non-null value', /gldY=cmp\.G\?cmp\.G\.map\(function\(v\)\{return v!=null&&cmp\.g0\?100\*v\/cmp\.g0:null;\}\):null;/.test(panel));
-chk('MSTR rebased to 100 at its first non-null value', /mstrY=cmp\.M\?cmp\.M\.map\(function\(v\)\{return v!=null&&cmp\.m0\?100\*v\/cmp\.m0:null;\}\):null;/.test(panel));
+/* Comparison rebasing + log scale.
+   Pinch-to-zoom (pepper-pinch-to-zoom): the rebase maps the VISIBLE window
+   (vd/vS/vG/vM); the anchor a is still the full-range first close, and
+   the live Now dot draws only when the last point is in view (viewLive). */
+chk('BTC rebased to 100 at the first close', /btcY=vd\.map\(function\(p\)\{return 100\*p\[1\]\/a;\}\);/.test(panel));
+chk('S&P rebased to 100 at its first non-null value', /spxY=vS\?vS\.map\(function\(v\)\{return v!=null&&cmp\.s0\?100\*v\/cmp\.s0:null;\}\):null;/.test(panel));
+chk('Gold rebased to 100 at its first non-null value', /gldY=vG\?vG\.map\(function\(v\)\{return v!=null&&cmp\.g0\?100\*v\/cmp\.g0:null;\}\):null;/.test(panel));
+chk('MSTR rebased to 100 at its first non-null value', /mstrY=vM\?vM\.map\(function\(v\)\{return v!=null&&cmp\.m0\?100\*v\/cmp\.m0:null;\}\):null;/.test(panel));
 chk('log scale maps log10 values to the plot', /Y=function\(v\)\{return T\+ih\*\(1-\(Math\.log10\(v\)-llo\)\/\(lhi-llo\)\);};/.test(panel));
 chk('log ticks at 1/2/5 x 10^k within range', /\[1,2,5\]\.forEach\(function\(m\)\{var tv=m\*pw;if\(tv>=lo\*\(1-1e-9\)&&tv<=hi\*\(1\+1e-9\)\)yTicks\.push\(tv\);\}\);/.test(panel));
 chk('y-axis label margin: longest label measured and L widened (Max+compare labels fit)', /maxLabW/.test(panel) && /Math\.max\(62,Math\.ceil\(maxLabW\)\+12\)/.test(panel));
@@ -74,7 +77,7 @@ chk('S&P and MSTR bridge nulls (spanGaps true)', /traceDS\(spxYs,true\)/.test(pa
 chk('Gold breaks at nulls (spanGaps false)', /traceDS\(gldYs,false\)/.test(panel));
 chk('fill only when non-compare and linear', /if\(!sx&&!LOG\)\{/.test(panel));
 chk('comparison line colours match Chart.js', /ctx\.strokeStyle='#c4b5fd';ctx\.lineWidth=1\.6;traceDS\(spxYs,true\);/.test(panel) && /ctx\.strokeStyle='#facc15';ctx\.lineWidth=1\.6;traceDS\(gldYs,false\);/.test(panel) && /ctx\.strokeStyle='#f97316';ctx\.lineWidth=1\.6;traceDS\(mstrYs,true\);/.test(panel));
-chk('live Now dot on the BTC line when hasLive', /if\(hasLive\)\{ctx\.beginPath\(\);ctx\.arc\(xs\[n-1\],btcYs\[n-1\],4,0,Math\.PI\*2\);ctx\.fillStyle='#22d3ee';ctx\.fill\(\);\}/.test(panel));
+chk('live Now dot on the BTC line when hasLive', /if\(viewLive\)\{ctx\.beginPath\(\);ctx\.arc\(xs\[n-1\],btcYs\[n-1\],4,0,Math\.PI\*2\);ctx\.fillStyle='#22d3ee';ctx\.fill\(\);\}/.test(panel));
 chk('hovered dots on every visible dataset at the hovered index', /var dots=\[\['#22d3ee',btcYs\],\['#c4b5fd',spxYs\],\['#facc15',gldYs\],\['#f97316',mstrYs\]\];/.test(panel));
 chk('daily parity hook carries kind, sx and log', /window\.__BTC_LINE_LAYOUT=\{kind:'daily'/.test(panel) && /sx:sx,log:LOG\};/.test(panel));
 
@@ -92,20 +95,20 @@ chk('panel keeps drawCandles1D + drawCandlesRange', /function drawCandles1D\(/.t
 chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(panel));
 chk('panel keeps needChart', /function needChart\(\)/.test(panel));
 
-/* Pin bumped et25 -> et26 (subdomain fill: loader content changed; panel still et24) in Step 4 (panel content changed) */
-chk('stub loads the panel with et24', /btcchart-panel\.js\?v=et24/.test(stub));
+/* Pin bumped et25 -> et26 (subdomain fill: loader content changed; panel still et31) in Step 4 (panel content changed) */
+chk('stub loads the panel with et31', /btcchart-panel\.js\?v=et31/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
   'recap/2026-05/index.html', 'recap/2026-06/index.html', 'recap/2026-07/index.html', 'recap/2026-08/index.html',
   'recap/2026-09/index.html', 'recap/2026-10/index.html', 'recap/2026-11/index.html'];
-let et27 = 0, other = [];
+let et31 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et27') et27++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=et31') et31++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et27', et27 === 16 && other.length === 0, 'et27=' + et27 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin et31', et31 === 16 && other.length === 0, 'et31=' + et31 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart out of scope: still Chart.js */
 chk('s2.js still uses Chart.js (out of scope)', /new Chart\s*\(/.test(s2));
