@@ -1,7 +1,7 @@
 {
   "source": "Yahoo QQQ (Invesco QQQ Trust), USD",
-  "asOf": "19 Nov 2026, 4:15 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Weekly snapshot \u2014 the latest week is in progress until it closes. Latest week (16 Nov 2026 \u2013 22 Nov 2026) refreshed in progress as of 19 Nov 2026, 4:15 PM ET; its close is not a final close.",
+  "asOf": "20 Nov 2026, 4:15 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: week starting Mon 29 Dec 2025. Weekly snapshot \u2014 the latest week is in progress until it closes. Latest week (16 Nov 2026 \u2013 22 Nov 2026) refreshed in progress as of 20 Nov 2026, 4:15 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -468,13 +468,13 @@
       "monday": "2026-11-16",
       "sunday": "2026-11-22",
       "label": "16 Nov 2026 \u2013 22 Nov 2026",
-      "days": 4,
+      "days": 5,
       "open": 671.04,
-      "high": 676.46,
-      "low": 644.34,
-      "close": 645.04,
-      "volume": 213085215
+      "high": 676.49,
+      "low": 606.23,
+      "close": 608.45,
+      "volume": 342624986
     }
   ],
-  "inProgress": "in progress, as of 19 Nov 2026, 4:15 PM ET"
+  "inProgress": "in progress, as of 20 Nov 2026, 4:15 PM ET"
 }

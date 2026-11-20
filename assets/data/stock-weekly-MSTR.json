@@ -1,15 +1,15 @@
 {
   "source": "Yahoo MSTR unadjusted daily OHLC",
-  "asOf": "2026-11-19",
-  "asOfLabel": "19 Nov 2026",
+  "asOf": "2026-11-20",
+  "asOfLabel": "20 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "baseClose": 151.95,
   "baseSession": "2025-12-31",
   "baseLabel": "31 Dec close",
-  "lastSession": "2026-11-19",
-  "inProgress": "in progress, through last completed session 19 Nov 2026 \u2014 week not finished",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 19 Nov 2026, 4:15 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "lastSession": "2026-11-20",
+  "inProgress": null,
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is a final close through 20 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -521,12 +521,12 @@
       "monday": "2026-11-16",
       "sunday": "2026-11-22",
       "label": "16 Nov 2026 \u2013 22 Nov 2026",
-      "days": 4,
+      "days": 5,
       "open": 103.74,
       "high": 105.79,
-      "low": 86.02,
-      "close": 86.13,
-      "volume": 94325492
+      "low": 77.69,
+      "close": 77.8,
+      "volume": 129807174
     }
   ]
 }
