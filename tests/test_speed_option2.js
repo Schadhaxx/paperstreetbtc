@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Lazy BTC panel split (7 Nov 2026, rebuilt from main c9340ef7): btcchart.js is the eager pill only;
-   the chart panel lives in btcchart-panel.js?v=et24 and loads on first
+   the chart panel lives in btcchart-panel.js?v=et32 and loads on first
    open (or on page load on /clock/). Forked from btcchart.js et15 —
    live-feel, 1W 4H candles, FLIP morph, CAD and inline mount must survive.
    s2.js / the YTD chart are NOT part of this split (separate candidate). */
@@ -29,7 +29,7 @@ chk('eager: no panel code (drawDaily/getData/build/CB4H/morph/mountInline)',
 chk('eager: no bare early return killing the clock (inline host path kept)',
   !/if\s*\(!pill\)\s*return;/.test(pill) && /INLINEHOST/.test(pill) &&
   /if\(!pill&&!INLINEHOST\)return;/.test(pill) && /if\(INLINE\)loadPanel/.test(pill));
-chk('eager: lazy-loads panel at et24', /btcchart-panel\.js\?v=et24/.test(pill));
+chk('eager: lazy-loads panel at et32', /btcchart-panel\.js\?v=et32/.test(pill));
 chk('eager: dedupes open while loading (pendingFrom + shared loadPanel)',
   /pendingFrom/.test(pill) && /loadPanel\(\)\.then/.test(pill) && /if\(P\.panelP\)return P\.panelP/.test(pill));
 chk('eager: accessible load error (role=alert, tabindex -1, focus, retry)',
@@ -72,7 +72,7 @@ chk('panel: exposes _needChart test hook', /P\._needChart=needChart/.test(panel)
 chk('s2.js untouched (still Chart.js YTD — separate candidate)',
   /new Chart\s*\(/.test(s2));
 
-// --- pins: all 16 HTML refs on et27 (blankfix), panel pin still et24 ---
+// --- pins: all 16 HTML refs on et27 (blankfix), panel pin still et32 ---
 const htmls = [];
 (function walk(d) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
