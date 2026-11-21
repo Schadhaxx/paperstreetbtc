@@ -107,8 +107,9 @@ chk('panel keeps open/close/place', /function open\(from\)/.test(panel) && /func
 chk('panel keeps getData + getIntraday', /function getData\(\)/.test(panel) && /function getIntraday\(\)/.test(panel));
 chk('needChart removed with Chart.js', !/needChart/.test(panel));
 
-/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026) */
-chk('stub loads the panel with wr1', /btcchart-panel\.js\?v=wr1/.test(stub));
+/* Rebase 21 Nov 2026: loader + panel et32 on this branch (main is wr1; the
+   branch panel differs, so it keeps its own pin) */
+chk('stub loads the panel with et32', /btcchart-panel\.js\?v=et32/.test(stub));
 chk('stub does not load the panel with et19', !/btcchart-panel\.js\?v=et19/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
