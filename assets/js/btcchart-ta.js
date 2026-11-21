@@ -176,7 +176,16 @@ function tlLabel(line,chartTf,fmt){
   var s='';
   if(line.tf&&chartTf&&line.tf!==chartTf)s=line.tf+' ';
   if(line.extreme)s+=(line.kind==='support'?'range low ':'range high ');
-  return s+fmt(line.price);
+  var p=line.price;
+  if(line.type==='sloped'){
+    /* Sloped lines carry edgePrice (the price at the chart's right edge,
+       the same value the line is drawn to), not price — labelling them
+       with line.price prints $NaN. A non-finite edge hides the label
+       (''), never the line; tlDrawLines skips empty labels. */
+    p=line.edgePrice;
+    if(!isFinite(Number(p)))return '';
+  }
+  return s+fmt(p);
 }
 function _tlTfLines(tf,timeframe,livePrice,slopedEdge){
   /* Shared per-timeframe selection core (rules 1, 3, 4). slopedEdge(sl)
@@ -547,7 +556,9 @@ function tlDrawLines(g){
     var y=null;
     if(ln.type==='level')y=tlDrawLevel(ctx,g,ln);
     else y=tlDrawSloped(ctx,g,ln,ln.tf);
-    if(y!=null)labels.push({y:y,text:ln.label,col:tlCol(ln.kind)});
+    /* An empty label (a sloped line whose edge isn't finite) draws no
+       pill — the line itself still draws. */
+    if(y!=null&&ln.label)labels.push({y:y,text:ln.label,col:tlCol(ln.kind)});
   });
   ctx.restore();
   tlDrawLabels(ctx,g,labels,liveClose);

@@ -191,5 +191,21 @@ chk('label: EXT resistance is "range high"', M.tlLabel({kind: 'resistance', pric
 chk('label: foreign timeframe is prefixed', M.tlLabel({kind: 'resistance', price: 65286, extreme: false, tf: '1d'}, '1h') === '1d $65,286');
 chk('label: foreign EXT is prefixed and labelled', M.tlLabel({kind: 'support', price: 57655, extreme: true, tf: '1d'}, '1h') === '1d range low $57,655');
 
+/* --- tlLabel: sloped lines use edgePrice ($NaN fix, 21 Nov 2026) --- */
+chk('label: every sloped line in the fixture labels its drawn right-edge value (within $1)', (function () {
+  var s = B.drawn.filter(function (l) { return l.type === 'sloped'; });
+  if (s.length !== 5) return false;
+  return s.every(function (l) {
+    var lab = M.tlLabel(l, '1h');
+    if (!lab || lab.indexOf('NaN') >= 0) return false;
+    var num = Number(lab.replace(/^(1h|4h|1d) /, '').replace(/[$,]/g, ''));
+    return isFinite(num) && Math.abs(num - l.edgePrice) <= 1;
+  });
+})());
+chk('label: sloped line on its own tf labels just the price', M.tlLabel({type: 'sloped', kind: 'support', edgePrice: 75860, extreme: false, tf: '1h'}, '1h') === '$75,860');
+chk('label: foreign-tf sloped line is prefixed', M.tlLabel({type: 'sloped', kind: 'support', edgePrice: 56646.88, extreme: false, tf: '1d'}, '1h') === '1d $56,647');
+chk('label: sloped line with NaN edgePrice hides its label (never $NaN)', M.tlLabel({type: 'sloped', kind: 'support', edgePrice: NaN, extreme: false, tf: '1h'}, '1h') === '');
+chk('label: sloped line with missing edgePrice hides its label', M.tlLabel({type: 'sloped', kind: 'resistance', extreme: false, tf: '1h'}, '1h') === '');
+
 console.log('TA TRENDLINES:', fails ? 'FAIL (' + fails + '/' + n + ')' : 'PASS (' + n + ' checks)');
 process.exit(fails ? 1 : 0);
