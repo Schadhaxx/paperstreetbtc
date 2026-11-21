@@ -687,6 +687,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         state.dailyError = 'Daily data could not be loaded — showing weekly bands.';
         bollMode = 'weekly';
         syncBollModeUI();
+        syncTitle();
         draw();
       });
   }
@@ -856,6 +857,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       state.dailyDays = null; state.dailyBoll = null; state.dailyError = null;
       state.dailyLoading = false; state.loadedDailySymbol = '';
       syncBollModeUI();
+      syncTitle(); // the title follows this symbol's mode, not the last one's
       loadData();
     } else if (state.weeks.length && state.loadedSymbol === cfg.symbol) {
       state.drawStart = performance.now();
