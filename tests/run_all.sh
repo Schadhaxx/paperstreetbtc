@@ -47,6 +47,8 @@ run vehicle node tests/test_vehicle.js "$WORK/history.json"                 # ET
 run vehicle_daily python3 tests/test_vehicle_daily.py                       # ETF toggle: nightly IBIT/FBTC updater (offline fixtures)
 run stock_weekly_py python3 tests/test_stock_weekly.py                       # screener stock candles: generator fixtures + shipped invariants
 run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
+run screener_daily python3 tests/test_screener_daily.py                     # screener daily closes + spark pack: fixtures + shipped invariants
+run sparkline node tests/test_sparkline.js                                  # Desk sparklines (enhancements 6): SVG geometry, colour, pack freshness
 run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
 run desk_live python3 tests/test_desk_live.py                              # 5-min Desk (option b): desk-live.json builder + validator (offline fixtures)
 run ta_lines python3 tests/test_ta_lines.py                                # TA Stage 3: trendline job (tools/ta_lines.py) unit tests + replay gate (offline fixtures, no network)
@@ -62,6 +64,7 @@ run oi001_label node tests/test_oi001_label.js                              # OI
 run oi001_compare_scope python3 tests/test_oi001_compare_scope.py           # OI-001: Compare #pvChartNote backup label with crafted Coinbase day (scope fix)
 run cmp_daily_py python3 tests/test_cmp_daily.py                             # comparison chart: daily-close generator fixtures + shipped file
 run cmp_js node tests/test_cmp.js                                            # comparison chart: rebase math, ranges, SPCX rule, shipped closes
+run cmp_share node tests/test_cmp_share.js                                  # shareable calculator links (enhancements 4): hash encode/decode
 TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"
 run test_freeze_liveURL python3 tests/test_freeze.py                       # F8: against the live data-branch URL (read-only)
 run et_expiry_guard_2028-11-15 bash -c 'if ET_TEST_NOW=2028-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9 (moved with the 2028 list extension)
@@ -73,6 +76,7 @@ dfcheck stage
 echo '["2026-10-22"]' > "$WORK/btc-heal-once.json"   # R-s: the one-time heal list shipped on the data branch (dates only)
 run recap_gen bash -c "cd '$WORK/stage' && python3 tools/btc_daily.py assets/data/btc-daily.json '$WORK/history.json' --heal-list '$WORK/btc-heal-once.json' || true; python3 tools/recap_gen.py --history '$WORK/history.json' --repo ."
 run test_recap bash -c "cd '$WORK/stage' && python3 tests/test_recap.py --history '$WORK/history.json' --repo ."
+run recap_chart node tests/test_recap_chart.js                              # monthly recap chart (enhancements 5): series slice, draw, shipped pages
 # v7 (GB v6-2): own server only. Free port picked automatically (PORT env only if free), PID alive, and /assets/js/et.js must match the staged file.
 PORT=$(python3 - "$PORT" <<'PY'
 import socket, sys
