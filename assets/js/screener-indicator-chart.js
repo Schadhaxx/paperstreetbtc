@@ -74,7 +74,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     GOLD: {
       symbol: 'GOLD',
       title: 'Gold — YTD weekly candles',
-      dataUrl: 'assets/data/gold-weekly.json?v=3',
+      dataUrl: 'assets/data/gold-weekly.json?v=4',
       dailyUrl: 'assets/data/ind-daily-gold.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Current ',
@@ -84,7 +84,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     WTI: {
       symbol: 'WTI',
       title: 'WTI — YTD weekly candles',
-      dataUrl: 'assets/data/wti-weekly.json?v=2',
+      dataUrl: 'assets/data/wti-weekly.json?v=3',
       dailyUrl: 'assets/data/ind-daily-wti.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Current ',
@@ -94,7 +94,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     US10Y: {
       symbol: 'US10Y',
       title: '10-Year — YTD weekly candles',
-      dataUrl: 'assets/data/us10y-weekly.json?v=2',
+      dataUrl: 'assets/data/us10y-weekly.json?v=3',
       dailyUrl: 'assets/data/ind-daily-us10y.json?v=' + DAILY_V,
       format: fmtYield,
       currentPrefix: 'Current ',
@@ -105,7 +105,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     VIX: {
       symbol: 'VIX',
       title: 'VIX — YTD weekly candles',
-      dataUrl: 'assets/data/vix-weekly.json?v=2',
+      dataUrl: 'assets/data/vix-weekly.json?v=3',
       dailyUrl: 'assets/data/ind-daily-vix.json?v=' + DAILY_V,
       format: fmtPoints,
       currentPrefix: 'Current ',
@@ -118,7 +118,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     DIA: {
       symbol: 'DIA',
       title: 'DIA — YTD weekly candles',
-      dataUrl: 'assets/data/dia-weekly.json?v=1',
+      dataUrl: 'assets/data/dia-weekly.json?v=2',
       dailyUrl: 'assets/data/ind-daily-dia.json?v=' + DAILY_V,
       format: fmtMoney,
       currentPrefix: 'Current ',
@@ -128,7 +128,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     QQQ: {
       symbol: 'QQQ',
       title: 'QQQ — YTD weekly candles',
-      dataUrl: 'assets/data/qqq-weekly.json?v=1',
+      dataUrl: 'assets/data/qqq-weekly.json?v=2',
       dailyUrl: null,
       format: fmtMoney,
       currentPrefix: 'Current ',
@@ -138,7 +138,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     USDCAD: {
       symbol: 'USDCAD',
       title: 'CAD/USD — YTD weekly candles',
-      dataUrl: 'assets/data/usdcad-weekly.json?v=cadusd1',
+      dataUrl: 'assets/data/usdcad-weekly.json?v=cadusd2',
       dailyUrl: null,
       format: fmtFx,
       currentPrefix: 'Current ',
@@ -148,7 +148,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     DXY: {
       symbol: 'DXY',
       title: 'DXY — YTD weekly candles',
-      dataUrl: 'assets/data/dxy-weekly.json?v=1',
+      dataUrl: 'assets/data/dxy-weekly.json?v=2',
       dailyUrl: null,
       format: fmtPoints,
       currentPrefix: 'Current ',
@@ -162,7 +162,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   // weekly close ("Close $…"), never the live card price. "Current $…
   // YTD …" is drawn from the card's own merged row. Cache-bust STOCK_V
   // whenever the JSON is regenerated.
-  var STOCK_V = '20261109';
+  var STOCK_V = '20261119';
   function stockCfg(sym, basis) {
     var listing = basis === 'listing';
     return {
@@ -205,7 +205,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   }
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0 };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0, taData: null, taToken: 0, taLoadedSymbol: '' };
 
 
   // --- Experimental live feel: pure helpers (also exposed for harness) ---
@@ -278,6 +278,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   var DESK_LIVE_URL = 'https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/desk-live.json';
   var DESK_LIVE_MAX_AGE_MS = 20 * 60 * 1000; // ~20 min
   var DESK_LIVE_POLL_MS = 5 * 60 * 1000; // re-poll every 5 min while open
+  // Skunkworks TA 2.0 (test branch only): Python-computed Stage 3a
+  // trendlines for all 24 Desk assets, shipped as a static fixture.
+  // Same silent-fallback rule as desk-live: a missing or bad file
+  // draws nothing and shows no error.
+  var TA_LINES_URL = 'assets/data/ta-lines-desk.json';
   function deskLiveFileFor(cfg) {
     // Basename of the weekly file, e.g. "dia-weekly.json" or
     // "stock-weekly-TSLA.json". Matching by file (not by symbol key)
@@ -401,6 +406,69 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         state.deskLive = null;
         state.deskLiveAt = Date.now();
       });
+  }
+  // Skunkworks TA 2.0 (test branch only): fetch the Python-computed
+  // Stage 3a trendlines for the open symbol. Token-guarded like
+  // loadData: a response that arrives after the symbol changed is
+  // ignored. A missing or malformed file is a silent fallback —
+  // Trendlines simply draws nothing and shows no error.
+  function fetchTaLines() {
+    if (!state.cfg) return;
+    var token = ++state.taToken;
+    var cfg = state.cfg;
+    fetch(TA_LINES_URL, { cache: 'no-store' })
+      .then(function (res) { if (!res.ok) throw new Error('no ta-lines file'); return res.json(); })
+      .then(function (data) {
+        if (token !== state.taToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale response: ignore
+        var entry = (data && typeof data === 'object') ? data[cfg.symbol] : null;
+        if (!entry || !Array.isArray(entry.levels) || !Array.isArray(entry.sloped)) { state.taData = null; state.taLoadedSymbol = ''; return; }
+        state.taData = entry;
+        state.taLoadedSymbol = cfg.symbol;
+        var m = el('ind-modal');
+        if (m && m.classList.contains('open') && state.weeks.length && state.loadedSymbol === cfg.symbol) draw();
+      })
+      .catch(function () {
+        if (token !== state.taToken || !state.cfg || state.cfg.symbol !== cfg.symbol) return; // stale failure: ignore
+        state.taData = null;
+        state.taLoadedSymbol = '';
+      });
+  }
+  // The TA entry for the symbol the modal is showing, or null when
+  // Trendlines is off, the file has not loaded, or it holds no entry
+  // for this symbol. The draw guard lives here, not in draw().
+  // Sloped-line anchors are indices into the week array the Python
+  // job ran on (entry.weeks, the full backfilled series since the
+  // Nov 2026 recompute). If a stale fixture ever covered fewer weeks
+  // than the shipped file, an anchor would point at an old week and
+  // the line would extrapolate off-chart. Shift the anchors into
+  // shipped-index space here, once, so every call site (y-range,
+  // draw, end label) stays unchanged and the fixture itself is never
+  // rewritten. Levels are prices and need no shift. When the file is
+  // no longer than the computation the entry is returned as-is
+  // (shift 0 on the current full-series fixture).
+  function taForSymbol() {
+    if (!ENH.ta || !state.taData || state.taLoadedSymbol !== (state.cfg && state.cfg.symbol)) return null;
+    var entry = state.taData;
+    var n = typeof entry.weeks === 'number' ? entry.weeks : 0;
+    if (!n || !state.weeks || state.weeks.length <= n) return entry;
+    var shift = state.weeks.length - n;
+    var sloped = (entry.sloped || []).map(function (ln) {
+      var cp = {};
+      for (var k in ln) if (Object.prototype.hasOwnProperty.call(ln, k)) cp[k] = ln[k];
+      if (Array.isArray(ln.anchor) && typeof ln.anchor[0] === 'number') cp.anchor = [ln.anchor[0] + shift, ln.anchor[1]];
+      return cp;
+    });
+    var out = {};
+    for (var k2 in entry) if (Object.prototype.hasOwnProperty.call(entry, k2)) out[k2] = entry[k2];
+    out.sloped = sloped;
+    return out;
+  }
+  // Value of a sloped trendline at shipped week index idx: the anchor
+  // price plus slope per week. Pure maths, exposed for the harness.
+  function taSlopedValue(line, idx) {
+    if (!line || !Array.isArray(line.anchor) || typeof line.anchor[1] !== 'number' ||
+        typeof line.slope !== 'number' || typeof idx !== 'number' || !isFinite(idx)) return null;
+    return line.anchor[1] + line.slope * (idx - line.anchor[0]);
   }
   // Throttled re-fetch: only when > ~4 min since the last fetch, so a
   // burst of visibilitychange events cannot hammer the file.
@@ -555,14 +623,13 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
   }
   function stopPulse() { if (state.pulseTimer) { clearInterval(state.pulseTimer); state.pulseTimer = null; } }
 
-  // Candle enhancements (test branch, 4 Nov 2026): Bollinger (mockup 3),
-  // high/low lines (5), drawdown shading (7), pattern hints (9). All
-  // OFF by default; the modal's toggle row flips them. Nothing here
-  // invents a value: everything is computed from the shipped weekly
-  // candles only. High/low lines use SHOWN weeks only — the shipped
-  // file is YTD, so they are not a lifetime ATH or a full 52-week
-  // history; the note under the chart says so plainly.
-  var ENH = { boll: false, lines: false, drawdown: false, patterns: false, volume: false, zoom: false };
+  // Candle enhancements (test branch, 4 Nov 2026): Bollinger (mockup 3).
+  // Pattern hints, drawdown shading and high/low lines were removed
+  // 19 Nov 2026 (TA 2.0 cleanup) — the TA lines are the point of this
+  // branch. All OFF by default; the modal's toggle row flips them.
+  // Nothing here invents a value: everything is computed from the
+  // shipped weekly candles only.
+  var ENH = { boll: false, volume: false, zoom: false, ta: false, ma: false };
   function fmtVol(v) {
     if (typeof v !== 'number' || !isFinite(v)) return '—';
     if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
@@ -619,6 +686,48 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     }
     return { sma: sma, up: up, lo: lo };
   }
+  // Weekly moving averages (skunkworks TA 2.0, 19 Nov 2026): SMA or EMA
+  // over the shipped weekly closes — the same set Bollinger uses, so the
+  // in-progress week's live price is never used as a close. Returns an
+  // array aligned to weeks, null where fewer than `period` closes are
+  // available. EMA seeds on the SMA of the first `period` closes, then
+  // EMA[i] = close[i]*k + EMA[i-1]*(1-k), k = 2/(period+1). A 200-week
+  // MA needs 200 weeks and a 50-week MA needs 50; the Desk files hold
+  // 47 (SPCX 24), so neither is ever drawn here — no partial-period
+  // line is ever labelled 50 or 200 (the UI disables them). Unknown
+  // type falls back to SMA; bad input fails closed (empty array / all
+  // nulls, never a made-up value).
+  function enhMA(weeks, type, period) {
+    var out = [], i, j, sum, m, k, prev;
+    if (!Array.isArray(weeks) || !weeks.length) return out;
+    if (typeof period !== 'number' || !isFinite(period) || period < 2) {
+      for (i = 0; i < weeks.length; i++) out.push(null);
+      return out;
+    }
+    period = Math.floor(period);
+    var ema = type === 'ema';
+    k = 2 / (period + 1);
+    prev = null;
+    for (i = 0; i < weeks.length; i++) {
+      if (typeof weeks[i].close !== 'number' || !isFinite(weeks[i].close)) { out.push(null); continue; }
+      if (i < period - 1) { out.push(null); continue; }
+      if (!ema || prev == null) {
+        sum = 0; var ok = true;
+        for (j = i - period + 1; j <= i; j++) {
+          if (typeof weeks[j].close !== 'number' || !isFinite(weeks[j].close)) { ok = false; break; }
+          sum += weeks[j].close;
+        }
+        if (!ok) { out.push(null); continue; }
+        m = sum / period;
+        out.push(m);
+        if (ema) prev = m;
+      } else {
+        prev = weeks[i].close * k + prev * (1 - k);
+        out.push(prev);
+      }
+    }
+    return out;
+  }
   // Bollinger mode: 'weekly' (20 weekly closes, the original) or
   // 'daily' (20 daily closes ending on each week's last session).
   // Default weekly — the switch only appears while Bollinger is on,
@@ -639,6 +748,39 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       var on = b.getAttribute('data-bollmode') === bollMode;
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       b.classList.toggle('active', on);
+    });
+  }
+  // Moving averages: SMA or EMA over weekly closes, period 20/50/200.
+  // Default SMA 20 when first enabled; a new symbol resets to it (like
+  // Bollinger's weekly default). Any period longer than the loaded file
+  // is disabled with the reason in its title — the Desk files hold 264
+  // weeks after the Nov 2026 backfill (SPCX 24, IBIT 150), so 50 and
+  // 200 are greyed out only on the short files, never partial lines
+  // mislabelled 50 or 200. The selector only appears while
+  // Moving averages is on.
+  var maType = 'sma';
+  var maPeriod = 20;
+  // Last week-count syncMAUI ran with, so draw() refreshes the
+  // 200-week disabled state once a symbol's weeks have loaded.
+  var maWeeksSynced = -1;
+  function syncMAUI() {
+    var sw = el('ind-ma-mode');
+    if (sw) sw.style.display = ENH.ma ? 'inline-flex' : 'none';
+    document.querySelectorAll('[data-matype]').forEach(function (b) {
+      var on = b.getAttribute('data-matype') === maType;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.classList.toggle('active', on);
+    });
+    var have = state.weeks ? state.weeks.length : 0;
+    document.querySelectorAll('[data-maperiod]').forEach(function (b) {
+      var p = parseInt(b.getAttribute('data-maperiod'), 10);
+      var on = p === maPeriod;
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.classList.toggle('active', on);
+      var dis = have < p;
+      b.disabled = dis;
+      if (dis) b.setAttribute('title', 'Needs ' + p + ' weeks — this chart has ' + have + '.');
+      else b.removeAttribute('title');
     });
   }
   function loadDailyBoll() {
@@ -690,29 +832,6 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         syncTitle();
         draw();
       });
-  }
-  function enhDrawdown(weeks) {
-    var peak = -Infinity, peakIdx = 0, best = 0, bestPeak = 0, bestTrough = 0, i, dd;
-    for (i = 0; i < weeks.length; i++) {
-      if (weeks[i].close > peak) { peak = weeks[i].close; peakIdx = i; }
-      dd = peak > 0 ? (peak - weeks[i].close) / peak : 0;
-      if (dd > best) { best = dd; bestPeak = peakIdx; bestTrough = i; }
-    }
-    return { pct: best, peak: bestPeak, trough: bestTrough };
-  }
-  function enhPattern(weeks, i) {
-    if (i <= 0 || i >= weeks.length) return null;
-    var w = weeks[i], p = weeks[i - 1];
-    var body = Math.abs(w.close - w.open), range = w.high - w.low;
-    if (!(range > 0)) return null;
-    var upSh = w.high - Math.max(w.open, w.close), loSh = Math.min(w.open, w.close) - w.low;
-    var prevBodyUp = p.close >= p.open;
-    var eps = 1e-9;
-    if (!prevBodyUp && w.close >= w.open && w.open <= p.close + eps && w.close >= p.open - eps) return 'Bullish engulfing';
-    if (prevBodyUp && w.close < w.open && w.open >= p.close - eps && w.close <= p.open + eps) return 'Bearish engulfing';
-    if (loSh >= 2 * body - eps && upSh <= 0.5 * body + eps) return 'Hammer';
-    if (body <= 0.10 * range + eps) return 'Doji';
-    return null;
   }
   function enhHLine(ctx, yv, padL, cssW, padR, color, dash, label, labelColor) {
     ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash(dash);
@@ -843,6 +962,9 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // parallel with the weekly file, and re-poll every 5 min while
     // the modal is open. A missing/stale file is a silent fallback.
     fetchDeskLive();
+    // Skunkworks TA 2.0: fetch the Python trendlines in parallel, so
+    // turning Trendlines on later is instant. Also a silent fallback.
+    fetchTaLines();
     startDeskLiveTimer();
     if (switched) {
       state.resolvedSub = '';
@@ -854,6 +976,9 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       // A new symbol starts on weekly Bollinger with no daily data:
       // the daily file is per-symbol and is fetched on demand.
       bollMode = 'weekly';
+      // A new symbol starts on SMA 20 moving averages, same as Bollinger.
+      maType = 'sma'; maPeriod = 20;
+      syncMAUI();
       state.dailyDays = null; state.dailyBoll = null; state.dailyError = null;
       state.dailyLoading = false; state.loadedDailySymbol = '';
       syncBollModeUI();
@@ -999,6 +1124,27 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (state.base && typeof state.base.value === 'number' && isFinite(state.base.value)) {
       lo = Math.min(lo, state.base.value); hi = Math.max(hi, state.base.value);
     }
+    // Skunkworks TA 2.0: keep every shown trendline inside the y-range,
+    // the same way Bollinger bands extend it below. Levels are prices;
+    // sloped lines are valued at the first and last shown shipped
+    // index (one past the end, to cover the appended desk-live week) —
+    // but only from the line's anchor forward: valuing it before the
+    // anchor extrapolates the trend into history where it never
+    // existed, and on a backfilled 200+ week file that blows the
+    // y-range out (a pre-backfill fixture's anchor shifted 217 weeks
+    // in valued gold at $11,710 at index 0) and squashes the candles.
+    var ta = taForSymbol();
+    if (ta) {
+      ta.levels.forEach(function (lv) { if (typeof lv.price === 'number' && isFinite(lv.price)) { lo = Math.min(lo, lv.price); hi = Math.max(hi, lv.price); } });
+      ta.sloped.forEach(function (ln) {
+        var first = viewStart;
+        if (Array.isArray(ln.anchor) && typeof ln.anchor[0] === 'number') first = Math.max(viewStart, ln.anchor[0]);
+        [first, viewStart + viewWeeks.length].forEach(function (si) {
+          var v = taSlopedValue(ln, si);
+          if (v != null && isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+        });
+      });
+    }
     var fullBands = null;
     if (ENH.boll) {
       if (bollMode === 'daily' && state.dailyBoll) fullBands = state.dailyBoll;
@@ -1008,6 +1154,17 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (bands) {
       bands.up.forEach(function (v) { if (v != null) hi = Math.max(hi, v); });
       bands.lo.forEach(function (v) { if (v != null) lo = Math.min(lo, v); });
+    }
+    // Weekly moving average: computed on the full shipped series, then
+    // sliced to the shown window — the same as Bollinger, so zoom keeps
+    // the line continuous. Refresh the 200-week disabled state once a
+    // symbol's weeks have loaded (the switch-time sync ran on empty).
+    if (state.weeks.length !== maWeeksSynced) { maWeeksSynced = state.weeks.length; syncMAUI(); }
+    var fullMA = null;
+    if (ENH.ma) fullMA = enhMA(state.weeks, maType, maPeriod);
+    var ma = fullMA ? fullMA.slice(viewStart) : null;
+    if (ma) {
+      ma.forEach(function (v) { if (v != null) { lo = Math.min(lo, v); hi = Math.max(hi, v); } });
     }
     var span = hi - lo || 1;
     lo -= span * 0.05; hi += span * 0.05;
@@ -1031,16 +1188,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var n = dw.length;
     var slot = plotW / n;
     var bw = Math.max(2, Math.min(14, slot * 0.6));
-    var ddInfo = ENH.drawdown ? enhDrawdown(viewWeeks) : null;
-    if (ddInfo) {
-      var runPeak = -Infinity;
-      ctx.fillStyle = ENH.boll ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.10)';
-      viewWeeks.forEach(function (w, i) {
-        if (w.close > runPeak) runPeak = w.close;
-        if (w.close < runPeak) ctx.fillRect(padL + slot * i, y(runPeak), slot, Math.max(0, y(w.close) - y(runPeak)));
-      });
-    }
     var seenMonths = {};
+    // X labels are one per month; with 200+ weeks they would land
+    // ~5px apart and smear into each other, so a label too close to
+    // the previous drawn one is skipped (same idea as the comparison
+    // chart's collision rule). The month is still recorded as seen.
+    var lastLabX = -1e9;
     // Draw-in: candles grow body-first over ~450ms from drawStart
     // (open, fresh load, or the moment the chart goes live). Reduced
     // motion draws instantly. The live candle never grows: it is
@@ -1089,18 +1242,18 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         ctx.fillStyle = psC('#94a3b8','#475569');
         ctx.font = '10px -apple-system, system-ui, sans-serif';
         var lab = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][thu.getUTCMonth()];
-        ctx.fillText(lab, Math.max(padL, Math.min(cx - 9, cssW - padR - 22)), cssH - 10);
+        var lx = Math.max(padL, Math.min(cx - 9, cssW - padR - 22));
+        if (lx >= lastLabX + 24) { ctx.fillText(lab, lx, cssH - 10); lastLabX = lx; }
         ctx.font = '11px -apple-system, system-ui, sans-serif';
       }
     });
-    // Enhancements, drawn over the candles: Bollinger bands (mockup 3)
-    // and high/low lines (mockup 5). High/low use shown weeks only.
+    // Enhancements, drawn over the candles: Bollinger bands (mockup 3).
     // Bands are computed on the shipped weeks only, so index the last
     // shipped shown week — not n - 1, which is the appended desk-live
     // week on the first trading day (it has no band value).
     if (bands && bands.up[viewWeeks.length - 1] != null) {
       ctx.save();
-      ctx.fillStyle = ENH.drawdown ? 'rgba(196,181,253,0.07)' : 'rgba(196,181,253,0.10)';
+      ctx.fillStyle = 'rgba(196,181,253,0.10)';
       ctx.beginPath();
       var started = false;
       viewWeeks.forEach(function (w, i) {
@@ -1125,12 +1278,79 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       bandLine(bands.sma);
       ctx.restore();
     }
-    var shownHi = -Infinity, shownLo = Infinity;
-    viewWeeks.forEach(function (w) { shownHi = Math.max(shownHi, w.high); shownLo = Math.min(shownLo, w.low); });
-    if (ENH.lines) {
-      enhHLine(ctx, y(shownHi), padL, cssW, padR, psC('#f97316','#ea580c'), [6, 4], 'Highest shown ' + fmt(shownHi), psC('#f97316','#ea580c'));
-      enhHLine(ctx, y(shownLo), padL, cssW, padR, psC('#94a3b8','#475569'), [6, 4], 'Lowest shown ' + fmt(shownLo), psC('#cbd5e1','#64748b'));
-      enhLabelYs = [(y(shownHi) - 8 < 14 ? y(shownHi) + 16 : y(shownHi) - 8), (y(shownLo) - 8 < 14 ? y(shownLo) + 16 : y(shownLo) - 8)];
+    // Weekly moving average (skunkworks TA 2.0): SMA/EMA over the
+    // shipped weekly closes, drawn on the shown window. Solid orange,
+    // with an end tag at the last drawn value. The last point is the
+    // last shipped shown week — the in-progress week's live price is
+    // never a close, so the line never wiggles with the live tick.
+    if (ma) {
+      var maLast = -1;
+      for (var mai = viewWeeks.length - 1; mai >= 0; mai--) { if (ma[mai] != null) { maLast = mai; break; } }
+      if (maLast >= 0) {
+        ctx.save();
+        ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        var maStarted = false;
+        viewWeeks.forEach(function (w, i) {
+          if (ma[i] == null) return;
+          var x = padL + slot * i + slot / 2;
+          if (!maStarted) { ctx.moveTo(x, y(ma[i])); maStarted = true; } else ctx.lineTo(x, y(ma[i]));
+        });
+        ctx.stroke();
+        var maLab = fmt(ma[maLast]);
+        ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+        var maTw = ctx.measureText(maLab).width;
+        var maBx = padL + slot * maLast + slot / 2 - maTw - 12, maBy = y(ma[maLast]) - 8;
+        if (maBy < 14) maBy = y(ma[maLast]) + 16;
+        ctx.fillStyle = psC('#0b1226', '#f1f5f9'); ctx.fillRect(maBx - 4, maBy - 11, maTw + 8, 16);
+        ctx.fillStyle = '#f97316'; ctx.fillText(maLab, maBx, maBy);
+        enhLabelYs.push(maBy);
+        ctx.restore();
+      }
+    }
+    // Skunkworks TA 2.0: Python Stage 3a trendlines, drawn on the same
+    // patched candle set (dw) the modal uses. Shipped index of dw
+    // position i is viewStart + i, so the line maths works under zoom
+    // and over the appended desk-live week. Support green, resistance
+    // red — the same colours as the candles, in both themes.
+    if (ta) {
+      ta.levels.forEach(function (lv) {
+        if (typeof lv.price !== 'number' || !isFinite(lv.price)) return;
+        var col = lv.type === 'support' ? '#22c55e' : '#ef4444';
+        enhHLine(ctx, y(lv.price), padL, cssW, padR, col, [6, 4], fmt(lv.price), col);
+        enhLabelYs.push(y(lv.price) - 8 < 14 ? y(lv.price) + 16 : y(lv.price) - 8);
+      });
+      ta.sloped.forEach(function (ln) {
+        var col = ln.type === 'support' ? '#22c55e' : '#ef4444';
+        ctx.save();
+        ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        var started = false;
+        // The line starts at its anchor — before that it never existed
+        // (see the y-range note above). Starting at i = 0 would draw a
+        // 200+ week backward extrapolation on a backfilled file.
+        var i0 = 0;
+        if (Array.isArray(ln.anchor) && typeof ln.anchor[0] === 'number') i0 = Math.max(0, ln.anchor[0] - viewStart);
+        for (var i = i0; i < n; i++) {
+          var v = taSlopedValue(ln, viewStart + i);
+          if (v == null || !isFinite(v)) continue;
+          var xx = padL + slot * i + slot / 2, yy = y(v);
+          if (!started) { ctx.moveTo(xx, yy); started = true; } else ctx.lineTo(xx, yy);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        var endV = taSlopedValue(ln, viewStart + n - 1);
+        if (endV != null && isFinite(endV)) {
+          ctx.font = 'bold 11px -apple-system, system-ui, sans-serif';
+          var lab = fmt(endV);
+          var tw = ctx.measureText(lab).width, bx = cssW - padR - tw - 10, by = y(endV) - 8;
+          if (by < 14) by = y(endV) + 16;
+          ctx.fillStyle = psC('#0b1226', '#f1f5f9'); ctx.fillRect(bx - 4, by - 11, tw + 8, 16);
+          ctx.fillStyle = col; ctx.fillText(lab, bx, by);
+          enhLabelYs.push(by);
+        }
+        ctx.restore();
+      });
     }
     // Mockup 1 volume pane (under the price plot, same x slots).
     if (hasVol) {
@@ -1185,22 +1405,6 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       ctx.fillText(blab, bx, bly);
       ctx.restore();
     }
-    // Pattern hints (mockup 9): a small gold dot on a candle whose
-    // shape matches a named pattern. The pill names it and says
-    // plainly it is not a prediction.
-    var patCount = 0;
-    if (ENH.patterns) {
-      viewWeeks.forEach(function (w, i) {
-        var pat = enhPattern(state.weeks, viewStart + i);
-        if (!pat) return;
-        patCount++;
-        var cx = padL + slot * i + slot / 2;
-        var bullish = pat === 'Bullish engulfing' || pat === 'Hammer';
-        var dy = bullish ? y(w.low) + 9 : y(w.high) - 9;
-        ctx.save(); ctx.fillStyle = psC('#ffffff','#0f172a'); ctx.strokeStyle = psC('#0b1226','#f1f5f9'); ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(cx, dy, 3.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.restore();
-      });
-    }
     var note = el('ind-enh-note');
     if (note) {
       var lines = [];
@@ -1211,17 +1415,22 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
           : 'Bollinger needs 20 weeks; this chart has ' + n + '.';
         lines.push(bands && bands.up[viewWeeks.length - 1] != null ? 'Bollinger (' + modeLab + ', 2σ): SMA ' + fmt(bands.sma[viewWeeks.length - 1]) + ' · upper ' + fmt(bands.up[viewWeeks.length - 1]) + ' · lower ' + fmt(bands.lo[viewWeeks.length - 1]) : needLab);
       }
+      if (ENH.ma) {
+        var maName = (maType === 'ema' ? 'EMA' : 'SMA') + ' ' + maPeriod;
+        if (ma && ma[viewWeeks.length - 1] != null) lines.push(maName + ' (weekly closes): ' + fmt(ma[viewWeeks.length - 1]) + '.');
+        else lines.push(maName + ' needs ' + maPeriod + ' weeks; this chart has ' + state.weeks.length + '.');
+        if (state.weeks.length < 50) lines.push('50- and 200-week need 50 and 200 weeks — this chart has ' + state.weeks.length + '.');
+        else if (state.weeks.length < 200) lines.push('200-week needs 200 weeks — this chart has ' + state.weeks.length + '.');
+      }
       if (ENH.boll && state.dailyError) lines.push(state.dailyError);
-      if (ENH.lines) lines.push('Highest shown ' + fmt(shownHi) + ' · lowest shown ' + fmt(shownLo) + ' — shown weeks only, not a lifetime high/low.');
-      if (ENH.drawdown && ddInfo) lines.push('Max drawdown ' + (ddInfo.pct * 100).toFixed(1) + '% · ' + viewWeeks[ddInfo.peak].label + ' → ' + viewWeeks[ddInfo.trough].label + '.');
-      if (ENH.patterns) lines.push(patCount ? patCount + ' pattern hint' + (patCount === 1 ? '' : 's') + ' marked (white dots). Tap a candle to see its pattern.' : 'No pattern hints on these weeks.');
+      if (ta && ta.levels.length) lines.push('Trendlines (Python): ' + ta.levels.map(function (lv) { return fmt(lv.price) + ' ' + lv.type; }).join(', ') + '.');
       if (ENH.volume) {
         if (hasVol) {
           var vs = 0, vc = 0; viewWeeks.forEach(function (w) { if (typeof w.volume === 'number' && w.volume > 0) { vs += w.volume; vc++; } });
           lines.push('Volume: latest week ' + fmtVol(dw[n - 1].volume) + (vc >= 2 ? ' · average ' + fmtVol(vs / vc) + '.' : ' (only week with volume data — no average).')); /* Batch B bug 6 */
         } else lines.push('Volume: no volume data in the shipped file for this symbol.');
       }
-      if ((ENH.boll || ENH.drawdown) && (state.cfg.lastInProgress || state.progressNote)) lines.push(bollMode === 'daily' && ENH.boll ? 'Daily Bollinger for the in-progress week uses the latest completed session.' : 'Bollinger/drawdown include the in-progress latest week.');
+      if (ENH.boll && (state.cfg.lastInProgress || state.progressNote)) lines.push(bollMode === 'daily' ? 'Daily Bollinger for the in-progress week uses the latest completed session.' : 'Bollinger includes the in-progress latest week.');
       if (lines.length) { note.textContent = lines.join(' '); note.style.display = 'block'; }
       else { note.style.display = 'none'; note.textContent = ''; }
     }
@@ -1308,7 +1517,6 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
           ? '<br>This open equals the listing close. The baseline is that first-trading close.'
           : '<br>Open is the first trade, not the ' + state.cfg.format(state.base.value) + ' listing close used as the baseline.';
       }
-      if (ENH.patterns) { var pat = enhPattern(state.weeks, (state.viewStart || 0) + idx); if (pat) html += '<br>Pattern hint: ' + pat + ' — a shape, not a prediction.'; }
       if (typeof w.volume === 'number' && w.volume > 0) html += '<br>Volume ' + fmtVol(w.volume) + '.';
       var lastCur = isLast && weekCoversToday(w);
       if (lastCur && state.liveOn && isInProgress()) html += '<br><i>Latest week is live — its close follows the live price and is not a final close.</i>';
@@ -1345,7 +1553,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (e.target.closest && e.target.closest('#ind-close')) { closeModal(); return; }
     if (e.target.closest && e.target.closest('#ind-retry')) {
       var r = el('ind-retry'); if (r) r.style.display = 'none';
-      state.weeks = []; loadData(); fetchDeskLive(); return;
+      state.weeks = []; loadData(); fetchDeskLive(); fetchTaLines(); return;
     }
     var modal = el('ind-modal');
     if (modal && modal.classList.contains('open') && e.target === modal) closeModal();
@@ -1457,6 +1665,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
           syncBollModeUI();
           if (ENH.boll && bollMode === 'daily') loadDailyBoll();
         }
+        if (k === 'ma') syncMAUI();
         draw();
       });
     });
@@ -1475,8 +1684,33 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         else draw();
       });
     });
+    // Moving-average type/period switch: one set at a time, same pattern
+    // as the Bollinger switch. Shown only while Moving averages is on
+    // (syncMAUI). A period longer than the loaded file is disabled
+    // (syncMAUI), so it never fires.
+    document.querySelectorAll('[data-matype]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var m = b.getAttribute('data-matype');
+        if (m !== 'sma' && m !== 'ema') return;
+        if (!ENH.ma) return;
+        maType = m;
+        syncMAUI();
+        draw();
+      });
+    });
+    document.querySelectorAll('[data-maperiod]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (b.disabled) return;
+        var p = parseInt(b.getAttribute('data-maperiod'), 10);
+        if (p !== 20 && p !== 50 && p !== 200) return;
+        if (!ENH.ma) return;
+        maPeriod = p;
+        syncMAUI();
+        draw();
+      });
+    });
   });
 
   // Exposed for the headless verification harness only.
-  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveNewWeek: deskLiveNewWeek, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhDrawdown: enhDrawdown, enhPattern: enhPattern, fmtVol: fmtVol };
+  window.IndicatorChart = { CONFIGS: CONFIGS, STOCKS: STOCKS, applyLiveWeek: applyLiveWeek, weekCoversToday: weekCoversToday, liveWeekFor: liveWeekFor, deskLiveWeekFor: deskLiveWeekFor, deskLiveNewWeek: deskLiveNewWeek, deskLiveFresh: deskLiveFresh, deskLiveEntryFor: deskLiveEntryFor, etTodayISO: etTodayISO, nextWeekClose: nextWeekClose, countdownText: countdownText, nyOffsetHours: nyOffsetHours, enhBoll: enhBoll, enhBollDaily: enhBollDaily, enhMA: enhMA, fmtVol: fmtVol, _ta: { valueAt: taSlopedValue } };
 })();

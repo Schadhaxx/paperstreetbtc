@@ -158,9 +158,26 @@ for sym in S.SYMS:
     rem = S.remaining_in_week(asof, now)
     chk(f'{sym} inProgress matches a 21:00 ET reading of asOf', (doc['inProgress'] is None) == (not rem), (doc['inProgress'], rem))
     by = {w['monday']: w for w in doc['weeks']}
+    # The 2026 (YTD) portion of the file: the backfilled files hold
+    # history back to Nov 2021 (TA 2.0 test branch), so the day-count
+    # and first-week checks below run on the YTD slice only — the
+    # 2026-only holiday calendar in expected_sessions cannot judge
+    # pre-2026 weeks. The full file's contiguity/OHLC shape is
+    # already covered by validate_doc above.
+    ytd = [w for w in doc['weeks'] if w['monday'] >= '2025-12-29']
+    ytd_start = '2026-06-08' if sym == 'SPCX' else '2025-12-29'
+    chk(f'{sym} YTD slice starts {ytd_start}', ytd and ytd[0]['monday'] == ytd_start, ytd[:1])
+    # Backfill: 200+ weeks except SPCX (24, listing) and IBIT (<200,
+    # launched Jan 2024).
+    if sym == 'SPCX':
+        chk('SPCX still 24 weeks (no earlier history)', len(doc['weeks']) == 24, len(doc['weeks']))
+    elif sym == 'IBIT':
+        chk('IBIT 100-200 weeks (launched Jan 2024)', 100 <= len(doc['weeks']) < 200, len(doc['weeks']))
+    else:
+        chk(f'{sym} 200+ weeks after backfill', len(doc['weeks']) >= 200, len(doc['weeks']))
     # Every week after the partial first week, through the last, has exactly
     # the sessions the calendar predicts. No invented and no skipped days.
-    for w in doc['weeks'][1:]:
+    for w in ytd[1:]:
         mon = dt.date.fromisoformat(w['monday'])
         if sym == 'SPCX':
             exp = len(S.expected_sessions(mon, min(mon + dt.timedelta(days=6), asof)))
@@ -168,14 +185,14 @@ for sym in S.SYMS:
             exp = len(S.expected_sessions(max(mon, dt.date(2026, 1, 2)), min(mon + dt.timedelta(days=6), asof)))
         chk(f'{sym} {w["monday"]} days {exp}', w['days'] == exp, w['days'])
     if sym == 'SPCX':
-        w0 = doc['weeks'][0]
+        w0 = ytd[0]
         chk('SPCX week of 8 Jun is the one listing day', w0['monday'] == '2026-06-08' and w0['days'] == 1 and w0['close'] == doc['baseClose'])
         chk('SPCX keeps the first-trade open distinct in the file', 'open' in w0 and isinstance(w0['open'], float))
         # The open is allowed to equal the close; it must not be overwritten by the baseline
         # unless that really was the first print. Recorded for the audit.
         print(f'  NOTE SPCX first-trade open {w0["open"]} vs listing close {doc["baseClose"]}')
     else:
-        w0 = doc['weeks'][0]
+        w0 = ytd[0]
         chk(f'{sym} partial first week', w0['monday'] == '2025-12-29' and w0['days'] == 1 and w0['close'] != doc['baseClose'])
 if shipped_n == len(S.SYMS):
     code, out, err = run_cli(['--check-only', '--out-dir', os.path.join(R, 'assets/data'), '--pack', os.path.join(R, 'assets/data/screener-pack.json')])

@@ -235,7 +235,7 @@ chk('(e) CADUSD file is usdcad-weekly.json', IW.FILES['CADUSD'] == 'usdcad-weekl
 chk('(e) DIA (SPDR Dow ETF) Yahoo symbol is DIA, 2dp, USD', IW.SPECS['DIA'][0] == 'DIA' and IW.SPECS['DIA'][1] == 2 and IW.SPECS['DIA'][3] == 'usd', IW.SPECS['DIA'])
 chk('(e) DIA file is dia-weekly.json; the ^DJI index is gone', IW.FILES['DIA'] == 'dia-weekly.json' and 'DJIA' not in IW.SPECS and 'DJIA' not in D.INDICATOR_KEYS and 'DIA' in D.INDICATOR_KEYS)
 _dia = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'data', 'dia-weekly.json')))
-chk('(e) shipped dia-weekly.json starts 29 Dec 2025 (2 Jan session only) and every candle validates', _dia['weeks'][0]['monday'] == '2025-12-29' and _dia['weeks'][0]['days'] == 1 and all(not D.validate_candle(w) for w in _dia['weeks']), _dia['weeks'][0])
+chk('(e) shipped dia-weekly.json YTD slice starts 29 Dec 2025 (2 Jan session only) and every candle validates', next(w for w in _dia['weeks'] if w['monday'] == '2025-12-29')['days'] == 1 and all(not D.validate_candle(w) for w in _dia['weeks']), _dia['weeks'][0])
 chk('(e) QQQ Yahoo symbol is QQQ, 2dp', IW.SPECS['QQQ'][0] == 'QQQ' and IW.SPECS['QQQ'][1] == 2, IW.SPECS['QQQ'])
 chk('(e) DXY Yahoo symbol is DX-Y.NYB, 2dp', IW.SPECS['DXY'][0] == 'DX-Y.NYB' and IW.SPECS['DXY'][1] == 2, IW.SPECS['DXY'])
 chk('(e) indicator SPECS now has all 8', set(IW.SPECS) == {'WTI', 'GOLD', 'US10Y', 'VIX', 'DIA', 'QQQ', 'CADUSD', 'DXY'}, set(IW.SPECS))
