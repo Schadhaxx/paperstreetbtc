@@ -491,6 +491,37 @@ function loadExtendedDaily(days){
   },function(e){CBEXT_P=null;CBEXT_P_DAYS=0;CBEXT_ERR=true;throw e;});
   return CBEXT_P;
 }
+/* Rollover fix (21 Nov 2026): the daily candle sets (CBDAILY, CBEXT) were
+   fetched once per page load, so a page left open across the UTC midnight
+   (day close, Monday 00:00 UTC week close, 1st-of-month close) kept showing
+   the old last bucket: live feel stopped (it only extends the CURRENT
+   calendar bucket) and no new bucket ever appeared until a reload. When the
+   newest daily candle is older than today (UTC), fetch the days since then
+   (one small request) and merge them in; the new bucket then comes from
+   Coinbase's own candle and live feel follows it as usual. Nothing is
+   invented. If Coinbase has not published today's candle yet, retry at most
+   every 2 minutes until it has; once it has, no more requests until the
+   next UTC midnight. A failed refetch keeps the current candles. */
+var ROLL_AT=0,ROLL_P=false;
+function rollStale(a){return !!(a&&a.length)&&Math.floor(a[a.length-1].t/864e5)<Math.floor(Date.now()/864e5);}
+function rollRefetch(){
+  if(ROLL_P||Date.now()-ROLL_AT<120000)return;
+  var lasts=[CBDAILY,CBEXT].filter(function(a){return a&&a.length;}).map(function(a){return a[a.length-1].t;});
+  if(!lasts.length)return;
+  ROLL_AT=Date.now();ROLL_P=true;
+  var e=Date.now(),s=Math.max(e-250*864e5,Math.min.apply(null,lasts));
+  tf8('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start='+new Date(s).toISOString()+'&end='+new Date(e).toISOString(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+    ROLL_P=false;
+    if(!Array.isArray(j))return;
+    var fresh=j.map(function(c){return {t:c[0]*1000,o:c[3],h:c[2],l:c[1],c:c[4]};}).filter(function(p){return isFinite(p.c)&&p.c>0&&isFinite(p.o)&&isFinite(p.h)&&isFinite(p.l);});
+    if(!fresh.length)return;
+    var cur=(rng==='YTD'||rng==='1Y')?CBEXT:CBDAILY,before=cur&&cur.length?cur[cur.length-1].t:0;
+    if(CBDAILY)CBDAILY=mergeDailyCandles([CBDAILY,fresh]);
+    if(CBEXT)CBEXT=mergeDailyCandles([CBEXT,fresh]);
+    cur=(rng==='YTD'||rng==='1Y')?CBEXT:CBDAILY;
+    if(dlg&&!dlg.hidden&&CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'&&!(rng==='1W'&&RGGRAN==='4h')&&cur&&cur.length&&cur[cur.length-1].t>before)draw();
+  }).catch(function(){ROLL_P=false;});
+}
 /* 4-hour candles for 1W (4 Nov 2026): Coinbase does NOT offer a 4h
    granularity (it rejects 14400 as unsupported — verified 4 Nov),
    so this fetches 1h bars (8 days, 192 bars, under the 300-bar
@@ -605,6 +636,8 @@ function drawRange(){
     cut=Date.now()-days*864e5;
     win=CBDAILY.filter(function(p){return p.t>=cut;});
   }
+  /* Rollover fix: page open past UTC midnight -> fetch the new day(s). */
+  if(rollStale(rng==='YTD'||rng==='1Y'?CBEXT:CBDAILY))rollRefetch();
   var cand=aggDailyCandles(win,RGGRAN);
   if(cand.length<2){fallback('Not enough daily candles — showing daily closes.');return;}
   // EXPERIMENTAL LIVE FEEL: when the last bucket IS the current calendar
