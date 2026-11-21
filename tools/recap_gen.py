@@ -15,7 +15,7 @@ provisional in the recap note / btc-daily.json so it is never presented as Yahoo
 
 usage: recap_gen.py [--history PATH_OR_URL] [--repo DIR] [--dry-run]
 """
-import argparse, calendar, datetime as dt, json, os, re, sys, urllib.request
+import argparse, calendar, datetime as dt, html as _html, json, os, re, sys, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from recap_lib import SL, ledger as _ledger
 
@@ -24,6 +24,7 @@ HOL = {"2026-01-01","2026-01-19","2026-02-16","2026-04-03","2026-05-25","2026-06
        "2028-01-17","2028-02-21","2028-04-14","2028-05-29","2028-06-19","2028-07-04","2028-09-04","2028-11-23","2028-12-25"}
 BASE = '2025-12-31'
 URL = 'https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/history.json'
+SITE = 'https://paperstreetbtc.com'
 
 def load(src):
     if re.match(r'https?://', src):
@@ -46,6 +47,32 @@ def sub1(s, pat, rep, flags=0):
     s2, n = re.subn(pat, lambda m: rep, s, count=1, flags=flags)
     if n != 1: raise ValueError('pattern not found: ' + pat[:60])
     return s2
+
+def static_list(mj):
+    """Static archive list for recap/index.html #list, built from months.js
+    (the same data the JS cards use). One link per month, newest first —
+    this is the no-JS fallback; the inline script replaces it with the
+    richer BTC/sleeve cards when JS is on."""
+    ents = re.findall(r"\{slug:'([^']+)',title:'([^']*)',blurb:'([^']*)'", mj)
+    return '\n'.join('<a class="rc" href="%s/index.html"><h2>%s</h2><p>%s</p></a>' % (
+        slug, _html.escape(title), _html.escape(blurb)) for slug, title, blurb in ents)
+
+def sitemap_update(cur, month, me, archive_changed):
+    """Keep sitemap.xml in sync when a month is added or refreshed (21 Nov 2026):
+    the month URL's lastmod is the recap's through date (ME), inserting the
+    URL if the month is new; /recap/'s lastmod moves to ME when the archive
+    list changed. All other entries are untouched."""
+    s = cur
+    url = SITE + '/recap/' + month + '/'
+    pat = re.compile(r'(<loc>' + re.escape(url) + r'</loc>\n    <lastmod>)[^<]*(</lastmod>)')
+    if pat.search(s):
+        s = pat.sub(lambda mm: mm.group(1) + me + mm.group(2), s, count=1)
+    else:
+        s = s.replace('</urlset>', '  <url>\n    <loc>' + url + '</loc>\n    <lastmod>' + me + '</lastmod>\n  </url>\n</urlset>', 1)
+    if archive_changed:
+        pat2 = re.compile(r'(<loc>' + re.escape(SITE + '/recap/') + r'</loc>\n    <lastmod>)[^<]*(</lastmod>)')
+        s = pat2.sub(lambda mm: mm.group(1) + me + mm.group(2), s, count=1)
+    return s
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--history', default=URL); ap.add_argument('--repo', default='.'); ap.add_argument('--dry-run', action='store_true')
@@ -138,6 +165,15 @@ def main():
         pp = f'recap/{prev_m}/index.html'; ps = open(pp).read()
         ps2 = ps.replace('<a href="../index.html">All recaps →</a></nav>', f'<a href="../{m}/index.html">{full} {y} →</a></nav>', 1)
         if ps2 != ps: writes[pp] = ps2
+    # keep sitemap.xml + the archive's static list in sync (21 Nov 2026)
+    sm = open('sitemap.xml').read()
+    sm2 = sitemap_update(sm, m, ME, mj2 != mj)
+    if sm2 != sm: writes['sitemap.xml'] = sm2
+    if mj2 != mj:  # archive list changed: rewrite the static #list from the same data
+        ai = open('recap/index.html').read()
+        ai2, n = re.subn(r'(<div id="list">).*?(</div>)', lambda mm: mm.group(1) + '\n' + static_list(mj2) + '\n' + mm.group(2), ai, count=1, flags=re.S)
+        if n != 1: raise ValueError('recap #list not found')
+        if ai2 != ai: writes['recap/index.html'] = ai2
     if not writes: print(f'{m}: up to date (through {ME}{", final" if final else ""})'); return 0
     if a.dry_run: print('would write', list(writes)); return 0
     for f, txt in writes.items():
