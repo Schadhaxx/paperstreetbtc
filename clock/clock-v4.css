@@ -795,3 +795,43 @@ html[data-theme="light"].v4-fs-price body.ps-clock .v4-theme-dot::after{
   box-shadow:0 0 0 1px rgba(15,23,42,.3),0 2px 10px rgba(15,23,42,.3);
 }
 html.v4-fs-price body.ps-clock .v4-theme-dot:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
+
+/* ---- Rotate hint (TA final job, 21 Nov 2026) ----
+   A small pill at the bottom-left of the clock-page chart, portrait
+   only. Tap enters full-screen chart mode and shows a "rotate your
+   phone" prompt while still portrait. iOS cannot force landscape — the
+   hint only suggests, never locks orientation. The hint lives inside
+   .bc-box (bottom-left corner of the canvas); the RSI strip is a grid
+   row below the box and the TA pill is in the toolbar row above, so
+   neither is covered. Hidden in landscape and in full-screen modes
+   (there the chart is already full screen). The prompt is a toast
+   inside the stage, bottom-centre, shown only in full-screen chart
+   mode while portrait; it fades after ~5s, hides on landscape
+   rotation, on exit, or on tap. */
+body.ps-clock .v4-rotate-hint{display:none}
+body.ps-clock .v4-rotate-prompt{display:none}
+@media (orientation:portrait){
+  html:not(.v4-fs-on) body.ps-clock .v4-rotate-hint{
+    display:inline-flex;align-items:center;gap:6px;
+    position:absolute;z-index:5;left:8px;bottom:8px;
+    background:rgba(7,11,24,.88);color:#e8eef7;
+    border:1px solid rgba(34,211,238,.45);border-radius:999px;
+    padding:6px 12px;min-height:36px;
+    font:900 12px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;
+    -webkit-tap-highlight-color:transparent;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-rotate-hint:hover{color:#22d3ee;border-color:rgba(34,211,238,.55)}
+  html:not(.v4-fs-on) body.ps-clock .v4-rotate-hint:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+  html.v4-fs-chart body.ps-clock .v4-rotate-prompt.show{
+    display:flex;align-items:center;gap:8px;
+    position:absolute;z-index:8;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%);
+    background:rgba(7,11,24,.92);color:#e8eef7;border:1px solid rgba(34,211,238,.45);
+    border-radius:999px;padding:10px 16px;white-space:nowrap;
+    font:700 13px/1.2 Inter,system-ui,sans-serif;cursor:pointer;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+  }
+}
+html[data-theme="light"] body.ps-clock .v4-rotate-hint{background:rgba(255,255,255,.92);color:#0f172a;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .v4-rotate-hint:hover{color:#0e7490;border-color:#22d3ee}
+html[data-theme="light"].v4-fs-chart body.ps-clock .v4-rotate-prompt.show{background:rgba(255,255,255,.95);color:#0f172a;border-color:#e2e8f0;box-shadow:0 12px 32px rgba(15,23,42,.18)}
