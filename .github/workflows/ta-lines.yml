@@ -12,6 +12,7 @@ name: ta-lines
 # NOTE: this file cannot be pushed by the GitHub App (it returns 403
 # on workflow files). It is added via the GitHub website as Schadhaxx.
 # Do not merge the code branch without it — the job would not exist.
+# Re-saved 2026-11-21 ~18:15 EST to re-register the schedule (7 of 8 slots missed today; only the 15:22 slot fired, 33 min late).
 on:
   schedule:
     - cron: '22 * * * *'
