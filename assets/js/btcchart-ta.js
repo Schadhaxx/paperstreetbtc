@@ -1,0 +1,1060 @@
+/* TA Stage 1 (20 Nov 2026): chart-type pill + menu, TA pill, floating panel,
+   RSI strip container. Loaded lazily from btcchart-panel.js (loadTA), own pin.
+   All overlays are OFF by default and NOTHING IS DRAWN YET — the toggles only
+   set state (saved per device) and the after-draw hook keeps the strip in
+   sync. Drawing lands in Stage 2 (indicators) and Stage 4 (trendlines).
+   No Chart.js references anywhere. */
+(function(){
+/* ---------- Stage 2: pure indicator maths (no window refs) — unit-tested
+   in tests/test_ta_indicators.js against reference values computed
+   independently in Python (ps-ta-stage1/ref_values.py). Every function
+   returns an array the same length as the input, with null before the
+   first valid point. NEVER draw a wrong value: null means "not valid yet".
+   SMA/EMA seed: the first value is the SMA of the first `per` closes.
+   RSI: Wilder smoothing; first value at index `per` (needs `per` changes).
+   Bollinger: middle = SMA, bands = middle +/- mult * population stddev. */
+function taSMA(closes,per){
+  var n=closes.length,out=new Array(n),i,s;
+  for(i=0;i<n;i++)out[i]=null;
+  if(!(per>=1)||n<per)return out;
+  s=0;for(i=0;i<per;i++)s+=closes[i];
+  out[per-1]=s/per;
+  for(i=per;i<n;i++){s+=closes[i]-closes[i-per];out[i]=s/per;}
+  return out;
+}
+function taEMA(closes,per){
+  var n=closes.length,out=new Array(n),i,s,k;
+  for(i=0;i<n;i++)out[i]=null;
+  if(!(per>=1)||n<per)return out;
+  s=0;for(i=0;i<per;i++)s+=closes[i];
+  out[per-1]=s/per;k=2/(per+1);
+  for(i=per;i<n;i++)out[i]=closes[i]*k+out[i-1]*(1-k);
+  return out;
+}
+function taBB(closes,per,mult){
+  var n=closes.length,mid=taSMA(closes,per),up=new Array(n),lo=new Array(n),i,j,mu,va,d;
+  for(i=0;i<n;i++){up[i]=null;lo[i]=null;}
+  if(!(per>=1)||n<per)return {mid:mid,up:up,lo:lo};
+  mult=(mult==null?2:mult);
+  for(i=per-1;i<n;i++){
+    mu=mid[i];va=0;
+    for(j=i-per+1;j<=i;j++){d=closes[j]-mu;va+=d*d;}
+    va=Math.sqrt(va/per);
+    up[i]=mu+mult*va;lo[i]=mu-mult*va;
+  }
+  return {mid:mid,up:up,lo:lo};
+}
+function taRSI(closes,per){
+  var n=closes.length,out=new Array(n),i,ag=0,al=0,dd,g,l;
+  for(i=0;i<n;i++)out[i]=null;
+  if(!(per>=1)||n<=per)return out;
+  for(i=1;i<=per;i++){dd=closes[i]-closes[i-1];if(dd>0)ag+=dd;else al-=dd;}
+  ag/=per;al/=per;
+  out[per]=al===0?100:(ag===0?0:100-100/(1+ag/al));
+  for(i=per+1;i<n;i++){
+    dd=closes[i]-closes[i-1];g=dd>0?dd:0;l=dd<0?-dd:0;
+    ag=(ag*(per-1)+g)/per;al=(al*(per-1)+l)/per;
+    out[i]=al===0?100:(ag===0?0:100-100/(1+ag/al));
+  }
+  return out;
+}
+/* ---------- Stage 4: Smart Trendlines drawing (pure, unit-tested) ----------
+   The job (tools/ta_lines.py) emits schema-1 ta-lines.json:
+   {v:1, kind:'ta-lines', asOf, timeframes:{'1h'|'4h'|'1d': {asOf, atr,
+   lastClose, levels[], sloped[], missingSupport, missingResistance}}}.
+   Per-timeframe asOf is the LAST BAR'S OPEN (job: asOf=iso_ms(bars[-1][0])):
+   the 1h asOf is the forming hour's open (0-60 min old at generation),
+   the 4h asOf is the last COMPLETE 4h bucket's open (4-8 h old — agg4h
+   only keeps complete buckets), the 1d asOf is the forming day's open
+   (0-24 h old). A fresh file's asOf is therefore already hours old, so
+   the stale windows below are measured from the bar open, not the job
+   run. levels: at most 3 ranked + at most 1 range-extreme slot
+   (extreme:true, mixed into levels, NOT a separate array) — the caps are
+   the JOB's validate(); the front end draws what's in the file and never
+   pads a side (rule 2). sloped: at most 2, each {kind, slope (price per
+   candle index of the line's timeframe), anchor:{t,price}, priceNow}.
+   missingSupport/missingResistance only mean "no ranked horizontal and
+   no EXT on that side" — sloped lines on that side still draw (rule 1). */
+var TL_STALE_MS={'1h':2*3600*1000+20*60*1000,'4h':2*4*3600*1000+30*60*1000,'1d':2*24*3600*1000+2*3600*1000};
+var TL_INTERVAL_MS={'1h':3600*1000,'4h':4*3600*1000,'1d':24*3600*1000};
+var TL_RANK={'1h':0,'4h':1,'1d':2};
+var TL_URL='https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/ta-lines.json';
+function tlFin(v){return typeof v==='number'&&isFinite(v);}
+function tlPlainFmt(v){return '$'+Math.round(v).toLocaleString('en-US');}
+function tlTimeMs(v){
+  /* The pack ref's _t_ms: ms numbers as-is, seconds numbers x1000, ISO
+     strings parsed, Date objects via getTime. Anything else -> NaN. */
+  if(v instanceof Date)return v.getTime();
+  if(typeof v==='number')return v>1e11?v:v*1000;
+  if(typeof v==='string'){var m=Date.parse(v);return isFinite(m)?m:NaN;}
+  return NaN;
+}
+function tlBarT(b){
+  /* One candle's open time (ms): [t,...] arrays or {t}/{time} objects. */
+  if(Array.isArray(b))return tlTimeMs(b[0]);
+  if(b&&typeof b==='object')return tlTimeMs(b.t!==undefined?b.t:b.time);
+  return tlTimeMs(b);
+}
+function tlIsoMs(ms){
+  /* "2026-11-20T21:00:00Z" — the ref's iso_ms (no milliseconds). */
+  var d=new Date(ms);
+  if(!isFinite(d.getTime()))return '';
+  return d.toISOString().replace(/\.\d{3}Z$/,'Z');
+}
+function tlRound2(v){return Math.round(v*100)/100;}
+function tlTfOk(t){
+  /* Mirror of the pack ref's _tf_ok (and the job's validate() key check):
+     the five keys must be present and levels/sloped must be arrays.
+     missingSupport/missingResistance are NOT required (validate() does
+     not require them either). Caps and price finiteness are the job's
+     validate(); a bad LINE is skipped by the selector, never fatal to
+     its timeframe. */
+  if(!t||typeof t!=='object')return false;
+  var keys=['asOf','lastClose','atr','levels','sloped'],i;
+  for(i=0;i<keys.length;i++)if(!(keys[i] in t))return false;
+  if(!Array.isArray(t.levels)||!Array.isArray(t.sloped))return false;
+  return true;
+}
+function tlValidate(data){
+  /* Header only: v 1, kind 'ta-lines', a timeframes object. A partial
+     file (one timeframe missing or bad) is NOT a bad file — the selector
+     fails closed PER TIMEFRAME and still draws the present, fresh ones
+     (pack case partial_file_missing_4h). The job's own validate() does
+     require all three timeframes at publish time; the front end is the
+     forgiving reader. */
+  if(!data||typeof data!=='object')return {ok:false,reason:'not an object'};
+  if(data.v!==1||data.kind!=='ta-lines')return {ok:false,reason:'bad schema'};
+  if(!data.timeframes||typeof data.timeframes!=='object')return {ok:false,reason:'no timeframes'};
+  return {ok:true,reason:''};
+}
+function tlIsStale(tf,asOf,now){
+  /* Stale is per timeframe, measured from that timeframe's own asOf
+     (last bar OPEN, not the document asOf). Stale after 2x the bar
+     interval + grace (pack rule 6, adopted): 1h 2h20m, 4h 8h30m, 1d 50h.
+     The approved plan's 3x rule (1h 45m, 4h 3h, 1d 36h) is unworkable
+     against the real asOf: a FRESH 1h file is already 0-60 min old at
+     generation (forming bar) and a fresh 4h file 4-8 h old (last complete
+     bucket), so 3x would hide a fresh file's 1h lines on arrival and its
+     4h lines always — the pack's own today cases (asOf 55 min old, lines
+     expected to draw) prove it. 2x+grace covers one missed job run plus
+     skew; 1d 50h matches the job's own DAILY_MAX_AGE_DAYS=2. Bad or
+     unknown input is stale. */
+  var after=TL_STALE_MS[tf];
+  if(!after)return true;
+  var aMs=tlTimeMs(asOf),nMs=tlTimeMs(now);
+  if(!isFinite(aMs)||!isFinite(nMs))return true;
+  return (nMs-aMs)>after;
+}
+function tlChartTf(st){
+  /* The chart's OWN timeframe. 5Y/10Y/Max: none ("Not available on this
+     range"). Every other view uses its own timeframe's lines PLUS the
+     higher ones (rule 5, same-or-higher — see tlSelectLinesForChart). */
+  if(!st||typeof st.rng!=='string')return null;
+  if(/^(5Y|10Y|Max)$/.test(st.rng))return null;
+  if(st.rng==='1D')return st.CT==='4h'?'4h':'1h';
+  if(st.rng==='1W')return (st.RGCT==='candles'&&st.RGGRAN==='4h')?'4h':'1d';
+  return '1d';
+}
+function tlSlopedPriceAt(sl,tMs,tf){
+  /* Sloped lines live in candle-index space: price = anchor + slope x
+     (candles since the anchor). BTC's bars are uniform in wall clock
+     (Coinbase 15-min/hourly/daily/4h, no holes), so the candle count is
+     the elapsed time divided by the line timeframe's interval — which
+     stays correct across gaps in the visible window and across chart
+     granularities (15-min points, weekly/monthly candles). The exact
+     index math over an explicit candle array (pack rule 8, incl. the
+     weekend-hole case) lives in _tlRefSlopedEdge, used by tlSelectLines. */
+  var iv=TL_INTERVAL_MS[tf]||3600*1000;
+  var aMs=Date.parse(sl.anchor.t);
+  return sl.anchor.price+sl.slope*((tMs-aMs)/iv);
+}
+function tlLabel(line,chartTf,fmt){
+  /* EXT is labelled "range low" / "range high", never like a ranked line.
+     A line from another timeframe than the chart's carries its tf label
+     (defensive: the chart only ever draws its own tf's lines). */
+  fmt=fmt||tlPlainFmt;
+  var s='';
+  if(line.tf&&chartTf&&line.tf!==chartTf)s=line.tf+' ';
+  if(line.extreme)s+=(line.kind==='support'?'range low ':'range high ');
+  return s+fmt(line.price);
+}
+function _tlTfLines(tf,timeframe,livePrice,slopedEdge){
+  /* Shared per-timeframe selection core (rules 1, 3, 4). slopedEdge(sl)
+     returns {edge:number, endpoints:?} or null to omit that sloped line.
+     Levels and sloped lines are drawn exactly as the file has them
+     (rule 2, no padding); a bad line is skipped, never fatal to its
+     timeframe. missingSupport/missingResistance are ignored here
+     (rule 1). Rule 3: never draw a support (or "range low") above the
+     live chart price, or a resistance (or "range high") below it — judged
+     by the live CLOSE, so a wick through with the close still holding is
+     fine. Rule 4: a flipped level (broken:true, kind already the new
+     side) draws as a normal ranked line of the new kind. Returns
+     {drawn:[], omitted:[]} of browser-shaped items. */
+  var out={drawn:[],omitted:[]},L,S,r;
+  if(!tf||!Array.isArray(tf.levels)||!Array.isArray(tf.sloped)||!isFinite(livePrice))return out;
+  tf.levels.forEach(function(lv){
+    if(!lv||typeof lv!=='object')return;
+    var price=Number(lv.price);
+    if(!isFinite(price))return;
+    if(lv.kind!=='support'&&lv.kind!=='resistance')return;
+    L={type:'level',kind:lv.kind,price:price,extreme:!!lv.extreme,broken:!!lv.broken,tf:timeframe};
+    if(lv.kind==='support'&&price>livePrice){L.omit='support above live price';out.omitted.push(L);}
+    else if(lv.kind==='resistance'&&price<livePrice){L.omit='resistance below live price';out.omitted.push(L);}
+    else out.drawn.push(L);
+  });
+  tf.sloped.forEach(function(sl){
+    if(!sl||typeof sl!=='object')return;
+    if(sl.kind!=='support'&&sl.kind!=='resistance')return;
+    S={type:'sloped',kind:sl.kind,slope:Number(sl.slope),anchor:sl.anchor,extreme:false,broken:!!sl.broken,tf:timeframe};
+    r=slopedEdge(sl);
+    if(!r||!isFinite(r.edge)){S.omit='no live edge';out.omitted.push(S);return;}
+    S.edgePrice=r.edge;
+    if(r.endpoints)S.endpoints=r.endpoints;
+    if(sl.kind==='support'&&r.edge>livePrice){S.omit='support above live price';out.omitted.push(S);}
+    else if(sl.kind==='resistance'&&r.edge<livePrice){S.omit='resistance below live price';out.omitted.push(S);}
+    else out.drawn.push(S);
+  });
+  return out;
+}
+function _tlRefSlopedEdge(sl,candles){
+  /* Pack rule 8: sloped prices in CANDLE-INDEX space over the passed
+     candle array (the line timeframe's own bars). price = anchor +
+     slope x (i - i0); a weekend-sized hole is one step, not 48 hours of
+     slope. No candles passed -> the file's priceNow is the live-edge
+     price (still rule-3 bound). Candles passed and the anchor is NOT in
+     them -> OMIT. (The pack's ref falls back to priceNow here; the spec
+     says omit — the spec's reading is implemented, flagged in the
+     handover. No pack case covers this edge.) */
+  if(!candles||!candles.length){
+    var pn=Number(sl.priceNow);
+    if(!isFinite(pn))return null;
+    return {edge:pn,endpoints:null};
+  }
+  var aMs=tlTimeMs(sl.anchor&&sl.anchor.t),ap=Number(sl.anchor&&sl.anchor.price),slope=Number(sl.slope);
+  if(!isFinite(aMs)||!isFinite(ap)||!isFinite(slope))return null;
+  var times=candles.map(function(b){return tlBarT(b);});
+  var i0=times.indexOf(aMs);
+  if(i0<0)return null;
+  var lastI=times.length-1;
+  var p1=tlRound2(ap+slope*(lastI-i0));
+  return {edge:p1,endpoints:[{t:tlIsoMs(aMs),t_ms:aMs,price:tlRound2(ap)},{t:tlIsoMs(times[lastI]),t_ms:times[lastI],price:p1}]};
+}
+function _tlRefItem(ln,tfLabel){
+  /* The ref's draw-item shape: {kind, style, label, tf_label} + price
+     (horizontals and the priceNow fallback) or endpoints (sloped, when
+     candles are given). */
+  var style=ln.extreme?'ext':'ranked';
+  var label=ln.extreme?(ln.kind==='support'?'range low':'range high'):'';
+  if(ln.type==='sloped'&&ln.endpoints)return {endpoints:ln.endpoints,kind:ln.kind,style:'ranked',label:'',tf_label:tfLabel};
+  return {price:ln.type==='sloped'?ln.edgePrice:ln.price,kind:ln.kind,style:style,label:label,tf_label:tfLabel};
+}
+function tlSelectLines(file,timeframe,chartTf,livePrice,now,candles){
+  /* Port of the pack's ref_select_lines.select_lines: the draw list for
+     ONE file timeframe on a chart of chartTf. Rule 5: only same-or-higher
+     timeframes (lower-TF lines are not drawn); same-TF lines have
+     tf_label '', higher-TF lines carry '4h'/'1d'. Rule 6: the pack stale
+     windows. Invalid, partial or stale data for this timeframe yields [].
+     This is the function the pack's 16 cases run against. */
+  if(!file||typeof file!=='object'||file.v!==1||file.kind!=='ta-lines')return [];
+  if(!(timeframe in TL_RANK)||!(chartTf in TL_RANK))return [];
+  if(TL_RANK[timeframe]<TL_RANK[chartTf])return [];
+  var tfs=file.timeframes;
+  if(!tfs||typeof tfs!=='object'||!tfs[timeframe])return [];
+  var tf=tfs[timeframe];
+  if(!tlTfOk(tf))return [];
+  if(tlIsStale(timeframe,tf.asOf,now))return [];
+  var live=Number(livePrice);
+  if(!isFinite(live))return [];
+  var tfLabel=timeframe===chartTf?'':timeframe;
+  var sel=_tlTfLines(tf,timeframe,live,function(sl){return _tlRefSlopedEdge(sl,candles);});
+  return sel.drawn.map(function(ln){return _tlRefItem(ln,tfLabel);});
+}
+function tlSelectLinesForChart(file,chartTf,livePrice,nowMs,lastMs){
+  /* Browser selection (rule 5, same-or-higher): every timeframe at or
+     above the chart's own, in rank order, each validated and stale-
+     checked on its own asOf (rule 6). A sloped line's live-edge price is
+     recomputed from its anchor + slope at the chart's last candle time
+     (time-based, which equals the ref's index math on BTC's uniform
+     bars — see tlSlopedPriceAt). Returns {drawn, omitted, freshTfs,
+     perTf, fileOk, fileReason} for the drawer, the panel and the probe. */
+  var out={drawn:[],omitted:[],freshTfs:[],perTf:{},fileOk:false,fileReason:''};
+  var v=tlValidate(file);
+  if(!v.ok){out.fileReason=v.reason;return out;}
+  out.fileOk=true;
+  if(!chartTf||!(chartTf in TL_RANK))return out;
+  var live=Number(livePrice);
+  ['1h','4h','1d'].forEach(function(tf){
+    if(TL_RANK[tf]<TL_RANK[chartTf]){out.perTf[tf]='lower';return;}
+    var tfd=file.timeframes[tf];
+    if(!tfd){out.perTf[tf]='missing';out.omitted.push({type:'tf',tf:tf,omit:'missing timeframe'});return;}
+    if(!tlTfOk(tfd)){out.perTf[tf]='bad';out.omitted.push({type:'tf',tf:tf,omit:'bad '+tf});return;}
+    if(tlIsStale(tf,tfd.asOf,nowMs)){out.perTf[tf]='stale';out.omitted.push({type:'tf',tf:tf,omit:'stale'});return;}
+    out.perTf[tf]='live';
+    out.freshTfs.push(tf);
+    var sel=_tlTfLines(tfd,tf,live,function(sl){
+      var aMs=tlTimeMs(sl.anchor&&sl.anchor.t),ap=Number(sl.anchor&&sl.anchor.price),slope=Number(sl.slope);
+      if(!isFinite(aMs)||!isFinite(ap)||!isFinite(slope)||!isFinite(lastMs))return null;
+      return {edge:ap+slope*((lastMs-aMs)/(TL_INTERVAL_MS[tf]||3600*1000)),endpoints:null};
+    });
+    out.drawn.push.apply(out.drawn,sel.drawn);
+    out.omitted.push.apply(out.omitted,sel.omitted);
+  });
+  return out;
+}
+if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs};return;}
+/* ---------- Stage 2: overlay drawing (browser only) ---------- */
+function fmtP(v){try{return (window.__BTCP&&window.__BTCP.fmt)?window.__BTCP.fmt(v):('$'+Math.round(v).toLocaleString('en-US'));}catch(e){return '$'+Math.round(v);}}
+function psC2(d,l){try{return window.psC?window.psC(d,l):d;}catch(e){return d;}}
+function isCmp(){try{return !!(API.cmp&&API.cmp());}catch(e){return false;}}
+var warmCache={},warmAsked={};
+function warmAsync(g){
+  /* Intraday warm-up: lazy background fetch (panel-side), cached per kind.
+     Until it lands, [] — draw from the valid point inside the window. */
+  var key=g.kind;
+  if(g.kind==='candles-1d')key=API.state().CT==='4h'?'candles-1d-4h':'candles-1d-1h';
+  else if(g.kind==='candles-range')key='candles-range-4h';
+  if(!warmAsked[key]){
+    warmAsked[key]=true;
+    try{API.warmFetch(key,function(c){warmCache[key]=c||[];if(API.draw)API.draw();});}catch(e){}
+  }
+  return warmCache[key]||[];
+}
+function warmFor(g){
+  try{
+    if(g.kind==='daily-line'||g.kind==='candles-range'){
+      if(g.kind==='candles-range'&&API.state().RGGRAN==='4h')return warmAsync(g);
+      var w=API.warmSync?API.warmSync():[];
+      return w||[];
+    }
+    return warmAsync(g);
+  }catch(e){return [];}
+}
+var valsCache={key:null,vals:null};
+function computeVals(g,warm){
+  /* Indicators over warm-up + visible closes, sliced to the visible window.
+     Cache keyed by kind, length, first/last close (live ticks change the
+     last close), warm-up length and settings — so the tooltip hook (called
+     mid-draw) and afterDraw share one computation per draw. */
+  var mas=maOn();
+  var key=[g.kind,g.n,warm.length,g.closes[0],g.closes[g.n-1],mas.join(','),S.ma,S.bb,S.rsi].join('|');
+  if(valsCache.key===key&&valsCache.vals)return valsCache.vals;
+  var full=warm.concat(g.closes),w=warm.length,vals={n:g.n,w:w};
+  if(S.ma&&mas.length){vals.mas={};mas.forEach(function(k){var per=parseInt(k.slice(3),10);vals.mas[k]=(k.indexOf('ema')===0?taEMA(full,per):taSMA(full,per)).slice(w);});}
+  if(S.bb){var b=taBB(full,20,2);vals.bbMid=b.mid.slice(w);vals.bbUp=b.up.slice(w);vals.bbLo=b.lo.slice(w);}
+  if(S.rsi)vals.rsi=taRSI(full,14).slice(w);
+  valsCache={key:key,vals:vals};
+  return vals;
+}
+function traceLine(ctx,vals,xs,yFor,col,width,dash){
+  var started=false,i,x,y;
+  ctx.beginPath();
+  for(i=0;i<vals.length;i++){
+    if(vals[i]==null)continue;
+    x=xs[i];y=yFor(vals[i]);
+    if(!started){ctx.moveTo(x,y);started=true;}
+    else ctx.lineTo(x,y);
+  }
+  if(!started)return;
+  ctx.strokeStyle=col;ctx.lineWidth=width;
+  if(dash)ctx.setLineDash(dash);else ctx.setLineDash([]);
+  ctx.stroke();ctx.setLineDash([]);
+}
+function drawOverlays(g,vals){
+  var c=el('bcC');if(!c)return;
+  var ctx=c.getContext('2d');if(!ctx)return;
+  if(S.bb&&vals.bbUp){
+    traceLine(ctx,vals.bbUp,g.xs,g.yFor,psC2('#a78bfa','#7c3aed'),1.25);
+    traceLine(ctx,vals.bbLo,g.xs,g.yFor,psC2('#a78bfa','#7c3aed'),1.25);
+    traceLine(ctx,vals.bbMid,g.xs,g.yFor,psC2('#a78bfa','#7c3aed'),1,[4,3]);
+  }
+  if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k])traceLine(ctx,vals.mas[k],g.xs,g.yFor,maCol(k),2);});
+}
+function drawRsiStrip(g,vals){
+  if(!rsiEl)return;
+  var cv=rsiEl.querySelector('canvas');if(!cv)return;
+  var ctx=cv.getContext('2d');if(!ctx)return;
+  /* The strip canvas is the same CSS width as the chart box, so the main
+     plot xs map 1:1 (scaled defensively if they ever differ). */
+  var W=cv.parentNode.clientWidth||g.W,H=cv.parentNode.clientHeight||50;
+  if(!W||!H)return;
+  var dpr=window.devicePixelRatio||1;
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+  cv.style.width=W+'px';cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  var T=4,B=4,ih=H-T-B;
+  var Y=function(v){return T+ih*(1-v/100);};
+  ctx.strokeStyle=psC2('rgba(255,255,255,.18)','rgba(15,23,42,.20)');ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  [30,70].forEach(function(v){var y=Y(v);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();});
+  ctx.setLineDash([]);
+  if(!vals.rsi)return;
+  var sx=W/g.W;
+  traceLine(ctx,vals.rsi,g.xs.map(function(x){return x*sx;}),Y,psC2('#a78bfa','#7c3aed'),1.5);
+}
+/* ---------- Stage 4: Smart Trendlines drawing (browser only) ----------
+   Fetches ta-lines.json only when Trends is on, draws the chart's own
+   timeframe's lines on #bcC after the price series (same x/y mapping),
+   and reports status to the TA panel. Never Desk: this module only ever
+   loads for the BTC charts. */
+var tlCache={data:null,ok:false,reason:'',fetchedAt:0,inflight:null};
+var tlStatus='off'; /* off | unavailable | updating | live */
+var tlLast=null; /* last draw result, for the __TA_TL_DEBUG probe */
+var TL_FETCH_MS=10*60*1000;
+function tlSetStatus(s){tlStatus=s;syncTlStatus();}
+function tlFetch(){
+  /* One in-flight fetch at most; at most one fetch per 10 min. A failed
+     or invalid fetch is cached as an error, not hammered per draw. */
+  if(tlCache.inflight)return tlCache.inflight;
+  var now=Date.now();
+  if(tlCache.fetchedAt&&now-tlCache.fetchedAt<TL_FETCH_MS)return null;
+  var ctl=null;
+  try{ctl=window.AbortController?new AbortController():null;}catch(e){}
+  var to=0;
+  if(ctl)to=setTimeout(function(){try{ctl.abort();}catch(e){}},8000);
+  var p=fetch(TL_URL+'?t='+now,ctl?{cache:'no-store',signal:ctl.signal}:{cache:'no-store'}).then(function(r){
+    if(to)clearTimeout(to);
+    if(!r.ok)throw new Error('http '+r.status);
+    return r.json();
+  }).then(function(j){
+    var v=tlValidate(j);
+    tlCache.data=v.ok?j:null;tlCache.ok=v.ok;tlCache.reason=v.ok?'':v.reason;tlCache.fetchedAt=Date.now();tlCache.inflight=null;
+    syncTlStatus();
+    if(API.draw)API.draw();
+    return tlCache.data;
+  }).catch(function(e){
+    if(to)clearTimeout(to);
+    tlCache.data=null;tlCache.ok=false;tlCache.reason='fetch failed';tlCache.fetchedAt=Date.now();tlCache.inflight=null;
+    syncTlStatus();
+    return null;
+  });
+  tlCache.inflight=p;
+  return p;
+}
+function tlCol(kind){return kind==='support'?psC2('#22c55e','#15803d'):psC2('#ef4444','#b91c1c');}
+function tlDrawLevel(ctx,g,ln){
+  var y=g.yFor(ln.price);
+  if(!isFinite(y))return;
+  ctx.beginPath();
+  ctx.moveTo(g.pad.l,y);ctx.lineTo(g.pad.l+g.plotW,y);
+  ctx.strokeStyle=tlCol(ln.kind);ctx.lineWidth=1.5;
+  if(ln.extreme){ctx.setLineDash([5,4]);ctx.globalAlpha=0.6;}
+  else ctx.setLineDash([]);
+  ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+  return y;
+}
+function tlDrawSloped(ctx,g,ln,tf){
+  /* From the anchor forward, in candle-index space: the price at each
+     visible candle comes from the anchor + slope x (candles since the
+     anchor), so the line stays correct across gaps and granularities. */
+  var anchorMs=Date.parse(ln.anchor.t);
+  var iv=TL_INTERVAL_MS[tf]||3600*1000;
+  var times=g.times||[];
+  var i0=0,i;
+  if(times.length){
+    i0=g.n;
+    for(i=0;i<g.n;i++){if(times[i]>=anchorMs){i0=i;break;}}
+    if(i0===g.n)return null; /* anchor is past the live edge: nothing to draw */
+  }
+  var started=false;
+  ctx.beginPath();
+  for(var j=i0;j<g.n;j++){
+    var tMs=times.length?times[j]:anchorMs+(j-i0)*iv;
+    var p=ln.anchor.price+ln.slope*((tMs-anchorMs)/iv);
+    var y=g.yFor(p);
+    if(!isFinite(y))continue;
+    var x=g.xs[j];
+    if(!started){ctx.moveTo(x,y);started=true;}
+    else ctx.lineTo(x,y);
+  }
+  if(!started)return null;
+  ctx.strokeStyle=tlCol(ln.kind);ctx.lineWidth=1.5;ctx.setLineDash([]);
+  ctx.stroke();
+  return g.yFor(ln.edgePrice);
+}
+function tlDrawLabels(ctx,g,labels,liveClose){
+  /* Right-edge labels, one per drawn line, de-collided so they never
+     overlap each other or the live price. Skipped when the line's y is
+     off the plot. */
+  var T=g.pad.t,B=g.pad.t+g.plotH,liveY=g.yFor(liveClose);
+  /* Keep a label when its line is on the plot at all (even just inside
+     the edge); clamp the drawn position so the pill stays fully inside
+     instead of dropping the label for a line at the edge. */
+  var items=labels.filter(function(lb){return lb.y!=null&&isFinite(lb.y)&&lb.y>=T&&lb.y<=B;});
+  items.sort(function(a,b){return a.y-b.y;});
+  var placed=[];
+  items.forEach(function(lb){
+    /* Clamp into the plot first, then de-collide (nudging down, staying
+       inside) — so the clamp can never push a label into its neighbour. */
+    var y=Math.min(Math.max(lb.y,T+8),B-8),guard=0;
+    var clash=function(yy){
+      if(isFinite(liveY)&&Math.abs(yy-liveY)<12)return true;
+      for(var k=0;k<placed.length;k++)if(Math.abs(yy-placed[k])<14)return true;
+      return false;
+    };
+    while(clash(y)&&guard<8){y+=14;if(y>B-8)y=B-8;guard++;}
+    placed.push(y);
+    lb.y=y;
+  });
+  ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+  items.forEach(function(lb){
+    var x=g.pad.l+g.plotW-4;
+    var w=ctx.measureText(lb.text).width;
+    ctx.fillStyle=psC2('rgba(2,6,23,.72)','rgba(255,255,255,.85)');
+    ctx.fillRect(x-w-8,lb.y-8,w+12,16);
+    ctx.fillStyle=lb.col;
+    ctx.fillText(lb.text,x-2,lb.y);
+  });
+}
+function tlDrawLines(g){
+  /* Draws this chart's timeframe's lines plus the higher ones (rule 5,
+     same-or-higher). Returns the draw result for the debug probe. Draws
+     nothing (and never an error over the chart) when Trends is off, the
+     file is missing/invalid, every timeframe is stale, or the range has
+     no lines. */
+  var res={tf:null,liveClose:null,status:'off',lines:[],omitted:[],fileOk:false,stale:false,freshTfs:[],perTf:{}};
+  tlLast=res;
+  if(!S.tl){tlSetStatus('off');return res;}
+  var st=null;
+  try{st=API.state();}catch(e){}
+  var tf=tlChartTf(st);
+  res.tf=tf;
+  if(!tf){res.status='unavailable';tlSetStatus('unavailable');return res;}
+  tlFetch();
+  var liveClose=g.closes[g.n-1];
+  res.liveClose=liveClose;
+  if(!tlCache.data||!tlCache.ok){res.status='updating';tlSetStatus('updating');return res;}
+  res.fileOk=true;
+  var lastMs=(g.times&&g.times.length)?g.times[g.n-1]:NaN;
+  var sel=tlSelectLinesForChart(tlCache.data,tf,liveClose,Date.now(),lastMs);
+  res.freshTfs=sel.freshTfs;res.perTf=sel.perTf;
+  res.lines=sel.drawn;res.omitted=sel.omitted;
+  /* Stale if any same-or-higher timeframe is stale (the chart is not
+     showing its full set); missing/bad timeframes do not set this. */
+  res.stale=['1h','4h','1d'].some(function(t2){return TL_RANK[t2]>=TL_RANK[tf]&&sel.perTf[t2]==='stale';});
+  if(!sel.freshTfs.length){res.status='updating';tlSetStatus('updating');return res;}
+  sel.drawn.forEach(function(ln){ln.label=tlLabel(ln,tf,fmtP);});
+  sel.omitted.forEach(function(ln){if(ln.type==='level'||ln.type==='sloped')ln.label=tlLabel(ln,tf,fmtP);});
+  res.status='live';
+  tlSetStatus('live');
+  var c=el('bcC');if(!c)return res;
+  var ctx=c.getContext('2d');if(!ctx)return res;
+  /* Clip to the plot so a line outside the visible price range never
+     paints over the axis labels or the x labels. */
+  ctx.save();
+  ctx.beginPath();ctx.rect(g.pad.l,g.pad.t,g.plotW,g.plotH);ctx.clip();
+  var labels=[];
+  sel.drawn.forEach(function(ln){
+    var y=null;
+    if(ln.type==='level')y=tlDrawLevel(ctx,g,ln);
+    else y=tlDrawSloped(ctx,g,ln,ln.tf);
+    if(y!=null)labels.push({y:y,text:ln.label,col:tlCol(ln.kind)});
+  });
+  ctx.restore();
+  tlDrawLabels(ctx,g,labels,liveClose);
+  return res;
+}
+function syncTlStatus(){
+  if(!panelEl)return;
+  var n=panelEl.querySelector('.ta-tl-status');
+  if(!n)return;
+  var hidden=true,text='';
+  if(S.tl&&!isCmp()){
+    hidden=false;
+    if(tlStatus==='unavailable')text='Not available on this range';
+    else if(tlStatus==='live'){
+      var c=tlLast&&tlLast.lines?tlLast.lines.length:0;
+      /* The timeframes actually fresh (same-or-higher than the chart's):
+         "Live · 1h + 4h + 1d · 12 lines", or "Live · 4h + 1d · 6 lines"
+         when the chart's own timeframe is stale but higher ones draw. */
+      var tfs=tlLast&&tlLast.freshTfs&&tlLast.freshTfs.length?tlLast.freshTfs.join(' + '):(tlLast&&tlLast.tf?tlLast.tf:'');
+      text=c>0?('Live · '+tfs+' · '+c+' line'+(c===1?'':'s')):('Live · '+tfs+' · no lines on this view');
+    }
+    else text='Trendlines updating…';
+  }
+  if(n.hidden!==hidden)n.hidden=hidden;
+  if(n.textContent!==text)n.textContent=text;
+}
+function syncCmpNote(){
+  if(!panelEl)return;
+  var n=panelEl.querySelector('.ta-cmp');
+  if(n)n.hidden=!isCmp();
+}
+function taTipLines(kind,i){
+  try{
+    if(!nOn())return null;
+    if(isCmp())return null;
+    var g=API.geom?API.geom():null;
+    if(!g||g.kind!==kind||!g.closes||i==null||i<0||i>=g.n)return null;
+    var warm=warmFor(g);
+    var vals=computeVals(g,warm);
+    var out=[];
+    if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k]&&vals.mas[k][i]!=null)out.push({t:MA_LBL[k]+' '+fmtP(vals.mas[k][i]),c:maCol(k)});});
+    if(S.bb&&vals.bbUp&&vals.bbUp[i]!=null&&vals.bbLo[i]!=null)out.push({t:'BB 20 '+fmtP(vals.bbLo[i])+'\u2013'+fmtP(vals.bbUp[i]),c:psC2('#a78bfa','#7c3aed')});
+    if(S.rsi&&vals.rsi&&vals.rsi[i]!=null)out.push({t:'RSI '+vals.rsi[i].toFixed(1),c:psC2('#a78bfa','#7c3aed')});
+    return out.length?out:null;
+  }catch(e){return null;}
+}
+if(window.__BTTA)return;
+var API=window.__BCTA;
+if(!API)return;
+var LSKEY='ps-ta-v1';
+var DEF={tl:false,bb:false,ma:false,maSet:{},rsi:false,rsiCol:false,last1DSize:'1h'};
+var S={};
+function loadS(){try{var raw=window.localStorage.getItem(LSKEY);if(raw){var o=JSON.parse(raw);for(var k in DEF)S[k]=(k in o)?o[k]:DEF[k];
+  if(!S.maSet||typeof S.maSet!=='object')S.maSet={};
+  else S.maSet=Object.assign({},S.maSet);
+  /* Migrate a Stage 2 stored state (maKind/maPer, one at a time) to the
+     stacking set: the old single MA becomes the only enabled one. */
+  if(!o.maSet&&o.maKind&&o.maPer){S.maSet={};if(o.ma)S.maSet[String(o.maKind).toLowerCase()+o.maPer]=true;}
+  return;}}catch(e){}for(var k2 in DEF)S[k2]=DEF[k2];S.maSet={};}
+function saveS(){try{window.localStorage.setItem(LSKEY,JSON.stringify(S));}catch(e){}}
+loadS();
+var CHEV='<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var COL={tl:'#22c55e',bb:'#a78bfa',ma:'#f472b6',rsi:'#a78bfa'};
+/* ---------- Stage 3 fix (item 6): stacking moving averages ----------
+   SMA/EMA 20, 50 and 200 can be on at the same time, each with its own
+   distinct colour (dark / light via psC2). The enabled set is S.maSet
+   (keys 'sma20' … 'ema200'); S.ma is the master on/off for the group.
+   The six chips in the TA panel are the legend: each chip carries its
+   MA's colour dot + label, and the tooltip lists each enabled MA in its
+   own colour. */
+var MA_KEYS=['sma20','sma50','sma200','ema20','ema50','ema200'];
+var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#34d399','#059669'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
+var MA_LBL={sma20:'SMA 20',sma50:'SMA 50',sma200:'SMA 200',ema20:'EMA 20',ema50:'EMA 50',ema200:'EMA 200'};
+function maCol(k){var c=MA_COL[k];return c?psC2(c[0],c[1]):psC2('#f472b6','#db2777');}
+function maOn(){if(!S.ma)return [];return MA_KEYS.filter(function(k){return S.maSet&&S.maSet[k];});}
+function maCount(){return maOn().length;}
+var dlg=null,typBtn=null,taBtn=null,rsiEl=null,menuEl=null,panelEl=null,inited=false;
+var menuOpen=false,panelOpen=false;
+
+function $(s,r){return (r||document).querySelector(s);}
+function el(id){return document.getElementById(id);}
+function isPriceMode(){try{return document.documentElement.classList.contains('v4-fs-price');}catch(e){return false;}}
+function stageEl(){try{var st=API.stage();if(st)return st;}catch(e){}return dlg;}
+/* The floating layer (menu / panel) lives in the stage on the clock page and
+   in the dialog in the popover, so it renders inside the Fullscreen-API
+   element in both full-screen modes. Never body. */
+function floatParent(){return API.inline()?stageEl():dlg;}
+function nOn(){return (S.tl?1:0)+(S.bb?1:0)+maCount()+(S.rsi?1:0);}
+
+/* ---------- positioning: place a float under an anchor, clamped inside its
+   offsetParent (the stage or the dialog), with a capped height ---------- */
+function placeFloat(anchor,fl){
+  var op=fl.offsetParent||document.body;
+  var ar=anchor.getBoundingClientRect(),pr=op.getBoundingClientRect();
+  var ox=op.clientLeft||0,oy=op.clientTop||0;
+  var pw=fl.offsetWidth,ph=fl.offsetHeight;
+  var left=Math.min(ar.right-pr.left-ox,pr.right-pr.left-ox)-pw;
+  if(left<0)left=0;
+  var top=(ar.bottom-pr.top-oy)+6;
+  fl.style.left=left+'px';fl.style.top=top+'px';
+  var maxH=window.innerHeight-6-(ar.bottom+6);
+  if(top+ph>window.innerHeight-6&&maxH>120){fl.style.maxHeight=maxH+'px';fl.style.overflowY='auto';}
+  else{fl.style.maxHeight='';fl.style.overflowY='';}
+}
+
+/* ---------- TA pill (count badge) + RSI strip ---------- */
+function syncPill(){
+  if(!taBtn)return;
+  var n=nOn();
+  taBtn.classList.toggle('act',n>0);
+  taBtn.innerHTML='<span>TA</span>'+(n?'<i class="ta-n">'+n+'</i>':CHEV);
+  taBtn.setAttribute('aria-label','Technical analysis'+(n?', '+n+' on':''));
+}
+function syncRsi(){
+  if(!rsiEl||!dlg)return;
+  /* Stage 2: the strip hides on comparison too (TA is BTC-only). */
+  rsiEl.hidden=!S.rsi||isCmp();
+  dlg.classList.toggle('ta-rsi-on',!!S.rsi);
+  if(S.rsi){
+    rsiEl.classList.toggle('col',!!S.rsiCol);
+    var t=rsiEl.querySelector('.ta-rsi-t');
+    if(t)t.setAttribute('aria-expanded',S.rsiCol?'false':'true');
+  }
+}
+
+/* ---------- chart-type menu ---------- */
+function allowedSizes(rng){
+  if(rng==='1D')return ['1h','4h'];
+  if(rng==='1W')return ['daily','4h'];
+  if(rng==='1M')return ['weekly','daily'];
+  if(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')return ['monthly','weekly'];
+  return [];
+}
+function sizeLabel(sz){
+  return sz==='1h'?'1H candles':sz==='4h'?'4H candles':sz==='daily'?'Daily':sz==='weekly'?'Weekly':'Monthly';
+}
+function typeLabel(st){
+  if(st.rng==='1D')return st.CT==='line'?'Line':(st.CT==='1h'?'1H candles':'4H candles');
+  if(st.RGCT!=='candles')return 'Line';
+  return st.RGGRAN==='4h'?'4H candles':'Candles \u00b7 '+sizeLabel(st.RGGRAN);
+}
+function clickHidden(sel){
+  if(!dlg)return false;
+  var b=dlg.querySelector(sel);
+  if(!b)return false;
+  b.click();
+  return true;
+}
+function pickType(kind){
+  /* Drives the hidden buttons, so picking behaves exactly like tapping them. */
+  var st=API.state();
+  if(kind==='line'){
+    if(st.rng==='1D')clickHidden('#bcCt button[data-ct="line"]');
+    else clickHidden('#bcCg button[data-cg="line"]');
+  }else{
+    if(st.rng==='1D')clickHidden('#bcCt button[data-ct="'+S.last1DSize+'"]');
+    else clickHidden('#bcCg button[data-cg="candles"]');
+  }
+}
+function pickSize(sz){
+  var st=API.state();
+  if(st.rng==='1D'){
+    S.last1DSize=sz;saveS();
+    clickHidden('#bcCt button[data-ct="'+sz+'"]');
+  }else{
+    clickHidden('#bcCg button[data-cg="candles"]');
+    clickHidden('#bcCg button[data-cggran="'+sz+'"]');
+  }
+}
+function buildMenu(){
+  if(menuEl)return menuEl;
+  var m=document.createElement('div');
+  m.className='ta-menu';m.setAttribute('role','menu');m.setAttribute('aria-label','Chart type');
+  m.hidden=true;
+  floatParent().appendChild(m);
+  menuEl=m;
+  return m;
+}
+function openMenu(){
+  if(isPriceMode())return;
+  var st=API.state();
+  if(/^(5Y|10Y|Max)$/.test(st.rng))return; /* no menu on long ranges: Line only */
+  var m=buildMenu();
+  var sizes=allowedSizes(st.rng);
+  var isCandles=st.rng==='1D'?st.CT!=='line':st.RGCT==='candles';
+  var curSize=st.rng==='1D'?st.CT:st.RGGRAN;
+  var h='<div class="ta-mh">Type</div>';
+  h+='<button type="button" role="menuitem" class="ta-mo'+(!isCandles?' on':'')+'" data-ta-pick="line">Line<span class="ta-ck">\u2713</span></button>';
+  h+='<button type="button" role="menuitem" class="ta-mo'+(isCandles?' on':'')+'" data-ta-pick="candles">Candles<span class="ta-ck">\u2713</span></button>';
+  if(sizes.length){
+    h+='<div class="ta-md"></div><div class="ta-mh">Size</div>';
+    sizes.forEach(function(sz){
+      h+='<button type="button" role="menuitem" class="ta-mo'+(isCandles&&curSize===sz?' on':'')+'" data-ta-size="'+sz+'">'+sizeLabel(sz)+'<span class="ta-ck">\u2713</span></button>';
+    });
+  }
+  m.innerHTML=h;
+  m.hidden=false;menuOpen=true;
+  typBtn.classList.add('open');typBtn.setAttribute('aria-expanded','true');
+  placeFloat(typBtn,m);
+  var first=m.querySelector('.ta-mo.on')||m.querySelector('.ta-mo');
+  if(first)first.focus();
+}
+function closeMenu(focusTyp){
+  if(!menuOpen)return;
+  menuOpen=false;
+  if(menuEl)menuEl.hidden=true;
+  if(typBtn){typBtn.classList.remove('open');typBtn.setAttribute('aria-expanded','false');}
+  if(focusTyp&&typBtn)typBtn.focus();
+}
+
+/* ---------- floating TA panel ---------- */
+function swRow(key,label,sub,col){
+  return '<div class="ta-it"><div class="nm"><span><i style="background:'+col+'"></i>'+label+'</span><small>'+sub+'</small></div>'
+    +'<button type="button" class="ta-sw'+(S[key]?' on':'')+'" role="switch" aria-checked="'+(!!S[key])+'" data-ta-key="'+key+'" aria-label="'+label+'"></button></div>';
+}
+function buildPanel(){
+  if(panelEl)return panelEl;
+  var p=document.createElement('div');
+  p.className='ta-panel';p.setAttribute('role','dialog');p.setAttribute('aria-label','Technical analysis');
+  p.hidden=true;
+  floatParent().appendChild(p);
+  panelEl=p;
+  return p;
+}
+function renderPanel(){
+  var p=buildPanel();
+  /* The six MA chips are the legend: each carries its MA's colour dot +
+     label; enabled chips are highlighted in their colour. */
+  var chips=MA_KEYS.map(function(k){return '<button type="button" class="ta-ma-chip'+(S.maSet&&S.maSet[k]?' on':'')+'" data-ta-ma="'+k+'" style="--mac:'+maCol(k)+'" aria-pressed="'+(!!(S.maSet&&S.maSet[k]))+'"><i></i>'+MA_LBL[k]+'</button>';}).join('');
+  p.innerHTML='<div class="ta-ph"><b>Technical analysis</b><button type="button" data-ta-clear>Clear all</button></div>'
+    +'<div class="ta-cmp" hidden>TA shows on BTC alone. Turn off comparisons to see it.</div>'
+    +swRow('tl','Smart Trendlines','auto support / resistance',COL.tl)
+    +'<div class="ta-tl-status" hidden></div>'
+    +swRow('bb','Bollinger Bands','20 \u00b7 2\u03c3',COL.bb)
+    +swRow('ma','Moving averages','stack as many as you like',COL.ma)
+    +'<div class="ta-ma'+(S.ma?'':' off')+'">'+chips+'</div>'
+    +swRow('rsi','RSI','14 \u00b7 strip under chart',COL.rsi);
+  syncPanel();syncCmpNote();
+}
+/* Targeted sync (no innerHTML replacement): re-rendering the panel would
+   detach the very button being clicked, and the document outside-click
+   handler would then read it as an outside click and close the panel. */
+function syncPanel(){
+  if(!panelEl)return;
+  var sws=panelEl.querySelectorAll('[data-ta-key]');
+  for(var i=0;i<sws.length;i++){var k=sws[i].getAttribute('data-ta-key');sws[i].classList.toggle('on',!!S[k]);sws[i].setAttribute('aria-checked',S[k]?'true':'false');}
+  var ma=panelEl.querySelector('.ta-ma');
+  if(ma)ma.classList.toggle('off',!S.ma);
+  var chips=panelEl.querySelectorAll('[data-ta-ma]');
+  for(var j=0;j<chips.length;j++){var k=chips[j].getAttribute('data-ta-ma');var on=!!(S.maSet&&S.maSet[k]);chips[j].classList.toggle('on',on);chips[j].setAttribute('aria-pressed',on?'true':'false');}
+  syncTlStatus();
+}
+function openPanel(){
+  if(isPriceMode())return;
+  renderPanel();
+  panelEl.hidden=false;panelOpen=true;
+  taBtn.classList.add('open');taBtn.setAttribute('aria-expanded','true');
+  placeFloat(taBtn,panelEl);
+  var first=panelEl.querySelector('.ta-sw');
+  if(first)first.focus();
+}
+function closePanel(focusPill){
+  if(!panelOpen)return;
+  panelOpen=false;
+  if(panelEl)panelEl.hidden=true;
+  if(taBtn){taBtn.classList.remove('open');taBtn.setAttribute('aria-expanded','false');}
+  if(focusPill&&taBtn)taBtn.focus();
+}
+function setToggle(key,val){
+  S[key]=!!val;
+  /* Turning the MA group on with nothing selected shows SMA 50 (the old
+     single-MA default) so the toggle always draws something. */
+  if(key==='ma'&&S.ma&&!maCount())S.maSet={sma50:true};
+  saveS();
+  syncPanel();
+  syncPill();syncRsi();
+  /* Stage 2: toggling an overlay redraws the chart so it appears at once. */
+  if(API.draw)API.draw();
+}
+
+/* ---------- overlap check (Playwright / handback) ---------- */
+function rect(el){
+  if(!el)return null;
+  var r=el.getBoundingClientRect();
+  if(!r.width||!r.height)return null;
+  return {x:r.left,y:r.top,w:r.width,h:r.height,r:r.right,b:r.bottom};
+}
+function union(a,b){
+  if(!a)return b;if(!b)return a;
+  var x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),r=Math.max(a.r,b.r),bb=Math.max(a.b,b.b);
+  return {x:x,y:y,w:r-x,h:bb-y,r:r,b:bb};
+}
+function visible(el){
+  if(!el)return false;
+  var r=el.getBoundingClientRect();
+  if(!r.width||!r.height)return false;
+  var pn=panelEl,mn=menuEl,pd=pn&&pn.style.display,md=mn&&mn.style.display;
+  if(pn)pn.style.display='none';if(mn)mn.style.display='none';
+  var pts=[[.5,.5],[.15,.5],[.85,.5]],hit=false;
+  pts.forEach(function(q){
+    var x=r.left+r.width*q[0],y=r.top+r.height*q[1];
+    if(x<0||y<0||x>innerWidth||y>innerHeight)return;
+    var h=document.elementFromPoint(x,y);
+    if(h&&(h===el||el.contains(h)))hit=true;
+  });
+  if(pn)pn.style.display=pd||'';if(mn)mn.style.display=md||'';
+  return hit;
+}
+function overlap(a,b){
+  if(!a||!b)return false;
+  return a.x<b.r&&b.x<a.r&&a.y<b.b&&b.y<a.b;
+}
+window.__taRects=function(){
+  var pnEl=(panelEl&&!panelEl.hidden)?panelEl:null;
+  var panelVisible=false;
+  if(pnEl){var q=pnEl.getBoundingClientRect(),h=document.elementFromPoint(q.left+q.width/2,q.top+q.height/2);panelVisible=!!(h&&pnEl.contains(h));}
+  var mnEl=(menuEl&&!menuEl.hidden)?menuEl:null;
+  var menuVisible=false;
+  if(mnEl){var q2=mnEl.getBoundingClientRect(),h2=document.elementFromPoint(q2.left+q2.width/2,q2.top+q2.height/2);menuVisible=!!(h2&&mnEl.contains(h2));}
+  var prot={
+    'BTC price':union(rect(el('price')),rect($('.v4-chg')))||rect(dlg?dlg.querySelector('.bc-px'):null),
+    'Keep screen on':rect(el('wakeBtn')),
+    'Exit full screen':rect($('.v4-fs-exit')),
+    'Light/Dark pill':rect(el('psThemePill')),
+    'Full-screen buttons':rect($('.v4-fs')),
+    'Price clock':rect($('.v4-fs-toprice')),
+    'Switch to chart':rect($('.v4-fs-tochart')),
+    'Theme dot':rect(el('themeDot')),
+    'Price pill':rect(el('pxPill')),
+    'Close':rect(dlg?dlg.querySelector('.bc-x'):null)
+  };
+  var vis={};
+  Object.keys(prot).forEach(function(k){
+    var sel={'BTC price':el('price')||(dlg&&dlg.querySelector('.bc-px')),'Keep screen on':el('wakeBtn'),'Exit full screen':$('.v4-fs-exit'),'Light/Dark pill':el('psThemePill'),'Full-screen buttons':$('.v4-fs'),'Price clock':$('.v4-fs-toprice'),'Switch to chart':$('.v4-fs-tochart'),'Theme dot':el('themeDot'),'Price pill':el('pxPill'),'Close':dlg&&dlg.querySelector('.bc-x')}[k];
+    vis[k]=visible(sel);
+  });
+  var pn=rect(pnEl),mn=rect(mnEl),tp=rect(taBtn),rs=rect(rsiEl&&!rsiEl.hidden?rsiEl:null),bx=rect(dlg?dlg.querySelector('.bc-box'):null);
+  var overlaps=[];
+  [['panel',pn],['menu',mn]].forEach(function(pair){
+    if(!pair[1])return;
+    Object.keys(prot).forEach(function(k){if(overlap(pair[1],prot[k]))overlaps.push(pair[0]+' x '+k);});
+  });
+  return {stage:rect(el('hero'))||rect(dlg),panelVisible:panelVisible,menuVisible:menuVisible,vw:innerWidth,vh:innerHeight,
+    panel:pn,menu:mn,pill:tp,rsi:rs,box:bx,prot:prot,vis:vis,overlaps:overlaps,
+    lane:rect(dlg?dlg.querySelector('.bc-row2'):null),scrollY:scrollY};
+};
+
+/* ---------- init ---------- */
+function init(api){
+  if(inited)return;
+  if(!api)return;
+  dlg=api.dlg();
+  if(!dlg)return;
+  inited=true;
+  typBtn=dlg.querySelector('#taTyp');
+  taBtn=dlg.querySelector('#taPill');
+  rsiEl=dlg.querySelector('#taRsi');
+  if(!typBtn||!taBtn)return;
+  /* Type pill: opens the menu. The panel keeps the label in sync on draw. */
+  typBtn.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(menuOpen)closeMenu(false);else{closePanel(false);openMenu();}
+  });
+  taBtn.addEventListener('click',function(e){
+    e.stopPropagation();
+    if(panelOpen)closePanel(false);else{closeMenu(false);openPanel();}
+  });
+  /* Menu picks drive the hidden buttons. */
+  document.addEventListener('click',function(e){
+    if(!menuOpen)return;
+    if(menuEl&&menuEl.contains(e.target))return;
+    if(typBtn&&typBtn.contains(e.target))return;
+    closeMenu(false);
+  });
+  document.addEventListener('click',function(e){
+    if(!panelOpen)return;
+    if(panelEl&&panelEl.contains(e.target))return;
+    if(taBtn&&taBtn.contains(e.target))return;
+    closePanel(false);
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape')return;
+    if(menuOpen){e.preventDefault();closeMenu(true);}
+    else if(panelOpen){e.preventDefault();closePanel(true);}
+  });
+  /* Escape in the popover closes the TA panel/menu first (and stops the
+     keypress reaching the dialog's own Escape handler, which would close
+     the whole dialog). A second Escape then closes the dialog as before. */
+  dlg.addEventListener('keydown',function(e){
+    if(e.key!=='Escape')return;
+    if(menuOpen||panelOpen){e.preventDefault();e.stopPropagation();if(menuOpen)closeMenu(true);else closePanel(true);}
+  });
+  if(menuEl===null)buildMenu();
+  if(panelEl===null)buildPanel();
+  /* Delegated clicks inside the floating layers. */
+  floatParent().addEventListener('click',function(e){
+    var b=e.target.closest('[data-ta-pick]');
+    if(b){var k=b.getAttribute('data-ta-pick');closeMenu(false);pickType(k);return;}
+    var sz=e.target.closest('[data-ta-size]');
+    if(sz){closeMenu(false);pickSize(sz.getAttribute('data-ta-size'));return;}
+    var sw=e.target.closest('[data-ta-key]');
+    if(sw){setToggle(sw.getAttribute('data-ta-key'),!S[sw.getAttribute('data-ta-key')]);return;}
+    var mc=e.target.closest('[data-ta-ma]');
+    if(mc){
+      var mk=mc.getAttribute('data-ta-ma');
+      if(!S.maSet||typeof S.maSet!=='object')S.maSet={};
+      if(S.maSet[mk])delete S.maSet[mk];else S.maSet[mk]=true;
+      /* Enabling a chip turns the group on; disabling the last one turns
+         it off, so the row switch always matches the set. */
+      if(S.maSet[mk]&&!S.ma)S.ma=true;
+      if(!maCount())S.ma=false;
+      saveS();syncPanel();syncPill();syncRsi();
+      if(API.draw)API.draw();
+      return;
+    }
+    if(e.target.closest('[data-ta-clear]')){
+      S.tl=false;S.bb=false;S.ma=false;S.rsi=false;saveS();syncPanel();syncPill();syncRsi();
+      if(API.draw)API.draw();
+      return;
+    }
+  });
+  /* RSI strip collapse toggle. */
+  if(rsiEl){
+    var t=rsiEl.querySelector('.ta-rsi-t');
+    if(t)t.addEventListener('click',function(){
+      S.rsiCol=!S.rsiCol;saveS();syncRsi();
+    });
+  }
+  /* Stage 2: after every native draw, draw the enabled overlays on #bcC
+     (after the price series, same x/y mapping) and the RSI strip; keep the
+     comparison note in sync. Live ticks recompute via the normal redraw —
+     no refetch, no flicker. When nothing is on, or comparison is on, draw
+     nothing: the canvas stays pixel-identical to main. */
+  api.afterDraw=function(kind){
+    if(menuOpen)closeMenu(false);
+    syncRsi();syncCmpNote();syncTlStatus();
+    if(!nOn())return;
+    if(isCmp())return;
+    var g=null;
+    try{g=API.geom?API.geom():null;}catch(e){}
+    if(!g||!g.xs||!g.closes||g.n<2)return;
+    var t0=0;
+    try{t0=window.performance?performance.now():0;}catch(e){}
+    try{
+      var warm=warmFor(g);
+      var vals=computeVals(g,warm);
+      drawOverlays(g,vals);
+      if(S.rsi)drawRsiStrip(g,vals);
+      if(S.tl)tlDrawLines(g);
+    }catch(e){}
+    try{
+      if(t0){
+        var dt=performance.now()-t0;
+        var p=window.__TA_PERF||(window.__TA_PERF={last:0,sum:0,n:0,avg:0});
+        p.last=dt;p.sum+=dt;p.n++;p.avg=p.sum/p.n;
+      }
+    }catch(e2){}
+  };
+  api.taTip=taTipLines;
+  /* Stage 2 debug probe (tests / handback): the current geometry, the
+     warm-up + visible closes actually used, the first valid index and last
+     value of each indicator, and the perf probe. Per-MA dicts (mas) carry
+     every enabled moving average; firstValid.ma is the first index where
+     ALL enabled MAs are valid, and last.ma is the first enabled MA's last
+     value (canonical order) — prefer last.mas[key] for a specific MA. */
+  window.__TA_DEBUG=function(){
+    try{
+      var g=API.geom?API.geom():null;
+      if(!g)return null;
+      var warm=warmFor(g);
+      var vals=computeVals(g,warm);
+      var first=function(a){if(!a)return null;for(var i=0;i<a.length;i++)if(a[i]!=null)return i;return null;};
+      var last=function(a){if(!a)return null;for(var i=a.length-1;i>=0;i--)if(a[i]!=null)return a[i];return null;};
+      var mas=maOn();
+      var firstMas={},lastMas={};
+      mas.forEach(function(k){firstMas[k]=vals.mas&&vals.mas[k]?first(vals.mas[k]):null;lastMas[k]=vals.mas&&vals.mas[k]?last(vals.mas[k]):null;});
+      var firstMa=null,lastMa=null;
+      if(mas.length){
+        var mx=-1;mas.forEach(function(k){if(firstMas[k]==null)mx=Infinity;else if(firstMas[k]>mx)mx=firstMas[k];});
+        firstMa=isFinite(mx)?mx:null;lastMa=lastMas[mas[0]];
+      }
+      return {kind:g.kind,n:g.n,warm:warm.length,closes:g.closes,warmCloses:warm,
+        firstValid:{ma:firstMa,bb:vals.bbUp?first(vals.bbUp):null,rsi:vals.rsi?first(vals.rsi):null},
+        firstValidMas:firstMas,
+        last:{ma:lastMa,mas:lastMas,bbUp:vals.bbUp?last(vals.bbUp):null,bbLo:vals.bbLo?last(vals.bbLo):null,bbMid:vals.bbMid?last(vals.bbMid):null,rsi:vals.rsi?last(vals.rsi):null},
+        perf:window.__TA_PERF||null};
+    }catch(e){return null;}
+  };
+  syncPill();syncRsi();
+  if(api.syncTypePill)api.syncTypePill();
+}
+/* Stage 4 debug probe (tests / handback): the trendline file status, the
+   chart's timeframe, the live close, and the lines the drawer computed
+   (drawn + omitted with reasons) with their labels. */
+window.__TA_TL_DEBUG=function(){
+  try{
+    var g=API.geom?API.geom():null;
+    var st=null;try{st=API.state();}catch(e){}
+    return {tlOn:!!S.tl,cmp:isCmp(),tf:tlChartTf(st),status:tlStatus,
+      fileOk:tlCache.ok,fileReason:tlCache.reason,
+      fetchedAt:tlCache.fetchedAt,
+      liveClose:g&&g.closes?g.closes[g.n-1]:null,
+      lastMs:g&&g.times?g.times[g.n-1]:null,
+      last:tlLast};
+  }catch(e){return null;}
+};
+
+window.__BTTA={init:init,typeLabel:typeLabel};
+if(API&&API.dlg)init(API);
+})();
