@@ -48,9 +48,12 @@ chk('nativeTooltipHide redraws via redrawNativeLine', /function nativeTooltipHid
 chk('draw1DNative layout carries kind 1d', /lineGeom=\{kind:'1d',pad/.test(panel));
 chk('drawDailyNative layout carries kind daily', /lineGeom=\{kind:'daily',pad/.test(panel));
 
-/* Native-only wiring for the range views (Chart.js removed 20 Nov 2026) */
+/* Native-only wiring for the range views (Chart.js removed 20 Nov 2026).
+   TA Stage 1 (20 Nov 2026): a TA after-draw hook + pill sync follow lineFail()
+   on the next line, so this regex ends at lineFail(); (as step 2 does) instead
+   of pinning the closing brace. */
 chk('drawDaily draws natively, lineFail() on failure',
-  /var nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG\}\);lineDrawn=nativeOK;\n  if\(nativeOK\)lineRetry=false;else lineFail\(\);\}/.test(panel));
+  /var nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG\}\);lineDrawn=nativeOK;\n  if\(nativeOK\)lineRetry=false;else lineFail\(\);/.test(panel));
 chk('drawDaily has no Chart.js guard', /function drawDaily\(\)\{if\(!DATA\)return;clearCandState\(\);/.test(panel));
 chk('draw-failure isolation records __BTC_DRAWERR for the daily line', /window\.__BTC_DRAWERR=\{where:'drawDailyNative'/.test(panel));
 
@@ -88,20 +91,20 @@ chk('panel keeps drawCandles1D + drawCandlesRange', /function drawCandles1D\(/.t
 chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(panel));
 chk('needChart removed with Chart.js', !/needChart/.test(panel));
 
-/* Chart.js removal (20 Nov 2026): loader + panel et29 -> et33 */
-chk('stub loads the panel with et33', /btcchart-panel\.js\?v=et33/.test(stub));
+/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) */
+chk('stub loads the panel with ta4', /btcchart-panel\.js\?v=ta4/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
   'recap/2026-05/index.html', 'recap/2026-06/index.html', 'recap/2026-07/index.html', 'recap/2026-08/index.html',
   'recap/2026-09/index.html', 'recap/2026-10/index.html', 'recap/2026-11/index.html'];
-let et33 = 0, other = [];
+let ta4 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et33') et33++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=ta4') ta4++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et33', et33 === 16 && other.length === 0, 'et33=' + et33 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin ta4', ta4 === 16 && other.length === 0, 'ta4=' + ta4 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart out of scope: still Chart.js */
 chk('s2.js has no Chart.js fallback (removed 20 Nov 2026)', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));

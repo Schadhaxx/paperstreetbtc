@@ -151,6 +151,8 @@ function showCandInfo(i,geomX,geomTop){
   var hl=document.createElement('div');hl.style.cssText='font-size:14px;font-weight:600;color:'+psC('#e8eef7','#0f172a')+';font-variant-numeric:tabular-nums;margin:2px 0;';hl.textContent='High '+fmt(k.h)+'  ·  Low '+fmt(k.l);el.appendChild(hl);
   var oc=document.createElement('div');oc.style.cssText='font-size:14px;font-weight:600;color:'+psC('#e8eef7','#0f172a')+';font-variant-numeric:tabular-nums;margin:2px 0;';oc.textContent='Open '+fmt(k.o)+'  ·  Close '+fmt(k.c);el.appendChild(oc);
   var ch=document.createElement('div');ch.style.cssText='font-size:14px;font-weight:600;color:'+col+';font-variant-numeric:tabular-nums;';ch.textContent=(chg>=0?'▲ +':'▼ -')+curSym()+Math.abs(curVal(chg)).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';el.appendChild(ch);
+  /* TA Stage 2: indicator values for this candle, when overlays are on. */
+  try{var _ta3=window.__BCTA&&window.__BCTA.taTip;if(_ta3){var _tl3=_ta3(CANDRANGE?'candles-range':'candles-1d',i);if(_tl3&&_tl3.length){var _td=document.createElement('div');_td.style.cssText='font-size:13px;font-weight:600;color:'+psC('#9aa6bc','#475569')+';font-variant-numeric:tabular-nums;margin:2px 0;';_td.textContent=_tl3.map(function(o){return o.t;}).join('  ·  ');el.appendChild(_td);}}}catch(e){}
   /* position: floating pill over the chart, centred horizontally, never at the bottom, never off-screen */
   el.style.display='block';
   var box=$('bcC').parentNode,bw=box.clientWidth||640,bh=box.clientHeight||300;
@@ -172,7 +174,10 @@ function drawCandles1D(candles,label,per){
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
-  var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
+  /* TA Stage 1, candle inset (item 1): half a slot at each end, so the first
+     and last candles sit fully inside the plot instead of on its edges.
+     CANDGEOM carries these x positions, so later stages reuse the same inset. */
+  var X=function(i){return L+iw*(i+0.5)/candles.length;};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
@@ -206,6 +211,11 @@ function drawCandles1D(candles,label,per){
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle=psC('#ffffff','#0f172a');ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
   ctx.fillStyle=psC('#9aa6bc','#475569');ctx.textAlign='left';ctx.fillText(label, L, 12);
+  /* TA Stage 2: publish the geometry (inset x positions from CANDGEOM) and
+     draw the overlays — here, not at the call site, so hover redraws
+     (redrawCandles) repaint the overlays too. */
+  TAGEOM={kind:'candles-1d',xs:CANDGEOM.map(function(g){return g.x;}),yFor:Y,log:false,closes:candles.map(function(k){return k.c;}),times:candles.map(function(k){return k.t;}),n:candles.length,W:W,H:H,pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih};
+  taAfterDraw('candles-1d');
   /* interaction listeners, attached once (shared with the range candle view) */
   bindCandListeners(c);
   return true;
@@ -368,8 +378,19 @@ function drawCandlesRange(){
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
-  var L=62,R=(typeof RGLIVE!=='undefined'&&RGLIVE)?78:12,T=18,B=44,iw=W-L-R,ih=H-T-B;
-  var X=function(i){return L+iw*(candles.length===1?0.5:i/(candles.length-1));};
+  var L=62,T=18,B=44;
+  /* TA Stage 1, CAD live-tag fix (item 8): the LIVE tag was sized at USD width
+     (R=78), so in CAD the wider tag ran off the canvas edge. Measure the tag
+     in the displayed currency first and size the right margin to fit it.
+     When the tag will not be drawn (no live price) keep today's R=78. */
+  var R=12;
+  if(typeof RGLIVE!=='undefined'&&RGLIVE){
+    if(live.usd!=null){ctx.font='bold 11px Inter, sans-serif';R=Math.ceil(ctx.measureText('LIVE '+fmt(live.usd)).width)+16;}
+    else{R=78;}
+  }
+  var iw=W-L-R,ih=H-T-B;
+  /* TA Stage 1, candle inset (item 1): half a slot at each end — see drawCandles1D. */
+  var X=function(i){return L+iw*(i+0.5)/candles.length;};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
@@ -415,6 +436,11 @@ function drawCandlesRange(){
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle=psC('#ffffff','#0f172a');ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
   ctx.fillStyle=psC('#9aa6bc','#475569');ctx.textAlign='left';ctx.fillText(RGLBL, L, 12);
+  /* TA Stage 2: publish the geometry (inset x positions from CANDGEOM) and
+     draw the overlays — here, not at the call site, so hover redraws
+     (redrawCandles) repaint the overlays too. */
+  TAGEOM={kind:'candles-range',xs:CANDGEOM.map(function(g){return g.x;}),yFor:Y,log:false,closes:candles.map(function(k){return k.c;}),times:candles.map(function(k){return k.t;}),n:candles.length,W:W,H:H,pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih};
+  taAfterDraw('candles-range');
   bindCandListeners(c);
   return true;
 }
@@ -509,8 +535,7 @@ function syncCg(){
 function drawRange(){
   head();
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
-  $('bcSc').style.display='none';var _ct=$('bcCt');if(_ct)_ct.style.display='none';
-  var cg=$('bcCg');if(cg)cg.style.display='';
+  $('bcSc').style.display='none';
   /* Candles are BTC-only, same rule as the 1D view: the S&P 500 / Gold / MSTR
      buttons are greyed for the candle view and their line behaviour is untouched. */
   var sb=$('bcSpx');if(sb){sb.setAttribute('aria-pressed','false');sb.classList.add('off');$('bcSpxT').textContent='+ S&P 500';sb.setAttribute('aria-label','S&P 500 unavailable for candle view');}
@@ -531,7 +556,7 @@ function drawRange(){
   if(!RGSEEN[rng]){RGGRAN=defaultGran(rng);RGSEEN[rng]=true;}
   if(allowed.length&&allowed.indexOf(RGGRAN)<0)RGGRAN=defaultGran(rng);
   syncCg();
-  var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;if(cg)cg.style.display='';syncCg();};
+  var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;syncCg();};
   if(rng==='1W'&&RGGRAN==='4h'){
     if(!CB4H||Date.now()-CB4H_AT>5*60*1000){
       if(CB4H_ERR){RGGRAN='daily';clearCandState();fallback('Coinbase 4-hour candles unavailable — showing daily closes.');return;}
@@ -636,8 +661,8 @@ function draw1D(){
   var sb=$('bcSpx');if(sb){sb.setAttribute('aria-pressed','false');sb.classList.add('off');$('bcSpxT').textContent='+ S&P 500';sb.setAttribute('aria-label','S&P 500 unavailable for 1D intraday');}
   var gb=$('bcGld');if(gb){gb.setAttribute('aria-pressed','false');gb.classList.add('off');$('bcGldT').textContent='+ Gold';gb.setAttribute('aria-label','Gold unavailable for 1D intraday');}
   var mb=$('bcMstr');if(mb){mb.setAttribute('aria-pressed','false');mb.classList.add('off');$('bcMstrT').textContent='+ MSTR';mb.setAttribute('aria-label','MSTR unavailable for 1D intraday');}
-  var ct=$('bcCt');if(ct){ct.style.display='';[].forEach.call(ct.querySelectorAll('[data-ct]'),function(b){b.classList.toggle('on',b.dataset.ct===CT);b.setAttribute('aria-pressed',b.dataset.ct===CT);});}
-  var cg1=$('bcCg');if(cg1)cg1.style.display='none';
+  var ct=$('bcCt');if(ct){[].forEach.call(ct.querySelectorAll('[data-ct]'),function(b){b.classList.toggle('on',b.dataset.ct===CT);b.setAttribute('aria-pressed',b.dataset.ct===CT);});}
+  var cg1=$('bcCg');if(cg1)syncCg();
   if(!INTRA){
     $('bcRr').textContent='Loading intraday…';
     getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){if(dlg&&!dlg.hidden){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' Intraday unavailable — showing daily closes.';}});
@@ -671,7 +696,7 @@ function draw1D(){
 
 /* Range-row scroll hint, 29 Oct 2026: tabs run shortest (1D) to longest (Max) left to right, so on a phone the longer ranges sit off-screen to the right and are reached by swiping left. The hint shows only while there is still more to the right. */
 function syncRgHint(){var rs=$('bcRgs'),h=$('bcRgHint');if(!rs||!h)return;var moreRight=rs.scrollWidth-rs.clientWidth-rs.scrollLeft>8;h.style.display=moreRight?'':'none';}
-function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}syncRgHint();}
+function draw(){if(rng==='1D'){draw1D();}else if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){drawRange();}else{drawDaily();}syncTypePill();syncRgHint();}
 
 function onK(K,M,d){var lo=0,hi=K.length-1,a=-1;while(lo<=hi){var mid=(lo+hi)>>1;if(K[mid]<=d){a=mid;lo=mid+1;}else hi=mid-1;}return a<0?null:M[K[a]];}
 function spxOn(d){return onK(SPXK,SPX,d);}function gldOn(d){return onK(GOLDK,GOLD,d);}function mstrOn(d){return onK(MSTRK,MSTR,d);}
@@ -714,13 +739,169 @@ function isPhone(){return window.innerWidth<=640;}
    the vehicle toggle was removed from this popover. The tracker
    BITCOIN VEHICLE toggle (vehicle.js, under the BTC live pill) remains
    the sole vehicle control; it is not touched here. */
+/* TA Stage 1 (20 Nov 2026): bridge for btcchart-ta.js. The TA module reads
+   panel state through window.__BCTA and registers its after-draw hook there;
+   the panel calls the hook after each native draw. Stage 1 draws nothing.
+   The chart-type pill label is synced here (the panel owns the state), so it
+   is right even before the TA script finishes loading. */
+/* TA Stage 2 (20 Nov 2026): geometry + warm-up closes for the TA module.
+   TAGEOM is set by each native renderer (x positions, y mapping, closes);
+   the TA module reads it in afterDraw and draws the overlays on the same
+   canvas, with the same mapping — so log scale is respected for free. */
+var TAGEOM=null;
+window.__BCTA={
+  state:function(){return {rng:rng,CT:CT,RGCT:RGCT,RGGRAN:RGGRAN,CANDLE_RANGES:CANDLE_RANGES.slice(),defaultGran:defaultGran,candViewActive:candViewActive()};},
+  dlg:function(){return dlg;},
+  inline:function(){return INLINE;},
+  stage:function(){try{return dlg&&dlg.closest?dlg.closest('.v4-stage'):null;}catch(e){return null;}},
+  draw:draw,
+  syncTypePill:syncTypePill,
+  afterDraw:null,
+  taTip:null,
+  geom:function(){return TAGEOM;},
+  cmp:function(){
+    if(rng==='1D')return false;
+    if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles')return false;
+    return SHOWSPX||SHOWGLD||SHOWMSTR;
+  },
+  warmSync:taWarmSync,
+  warmFetch:taWarmFetch
+};
+function taAfterDraw(kind){try{var h=window.__BCTA&&window.__BCTA.afterDraw;if(typeof h==='function')h(kind);}catch(e){}}
+/* TA Stage 2 warm-up closes. Rule: draw each indicator only from its first
+   valid point — never a wrong value. The warm-up is the closes BEFORE the
+   visible window, so the first visible candle already has a valid value.
+   - Range views: synchronous, from DATA (daily closes back to 2010, already
+     in memory — zero extra fetch, zero first-load impact). Daily is
+     identity; weekly/monthly aggregate DATA the same way aggDailyCandles
+     does (Monday-start UTC weeks, calendar months), so the buckets line up
+     with the visible candles exactly.
+   - Intraday views (1D line, 1D 1h/4h candles, 1W 4h): lazy background
+     fetch, only when TA is on (never blocks first paint). Until it lands,
+     the overlays draw from the valid point inside the visible window; when
+     it lands the fetch callback redraws. Cached per kind for the session;
+     a failed fetch is sticky (closes=[]) so a dead feed is not hammered. */
+function taWarmSync(){
+  if(!DATA||!DATA.length)return [];
+  if(rng==='1D')return [];
+  var cut=null,gran=null;
+  if(CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles'){
+    if(RGGRAN==='4h')return [];
+    if(!RGCAND||!RGCAND.length)return [];
+    cut=RGCAND[0].t;gran=RGGRAN;
+  }else{
+    var s=series();if(!s.length)return [];
+    cut=Date.parse(s[0][0]+'T00:00:00Z');gran='daily';
+  }
+  var daily=DATA.map(function(p){return {t:Date.parse(p[0]+'T00:00:00Z'),c:p[1]};}).filter(function(p){return p.t<cut;});
+  if(!daily.length)return [];
+  if(gran==='daily')return daily.slice(-250).map(function(p){return p.c;});
+  var flat=daily.map(function(p){return {t:p.t,o:p.c,h:p.c,l:p.c,c:p.c};});
+  return aggDailyCandles(flat,gran).slice(-250).map(function(p){return p.c;});
+}
+/* 4h bucketing for warm-up: mirrors agg4hFromHourly exactly (UTC-aligned
+   4h buckets, complete buckets only) but returns ALL complete buckets,
+   not just the last 42 — the warm-up needs up to 200. agg4hFromHourly
+   itself is untouched (test_speed_option2 asserts its slice(-42)). */
+function agg4hWarm(hourly){
+  var buckets={},order=[];
+  hourly.forEach(function(b){
+    var key=Math.floor(b.t/14400000)*14400000;
+    if(!buckets[key]){buckets[key]=[];order.push(key);}
+    buckets[key].push(b);
+  });
+  var out=[];
+  order.sort(function(a,b){return a-b;}).forEach(function(key){
+    var seg=buckets[key];
+    if(seg.length<4)return;
+    out.push({t:key,end:key+14400000,o:seg[0].o,h:Math.max.apply(null,seg.map(function(x){return x.h;})),l:Math.min.apply(null,seg.map(function(x){return x.l;})),c:seg[seg.length-1].c});
+  });
+  return out;
+}
+var TAW={},TAW_H1=null,TAW_H1_P=null;
+function fetchHourlyWarm(){
+  if(TAW_H1)return Promise.resolve(TAW_H1);
+  if(TAW_H1_P)return TAW_H1_P;
+  /* 50 days of 1h bars (5 x 10-day windows, 240 bars each, under the
+     300-bar limit): enough for 200+ 4h warm-up closes even for the 1W 4h
+     view, whose visible window already covers the last 7 days. */
+  var now=Date.now(),parts=[],s=now-50*864e5;
+  while(s<now){var e=Math.min(now,s+10*864e5);parts.push(tf8('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=3600&start='+new Date(s).toISOString()+'&end='+new Date(e).toISOString(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}));s=e;}
+  TAW_H1_P=Promise.all(parts).then(function(chunks){
+    var all=[];
+    chunks.forEach(function(j){if(Array.isArray(j))j.forEach(function(c){all.push({t:c[0]*1000,o:c[3],h:c[2],l:c[1],c:c[4]});});});
+    all=all.filter(function(p){return isFinite(p.c)&&p.c>0&&isFinite(p.o)&&isFinite(p.h)&&isFinite(p.l);});
+    TAW_H1=mergeDailyCandles([all]);TAW_H1_P=null;return TAW_H1;
+  },function(e){TAW_H1_P=null;throw e;});
+  return TAW_H1_P;
+}
+function taWarmFetch(kind,cb){
+  var e=TAW[kind];
+  if(e&&e.done){cb(e.closes);return;}
+  if(e){e.cbs.push(cb);return;}
+  e=TAW[kind]={cbs:[cb]};
+  var finish=function(closes){
+    TAW[kind]={done:true,closes:closes||[]};
+    e.cbs.forEach(function(f){try{f(TAW[kind].closes);}catch(_){}});
+  };
+  if(kind==='1d-line'){
+    /* 15-min closes for the 3 days before the visible 24h window (one
+       request, 288 bars under the 300-bar limit). */
+    var now=Date.now(),s=new Date(now-96*3600*1000).toISOString(),en=new Date(now-24*3600*1000).toISOString();
+    tf8('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900&start='+s+'&end='+en,{cache:'no-store'})
+      .then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
+      .then(function(j){
+        if(!Array.isArray(j))throw new Error('bad candles');
+        var pts=j.map(function(c){return {t:c[0]*1000,c:c[4]};}).filter(function(p){return isFinite(p.c)&&p.c>0;}).sort(function(a,b){return a.t-b.t;});
+        finish(pts.map(function(p){return p.c;}));
+      }).catch(function(){finish([]);});
+  }else{
+    /* 1h bars for the last 50 days (paged, shared cache) — the 1h warm-up
+       for 1D 1h candles, and the 4h warm-up (aggregated) for 1D 4h and
+       1W 4h candles. Warm-up buckets must END before the visible window
+       starts, so no hour is counted twice. */
+    fetchHourlyWarm().then(function(hourly){
+      var cut;
+      if(kind==='candles-1d-1h'||kind==='candles-1d-4h')cut=Date.now()-24*3600*1000;
+      else cut=(RGCAND&&RGCAND.length)?RGCAND[0].t:Date.now()-7*864e5;
+      if(kind==='candles-1d-1h'){
+        finish(hourly.filter(function(b){return b.t+3600000<=cut;}).map(function(b){return b.c;}).slice(-250));
+      }else{
+        var bars=agg4hWarm(hourly);
+        finish(bars.filter(function(b){return b.end<=cut;}).map(function(b){return b.c;}).slice(-250));
+      }
+    }).catch(function(){finish([]);});
+  }
+}
+function syncTypePill(){
+  var b=$('taTyp');if(!b)return;
+  var lab,dis=false;
+  if(/^(5Y|10Y|Max)$/.test(rng)){lab='Line';dis=true;}
+  else if(rng==='1D'){lab=CT==='line'?'Line':(CT==='1h'?'1H candles':'4H candles');}
+  else if(RGCT!=='candles'){lab='Line';}
+  else{lab=RGGRAN==='4h'?'4H candles':(RGGRAN==='daily'?'Candles \u00b7 Daily':RGGRAN==='weekly'?'Candles \u00b7 Weekly':'Candles \u00b7 Monthly');}
+  var s=b.querySelector('span');if(s)s.textContent=lab;
+  b.disabled=dis;b.setAttribute('aria-disabled',dis?'true':'false');
+  b.setAttribute('aria-label','Chart type: '+lab);
+}
+var taLoaded=false;
+function loadTA(){
+  if(taLoaded)return;taLoaded=true;
+  try{
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta4');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta4');
+    s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
+    s.onerror=function(){taLoaded=false;};
+    document.head.appendChild(s);
+  }catch(e){taLoaded=false;}
+}
 function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hidden=true;
   dlg=document.createElement('div');dlg.className=INLINE?'bc-w bc-inline':'bc-w';dlg.hidden=true;dlg.setAttribute('role','dialog');if(!INLINE)dlg.setAttribute('aria-modal','true');dlg.setAttribute('aria-labelledby','bcTitle');
   dlg.innerHTML='<div class="bc-grab" aria-hidden="true"></div><div class="bc-h"><div><span class="lp-lab" id="bcTitle"><span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+CUR.code+'</span><div class="bc-px"><span id="bcPx">—</span><span id="bcChg" class="hdr-chg"></span></div><div class="bc-rr" id="bcRr"></div></div><button type="button" class="bc-x" id="bcX" aria-label="Close BTC chart">✕</button></div>'
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-rg-hint" id="bcRgHint" aria-hidden="true">\u2190 Swipe for longer ranges</span><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
-   +'<div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
+   +'<div class="bc-row2" id="bcRow2"><div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><button type="button" class="ta-typ" id="taTyp" aria-haspopup="true" aria-expanded="false" aria-label="Chart type: Line"><span>Line</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="ta-pill" id="taPill" aria-haspopup="dialog" aria-expanded="false" aria-label="Technical analysis"><span>TA</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
    +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="4h" style="display:none">4H</button><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button></div>'
-   +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../clock/index.html')+'">Live BTC chart →</a><a class="bc-cl" href="'+U('../../screener.html')+'">The Desk →</a>';
+   +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="ta-rsi" id="taRsi" hidden><button type="button" class="ta-rsi-t" aria-expanded="true">RSI 14 <b>—</b><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><canvas></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../clock/index.html')+'">Live BTC chart →</a><a class="bc-cl" href="'+U('../../screener.html')+'">The Desk →</a>';
   if(INLINE)INLINEHOST.appendChild(dlg);else{document.body.appendChild(dim);document.body.appendChild(dlg);}
   /* Secret link, 4 Nov 2026: double-clicking anywhere on the Bitcoin price
      in this popover opens the block clock page in a new tab. No visible
@@ -744,7 +925,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
   dlg.addEventListener('touchend',function(e){if(y0!=null&&e.changedTouches[0].clientY-y0>80)close();y0=null;},{passive:true});
-  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();nativeResize();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});}
+  window.addEventListener('resize',function(){if(!dlg.hidden){dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';place();syncRgHint();if(candViewActive())redrawCandles();nativeResize();}});$('bcRgs').addEventListener('scroll',syncRgHint,{passive:true});loadTA();}
 function place(){if(INLINE)return;var ph=isPhone();dlg.classList.toggle('sheet',ph);dlg.classList.toggle('pop',!ph);dlg.querySelector('.bc-grab').style.display=ph?'':'none';
   if(ph){dlg.style.top=dlg.style.left='';}else{var r=pill.getBoundingClientRect(),isLand=window.innerWidth>window.innerHeight,shortLand=isLand&&window.innerHeight<500,wide=isLand&&(window.innerWidth>=900||window.innerHeight<500),wCap=wide?900:640,w=Math.min(wCap,window.innerWidth-32);
   /* Short landscape (iPhone landscape, viewport <500px tall, 8 Nov 2026,
@@ -760,7 +941,7 @@ function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   var last=new Date(d[d.length-1][0]+'T00:00:00Z'),st;
   if(rng==='Max')st='0000';else if(rng==='YTD')st=(last.getUTCFullYear()-1)+'-12-31';else st=new Date(last-DAYS[rng]*864e5).toISOString().slice(0,10);
   return d.filter(function(p){return p[0]>=st;});}
-function drawDaily(){if(!DATA)return;clearCandState();lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;head();var _ct=$('bcCt');if(_ct)_ct.style.display='none';var _cg=$('bcCg');if(_cg){if(CANDLE_RANGES.indexOf(rng)>=0){_cg.style.display='';syncCg();}else _cg.style.display='none';}
+function drawDaily(){if(!DATA)return;clearCandState();lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;head();var _cg=$('bcCg');if(_cg)syncCg();
 var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   var onb=$('bcRgs').querySelector('.on'),rs=$('bcRgs');if(onb&&rs.scrollWidth>rs.clientWidth){var L=onb.offsetLeft-rs.offsetLeft,R=L+onb.offsetWidth;if(L<rs.scrollLeft+16||R>rs.scrollLeft+rs.clientWidth-16)rs.scrollTo({left:Math.max(0,L-(rs.clientWidth-onb.offsetWidth)/2),behavior:'smooth'});}
@@ -779,7 +960,8 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(LOG?' Log scale.':'');
   /* Native range line (Chart.js removed 20 Nov 2026; no fallback library). */
   var nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG});lineDrawn=nativeOK;
-  if(nativeOK)lineRetry=false;else lineFail();}
+  if(nativeOK)lineRetry=false;else lineFail();
+  syncTypePill();}
 /* ===== Stage 2 native line renderer — Step 2: 1D line (8 Nov 2026) =====
    draw1DNative implements the 1D intraday line natively (smooth curve,
    cyan gradient fill, axes, labels, live "Now" point, tap/hover tooltip).
@@ -934,6 +1116,8 @@ function drawLineTooltip(ctx,p,px,py,W,padT,plotH){
      if it would run off the top — Chart.js's default placement. */
   var title=p.live?'Now (live)':etDateTime(p.t);
   var lines=[title,'BTC '+fmt(p.v)];
+  /* TA Stage 2: indicator values for the hovered point, when overlays are on. */
+  try{var _ta=window.__BCTA&&window.__BCTA.taTip;if(_ta){var _tl=_ta('1d-line',lineHover);if(_tl)lines=lines.concat(_tl.map(function(o){return o.t;}));}}catch(e){}
   ctx.font='11px Inter, sans-serif';
   var tw=0;lines.forEach(function(t){tw=Math.max(tw,ctx.measureText(t).width);});tw+=16;
   var th=lines.length*14+10;
@@ -1081,6 +1265,8 @@ function draw1DNative(pts){
     var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
     var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
     var xs=pts.map(function(p,i){return X(i);}),ys=vals.map(function(v){return Y(v);});
+    /* TA Stage 2: publish the geometry for the overlay draw. */
+    TAGEOM={kind:'1d-line',xs:xs,yFor:Y,log:false,closes:vals,times:pts.map(function(p){return p.t;}),n:n,W:W,H:H,pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih};
     /* Y gridlines + labels (same format as the Chart.js yTick callback). */
     ctx.strokeStyle=psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)');ctx.fillStyle=psC('#9aa6bc','#475569');
     ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
@@ -1127,6 +1313,9 @@ function draw1DNative(pts){
       draw1DNative._fonts=true;
       document.fonts.load('11px Inter').then(function(){if(lineDrawn&&linePts)draw1DNative(linePts);}).catch(function(){});
     }
+    /* TA Stage 2: overlays draw here (not at the call site) so tooltip
+       hover redraws (redrawNativeLine) repaint them too. */
+    taAfterDraw('1d-line');
     return true;
   }catch(e){
     try{window.__BTC_DRAWERR={where:'draw1DNative',msg:String(e&&e.message||e)};}catch(_){}
@@ -1163,6 +1352,8 @@ function drawDailyTooltip(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH){
     if(cmp.G&&cmp.G[i]!=null&&cmp.g0)lines.push({t:'Gold '+curSym()+curVal(cmp.G[i]).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(reb.gld[i]-100)+')',c:'#facc15'});
     if(cmp.M&&cmp.M[i]!=null&&cmp.m0)lines.push({t:'MSTR '+curSym()+curVal(cmp.M[i]).toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fp(reb.mstr[i]-100)+')',c:'#f97316'});
   }
+  /* TA Stage 2: indicator values for the hovered index, when overlays are on. */
+  try{var _ta2=window.__BCTA&&window.__BCTA.taTip;if(_ta2){var _tl2=_ta2('daily-line',i);if(_tl2)lines=lines.concat(_tl2);}}catch(e){}
   ctx.font='11px Inter, sans-serif';
   var tw=0;lines.forEach(function(L){var w=ctx.measureText(L.t).width+(L.c?14:0);if(w>tw)tw=w;});tw+=16;
   var th=lines.length*14+10;
@@ -1259,6 +1450,9 @@ function drawDailyNative(d,cmp){
     var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
     var xs=d.map(function(p,i){return X(i);});
     var btcYs=btcY.map(function(v){return Y(v);});
+    /* TA Stage 2: publish the geometry for the overlay draw. closes are the
+       raw BTC closes (not the rebased compare values — TA hides on compare). */
+    TAGEOM={kind:'daily-line',xs:xs,yFor:Y,log:LOG,closes:d.map(function(p){return p[1];}),times:d.map(function(p){return Date.parse(p[0]+'T00:00:00Z');}),n:n,W:W,H:H,pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,sx:sx};
     var spxYs=spxY?spxY.map(function(v){return v==null?null:Y(v);}):null;
     var gldYs=gldY?gldY.map(function(v){return v==null?null:Y(v);}):null;
     var mstrYs=mstrY?mstrY.map(function(v){return v==null?null:Y(v);}):null;
@@ -1350,6 +1544,9 @@ function drawDailyNative(d,cmp){
       drawDailyNative._fonts=true;
       document.fonts.load('11px Inter').then(function(){if(lineDrawn&&linePts&&linePts.d)drawDailyNative(linePts.d,linePts.cmp);}).catch(function(){});
     }
+    /* TA Stage 2: overlays draw here (not at the call site) so tooltip
+       hover redraws (redrawNativeLine) repaint them too. */
+    taAfterDraw('daily-line');
     return true;
   }catch(e){
     try{window.__BTC_DRAWERR={where:'drawDailyNative',msg:String(e&&e.message||e)};}catch(_){}

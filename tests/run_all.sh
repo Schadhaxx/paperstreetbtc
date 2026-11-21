@@ -49,6 +49,8 @@ run stock_weekly_py python3 tests/test_stock_weekly.py                       # s
 run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
 run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
 run desk_live python3 tests/test_desk_live.py                              # 5-min Desk (option b): desk-live.json builder + validator (offline fixtures)
+run ta_lines python3 tests/test_ta_lines.py                                # TA Stage 3: trendline job (tools/ta_lines.py) unit tests + replay gate (offline fixtures, no network)
+run ta_lines_fix2 python3 tests/test_ta_lines_fix2.py                      # TA Stage 3 fix 2: sloped-line validity (rule A) live cases + B/C numbers (offline fixture, no network)
 run candle_date_guardrail node tests/test_candle_date_guardrail.js             # Desk chart: live price only on the candle whose Mon-Sun range contains today (ET)
 run desk_monday_candle node tests/test_desk_monday_candle.js               # Desk chart: append the fresh desk-live candle as a new in-progress week on the first trading day (16 Nov 2026)
 run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
@@ -93,6 +95,12 @@ if [ $ok -ne 1 ] || ! kill -0 $SRV 2>/dev/null; then echo "FATAL: local server o
 echo "server: pid $SRV on 127.0.0.1:$PORT, et.js matches staged build"
 run datatest_strict env DT_HISTORY="$WORK/history.json" python3 "$WORK/stage/tools/datatest.py" "http://127.0.0.1:$PORT"
 run headless python3 tests/headless_matrix.py "http://127.0.0.1:$PORT" "$WORK/shots"
+run ta_indicators node tests/test_ta_indicators.js  # TA Stage 2: SMA/EMA/Bollinger/RSI reference values
+run ta_trendlines node tests/test_ta_trendlines.js  # TA Stage 4: trendline validate/stale/map/sloped/filter/label (pure functions)
+run ta_pack_cases node tests/test_ta_pack_cases.js  # TA Stage 4: Grok Bot test pack's 16 cases against tlSelectLines (fixtures are repo copies of the pack's)
+run ta_stage1 python3 tests/test_ta_stage1.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 1: chart-type pill + menu, TA pill/panel, RSI strip, overlap 0
+run ta_stage2 python3 tests/test_ta_stage2.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 2: browser indicators, warm-up, RSI strip, tooltip, perf, pixel-diff
+run ta_stage4 python3 tests/test_ta_stage4.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 4: trendlines drawn from ta-lines.json, 8 display rules, stale/missing/invalid, pixel checks
 run ytd_chart_scroll python3 tests/test_ytd_chart_scroll.py "http://127.0.0.1:$PORT"  # YTD chart must not trap phone/iPad scroll (Speed Option 2 rollback)
 kill $SRV 2>/dev/null; wait $SRV 2>/dev/null || true; SRV=""
 dfcheck end
