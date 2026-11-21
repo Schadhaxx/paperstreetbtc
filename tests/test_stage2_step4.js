@@ -119,8 +119,8 @@ chk('drawDailyTooltip shows each comparison line with % change', /'S&P 500 '\+cm
 chk('draw1D tooltip shows Now (live) on the last point', /'Now \(live\)'/.test(panel));
 chk('live Now point is drawn on the BTC line when hasLive', /hasLive/.test(panel) && /Now/.test(panel));
 
-/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026). */
-chk('stub loads the panel with ta6', /btcchart-panel\.js\?v=ta6/.test(stub));
+/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026). */
+chk('stub loads the panel with wr1', /btcchart-panel\.js\?v=wr1/.test(stub));
 const fs2 = require('fs');
 const html = [];
 function walk(d) {
@@ -131,13 +131,13 @@ function walk(d) {
   });
 }
 walk(R);
-let ta6 = 0, other = [];
+let wr1 = 0, other = [];
 html.forEach(function (p) {
   const s = fs2.readFileSync(p, 'utf8');
   const m = s.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=ta6') ta6++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=wr1') wr1++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin ta6', ta6 === 16 && other.length === 0, 'ta6=' + ta6 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin wr1', wr1 === 16 && other.length === 0, 'wr1=' + wr1 + ' other=' + JSON.stringify(other));
 
 /* YTD hero (s2.js): native only since the Chart.js removal (20 Nov 2026). */
 chk('s2.js (YTD hero) has no Chart.js fallback', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));
