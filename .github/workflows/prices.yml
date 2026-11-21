@@ -776,7 +776,7 @@ jobs:
           ( cd /tmp/stage && python3 tests/test_recap.py --history /tmp/history.json --repo . > /tmp/test.log ) || { tail -40 /tmp/test.log; echo "Checks failed in staging; nothing moved into place, live site unchanged."; exit 1; }
           tail -1 /tmp/test.log
           changed=0
-          for f in assets/data/btc-daily.json recap/months.js $(cd /tmp/stage && ls recap/20*/index.html); do
+          for f in assets/data/btc-daily.json recap/months.js recap/index.html sitemap.xml $(cd /tmp/stage && ls recap/20*/index.html); do
             if ! cmp -s "/tmp/stage/$f" "$f"; then mkdir -p "$(dirname "$f")"; cp "/tmp/stage/$f" "$f.tmp" && mv "$f.tmp" "$f"; echo "updated $f"; changed=1; fi
           done
           echo "changed=$changed" >> $GITHUB_OUTPUT
@@ -835,7 +835,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- recap/ assets/data/btc-daily.json assets/data/opens.json assets/data/vehicle-daily.json assets/data/stock-daily-*.json assets/data/ind-daily-*.json
+          git add -- recap/ sitemap.xml assets/data/btc-daily.json assets/data/opens.json assets/data/vehicle-daily.json assets/data/stock-daily-*.json assets/data/ind-daily-*.json
           msg=""; [ "${{ steps.gen.outputs.changed }}" = 1 ] && msg="recap/btc-daily"; [ "${{ steps.opens.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }opens"
           [ "${{ steps.vehicle.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }vehicle"
           [ "${{ steps.screener_daily.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }screener-daily"
