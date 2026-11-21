@@ -58,6 +58,11 @@
        mode and hides on leaving it (showPillHint is defined with the
        pill code below; apply only runs from user events, so it exists). */
     if (m === 'chart') showPillHint(); else hidePillHint();
+    /* Rotate hint (TA final job, 21 Nov 2026): the "rotate your phone"
+       prompt shows on entering chart mode while still portrait, and hides
+       on leaving it. showRotPrompt lives below; apply only runs from
+       user events, so it exists by then. */
+    if (m === 'chart') showRotPrompt(); else hideRotPrompt();
     kick();
     after();
   }
@@ -351,7 +356,7 @@
     try { requestAnimationFrame(layout); } catch (e) { layout(); }
     setTimeout(layout, 150); setTimeout(layout, 400);
   }
-  window.addEventListener('resize', function () { if (mode) after(); });
+  window.addEventListener('resize', function () { if (mode) after(); if (mode === 'chart' && !isPortrait()) hideRotPrompt(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (mode) layout(); });
 
   /* CF-4 add-on 3: theme dot in the price-only view. Toggles light/dark
@@ -392,6 +397,68 @@
     if (typeof window.drawHash === 'function') { try { window.drawHash(); } catch (er) {} }
   });
   syncDot();
+
+  /* Rotate hint (TA final job, 21 Nov 2026): a small pill at the
+     bottom-left of the clock-page chart, portrait only. Tap enters
+     full-screen chart mode and shows a "rotate your phone" prompt while
+     still portrait. iOS cannot force landscape — the hint only suggests,
+     never locks orientation. The hint lives inside .bc-box (bottom-left
+     corner of the canvas); the RSI strip is a grid row below the box and
+     the TA pill is in the toolbar row above, so neither is covered. The
+     prompt is a toast inside the stage, shown once per chart-mode entry,
+     fading after ~5s, hiding on landscape rotation, on exit, or on tap. */
+  var rotHint = null, rotPrompt = null, rotTimer = null, rotShown = false;
+  function isPortrait() {
+    try { return window.matchMedia('(orientation: portrait)').matches; }
+    catch (e) { return (window.innerHeight || 0) >= (window.innerWidth || 0); }
+  }
+  function hideRotPrompt() {
+    if (rotTimer) { clearTimeout(rotTimer); rotTimer = null; }
+    if (rotPrompt) rotPrompt.classList.remove('show');
+    rotShown = false;
+  }
+  function showRotPrompt() {
+    if (!rotPrompt || mode !== 'chart' || !isPortrait() || rotShown) return;
+    rotShown = true;
+    rotPrompt.classList.add('show');
+    if (rotTimer) clearTimeout(rotTimer);
+    rotTimer = setTimeout(hideRotPrompt, 5000);
+  }
+  function mountRotateHint() {
+    if (rotHint) return;
+    var box = stage.querySelector('.bc-box');
+    if (!box) return;
+    rotHint = document.createElement('button');
+    rotHint.type = 'button';
+    rotHint.className = 'v4-rotate-hint';
+    rotHint.id = 'rotateHint';
+    rotHint.setAttribute('aria-label', 'Rotate for full screen: show the chart full screen');
+    rotHint.innerHTML = '\u21bb Rotate for full screen';
+    rotHint.addEventListener('click', function (e) {
+      e.stopPropagation();
+      enter('chart', rotHint);
+    });
+    box.appendChild(rotHint);
+    rotPrompt = document.createElement('div');
+    rotPrompt.className = 'v4-rotate-prompt';
+    rotPrompt.id = 'rotatePrompt';
+    rotPrompt.setAttribute('role', 'status');
+    rotPrompt.innerHTML = '<span aria-hidden="true">\u21bb</span> Rotate your phone for the full chart';
+    rotPrompt.addEventListener('click', function (e) { e.stopPropagation(); hideRotPrompt(); });
+    stage.appendChild(rotPrompt);
+  }
+  /* The chart mounts async (btcchart.js): watch for .bc-box. A
+     MutationObserver (not a timer) so the hint also mounts when the
+     page clock is mocked in tests. */
+  (function () {
+    if (stage.querySelector('.bc-box')) { mountRotateHint(); return; }
+    var host = document.getElementById('bcInline');
+    if (!host || !window.MutationObserver) return;
+    var mo = new MutationObserver(function () {
+      if (stage.querySelector('.bc-box')) { mountRotateHint(); mo.disconnect(); }
+    });
+    mo.observe(host, { childList: true, subtree: true });
+  })();
 
   window.__psClockFs = { enter: enter, exit: exit, mode: function () { return mode; } };
 })();

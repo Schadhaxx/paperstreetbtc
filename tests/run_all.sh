@@ -101,6 +101,7 @@ run ta_pack_cases node tests/test_ta_pack_cases.js  # TA Stage 4: Grok Bot test 
 run ta_stage1 python3 tests/test_ta_stage1.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 1: chart-type pill + menu, TA pill/panel, RSI strip, overlap 0
 run ta_stage2 python3 tests/test_ta_stage2.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 2: browser indicators, warm-up, RSI strip, tooltip, perf, pixel-diff
 run ta_stage4 python3 tests/test_ta_stage4.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 4: trendlines drawn from ta-lines.json, 8 display rules, stale/missing/invalid, pixel checks
+run ta_rotate python3 tests/test_rotate_hint.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA rotate hint: portrait pill bottom-left of the clock chart, tap enters fs chart + prompt, landscape hides, overlap 0
 run ytd_chart_scroll python3 tests/test_ytd_chart_scroll.py "http://127.0.0.1:$PORT"  # YTD chart must not trap phone/iPad scroll (Speed Option 2 rollback)
 kill $SRV 2>/dev/null; wait $SRV 2>/dev/null || true; SRV=""
 dfcheck end
