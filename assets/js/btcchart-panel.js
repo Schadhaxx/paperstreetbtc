@@ -80,14 +80,16 @@ var CAND=null,CANDGEOM=[],CANDSEL=-1,CANDHOV=-1,CANDLBL='',CANDPER=4;
    CANDRANGE marks that the shared candle canvas + pill are currently showing range candles,
    so the shared listeners and pill dismiss redraw the range view, not the 1D view. */
 var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='',RGLIVE=false;
-/* Per-range default candle size, explicit by range — NOT "first button in
-   the list" (the button order is finest-first: Daily, Weekly, Monthly).
-   1M defaults to Weekly; 3M/6M/YTD/1Y default to Monthly; 1W is daily only. */
-function defaultGran(r){return r==='1M'?'weekly':(r==='3M'||r==='6M'||r==='YTD'||r==='1Y')?'monthly':'daily';}
+/* Per-range default candle size: the EARLIEST (finest) size offered for
+   the range — the first size button in the list. Daily beats Weekly,
+   Weekly beats Monthly (Sunil, 21 Nov 2026). 1M defaults to Daily;
+   3M/6M/YTD/1Y default to Weekly; 1W stays Daily (its other option is
+   the 4-hour intraday mode, not a size). */
+function defaultGran(r){return (r==='3M'||r==='6M'||r==='YTD'||r==='1Y')?'weekly':'daily';}
 var RGCT='line',RGGRAN=defaultGran('1M'),RGSEEN={};
 /* Candle ranges, Day 2: 3M/6M/YTD/1Y join 1W/1M. Granularity choices:
-   1W daily only; 1M weekly|daily (default weekly); 3M/6M/YTD/1Y monthly|weekly
-   (default monthly). */
+   1W daily only; 1M weekly|daily (default daily); 3M/6M/YTD/1Y monthly|weekly
+   (default weekly). */
 var CANDLE_RANGES=['1W','1M','3M','6M','YTD','1Y'];
 /* Fix 29 Oct 2026 (browser test, Day 1): the pill + canvas listeners are shared
    between the 1D candle view and the 1W/1M range candle view, and the old code
@@ -543,11 +545,11 @@ function drawRange(){
   var mb=$('bcMstr');if(mb){mb.setAttribute('aria-pressed','false');mb.classList.add('off');$('bcMstrT').textContent='+ MSTR';mb.setAttribute('aria-label','MSTR unavailable for candle view');}
   /* First-time candles for a range must use that range's default, even if
      RGGRAN was left over from another range or from the initial load.
-     Fix 29 Oct 2026 (live 1M default): the previous fix only reset RGGRAN
-     in open() and when the value was not allowed — but Daily IS allowed
-     for 1M, so a stale 'daily' initial value survived the Line->Candles
-     switch untouched and won (31 daily candles, Daily selected). This
-     first-visit rule is the backstop: the first candle draw for a range
+     (History: the 29 Oct 2026 fix added this backstop when 1M's default
+     was Weekly — a stale 'daily' initial value survived the Line->Candles
+     switch and won. Since 21 Nov 2026 the default IS the finest size,
+     so a first-visit Daily on 1M is correct, not stale.)
+     This first-visit rule is the backstop: the first candle draw for a range
      in this session always uses that range's default, whatever RGGRAN
      was before. After that first draw RGSEEN[rng] is set, so a
      user-picked valid size is preserved across Line<->Candles switches;
@@ -888,8 +890,8 @@ var taLoaded=false;
 function loadTA(){
   if(taLoaded)return;taLoaded=true;
   try{
-    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta4');document.head.appendChild(l);
-    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta4');
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta5');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta5');
     s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
     s.onerror=function(){taLoaded=false;};
     document.head.appendChild(s);
