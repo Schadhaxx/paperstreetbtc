@@ -51,9 +51,11 @@ chk('drawDailyNative layout carries kind daily', /lineGeom=\{kind:'daily',pad/.t
 /* Native-only wiring for the range views (Chart.js removed 20 Nov 2026).
    TA Stage 1 (20 Nov 2026): a TA after-draw hook + pill sync follow lineFail()
    on the next line, so this regex ends at lineFail(); (as step 2 does) instead
-   of pinning the closing brace. */
-chk('drawDaily draws natively, lineFail() on failure',
-  /var nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG\}\);lineDrawn=nativeOK;\n  if\(nativeOK\)lineRetry=false;else lineFail\(\);/.test(panel));
+   of pinning the closing brace.
+   Rebase 21 Nov 2026: drawDaily also passes the skunkworks floor object
+   (or null) to drawDailyNative on 5Y/10Y line views with no comparison. */
+chk('drawDaily draws natively, lineFail() on failure, floor passed through',
+  /var nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG,floor:\(FLOOR_ON&&\/\^\(5Y\|10Y\)\$\/\.test\(rng\)&&!sx\)\?FLOOR:null\}\);lineDrawn=nativeOK;\n  if\(nativeOK\)lineRetry=false;else lineFail\(\);/.test(panel));
 chk('drawDaily has no Chart.js guard', /function drawDaily\(\)\{if\(!DATA\)return;clearCandState\(\);/.test(panel));
 chk('draw-failure isolation records __BTC_DRAWERR for the daily line', /window\.__BTC_DRAWERR=\{where:'drawDailyNative'/.test(panel));
 
@@ -91,8 +93,9 @@ chk('panel keeps drawCandles1D + drawCandlesRange', /function drawCandles1D\(/.t
 chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(panel));
 chk('needChart removed with Chart.js', !/needChart/.test(panel));
 
-/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026) */
-chk('stub loads the panel with wr1', /btcchart-panel\.js\?v=wr1/.test(stub));
+/* Rebase 21 Nov 2026: loader + panel et31 on this branch (main is wr1; the
+   branch panel differs, so it keeps its own pin) */
+chk('stub loads the panel with et31', /btcchart-panel\.js\?v=et31/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
