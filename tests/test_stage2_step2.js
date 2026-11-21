@@ -108,7 +108,7 @@ chk('panel keeps getData + getIntraday', /function getData\(\)/.test(panel) && /
 chk('needChart removed with Chart.js', !/needChart/.test(panel));
 
 /* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) */
-chk('stub loads the panel with ta4', /btcchart-panel\.js\?v=ta4/.test(stub));
+chk('stub loads the panel with wr1', /btcchart-panel\.js\?v=wr1/.test(stub));
 chk('stub does not load the panel with et19', !/btcchart-panel\.js\?v=et19/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
@@ -118,9 +118,9 @@ let ta4 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=ta4') ta4++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=wr1') ta4++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin ta4', ta4 === 16 && other.length === 0, 'ta4=' + ta4 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin wr1', ta4 === 16 && other.length === 0, 'ta4=' + ta4 + ' other=' + JSON.stringify(other));
 
 /* YTD hero: native only since the Chart.js removal (20 Nov 2026) */
 chk('s2.js has no Chart.js fallback', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));
