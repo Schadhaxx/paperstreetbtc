@@ -116,6 +116,11 @@ html[data-theme="light"] .bc-w .ta-panel .ta-tl-status{color:#64748b}
 .v4-stage .ta-panel .ta-ma-chip i,.bc-w .ta-panel .ta-ma-chip i{width:8px;height:8px;border-radius:50%;background:var(--mac,#f472b6);display:block;flex:0 0 auto}
 .v4-stage .ta-panel .ta-ma-chip.on,.bc-w .ta-panel .ta-ma-chip.on{border-color:var(--mac,#f472b6);color:#e2e8f0;background:rgba(255,255,255,.05)}
 .v4-stage .ta-panel .ta-ma.off .ta-ma-chip,.bc-w .ta-panel .ta-ma.off .ta-ma-chip{opacity:.45}
+/* Drawing fixes Stage 1 (21 Nov 2026): a gated toggle stays visible but
+   greyed out (disabled) on views where its overlay does not work. */
+.v4-stage .ta-panel .ta-sw:disabled,.bc-w .ta-panel .ta-sw:disabled{opacity:.45;cursor:default}
+.v4-stage .ta-panel .ta-it.gated .nm,.bc-w .ta-panel .ta-it.gated .nm{opacity:.5}
+.v4-stage .ta-panel .ta-ma-chip:disabled,.bc-w .ta-panel .ta-ma-chip:disabled{opacity:.45;cursor:default}
 html[data-theme="light"] .v4-stage .ta-panel,
 html[data-theme="light"] .bc-w .ta-panel{background:rgba(255,255,255,.98);border-color:#cbd5e1;color:#0f172a;box-shadow:0 16px 36px rgba(15,23,42,.18)}
 html[data-theme="light"] .v4-stage .ta-panel .ta-ph b,

@@ -119,10 +119,20 @@ def main():
             chk('clock 390 dark: pill back to Line', pg.inner_text('#taTyp').strip().startswith('Line'))
             pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
             chk('clock 390 dark: TA panel opens with 4 toggles', pg.locator('.ta-panel .ta-sw').count() == 4)
-            pg.click('.ta-panel [data-ta-key="rsi"]'); pg.wait_for_timeout(600)
-            chk('clock 390 dark: RSI strip shows when on', pg.evaluate("!document.getElementById('taRsi').hidden"))
+            # Stage 1 gating on 1D Line: Trends, Bollinger and RSI are
+            # greyed out (still visible); SMA 200 is greyed out too, while
+            # SMA 20 stays live and the RSI strip stays hidden.
+            chk('clock 390 dark: Trends toggle disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-key="tl"]'))
+            chk('clock 390 dark: Bollinger toggle disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
+            chk('clock 390 dark: RSI toggle disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
+            chk('clock 390 dark: SMA 200 chip disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
+            chk('clock 390 dark: SMA 20 chip enabled on 1D', not pg.is_disabled('.ta-panel [data-ta-ma="sma20"]'))
+            chk('clock 390 dark: RSI strip stays hidden (gated on 1D)', pg.evaluate("document.getElementById('taRsi').hidden"))
+            # The MA group switch is live on 1D: on -> badge 1 (SMA 50 is
+            # the default chip when nothing is selected), off -> cleared.
+            pg.click('.ta-panel [data-ta-key="ma"]'); pg.wait_for_timeout(600)
             chk('clock 390 dark: pill count badge 1', pg.inner_text('#taPill').strip().startswith('TA1') or '1' in pg.inner_text('#taPill'))
-            pg.click('.ta-panel [data-ta-key="rsi"]'); pg.wait_for_timeout(400)
+            pg.click('.ta-panel [data-ta-key="ma"]'); pg.wait_for_timeout(400)
             pg.screenshot(path=str(shots / 'clock-390-dark-ta-panel.png'), animations='disabled')
             r = pg.evaluate("window.__taRects()")
             overlap['clock-390-dark-panel'] = r

@@ -98,6 +98,7 @@ run headless python3 tests/headless_matrix.py "http://127.0.0.1:$PORT" "$WORK/sh
 run ta_indicators node tests/test_ta_indicators.js  # TA Stage 2: SMA/EMA/Bollinger/RSI reference values
 run ta_trendlines node tests/test_ta_trendlines.js  # TA Stage 4: trendline validate/stale/map/sloped/filter/label (pure functions)
 run ta_pack_cases node tests/test_ta_pack_cases.js  # TA Stage 4: Grok Bot test pack's 16 cases against tlSelectLines (fixtures are repo copies of the pack's)
+run ta_gating node tests/test_ta_gating.js  # TA drawing fixes Stage 1: per-view toggle gating (pure functions, 119 checks)
 run ta_stage1 python3 tests/test_ta_stage1.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 1: chart-type pill + menu, TA pill/panel, RSI strip, overlap 0
 run ta_stage2 python3 tests/test_ta_stage2.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 2: browser indicators, warm-up, RSI strip, tooltip, perf, pixel-diff
 run ta_stage4 python3 tests/test_ta_stage4.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 4: trendlines drawn from ta-lines.json, 8 display rules, stale/missing/invalid, pixel checks

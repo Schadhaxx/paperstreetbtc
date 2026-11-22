@@ -155,6 +155,46 @@ function tlChartTf(st){
   if(st.rng==='1W')return (st.RGCT==='candles'&&st.RGGRAN==='4h')?'4h':'1d';
   return '1d';
 }
+/* ---------- Drawing fixes Stage 1 (21 Nov 2026): per-view gating ----------
+   Some overlays do not work on some views (live scan, 21 Nov 2026). On a
+   gated view the toggle stays visible but disabled (greyed out) and the
+   overlay does not draw; the same toggle works normally on other views.
+   The saved state (S) is untouched — gating only gates the interaction
+   and the drawing, so the overlay comes back on a view where it works.
+   Comparison-on behaviour is unchanged (TA hides while a comparison is
+   on, the note shows). Pure functions, unit-tested in
+   tests/test_ta_gating.js. Corrected lists (Sunil, 21 Nov ~19:16):
+   Bollinger gated on EVERY range; SMA 200 kept on YTD/1Y, gated only
+   on 1D/1W; EMA 50 gated on 1W, EMA 200 on 1D/1W (same as the SMAs). */
+var TA_GATE_BB_RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'];
+var TA_GATE_MA={sma20:['1W'],sma50:['1W'],sma200:['1D','1W'],ema50:['1W'],ema200:['1D','1W']};
+function taIsLineView(st){
+  /* Line view: 1D uses CT, every other range uses RGCT. 5Y/10Y/Max are
+     Line-only (no menu) but trendlines there are already off by design,
+     so gating never applies to them (taGated checks the range too). */
+  if(!st||typeof st.rng!=='string')return false;
+  return st.rng==='1D'?st.CT==='line':st.RGCT!=='candles';
+}
+function taGated(key,st){
+  /* The four panel switches. 'ma' (the group switch) is never gated —
+     the per-chip gating below covers the MAs that don't. Unknown keys
+     and unknown views are not gated (fail open: the draw path already
+     guards on geometry/state). Bollinger is gated on every range
+     (Sunil, 21 Nov ~19:16) until the indicator-window rework. */
+  if(!st||typeof st.rng!=='string')return false;
+  if(key==='tl')return taIsLineView(st)&&(st.rng==='1D'||st.rng==='1W');
+  if(key==='bb')return TA_GATE_BB_RANGES.indexOf(st.rng)>=0;
+  if(key==='rsi')return true;
+  return false;
+}
+function taMaGated(maKey,st){
+  /* Per-MA-chip gating. SMA 200 on 6M is UNDECIDED (not scanned) — left
+     as is, not gated; SMA 200 on YTD/1Y is KEPT (Sunil, 21 Nov ~19:16).
+     EMA 20 is never gated; EMA 50/200 follow their SMA twins. */
+  if(!st||typeof st.rng!=='string')return false;
+  var g=TA_GATE_MA[maKey];
+  return !!g&&g.indexOf(st.rng)>=0;
+}
 function tlSlopedPriceAt(sl,tMs,tf){
   /* Sloped lines live in candle-index space: price = anchor + slope x
      (candles since the anchor). BTC's bars are uniform in wall clock
@@ -310,11 +350,12 @@ function tlSelectLinesForChart(file,chartTf,livePrice,nowMs,lastMs){
   });
   return out;
 }
-if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs};return;}
+if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView};return;}
 /* ---------- Stage 2: overlay drawing (browser only) ---------- */
 function fmtP(v){try{return (window.__BTCP&&window.__BTCP.fmt)?window.__BTCP.fmt(v):('$'+Math.round(v).toLocaleString('en-US'));}catch(e){return '$'+Math.round(v);}}
 function psC2(d,l){try{return window.psC?window.psC(d,l):d;}catch(e){return d;}}
 function isCmp(){try{return !!(API.cmp&&API.cmp());}catch(e){return false;}}
+function viewState(){try{return API.state();}catch(e){return null;}}
 var warmCache={},warmAsked={};
 function warmAsync(g){
   /* Intraday warm-up: lazy background fetch (panel-side), cached per kind.
@@ -371,12 +412,16 @@ function traceLine(ctx,vals,xs,yFor,col,width,dash){
 function drawOverlays(g,vals){
   var c=el('bcC');if(!c)return;
   var ctx=c.getContext('2d');if(!ctx)return;
-  if(S.bb&&vals.bbUp){
+  var st=viewState();
+  /* Stage 1 gating: a gated overlay does not draw on this view, even
+     though its values are still computed (computeVals stays ungated, so
+     the debug probe and the Stage 2 value checks are unaffected). */
+  if(S.bb&&vals.bbUp&&!taGated('bb',st)){
     traceLine(ctx,vals.bbUp,g.xs,g.yFor,psC2('#a78bfa','#7c3aed'),1.25);
     traceLine(ctx,vals.bbLo,g.xs,g.yFor,psC2('#a78bfa','#7c3aed'),1.25);
     traceLine(ctx,vals.bbMid,g.xs,g.yFor,psC2('#a78bfa','#7c3aed'),1,[4,3]);
   }
-  if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k])traceLine(ctx,vals.mas[k],g.xs,g.yFor,maCol(k),2);});
+  if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k]&&!taMaGated(k,st))traceLine(ctx,vals.mas[k],g.xs,g.yFor,maCol(k),2);});
 }
 function drawRsiStrip(g,vals){
   if(!rsiEl)return;
@@ -406,7 +451,7 @@ function drawRsiStrip(g,vals){
    and reports status to the TA panel. Never Desk: this module only ever
    loads for the BTC charts. */
 var tlCache={data:null,ok:false,reason:'',fetchedAt:0,inflight:null};
-var tlStatus='off'; /* off | unavailable | updating | live */
+var tlStatus='off'; /* off | unavailable | gated | updating | live */
 var tlLast=null; /* last draw result, for the __TA_TL_DEBUG probe */
 var TL_FETCH_MS=10*60*1000;
 function tlSetStatus(s){tlStatus=s;syncTlStatus();}
@@ -528,6 +573,10 @@ function tlDrawLines(g){
   var tf=tlChartTf(st);
   res.tf=tf;
   if(!tf){res.status='unavailable';tlSetStatus('unavailable');return res;}
+  /* Stage 1 gating: trendlines do not draw on Line 1D/1W, even though the
+     file is fresh — the toggle is greyed out there and comes back to life
+     on views where the lines work. */
+  if(taGated('tl',st)){res.status='gated';tlSetStatus('gated');return res;}
   tlFetch();
   var liveClose=g.closes[g.n-1];
   res.liveClose=liveClose;
@@ -572,6 +621,7 @@ function syncTlStatus(){
   if(S.tl&&!isCmp()){
     hidden=false;
     if(tlStatus==='unavailable')text='Not available on this range';
+    else if(tlStatus==='gated')text='Not available on this view';
     else if(tlStatus==='live'){
       var c=tlLast&&tlLast.lines?tlLast.lines.length:0;
       /* The timeframes actually fresh (same-or-higher than the chart's):
@@ -599,9 +649,12 @@ function taTipLines(kind,i){
     var warm=warmFor(g);
     var vals=computeVals(g,warm);
     var out=[];
-    if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k]&&vals.mas[k][i]!=null)out.push({t:MA_LBL[k]+' '+fmtP(vals.mas[k][i]),c:maCol(k)});});
-    if(S.bb&&vals.bbUp&&vals.bbUp[i]!=null&&vals.bbLo[i]!=null)out.push({t:'BB 20 '+fmtP(vals.bbLo[i])+'\u2013'+fmtP(vals.bbUp[i]),c:psC2('#a78bfa','#7c3aed')});
-    if(S.rsi&&vals.rsi&&vals.rsi[i]!=null)out.push({t:'RSI '+vals.rsi[i].toFixed(1),c:psC2('#a78bfa','#7c3aed')});
+    var st=viewState();
+    /* Stage 1 gating: the tooltip lists only the overlays actually drawn
+       on this view — a gated overlay's values are computed but not shown. */
+    if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k]&&vals.mas[k][i]!=null&&!taMaGated(k,st))out.push({t:MA_LBL[k]+' '+fmtP(vals.mas[k][i]),c:maCol(k)});});
+    if(S.bb&&!taGated('bb',st)&&vals.bbUp&&vals.bbUp[i]!=null&&vals.bbLo[i]!=null)out.push({t:'BB 20 '+fmtP(vals.bbLo[i])+'\u2013'+fmtP(vals.bbUp[i]),c:psC2('#a78bfa','#7c3aed')});
+    if(S.rsi&&!taGated('rsi',st)&&vals.rsi&&vals.rsi[i]!=null)out.push({t:'RSI '+vals.rsi[i].toFixed(1),c:psC2('#a78bfa','#7c3aed')});
     return out.length?out:null;
   }catch(e){return null;}
 }
@@ -674,8 +727,10 @@ function syncPill(){
 }
 function syncRsi(){
   if(!rsiEl||!dlg)return;
-  /* Stage 2: the strip hides on comparison too (TA is BTC-only). */
-  rsiEl.hidden=!S.rsi||isCmp();
+  /* Stage 2: the strip hides on comparison too (TA is BTC-only).
+     Stage 1 gating: RSI is greyed out on every view for now, so the
+     strip never shows until the strip rework (Stage 3) lifts the gate. */
+  rsiEl.hidden=!S.rsi||isCmp()||taGated('rsi',viewState());
   dlg.classList.toggle('ta-rsi-on',!!S.rsi);
   if(S.rsi){
     rsiEl.classList.toggle('col',!!S.rsiCol);
@@ -810,6 +865,38 @@ function syncPanel(){
   var chips=panelEl.querySelectorAll('[data-ta-ma]');
   for(var j=0;j<chips.length;j++){var k=chips[j].getAttribute('data-ta-ma');var on=!!(S.maSet&&S.maSet[k]);chips[j].classList.toggle('on',on);chips[j].setAttribute('aria-pressed',on?'true':'false');}
   syncTlStatus();
+  syncGating();
+}
+/* ---------- Drawing fixes Stage 1: per-view toggle gating ----------
+   A gated toggle renders disabled (greyed out, still visible) with its
+   row label dimmed; the same toggle works normally on other views. Runs
+   on every panel sync and every draw, so a view change while the panel
+   is open re-gates at once. Disabled buttons fire no click events, so
+   the delegated handler below never sees a gated toggle — the guards in
+   setToggle and the chip handler are belt-and-braces for programmatic
+   calls. */
+function syncGating(){
+  /* No hidden check: renderPanel syncs before the panel is shown, so the
+     toggles are already gated when it appears; afterDraw re-gates while
+     it is open. The writes are idempotent when nothing changed. */
+  if(!panelEl)return;
+  var st=viewState();
+  var sws=panelEl.querySelectorAll('[data-ta-key]');
+  for(var i=0;i<sws.length;i++){
+    var k=sws[i].getAttribute('data-ta-key');
+    var g=taGated(k,st);
+    sws[i].disabled=g;
+    sws[i].title=g?'Not available on this view':'';
+    var row=sws[i].closest?sws[i].closest('.ta-it'):null;
+    if(row)row.classList.toggle('gated',g);
+  }
+  var chips=panelEl.querySelectorAll('[data-ta-ma]');
+  for(var j=0;j<chips.length;j++){
+    var mk=chips[j].getAttribute('data-ta-ma');
+    var gm=taMaGated(mk,st);
+    chips[j].disabled=gm;
+    chips[j].title=gm?'Not available on this view':'';
+  }
 }
 function openPanel(){
   if(isPriceMode())return;
@@ -828,6 +915,9 @@ function closePanel(focusPill){
   if(focusPill&&taBtn)taBtn.focus();
 }
 function setToggle(key,val){
+  /* Stage 1 gating: a gated overlay cannot turn on for this view.
+     Turning it off is always allowed (and Clear all bypasses this). */
+  if(val&&taGated(key,viewState()))return;
   S[key]=!!val;
   /* Turning the MA group on with nothing selected shows SMA 50 (the old
      single-MA default) so the toggle always draws something. */
@@ -964,6 +1054,8 @@ function init(api){
     var mc=e.target.closest('[data-ta-ma]');
     if(mc){
       var mk=mc.getAttribute('data-ta-ma');
+      /* Stage 1 gating: a gated chip cannot turn on for this view. */
+      if(taMaGated(mk,viewState())&&!(S.maSet&&S.maSet[mk]))return;
       if(!S.maSet||typeof S.maSet!=='object')S.maSet={};
       if(S.maSet[mk])delete S.maSet[mk];else S.maSet[mk]=true;
       /* Enabling a chip turns the group on; disabling the last one turns
@@ -994,7 +1086,7 @@ function init(api){
      nothing: the canvas stays pixel-identical to main. */
   api.afterDraw=function(kind){
     if(menuOpen)closeMenu(false);
-    syncRsi();syncCmpNote();syncTlStatus();
+    syncRsi();syncCmpNote();syncTlStatus();syncGating();
     if(!nOn())return;
     if(isCmp())return;
     var g=null;
@@ -1006,7 +1098,7 @@ function init(api){
       var warm=warmFor(g);
       var vals=computeVals(g,warm);
       drawOverlays(g,vals);
-      if(S.rsi)drawRsiStrip(g,vals);
+      if(S.rsi&&!taGated('rsi',viewState()))drawRsiStrip(g,vals);
       if(S.tl)tlDrawLines(g);
     }catch(e){}
     try{
