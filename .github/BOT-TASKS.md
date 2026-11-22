@@ -1,18 +1,24 @@
 Open tasks across Sunil's bots so Pepper can pick them up if bots are offline. Sections are added as each bot reports.
 
-## Review: enhancements 4–6 (pepper-enhancements-456) before Fri Nov 27 go-live
+This file lives at `.github/BOT-TASKS.md` so it is in the repo for Pepper but is not served by GitHub Pages.
+
+## Grok Bot
+
+### Review: enhancements 4–6 (pepper-enhancements-456) before Fri Nov 27 go-live
+
+Type: operational bot job (review of a site build).
 
 Branch: `pepper-enhancements-456` @ `0bcd6db1` (handover parent `17b79295`; current live main was `aaed6194` on `2651cb1b` — confirm against current main before reviewing).
 
 26 files, +970/−31.
 
-### Scope
+#### Scope
 
 - **Item 4:** share links / Copy-link on `/compare/` (`compare.js` PsShare)
 - **Item 5:** `recap-chart.js?v=rcp1` canvas charts on 11 recap pages, plus `recap_gen.py` changes
 - **Item 6:** Desk sparklines (`spark-pack.json?v=spk1`, 24 symbols; `screener.js` pin scr9→scr10; `screener_daily.py` builds the pack; `prices.yml` copies and commits `spark-pack.json`)
 
-### Review checklist
+#### Review checklist
 
 - Rebase / ahead-behind vs current main
 - Whole-diff scope (no unrequested logo, image, style, layout, or files)
@@ -24,11 +30,13 @@ Branch: `pepper-enhancements-456` @ `0bcd6db1` (handover parent `17b79295`; curr
 
 **Result:** PASS, or one must-fix list.
 
-### Go-live
+#### Go-live
 
 Fri Nov 27, 5 PM ET, only on Sunil's yes. Pepper deploys (the handover's line saying Grok Bot handles go-live is wrong). Fast-forward only, no force-push, never during 9:30 AM–4 PM ET, never on Sunday.
 
-## Layout-shift (CLS) fix for Desk and Compare — kickoff Fri Nov 27 2 PM ET
+### Layout-shift (CLS) fix for Desk and Compare — kickoff Fri Nov 27 2 PM ET
+
+Type: site build.
 
 Kickoff: Fri Nov 27, 2 PM ET. Build after kickoff, then a whole-diff review (scope, never-served pins, tests vs clean main, screenshots) and Sunil's yes before go-live.
 
@@ -162,6 +170,88 @@ No logo, no unrequested changes. Only Sunil’s own words count as approval to s
 
 Raw measurements from this check: `/workspace/plans/cls-measure.json`, `/workspace/plans/cls-breakpoints.json`.
 
-## Other bots
+## Chief of Staff
 
-Site Launch: none. Chief of Staff, PaperStreet Portfolio, Market God, Ping Bot GitHub: pending.
+Reported by Chief of Staff, Sat Nov 21, 10:36 PM ET. Findings below are as reported by Chief of Staff and were not independently verified. CoS reported no open tracked tasks in progress, and provided the following queued work, reminders, and watches.
+
+Standing rules (as reported by Chief of Staff): fast-forward only, never force-push; go live only outside weekday market hours (9:30 AM–4 PM ET), never on a Sunday, never during the 8:00–9:30 PM ET push freeze; never reuse a served cache pin (known served/taken, as reported: stocks22, stocks23, et29–et33, p13, p14, ct1, lm5, scr9, cmp13, et10, v4t, ta3, ta4, ta5, ta6, wr1); no production GitHub/site/data changes without Sunil’s own yes; never workflow_dispatch without his yes; stay off TA 2.0 unless he asks.
+
+### 1. CADUSD Desk publish fix
+
+Type: site build. Deadline: this weekend or before 9:30 AM ET Mon Nov 23.
+
+Goal: Unstick the Desk CAD/USD weekly tile. Live Yahoo CADUSD=X failed closed Thu and Fri because a revised Nov 18 bar has close above high by ~0.00004 before rounding (shown at 4 decimals, where it is consistent).
+
+State: Diagnosis only, no branch, nothing pushed. Findings: `/workspace/cadusd/FINDINGS.md` (checked Fri Nov 20 ~3:25 PM ET against main `bed10bb3`; main has moved since — rebase onto current live main). Cause is `tools/indicator_weekly.py` `bars_from_payload()` checking raw floats at 1e-9; `desk_intraday.py` `bars_from_fixture_rows()` already rounds first. Live impact as of that check: `usdcad-weekly.json` stuck at asOf “18 Nov 2026, 4:45 PM ET”; `desk-live.json` CADUSD status “failed”. It will not self-heal, including Monday’s finalize-last-week path, until the code is fixed.
+
+Next: One-file fix — in `bars_from_payload()`, round to `nd` first, then run the consistency check (keep the existing high/low clamp). Add one regression test with the exact Nov 18 CADUSD=X values (should pass at nd=4; a clearly broken bar should still raise). Grok Bot does the one review. After it is live, confirm the next intraday or final run moves `usdcad-weekly.json` asOf and desk-live CADUSD status is “ok”.
+
+Rules: Lean process; one Grok Bot review; Sunil’s yes before live; not Sunday; before 9:30 AM Mon Nov 23 if possible.
+
+### 2. Analytics Stage 2 review (page-error tracking) — queued for Sat Nov 28+
+
+Type: operational bot job (review of a site build).
+
+Goal: After Pepper builds Stage 2, Chief of Staff does the one review (not Grok Bot), then Sunil gives the go.
+
+State: Brief already sent, at `/workspace/pepper-analytics/BRIEF-stage2-pepper.md`. Pepper builds Sat Nov 28 from latest live main, rebases before handback. Scope: JS errors and BTC chart lineFail reports to the existing paperstreet-quotes Worker, stored in D1 for 30 days, plus a secret-protected read endpoint for the weekday health check. Sunil must create D1 database `paperstreet-errors` and Worker secret `ERR_READ_SECRET` (do not replace `FINNHUB_API_KEY`) by then. After go-live, the read secret comes to Chief of Staff only via the secure form, never chat.
+
+Next: Wait for Pepper’s handback on or after Nov 28; one review; Sunil’s go; then no wrangler deploy or main push until he says yes. Same go-live windows (Saturday is allowed if review is done that day).
+
+### 3. Plan analytics Stages 3 and 4
+
+Type: reminder. No build until Sunil approves.
+
+Reminder routine enabled, never run: “Remind Sunil: plan analytics Stages 3 and 4 (Fri Nov 27, 6 PM)”, id `remind-sunil-plan-analytics-stages-3-and-4-fri-n`, cron `0 18 27 11 * America/Toronto`. Next: routine fires Fri Nov 27 at 6 PM ET; plan then.
+
+### 4. Post-TA-2.0 live-site bug hunt handoff
+
+Type: operational bot job (not a build).
+
+When TA 2.0 is live, start PaperStreet Portfolio’s hands-on bug hunt of the live site. Portfolio (`f8fac7bd-d385-471b-9d17-993973e79273`) is already briefed and holding. CoS stays off TA 2.0 otherwise. Next: when TA 2.0 is confirmed live, message Portfolio: “TA 2.0 is live, start the bug hunt”. Findings go to Grok Bot, marked critical or non-critical, for Pepper work orders. Read-only: no pushes, no code changes, no workflow_dispatch.
+
+Note: Sunil said stay off the TA overlay gating/rework, and PaperStreet Portfolio said not to file a follow-up bug-hunt. This item is left listed, with that conflict noted. This file does not assign anyone the TA overlay gating/rework job.
+
+### 5. Transfer paperstreetbtc.com to Cloudflare (Dec 20, 2026)
+
+Type: reminder.
+
+That morning, walk through the domain transfer, then a staged plan to move the site the following week, starting on a Cloudflare preview with GitHub Pages kept up as fallback until Sunil says go. Grok Bot reviews it; CoS does a final look; nothing switches until his yes. Reminder routine enabled, never run: id `transfer-paperstreetbtc-com-to-cloudflare-dec-20`, cron `0 9 20 12 * America/Toronto`.
+
+### Long-dated reminders
+
+Type: reminder. Enabled, never run.
+
+- PaperStreet site renewals reminder (Sep 15, 2027, 9 AM ET), id `paperstreet-site-renewals-reminder-sep-2027`.
+- Refresh BTC chart history file (Jul 6, 2027, 9 AM ET), id `refresh-btc-chart-history-file-jul-2027`.
+
+### Watches
+
+Type: operational bot job. CoS messages Sunil only if things get worse; never workflow_dispatch without his yes; on the desk watch, alert him first before any manual run.
+
+- Stale-data monitor: weekdays ~5 PM ET, id `paperstreet-stale-data-monitor`. Last run Fri Nov 20, 5:10 PM ET, done.
+- Pipeline daily health check: weekdays ~9:43 AM ET, id `paperstreet-pipeline-daily-health-check`. Last recorded run Fri Nov 13, 9:40 AM ET, failed. It was paused Nov 15 through Fri Nov 20 3 PM during Pepper’s week and resumed Friday afternoon, so the next expected run is Mon Nov 23 ~9:43 AM. (Paused during that window; not paused now.)
+- Weekly live-site check: Mondays ~10:43 AM ET, id `paperstreet-weekly-live-site-check`. Last run Mon Nov 9, done (also paused that week). Next expected Mon Nov 23.
+- Desk intraday scheduler watch: weekdays ~11:10 AM, 2:10 PM, and 5:10 PM ET, id `desk-intraday-scheduler-watch-hourly-market-hour`. Last run Fri Nov 20, 5:28 PM ET, done.
+
+Context only, not CoS-owned (as reported by Chief of Staff): Pepper already has the Stage 2 brief and the post-TA-1 quick-wins brief (items 1, 2, 3, 8) at `/workspace/pepper-quickwins/BRIEF-pepper.md`. Stage 1 analytics and the weekly-candle rollover are already live.
+
+## Site Launch
+
+No open tasks were included in the inventories used for this file.
+
+## PaperStreet Portfolio
+
+No separate inventory was included beyond what Chief of Staff reported (not independently verified):
+
+- Post-TA-2.0 live-site bug hunt: operational bot job (not a build). Portfolio is already briefed and holding. When TA 2.0 is confirmed live, CoS would message Portfolio to start the bug hunt; findings would go to Grok Bot, marked critical or non-critical, for Pepper work orders. Read-only: no pushes, no code changes, no workflow_dispatch.
+
+Note: Sunil said stay off the TA overlay gating/rework, and PaperStreet Portfolio said not to file a follow-up bug-hunt. This item is left listed, with that conflict noted.
+
+## Market God
+
+No open tasks were included in the inventories used for this file.
+
+## Ping Bot GitHub
+
+No open tasks were included in the inventories used for this file.
