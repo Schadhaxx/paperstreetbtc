@@ -788,7 +788,7 @@ function renderPanel(){
   /* The six MA chips are the legend: each carries its MA's colour dot +
      label; enabled chips are highlighted in their colour. */
   var chips=MA_KEYS.map(function(k){return '<button type="button" class="ta-ma-chip'+(S.maSet&&S.maSet[k]?' on':'')+'" data-ta-ma="'+k+'" style="--mac:'+maCol(k)+'" aria-pressed="'+(!!(S.maSet&&S.maSet[k]))+'"><i></i>'+MA_LBL[k]+'</button>';}).join('');
-  p.innerHTML='<div class="ta-ph"><b>Technical analysis</b><button type="button" data-ta-clear>Clear all</button></div>'
+  p.innerHTML='<div class="ta-ph"><span class="ta-ph-t"><b>Technical analysis</b><span class="ta-beta">Beta</span></span><button type="button" data-ta-clear>Clear all</button></div>'
     +'<div class="ta-cmp" hidden>TA shows on BTC alone. Turn off comparisons to see it.</div>'
     +swRow('tl','Smart Trendlines','auto support / resistance',COL.tl)
     +'<div class="ta-tl-status" hidden></div>'

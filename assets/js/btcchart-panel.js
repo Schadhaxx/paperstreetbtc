@@ -923,8 +923,8 @@ var taLoaded=false;
 function loadTA(){
   if(taLoaded)return;taLoaded=true;
   try{
-    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta6');document.head.appendChild(l);
-    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta6');
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta7');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta7');
     s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
     s.onerror=function(){taLoaded=false;};
     document.head.appendChild(s);
