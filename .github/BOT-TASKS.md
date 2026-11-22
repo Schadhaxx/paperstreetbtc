@@ -238,20 +238,52 @@ Context only, not CoS-owned (as reported by Chief of Staff): Pepper already has 
 
 ## Site Launch
 
-No open tasks were included in the inventories used for this file.
+No open or queued tasks.
+
+## Ping Bot GitHub (operational bot job, PAUSED)
+
+Weekly GitHub keep-alive (routine id: `weekly-github-keep-alive`).
+
+- What it does: confirms gh auth as Schadhaxx and checks that `.github/workflows/prices.yml` is active, re-enabling it if not. Then it confirms the latest run time and appends a line to `/home/box/pingbot/log.csv`. Targets are listed in `/home/box/pingbot/targets.txt`, currently only that one workflow.
+- Schedule: Mondays ~9:00 AM America/Toronto, flexible ±15 min.
+- State: PAUSED, with prompt, id and schedule preserved. Last successful run: Nov 2, 9:13 AM EST. The Nov 9 and Nov 16 runs didn't fire. It won't resume until Sunil tells Ping Bot directly.
+- By hand (gh logged in as Schadhaxx; never print tokens):
+  1. `gh api user --jq .login` should return Schadhaxx. If not, tell Sunil auth failed.
+  2. `gh api repos/Schadhaxx/paperstreetbtc/actions/workflows/prices.yml --jq .state` should return active.
+  3. If it's not active, run `gh workflow enable prices.yml -R Schadhaxx/paperstreetbtc` and tell Sunil it was disabled and re-enabled.
+  4. `gh api 'repos/Schadhaxx/paperstreetbtc/actions/workflows/prices.yml/runs?per_page=1' --jq '.workflow_runs[0].created_at'` returns a UTC time. Tell Sunil if it's older than 24h.
+  5. Append timestamp,target,auth,state,action,latest_run to `log.csv`.
+  Without gh: on GitHub, go to repo Actions, then `prices.yml`. If an Enable workflow banner shows, click it, then check the latest run time.
+- Rules: stay quiet if all is fine. Message Sunil only for an auth failure, a disabled workflow (say it was re-enabled), or no runs in 24h. Never push code, change secrets, or touch anything else.
+
+## Market God (operational analyst job)
+
+No open tasks. MG-1 (TA Stage 3 review) is done.
+
+Weekly stale-data check: a read-only freshness check of the official PaperStreet books, Tiingo closes, the BTC final close, STRC redeployments and site data. It ends with a short fresh-or-stale verdict to Sunil. Runs Saturdays ~10 AM ET. Last run Sat Nov 21, 9:55 AM ET; next run Sat Nov 28 ~10 AM ET. Rules: read-only, never overwrite PaperStreet Portfolio's books or change the site or repo. Lock to one verified close set: Tiingo for equities, BTC close at UTC midnight. Note any lag. This isn't a site change for Pepper.
 
 ## PaperStreet Portfolio
 
-No separate inventory was included beyond what Chief of Staff reported (not independently verified):
-
-- Post-TA-2.0 live-site bug hunt: operational bot job (not a build). Portfolio is already briefed and holding. When TA 2.0 is confirmed live, CoS would message Portfolio to start the bug hunt; findings would go to Grok Bot, marked critical or non-critical, for Pepper work orders. Read-only: no pushes, no code changes, no workflow_dispatch.
+No open or queued tasks. The Nov 21 light TA click-around is done. Stay off all TA overlay work.
 
 Note: Sunil said stay off the TA overlay gating/rework, and PaperStreet Portfolio said not to file a follow-up bug-hunt. This item is left listed, with that conflict noted.
 
-## Market God
+1) PaperStreet daily report (operational bot job, ENABLED)
 
-No open tasks were included in the inventories used for this file.
+After the NYSE close, it computes the four model portfolios against six benchmarks and sends Sunil (pinkocat) the day and YTD report in the PaperStreet Portfolio chat.
 
-## Ping Bot GitHub
+- Routine `paperstreet-daily-report`, weekdays 4:23 PM America/Toronto (cron `23 16 * * 1-5`, exact).
+- Code: `/workspace/paperstreet/run.sh` (venv `/home/box/.venvs/paperstreet`) runs `paperstreet.py`.
+- Inputs: Yahoo unadjusted closes, with Tiingo raw closes as a cross-check and a labelled per-ticker fallback. The STRC dividend schedule is hard-coded.
+- Outputs: `summary.csv`, `daily_nav.csv`, `prices.csv`, `run_meta.json`, `report.md` and the chat report.
+- BTC figures are provisional until the daily bar (7 PM ET in November, midnight UTC).
+- Last run Fri Nov 20, 4:28 PM ET (Tiingo clean). Next run Mon Nov 23, 4:23 PM ET.
+- Rules: never trade, and it isn't financial advice. No portfolio rule changes without Sunil's OK. Skip the manual Nasdaq check when Tiingo has no flags or fallbacks. Each STRC dividend is a lump sum on its actual pay date, the next NY Fed business day. Daily dividends apply from the Nov 1, 2026 record date. Site changes go through Chief of Staff and need Sunil's OK.
+- Notes:
+  - Fri Nov 27 is a combined STRC pay date: the Nov 25 and Nov 26 records both pay Nov 27, because Thanksgiving is a NY Fed holiday. The calc handles this automatically, and the Nov 27 report should include the combined redeploy.
+  - Add December STRC daily amounts only once Strategy declares them.
+  - Market God tests are advisory only. Never change files, data, code or rules because of them; forward suggestions to Chief of Staff.
 
-No open tasks were included in the inventories used for this file.
+2) PaperStreet Friday site check (PAUSED)
+
+A read-only comparison of paperstreetbtc.com closes and dividends against the daily calc, which is the source of truth. Routine `paperstreet-twice-weekly-site-check-tue-fri`, Fridays ~4:45 PM ET. Paused since Nov 6 at Sunil's request and never run; the prompt is preserved. Leave it paused unless Sunil asks.
