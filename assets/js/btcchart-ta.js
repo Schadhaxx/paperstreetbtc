@@ -165,9 +165,18 @@ function tlChartTf(st){
    on, the note shows). Pure functions, unit-tested in
    tests/test_ta_gating.js. Corrected lists (Sunil, 21 Nov ~19:16):
    Bollinger gated on EVERY range; SMA 200 kept on YTD/1Y, gated only
-   on 1D/1W; EMA 50 gated on 1W, EMA 200 on 1D/1W (same as the SMAs). */
-var TA_GATE_BB_RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'];
-var TA_GATE_MA={sma20:['1W'],sma50:['1W'],sma200:['1D','1W'],ema50:['1W'],ema200:['1D','1W']};
+   on 1D/1W; EMA 50 gated on 1W, EMA 200 on 1D/1W (same as the SMAs).
+   Job 1 (21 Nov 2026): trendlines are NO LONGER gated on Line 1D/1W —
+   the Line y-range expands to include the drawn lines (tlExpandRange),
+   so the toggle is back on there.
+   Job 2 (21 Nov 2026): Bollinger is NO LONGER gated anywhere, and the
+   200s (SMA 200, EMA 200) are NO LONGER gated on 1D/1W — the warm-up
+   is now pre-fetched at TA init (preWarm) and retried on failure, so
+   the indicators are computed from history before the visible window
+   instead of from the window alone. SMA 20/50 and EMA 50 stay gated
+   on 1W, per the settled lists. */
+var TA_GATE_BB_RANGES=[];
+var TA_GATE_MA={sma20:['1W'],sma50:['1W'],sma200:[],ema50:['1W'],ema200:[]};
 function taIsLineView(st){
   /* Line view: 1D uses CT, every other range uses RGCT. 5Y/10Y/Max are
      Line-only (no menu) but trendlines there are already off by design,
@@ -179,10 +188,11 @@ function taGated(key,st){
   /* The four panel switches. 'ma' (the group switch) is never gated —
      the per-chip gating below covers the MAs that don't. Unknown keys
      and unknown views are not gated (fail open: the draw path already
-     guards on geometry/state). Bollinger is gated on every range
-     (Sunil, 21 Nov ~19:16) until the indicator-window rework. */
+     guards on geometry/state). Bollinger is no longer gated anywhere
+     (Job 2, 21 Nov 2026 — the warm-up is pre-fetched, so it is computed
+     from history before the visible window on every range). */
   if(!st||typeof st.rng!=='string')return false;
-  if(key==='tl')return taIsLineView(st)&&(st.rng==='1D'||st.rng==='1W');
+  if(key==='tl')return false; /* Job 1 (21 Nov 2026): trendlines are no longer gated on Line 1D/1W — the Line y-range now expands to include the drawn lines (tlExpandRange), so they draw there. */
   if(key==='bb')return TA_GATE_BB_RANGES.indexOf(st.rng)>=0;
   if(key==='rsi')return true;
   return false;
@@ -190,7 +200,10 @@ function taGated(key,st){
 function taMaGated(maKey,st){
   /* Per-MA-chip gating. SMA 200 on 6M is UNDECIDED (not scanned) — left
      as is, not gated; SMA 200 on YTD/1Y is KEPT (Sunil, 21 Nov ~19:16).
-     EMA 20 is never gated; EMA 50/200 follow their SMA twins. */
+     EMA 20 is never gated; EMA 50 follows its SMA twin. Job 2
+     (21 Nov 2026): the 200s (SMA 200, EMA 200) are no longer gated on
+     1D/1W — the warm-up is pre-fetched, so they are computed from
+     history before the visible window there too. */
   if(!st||typeof st.rng!=='string')return false;
   var g=TA_GATE_MA[maKey];
   return !!g&&g.indexOf(st.rng)>=0;
@@ -350,7 +363,7 @@ function tlSelectLinesForChart(file,chartTf,livePrice,nowMs,lastMs){
   });
   return out;
 }
-if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView};return;}
+if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView,tlExpandLoHi:tlExpandLoHi,tlExpandRange:tlExpandRange};return;}
 /* ---------- Stage 2: overlay drawing (browser only) ---------- */
 function fmtP(v){try{return (window.__BTCP&&window.__BTCP.fmt)?window.__BTCP.fmt(v):('$'+Math.round(v).toLocaleString('en-US'));}catch(e){return '$'+Math.round(v);}}
 function psC2(d,l){try{return window.psC?window.psC(d,l):d;}catch(e){return d;}}
@@ -363,9 +376,22 @@ function warmAsync(g){
   var key=g.kind;
   if(g.kind==='candles-1d')key=API.state().CT==='4h'?'candles-1d-4h':'candles-1d-1h';
   else if(g.kind==='candles-range')key='candles-range-4h';
-  if(!warmAsked[key]){
+  /* Re-ask while the cache is empty: a failed fetch must not leave
+     warmCache stuck at []. The panel-side retry (10s after a failure)
+     heals its own cache, but warmAsked used to block this module from
+     ever re-reading it — so a kind asked before the retry stayed empty
+     for the session. warmFetch starts only one fetch per kind, so
+     re-asking is cheap. The callback redraws only when the data arrived
+     asynchronously (async flag): when it was already cached, the
+     callback fires synchronously inside the current draw, and a redraw
+     there would nest a full render inside it (and inflate the measured
+     frame time) — the current draw already has the data, so no redraw
+     is needed. */
+  if(!warmAsked[key]||!warmCache[key]||!warmCache[key].length){
     warmAsked[key]=true;
-    try{API.warmFetch(key,function(c){warmCache[key]=c||[];if(API.draw)API.draw();});}catch(e){}
+    var async=false;
+    try{API.warmFetch(key,function(c){warmCache[key]=c||[];if(c&&c.length&&API.draw&&async)API.draw();});}catch(e){}
+    async=true;
   }
   return warmCache[key]||[];
 }
@@ -378,6 +404,27 @@ function warmFor(g){
     }
     return warmAsync(g);
   }catch(e){return [];}
+}
+function preWarm(){
+  /* Job 2 (Indicator windows, 21 Nov 2026): the intraday warm-up used to
+     start only when an overlay was turned on (afterDraw calls warmFor
+     only if something is on), so the user saw the indicators computed
+     from the visible window alone — Bollinger starting 19 points late,
+     SMA 200 missing entirely — until the fetch landed seconds later,
+     and forever if it failed. Kick the four intraday fetches off here,
+     at TA init, while the user is still browsing the panel, so the
+     history is usually cached before anything is turned on. No-op
+     callbacks: nothing is drawn yet, and the normal warmFor path picks
+     the cached data up (and redraws when it lands, if an overlay is on
+     by then). The range views need no pre-warm: their warm-up is
+     synchronous from DATA (taWarmSync). One fetch per kind per session;
+     the three hourly/4h kinds share one 50-day fetch (panel-side). */
+  try{
+    if(!API||!API.warmFetch)return;
+    ['1d-line','candles-1d-1h','candles-1d-4h','candles-range-4h'].forEach(function(k){
+      try{API.warmFetch(k,function(){});}catch(e){}
+    });
+  }catch(e){}
 }
 var valsCache={key:null,vals:null};
 function computeVals(g,warm){
@@ -559,6 +606,44 @@ function tlDrawLabels(ctx,g,labels,liveClose){
     ctx.fillText(lb.text,x-2,lb.y);
   });
 }
+function tlExpandLoHi(drawn,lo,hi){
+  /* Job 1 (Line-view trendlines): pure helper — the expanded y-range
+     covering the drawn lines' prices, bounded to one span per side
+     (total at most 3x the original span) so the price action is never
+     squashed into a thin band. Lines beyond the bound stay clipped —
+     they belong on wider views. Returns {lo,hi} or null if no change. */
+  if(!Array.isArray(drawn)||!drawn.length)return null;
+  if(!isFinite(lo)||!isFinite(hi)||!(hi>lo))return null;
+  var mn=Infinity,mx=-Infinity;
+  drawn.forEach(function(ln){
+    var p=ln&&ln.type==='sloped'?ln.edgePrice:ln&&ln.price;
+    if(isFinite(p)){if(p<mn)mn=p;if(p>mx)mx=p;}
+  });
+  if(!isFinite(mn)||!isFinite(mx))return null;
+  var span=hi-lo;
+  var nlo=Math.min(lo,Math.max(mn,lo-span));
+  var nhi=Math.max(hi,Math.min(mx,hi+span));
+  if(nlo===lo&&nhi===hi)return null;
+  return {lo:nlo,hi:nhi};
+}
+function tlExpandRange(st,livePrice,lastMs,lo,hi){
+  /* Job 1: the range the Line view should use when trendlines are on —
+     the drawn lines' prices (same selection as the drawer), bounded by
+     tlExpandLoHi. Null when trendlines are off, the file is not cached,
+     a comparison is on (TA hides), or nothing needs expanding. The panel
+     calls this before computing its y-mapping; when the TA module or the
+     file is not ready yet it returns null and the panel keeps the tight
+     range, and the file-load redraw picks the expansion up. */
+  if(!S.tl)return null;
+  if(isCmp())return null;
+  if(!tlCache.data||!tlCache.ok)return null;
+  var tf=tlChartTf(st);
+  if(!tf)return null;
+  if(!isFinite(livePrice)||!isFinite(lastMs))return null;
+  var sel=tlSelectLinesForChart(tlCache.data,tf,livePrice,Date.now(),lastMs);
+  if(!sel.drawn||!sel.drawn.length)return null;
+  return tlExpandLoHi(sel.drawn,lo,hi);
+}
 function tlDrawLines(g){
   /* Draws this chart's timeframe's lines plus the higher ones (rule 5,
      same-or-higher). Returns the draw result for the debug probe. Draws
@@ -573,10 +658,6 @@ function tlDrawLines(g){
   var tf=tlChartTf(st);
   res.tf=tf;
   if(!tf){res.status='unavailable';tlSetStatus('unavailable');return res;}
-  /* Stage 1 gating: trendlines do not draw on Line 1D/1W, even though the
-     file is fresh — the toggle is greyed out there and comes back to life
-     on views where the lines work. */
-  if(taGated('tl',st)){res.status='gated';tlSetStatus('gated');return res;}
   tlFetch();
   var liveClose=g.closes[g.n-1];
   res.liveClose=liveClose;
@@ -1141,6 +1222,7 @@ function init(api){
   };
   syncPill();syncRsi();
   if(api.syncTypePill)api.syncTypePill();
+  preWarm(); /* Job 2: fetch the intraday indicator history now, so it is cached before the user turns an overlay on. */
 }
 /* Stage 4 debug probe (tests / handback): the trendline file status, the
    chart's timeframe, the live close, and the lines the drawer computed
@@ -1158,6 +1240,6 @@ window.__TA_TL_DEBUG=function(){
   }catch(e){return null;}
 };
 
-window.__BTTA={init:init,typeLabel:typeLabel};
+window.__BTTA={init:init,typeLabel:typeLabel,tlExpandRange:tlExpandRange};
 if(API&&API.dlg)init(API);
 })();

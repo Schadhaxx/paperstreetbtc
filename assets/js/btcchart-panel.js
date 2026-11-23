@@ -853,7 +853,7 @@ function agg4hWarm(hourly){
   });
   return out;
 }
-var TAW={},TAW_H1=null,TAW_H1_P=null;
+var TAW={},TAW_H1=null,TAW_H1_P=null,TAW_RETRIED={}; /* TAW_RETRIED: kinds that already used their one Job 2 retry. */
 function fetchHourlyWarm(){
   if(TAW_H1)return Promise.resolve(TAW_H1);
   if(TAW_H1_P)return TAW_H1_P;
@@ -879,6 +879,25 @@ function taWarmFetch(kind,cb){
     TAW[kind]={done:true,closes:closes||[]};
     e.cbs.forEach(function(f){try{f(TAW[kind].closes);}catch(_){}});
   };
+  var fail=function(){
+    /* Job 2 (Indicator windows): a failed warm-up used to be sticky-empty
+       for the session, so one transient failure (rate limit, network
+       blip) left the indicators computed from the visible window alone
+       until reload. Retry once after 10s; if that fails too, leave it
+       empty. Bounded: at most two attempts per kind per session. On a
+       successful retry, redraw so the corrected lines appear promptly. */
+    finish([]);
+    if(!TAW_RETRIED[kind]){
+      TAW_RETRIED[kind]=true;
+      setTimeout(function(){
+        var e2=TAW[kind];
+        if(e2&&e2.done&&(!e2.closes||!e2.closes.length)){
+          delete TAW[kind];
+          try{taWarmFetch(kind,function(c){if(c&&c.length){try{if(typeof draw==='function')draw();}catch(_){}}});}catch(_){}
+        }
+      },10000);
+    }
+  };
   if(kind==='1d-line'){
     /* 15-min closes for the 3 days before the visible 24h window (one
        request, 288 bars under the 300-bar limit). */
@@ -889,7 +908,7 @@ function taWarmFetch(kind,cb){
         if(!Array.isArray(j))throw new Error('bad candles');
         var pts=j.map(function(c){return {t:c[0]*1000,c:c[4]};}).filter(function(p){return isFinite(p.c)&&p.c>0;}).sort(function(a,b){return a.t-b.t;});
         finish(pts.map(function(p){return p.c;}));
-      }).catch(function(){finish([]);});
+      }).catch(fail);
   }else{
     /* 1h bars for the last 50 days (paged, shared cache) — the 1h warm-up
        for 1D 1h candles, and the 4h warm-up (aggregated) for 1D 4h and
@@ -905,7 +924,7 @@ function taWarmFetch(kind,cb){
         var bars=agg4hWarm(hourly);
         finish(bars.filter(function(b){return b.end<=cut;}).map(function(b){return b.c;}).slice(-250));
       }
-    }).catch(function(){finish([]);});
+    }).catch(fail);
   }
 }
 function syncTypePill(){
@@ -923,8 +942,8 @@ var taLoaded=false;
 function loadTA(){
   if(taLoaded)return;taLoaded=true;
   try{
-    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta8');document.head.appendChild(l);
-    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta8');
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta10');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta10');
     s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
     s.onerror=function(){taLoaded=false;};
     document.head.appendChild(s);
@@ -1290,6 +1309,14 @@ function draw1DNative(pts){
     var hasLive=pts[pts.length-1].live===true;
     var vals=pts.map(function(p){return p.v;});
     var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+    /* Job 1 (Line-view trendlines): when trendlines are on and the file
+       is cached, extend the y-range to include the drawn lines' prices
+       (bounded to one span per side), so they draw instead of being
+       clipped outside the plot. Falls back to the tight range when the
+       TA module or the file is not ready yet. */
+    var _tlR=null;
+    try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR=window.__BTTA.tlExpandRange(window.__BCTA.state(),vals[vals.length-1],pts[pts.length-1].t,lo,hi);}catch(e){}
+    if(_tlR&&isFinite(_tlR.lo)&&isFinite(_tlR.hi)&&_tlR.hi>_tlR.lo){lo=_tlR.lo;hi=_tlR.hi;}
     /* No explicit pad: Chart.js does not pad the data range — its nice
        ticks provide the padding. An 8% pad (the candle pattern) would
        extend the axis below Chart.js (e.g. $74k instead of $75k). */
@@ -1469,6 +1496,14 @@ function drawDailyNative(d,cmp){
         [1,2,5].forEach(function(m){var tv=m*pw;if(tv>=lo*(1-1e-9)&&tv<=hi*(1+1e-9))yTicks.push(tv);});
       }
     }else{
+      /* Job 1: on 1W Line only, extend the y-range for trendlines
+         (bounded, same as draw1DNative). Other Line ranges are not
+         gated and already show their lines. */
+      if(rng==='1W'){
+        var _tlR2=null;
+        try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR2=window.__BTTA.tlExpandRange(window.__BCTA.state(),d[d.length-1][1],Date.parse(d[d.length-1][0]+'T00:00:00Z'),lo,hi);}catch(e){}
+        if(_tlR2&&isFinite(_tlR2.lo)&&isFinite(_tlR2.hi)&&_tlR2.hi>_tlR2.lo){lo=_tlR2.lo;hi=_tlR2.hi;}
+      }
       var ticks=nativeNiceTicks(lo,hi,ih);
       if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
       yTicks=ticks;
