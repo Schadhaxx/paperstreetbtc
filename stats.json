@@ -140,36 +140,36 @@
    }
   ]
  },
- "generated": "2026-11-23T22:00:35Z",
+ "generated": "2026-11-23T22:30:35Z",
  "history_first": "2025-12-31",
  "history_last": "2026-11-23",
  "history_sessions": 226,
- "history_sha256": "4aa67c02bf87e09411572cc0febe1b1b926a4f3c194720d9ee12921d4e60f97c",
+ "history_sha256": "5b77783c5bf085b7c05261e0862ba72821d1877ff264fb30b2e67935d504a576",
  "note": "Pre-computed by Python; the site displays these numbers, it does not re-derive them. Spot mode only.",
  "pulse": {
   "berkshire": {
-   "above_start": -15593.89,
-   "above_start_pct": -15.59,
-   "below_peak": 19488.83,
+   "above_start": -15646.06,
+   "above_start_pct": -15.65,
+   "below_peak": 19541.0,
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 84406.11
+   "value": 84353.94
   },
   "hf": {
-   "above_start": -31292.65,
-   "above_start_pct": -31.29,
-   "below_peak": 43647.22,
+   "above_start": -31360.83,
+   "above_start_pct": -31.36,
+   "below_peak": 43715.4,
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 68707.35
+   "value": 68639.17
   },
   "hodlr": {
-   "above_start": -29030.68,
-   "above_start_pct": -29.03,
-   "below_peak": 40297.17,
+   "above_start": -29118.04,
+   "above_start_pct": -29.12,
+   "below_peak": 40384.53,
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 70969.32
+   "value": 70881.96
   },
   "saylor": {
    "above_start": -18849.08,
@@ -183,10 +183,10 @@
  "series": {
   "berkshire": {
    "best_day": {
-    "date": "2026-11-23",
-    "pct": 7.24
+    "date": "2026-02-06",
+    "pct": 7.23
    },
-   "drawdown_pct": -18.76,
+   "drawdown_pct": -18.81,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-25",
    "max_drawdown_pct": -28.14,
@@ -201,20 +201,20 @@
     "2026-08": 21.91,
     "2026-09": 2.41,
     "2026-10": -0.19,
-    "2026-11": -10.69
+    "2026-11": -10.75
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -10.69,
+   "mtd_pct": -10.75,
    "name": "Berkshire Killer",
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 84406.11,
-   "vol_ann_pct": 32.32,
+   "value": 84353.94,
+   "vol_ann_pct": 32.3,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -7.63
    },
-   "ytd_pct": -15.59
+   "ytd_pct": -15.65
   },
   "brk": {
    "best_day": {
@@ -256,7 +256,7 @@
     "date": "2026-02-06",
     "pct": 12.52
    },
-   "drawdown_pct": -36.81,
+   "drawdown_pct": -36.92,
    "kind": "benchmark",
    "max_drawdown_date": "2026-06-30",
    "max_drawdown_pct": -39.59,
@@ -271,20 +271,20 @@
     "2026-08": 25.05,
     "2026-09": 6.37,
     "2026-10": -7.61,
-    "2026-11": -20.66
+    "2026-11": -20.8
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -20.66,
+   "mtd_pct": -20.8,
    "name": "Spot BTC",
    "peak_date": "2026-01-14",
    "peak_value": 110.77,
-   "value": 69.99,
-   "vol_ann_pct": 44.38,
+   "value": 69.87,
+   "vol_ann_pct": 44.36,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.13
    },
-   "ytd_pct": -30.01
+   "ytd_pct": -30.13
   },
   "gold": {
    "best_day": {
@@ -326,7 +326,7 @@
     "date": "2026-02-06",
     "pct": 16.17
    },
-   "drawdown_pct": -38.85,
+   "drawdown_pct": -38.91,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -42.45,
@@ -341,27 +341,27 @@
     "2026-08": 28.46,
     "2026-09": 9.05,
     "2026-10": -9.39,
-    "2026-11": -23.37
+    "2026-11": -23.45
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -23.37,
+   "mtd_pct": -23.45,
    "name": "Hedge Fund Killer",
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 68707.35,
-   "vol_ann_pct": 52.52,
+   "value": 68639.17,
+   "vol_ann_pct": 52.5,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.04
    },
-   "ytd_pct": -31.29
+   "ytd_pct": -31.36
   },
   "hodlr": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 14.21
    },
-   "drawdown_pct": -36.22,
+   "drawdown_pct": -36.3,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -39.89,
@@ -376,20 +376,20 @@
     "2026-08": 26.09,
     "2026-09": 7.74,
     "2026-10": -8.26,
-    "2026-11": -21.17
+    "2026-11": -21.27
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -21.17,
+   "mtd_pct": -21.27,
    "name": "Hodler Jam Sandwich",
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 70969.32,
-   "vol_ann_pct": 46.71,
+   "value": 70881.96,
+   "vol_ann_pct": 46.69,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -13.6
    },
-   "ytd_pct": -29.03
+   "ytd_pct": -29.12
   },
   "mstr": {
    "best_day": {
