@@ -48,6 +48,7 @@ run vehicle_daily python3 tests/test_vehicle_daily.py                       # ET
 run stock_weekly_py python3 tests/test_stock_weekly.py                       # screener stock candles: generator fixtures + shipped invariants
 run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
 run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
+run indicator_weekly_ohlc python3 tests/test_indicator_weekly_ohlc.py          # CADUSD Nov 18 Yahoo bar: round-then-check OHLC in bars_from_payload (offline, no network)
 run desk_live python3 tests/test_desk_live.py                              # 5-min Desk (option b): desk-live.json builder + validator (offline fixtures)
 run ta_lines python3 tests/test_ta_lines.py                                # TA Stage 3: trendline job (tools/ta_lines.py) unit tests + replay gate (offline fixtures, no network)
 run ta_lines_fix2 python3 tests/test_ta_lines_fix2.py                      # TA Stage 3 fix 2: sloped-line validity (rule A) live cases + B/C numbers (offline fixture, no network)
