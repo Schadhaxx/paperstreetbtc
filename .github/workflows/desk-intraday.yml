@@ -46,17 +46,16 @@ jobs:
         run: |
           python3 tools/desk_intraday.py --gate | tee /tmp/gate.txt
           grep -E '^(run|final)=' /tmp/gate.txt >> "$GITHUB_OUTPUT"
-      # If this step fails (more than 3 symbols failed, two Yahoo 429s in
-      # a row, or a critical file error), the run fails here and the push
-      # step below is skipped — a failed run never publishes a partial
-      # refresh. The good symbols are re-fetched on the next 15-min tick.
-            # A failed refresh no longer fails the run by itself: the live doc is
+      # A failed refresh no longer fails the run by itself: the live doc is
       # still written (good symbols fresh, failed ones marked failed), the
       # publish step below puts it out, and the next 5-min tick retries the
       # failed symbols. A transient failure at the open used to fail three
       # runs in a row and email Sunil every morning, then heal by 9:45.
-      # The run still fails loudly when the publish itself fails (step 8),
-      # and the final-run main commit is guarded on this step succeeding.
+      # (An earlier comment here said a failed run never publishes a partial
+      # refresh — that was the old behaviour; continue-on-error below is
+      # current.) The run still fails loudly when the publish itself fails
+      # (step 8), and the final-run main commit is guarded on this step
+      # succeeding.
       - name: Refresh Desk weekly candles (current week only, fail closed per symbol)
         id: refresh
         if: steps.gate.outputs.run == '1'
