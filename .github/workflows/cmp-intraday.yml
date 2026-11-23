@@ -1,0 +1,125 @@
+name: cmp-intraday
+# 1D comparison intraday bars (TA Drawing Fixes Job 10): refresh ONLY
+# cmp-intraday.json on the data branch — the 15-minute bars for the
+# three 1D compare assets (^GSPC, GC=F, MSTR) that the clock-page /
+# popover chart draws against BTC in 1D Line compare mode. GitHub cron
+# is a backup at :02/:17/:32/:47 (every 15 min) while NYSE is open;
+# cron-job.org dispatches the primary ticks. The file is read by the
+# browser straight from the data branch (raw.githubusercontent, no
+# Pages build), so this job never commits to main and never requests a
+# Pages build.
+#
+# NOTE: this file cannot be pushed by the GitHub App (it returns 403
+# on workflow files). It is added via GitHub web edit as Schadhaxx,
+# outside 9:30 AM-4:15 PM ET so it does not fire on the next tick. Do
+# not merge the code branch without it — the job would not exist.
+on:
+  schedule:
+    - cron: '2,17,32,47 13-21 * * 1-5'   # every 15 min at :02/:17/:32/:47, 13:00-21:59 UTC Mon-Fri; covers 9:30 AM-4:15 PM ET in EST and EDT (in-job gate is the real control).
+  workflow_dispatch:
+permissions: {}
+jobs:
+  cmp-intraday:
+    # Writes ONLY cmp-intraday.json on the data branch — never
+    # prices.json / history.json / desk-live.json (those belong to
+    # prices.yml and desk-intraday.yml). The cron fires 13:00-21:59 UTC
+    # Mon-Fri, which covers 9:30 AM-4:15 PM ET in both EST (UTC-5) and
+    # EDT (UTC-4); the in-job gate (America/New_York, holidays + early
+    # closes in tools/cmp_intraday.py) is the real control and skips
+    # weekends, NYSE holidays, early-close afternoons, and out-of-hours
+    # ticks.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: cmp-intraday
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2, pinned
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Market-hours gate (America/New_York; holidays + early closes in tools/cmp_intraday.py)
+        id: gate
+        run: |
+          python3 tools/cmp_intraday.py --gate | tee /tmp/gate.txt
+          grep -E '^run=' /tmp/gate.txt >> "$GITHUB_OUTPUT"
+      # If this step fails (every symbol failed, two Yahoo 429s in a
+      # row, or an invalid document), the run fails here and the publish
+      # step below is skipped — a failed run never publishes a partial
+      # or invalid file. The good symbols are re-fetched on the next
+      # 15-min tick. A single failed symbol does NOT fail the run: the
+      # file is still written (that symbol marked failed, carrying no
+      # bars) and the publish step below puts it out.
+      - name: Fetch 15-minute bars and build cmp-intraday.json
+        id: fetch
+        if: steps.gate.outputs.run == '1'
+        run: |
+          python3 tools/cmp_intraday.py --out "${RUNNER_TEMP:-/tmp}/cmp-intraday.json"
+      # Publish cmp-intraday.json to the `data` branch next to
+      # prices.json and desk-live.json (raw.githubusercontent, no Pages
+      # build). Only that one file is ever committed there; prices.yml
+      # owns every other data-branch file. continue-on-error: a failed
+      # publish never blocks anything else (there is no main commit in
+      # this job); the page ignores a stale file (the stale rule in
+      # tools/cmp_intraday.py) and the compare toggles stay off. The
+      # "Fail the run if the publish failed" step at the end of this job
+      # is what makes a failed publish visible (the run shows FAILED)
+      # instead of passing quietly.
+      - name: Publish cmp-intraday.json to the data branch (validated; rebase + retry, never force)
+        id: publish
+        if: steps.gate.outputs.run == '1'
+        continue-on-error: true
+        run: |
+          set -e
+          CMP="${RUNNER_TEMP:-/tmp}/cmp-intraday.json"
+          python3 tools/cmp_intraday.py --validate "$CMP"
+          DW="${RUNNER_TEMP:-/tmp}/data-work"
+          git worktree remove --force "$DW" 2>/dev/null || true
+          rm -rf "$DW"; git worktree prune
+          git fetch -q origin +refs/heads/data:refs/remotes/origin/data
+          git worktree add -q --detach "$DW" origin/data
+          cp "$CMP" "$DW/cmp-intraday.json.tmp" && mv "$DW/cmp-intraday.json.tmp" "$DW/cmp-intraday.json"
+          cd "$DW"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          other=$(git status --porcelain | grep -v ' cmp-intraday.json$' | head -1 || true)
+          if [ -n "$other" ]; then echo "::error::data worktree has an unexpected change: $other"; exit 1; fi
+          git add -- cmp-intraday.json
+          if git diff --cached --quiet; then echo "cmp-intraday.json unchanged"; echo "published=0" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git commit -q -m "cmp-intraday: 15-minute bars $(date -u +%FT%TZ)"
+          for wait in 0 5 15 30; do
+            sleep $wait
+            if git push -q origin HEAD:data; then echo "published=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+            echo "data push rejected; rebasing onto origin/data (never force-push)"
+            git fetch -q origin +refs/heads/data:refs/remotes/origin/data
+            git rebase -q origin/data || { git rebase --abort || true; echo "::error::rebase conflict on the data branch; cmp-intraday.json not published"; exit 1; }
+            changed=$(git diff --name-only origin/data HEAD)
+            if [ "$changed" != "cmp-intraday.json" ]; then echo "::error::cmp-intraday commit would change: $changed"; exit 1; fi
+          done
+          echo "::error::cmp-intraday push failed after 4 tries"; exit 1
+      # Fail loudly on a failed publish. The publish step is
+      # continue-on-error, so without this step the run would show green
+      # while the 1D compare served a stale cmp-intraday.json. `if:
+      # always()` keeps it running even when an earlier step failed;
+      # steps.publish.outcome is 'failure' only when the publish step
+      # itself failed (it is 'skipped' when the gate skipped the run or
+      # the fetch step failed, so those cases do not fire it).
+      - name: Fail the run if the publish failed
+        if: always() && steps.publish.outcome == 'failure'
+        run: |
+          echo "::error::cmp-intraday.json was not published to the data branch; the 1D compare is serving the last published bars"
+          exit 1
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Compare intraday refresh: ${{ job.status }}"
+            if [ "${{ steps.publish.outputs.published }}" = "1" ]; then echo "- cmp-intraday.json published to the data branch."
+            elif [ "${{ steps.publish.outcome }}" = "failure" ]; then echo "- **cmp-intraday.json publish failed** (the 1D compare falls back to BTC-only)."
+            fi
+            if [ "${{ steps.gate.outputs.run }}" = "0" ]; then echo "- Outside market hours (gate skipped the run)."
+            elif [ "${{ steps.fetch.outcome }}" = "success" ]; then echo "- Intraday run: cmp-intraday.json only, no main commit (the file lives on the data branch)."
+            fi
+          } >> $GITHUB_STEP_SUMMARY
