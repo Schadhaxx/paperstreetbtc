@@ -12,8 +12,9 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
 // the entry is fresh; see fetchDeskLive. The 5-min re-check calls
 // window.ScreenerChartRefreshDeskLive() to re-fetch it; no timer lives
 // in this file.
-// Signed zero stays black (#000000). On this dark card that text is hard
-// to see; the choice is deliberate and called out in the proposal.
+// Signed zero uses the muted text colour (#94a3b8 dark / #475569 light):
+// pure black was the original rule, but black is invisible on the dark
+// card, so the closest visible neutral is used. See screener.html .flat.
 (function () {
   var CmpMath = (function () {
     var YTD_BASE = '2025-12-31';
@@ -112,10 +113,10 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     MU: psC('#facc15','#ca8a04'), META: psC('#fb7185','#e11d48'), SPCX: psC('#2dd4bf','#0d9488'),
     'BRK.B': psC('#c084fc','#7e22ce'), AAPL: psC('#60a5fa','#2563eb'), AMZN: psC('#fbbf24','#d97706'),
     MSFT: psC('#34d399','#059669'), NFLX: psC('#f87171','#dc2626'), SPOT: psC('#4ade80','#16a34a'),
-    XYZ: psC('#e879f9','#a21caf'), GOOGL: psC('#38bdf8','#0369a1'), NVDA: psC('#a3e635','#65a30d'),
+    XYZ: psC('#e879f9','#a21caf'), GOOGL: psC('#f472b6','#0369a1'), NVDA: psC('#a3e635','#65a30d'),
     BTC: psC('#94a3b8','#475569'), SPY: psC('#64748b','#334155'), QQQ: psC('#cbd5e1','#64748b')
   };
-  var CMP_V = '20261031a';
+  var CMP_V = '20261123a';
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   var MN = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
 
@@ -138,11 +139,21 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
      First visit keeps the IBIT+MSTR default; a saved selection wins.
      render() syncs the chips from on[], so restoring here is enough. */
   var SEL_KEY = 'ps-desk-sel';
+  var BENCH_KEY = 'ps-desk-bench';
   function saveSel() { try { localStorage.setItem(SEL_KEY, JSON.stringify(STOCKS.filter(function (s) { return on[s]; }))); } catch (e) {} }
+  function saveBench() { try { localStorage.setItem(BENCH_KEY, JSON.stringify(BENCH.filter(function (s) { return benchOn[s]; }))); } catch (e) {} }
   try {
     var savedSel = JSON.parse(localStorage.getItem(SEL_KEY) || 'null');
     if (Array.isArray(savedSel) && savedSel.length && savedSel.every(function (s) { return STOCKS.indexOf(s) !== -1; })) {
       STOCKS.forEach(function (s) { on[s] = savedSel.indexOf(s) !== -1; });
+    }
+  } catch (e) {}
+  // Benchmark toggles persist too (an empty saved list means all off,
+  // which is also the first-visit default, so no length check here).
+  try {
+    var savedBench = JSON.parse(localStorage.getItem(BENCH_KEY) || 'null');
+    if (Array.isArray(savedBench) && savedBench.every(function (s) { return BENCH.indexOf(s) !== -1; })) {
+      BENCH.forEach(function (s) { benchOn[s] = savedBench.indexOf(s) !== -1; });
     }
   } catch (e) {}
 
@@ -153,8 +164,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     for (var i = 0; i < rows.length; i++) if (rows[i].symbol === sym) return rows[i];
     return null;
   }
-  function asOf() { return (daily && daily.asOf) || '2026-10-30'; }
-  function asOfLabel() { return (daily && daily.asOfLabel) || '30 Oct 2026'; }
+  // No hardcoded fallback date: if the daily file has not loaded, the
+  // note says "date unknown" instead of a stale October date. asOf()
+  // is only used by lineModel, which runs only when daily exists.
+  function asOf() { return (daily && daily.asOf) || null; }
+  function asOfLabel() { return (daily && daily.asOfLabel) || 'date unknown'; }
   function todayET() {
     try {
       return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -283,6 +297,14 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
             bySym[k] = { close: q.c, t: (typeof q.t === 'number' ? q.t : 0) };
           }
         }
+        // BTC is not in the Worker's stocks map — it arrives as a
+        // separate `btc` object (Coinbase spot). Capture it the same
+        // way so the BTC benchmark line gets a today point too; its
+        // `time` is the quote time for the freshness check.
+        if (data && data.btc && typeof data.btc.usd === 'number' && isFinite(data.btc.usd) && data.btc.usd > 0) {
+          var btcT = (typeof data.btc.time === 'string') ? Date.parse(data.btc.time) / 1000 : 0;
+          bySym['BTC'] = { close: data.btc.usd, t: btcT };
+        }
         workerLive = { asOfMs: asOfMs, bySym: bySym };
         workerLiveAt = Date.now();
         render();
@@ -327,9 +349,19 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     // fails, omits the symbol, or its quote is stale.
     var lastD = dates[dates.length - 1];
     var today = todayET();
-    if (s.kind === 'stock' && today && lastD < today) {
+    // Benchmarks get a today point too (QQQ via the Worker/desk-live,
+    // BTC via the Worker's btc price, SPY via the prices.json bridge
+    // from screener.js) — previously only stocks did, so the benchmark
+    // lines stopped at yesterday's close while the note claimed closes
+    // through today. BTC's daily file runs on UTC days, so without this
+    // its line ended a day early.
+    if (today && lastD < today) {
       var wp = workerPointFor(sym);
       var dl = (wp !== null) ? wp : deskLivePointFor(sym, today);
+      if (dl === null && sym === 'SPY' && window.__psSpy && CmpMath.isNum(window.__psSpy.c)) {
+        var spyT = window.__psSpy.t;
+        if (typeof spyT === 'number' && spyT > 0 && (Date.now() - spyT * 1000) < 30 * 60 * 1000) dl = Math.round(window.__psSpy.c * 100) / 100;
+      }
       if (dl !== null) {
         dates.push(today);
         closes.push(dl);
@@ -541,10 +573,14 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var step = Math.max(1, Math.ceil(n / maxTicks));
     ctx.textAlign = 'center';
     ctx.fillStyle = '#94a3b8';
+    var lastMonth = null;
     for (var i = 0; i < n; i += step) {
       var lab = labels[i];
       if (!lab || lab.length < 7) continue;
-      ctx.fillText(MONTHS[+lab.slice(5, 7) - 1], X(i), y1 + 10);
+      var mo = MONTHS[+lab.slice(5, 7) - 1];
+      if (mo === lastMonth) continue; // same month twice on short ranges
+      lastMonth = mo;
+      ctx.fillText(mo, X(i), y1 + 10);
     }
     // Highlight fill under the highlighted line, down to the 0 line.
     var hiSet = null;
@@ -754,11 +790,12 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     ctx.lineTo(zeroX, y1);
     ctx.stroke();
     ctx.restore();
-    // Bars: green up, red down, black at exactly zero (deliberate, as
-    // before); dimmed when another symbol is highlighted.
+    // Bars: green up, red down, muted grey at exactly zero (pure black
+    // was the original rule, but black is invisible on this dark card;
+    // the muted colour is the closest visible neutral, theme-aware via psC).
     slots.forEach(function (sl, i) {
       var r = rows[i];
-      var base = r.pct > 0 ? '#22c55e' : (r.pct < 0 ? '#ef4444' : '#000000');
+      var base = r.pct > 0 ? '#22c55e' : (r.pct < 0 ? '#ef4444' : psC('#94a3b8', '#475569'));
       var col = (native.hi && r.sym !== native.hi) ? hexAlpha(base, 0.35) : base;
       var bx0 = sl.bx0, bx1 = sl.bx1;
       if (bx1 - bx0 < 1) bx1 = bx0 + 1; // a zero bar still shows a sliver
@@ -910,8 +947,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var ranked = CmpMath.rankDesc(stocks.filter(function (m) { return CmpMath.isNum(m.pct); }));
     var best = ranked[0], worst = ranked[ranked.length - 1];
     var spread = best && worst ? best.pct - worst.pct : null;
+    // "Up today" counts the SELECTED stocks only, matching Best/Worst/
+    // Spread in this same row — counting all 16 while the chart shows
+    // two was an unlabeled scope mismatch.
     var up = 0, known = 0;
-    STOCKS.forEach(function (sym) {
+    selectedStocks().forEach(function (sym) {
       var d = dayPct(sym);
       if (!CmpMath.isNum(d)) return;
       known++;
@@ -935,11 +975,19 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       return;
     }
     var spcxOut = model && model.excluded.indexOf('SPCX') !== -1;
+    // A selected stock with no daily series (not in cmp-daily.json) is
+    // dropped silently by lineModel — name it here instead of leaving
+    // a blank canvas under the generic "Rebased to 0%" note.
+    var otherOut = (model ? model.excluded.filter(function (s) { return s !== 'SPCX'; }) : []);
     var line;
     if (view !== 'lines') {
       line = barMetric === 'ytd'
         ? 'YTD vs 31 Dec 2025. SPCX is since 12 Jun 2026, not YTD. Closes through ' + asOfLabel() + '.'
         : 'Day change vs the prior close. Closes through ' + asOfLabel() + '.';
+    } else if (otherOut.length) {
+      line = 'No daily history for ' + otherOut.join(', ') + ' — left off this view.'
+        + (spcxOut ? ' SPCX listed 12 Jun 2026, after this window starts, so it is left off too.' : '')
+        + ' Closes through ' + asOfLabel() + '.';
     } else if (range === 'ytd' && spcxOut) {
       line = 'SPCX is off this YTD view (since 12 Jun 2026, not 31 Dec 2025). Closes through ' + asOfLabel() + '.';
     } else if (range === 'listing') {
@@ -1116,6 +1164,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       b.addEventListener('click', function () {
         var sym = b.getAttribute('data-cmp-bench');
         benchOn[sym] = !benchOn[sym];
+        saveBench();
         render();
       });
     });
@@ -1226,6 +1275,18 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
       if (e.target.closest && e.target.closest('.note-btn')) return;
       var card = e.target.closest ? e.target.closest('.card') : null;
       if (!card) return;
+      var sym = card.getAttribute('data-symbol');
+      if (sym) setHighlight(sym, false);
+    });
+    // Keyboard: cards are tabindex="0" with an "Open X chart" label —
+    // Enter/Space must do what a click does. (Tiles get the same
+    // treatment in screener-indicator-chart.js.)
+    if (body) body.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.target.closest && e.target.closest('.note-btn')) return;
+      var card = e.target.closest ? e.target.closest('.card') : null;
+      if (!card) return;
+      e.preventDefault();
       var sym = card.getAttribute('data-symbol');
       if (sym) setHighlight(sym, false);
     });

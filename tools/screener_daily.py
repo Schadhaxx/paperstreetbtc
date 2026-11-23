@@ -79,6 +79,9 @@ usage:
 import json, math, os, sys, time, datetime as dt, urllib.request
 from zoneinfo import ZoneInfo
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import stock_weekly as sw
+
 NY = ZoneInfo('America/New_York')
 UTC = dt.timezone.utc
 ET = ZoneInfo('America/New_York')
@@ -93,10 +96,12 @@ HOLIDAYS = {
     '2028-07-04', '2028-09-04', '2028-11-23', '2028-12-25',
 }
 # Null-OHLC days Yahoo inserts for indicator holidays/weekends (UTC dates).
-IND_HOLIDAYS = {
-    '2025-12-25', '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03',
-    '2026-05-25', '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25',
-}
+# This is the shared NYSE holiday set from tools/stock_weekly.py
+# (2026-2028): a local copy here would go stale in 2027, and a null
+# close on a 2027 indicator holiday would fail the daily build instead
+# of being skipped. The 2025-12-25 entry the old local set carried is
+# before the daily series starts (2026-01-02), so dropping it is safe.
+IND_HOLIDAYS = sw.HOLIDAYS
 FINAL_HM = (16, 15)
 IND_FINAL_HM = (18, 0)   # indicators: today's bar (ET) is final at/after 18:00 ET
 

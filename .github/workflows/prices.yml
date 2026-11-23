@@ -127,6 +127,10 @@ jobs:
           try: old = json.load(open('prices.json'))
           except Exception: old = {}
           out = {'updated': now, 'btc': old.get('btc'), 'stocks': dict(old.get('stocks') or {})}
+          # DJIA is an orphan: DIA replaced the DJIA tile on 13 Nov 2026 and
+          # nothing on the site reads DJIA (it is only carried forward from
+          # the previous prices.json). Drop it so it stops shipping.
+          out['stocks'].pop('DJIA', None)
           key = os.environ.get('FINNHUB_API_KEY', '')
           ok = 0
           finnhub_failed = []
@@ -176,7 +180,19 @@ jobs:
                   if isinstance(c_, (int, float)) and c_ > 0 and isinstance(pc_, (int, float)) and pc_ > 0:
                       now_ep = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
                       if isinstance(t_, (int, float)) and (now_ep - t_) > 30 * 60:
-                          t_ = now_ep
+                          # Only stamp the fetch time when the price actually
+                          # moved since the previous write. On a holiday (or
+                          # a frozen Yahoo feed) the price is the last
+                          # session's close, unchanged — stamping it fresh
+                          # would make a stale quote read Live on the Desk.
+                          # When the price is unchanged the stale Yahoo
+                          # timestamp stands, so the Desk's 30-min gate
+                          # correctly marks it dated. (A flat price on a
+                          # normal day may read dated for one tick; the
+                          # next move re-stamps it.)
+                          old_c = ((old.get('stocks') or {}).get(key) or {}).get('c')
+                          if old_c is None or c_ != old_c:
+                              t_ = now_ep
                       out['stocks'][key] = {'c': c_, 'pc': pc_, 't': t_}; ok += 1
                   else: print(key, 'bad Yahoo meta, keeping previous')
               except Exception as e: print(key, 'Yahoo failed, keeping previous:', type(e).__name__)

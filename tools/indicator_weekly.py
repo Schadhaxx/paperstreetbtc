@@ -39,7 +39,7 @@ usage:
   python3 tools/indicator_weekly.py [--out-dir assets/data]
   python3 tools/indicator_weekly.py --check-only [--out-dir assets/data]
 """
-import json, math, os, sys, time, datetime as dt, urllib.request
+import json, math, os, re, sys, time, datetime as dt, urllib.request
 from zoneinfo import ZoneInfo
 
 # Holidays are the NYSE list in stock_weekly (2026-2028); importing it
@@ -57,6 +57,18 @@ except Exception:
     # clear error if it is ever called without one.
     ET = None
 MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+# The "Latest week ... is in progress" sentence is rewritten, not
+# appended: the old code appended it on every rebuild, so the file note
+# grew by one sentence per run. Strip any earlier copy before adding
+# the current one. Same for the "Preserved shipped weeks" sentence,
+# which would otherwise repeat while a flagged discrepancy persists.
+_LATEST_WEEK_RE = re.compile(r' Latest week \([^)]*\) (?:refreshed in progress|is in progress) as of [^;]*; its close is not a final close\.')
+_PRESERVED_RE = re.compile(r' Preserved shipped weeks \(not overwritten\): [^.]*\.')
+def _set_latest_week(note, sentence):
+    return _LATEST_WEEK_RE.sub('', note).rstrip() + ' ' + sentence
+def _set_preserved(note, sentence):
+    return _PRESERVED_RE.sub('', note).rstrip() + ' ' + sentence
 
 # symbol key -> (Yahoo symbol, decimals, source blurb, unit)
 SPECS = {
@@ -215,7 +227,7 @@ def build(key, out_dir, check_only):
             doc['weeks'] = weeks[:-1] + [refreshed]
             doc['asOf'] = asof_label
             doc['inProgress'] = f'in progress, as of {asof_label}'
-            doc['note'] = old.get('note', '') + f' Latest week ({refreshed["label"]}) refreshed in progress as of {asof_label}; its close is not a final close.'
+            doc['note'] = _set_latest_week(old.get('note', ''), f'Latest week ({refreshed["label"]}) refreshed in progress as of {asof_label}; its close is not a final close.')
             if check_only:
                 print(f'{key}: would refresh current week to {refreshed}')
                 return doc
@@ -246,9 +258,9 @@ def build(key, out_dir, check_only):
     doc['inProgress'] = in_progress
     note = old.get('note', '').replace('Manual refresh only, when Sunil asks.', 'Refreshed by the weekly rebuild (proposals/current-week-candle).').replace('Dated snapshot shipped with the screener — not a live quote.', 'Weekly snapshot — the latest week is in progress until it closes.')
     if preserved:
-        note = note + ' Preserved shipped weeks (not overwritten): ' + '; '.join(preserved) + '.'
+        note = _set_preserved(note, 'Preserved shipped weeks (not overwritten): ' + '; '.join(preserved) + '.')
     if in_progress:
-        note = note + f' Latest week ({new_weeks[-1]["label"]}) is in progress as of {asof_label}; its close is not a final close.'
+        note = _set_latest_week(note, f'Latest week ({new_weeks[-1]["label"]}) is in progress as of {asof_label}; its close is not a final close.')
     doc['note'] = note
     if check_only:
         print(f'{key}: would append {len(new_weeks)} week(s), last={new_weeks[-1]}, inProgress={in_progress}')
