@@ -923,8 +923,8 @@ var taLoaded=false;
 function loadTA(){
   if(taLoaded)return;taLoaded=true;
   try{
-    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta8');document.head.appendChild(l);
-    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta8');
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta9');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta9');
     s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
     s.onerror=function(){taLoaded=false;};
     document.head.appendChild(s);
@@ -1290,6 +1290,14 @@ function draw1DNative(pts){
     var hasLive=pts[pts.length-1].live===true;
     var vals=pts.map(function(p){return p.v;});
     var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+    /* Job 1 (Line-view trendlines): when trendlines are on and the file
+       is cached, extend the y-range to include the drawn lines' prices
+       (bounded to one span per side), so they draw instead of being
+       clipped outside the plot. Falls back to the tight range when the
+       TA module or the file is not ready yet. */
+    var _tlR=null;
+    try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR=window.__BTTA.tlExpandRange(window.__BCTA.state(),vals[vals.length-1],pts[pts.length-1].t,lo,hi);}catch(e){}
+    if(_tlR&&isFinite(_tlR.lo)&&isFinite(_tlR.hi)&&_tlR.hi>_tlR.lo){lo=_tlR.lo;hi=_tlR.hi;}
     /* No explicit pad: Chart.js does not pad the data range — its nice
        ticks provide the padding. An 8% pad (the candle pattern) would
        extend the axis below Chart.js (e.g. $74k instead of $75k). */
@@ -1469,6 +1477,14 @@ function drawDailyNative(d,cmp){
         [1,2,5].forEach(function(m){var tv=m*pw;if(tv>=lo*(1-1e-9)&&tv<=hi*(1+1e-9))yTicks.push(tv);});
       }
     }else{
+      /* Job 1: on 1W Line only, extend the y-range for trendlines
+         (bounded, same as draw1DNative). Other Line ranges are not
+         gated and already show their lines. */
+      if(rng==='1W'){
+        var _tlR2=null;
+        try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR2=window.__BTTA.tlExpandRange(window.__BCTA.state(),d[d.length-1][1],Date.parse(d[d.length-1][0]+'T00:00:00Z'),lo,hi);}catch(e){}
+        if(_tlR2&&isFinite(_tlR2.lo)&&isFinite(_tlR2.hi)&&_tlR2.hi>_tlR2.lo){lo=_tlR2.lo;hi=_tlR2.hi;}
+      }
       var ticks=nativeNiceTicks(lo,hi,ih);
       if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
       yTicks=ticks;

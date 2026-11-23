@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /* TA drawing fixes Stage 1 (21 Nov 2026) unit tests: the per-view gating
    pure functions in assets/js/btcchart-ta.js — taIsLineView, taGated,
-   taMaGated — over the full range x type matrix. The agreed lists live in
+   taMaGated — over the full range x type matrix, plus the Job 1 range
+   expansion helper tlExpandLoHi. The agreed lists live in
    ~/workspace/your_files/ta-gating-pass-sheet-2026-11-22.md:
-   - Trendlines gated on Line 1D/1W only (Candles 1D/1W stay on; 1M-1Y both
-     views stay on; 5Y/10Y/Max already off by design, not gated here).
+   - Trendlines: NO LONGER gated anywhere (Job 1, 21 Nov 2026 — the Line
+     y-range expands to include the drawn lines, so they draw on Line
+     1D/1W; the Stage 1 gating on Line 1D/1W is removed).
    - Bollinger gated on EVERY range (Sunil, 21 Nov ~19:16) until the
      indicator-window rework.
    - SMA 20/50 gated on 1W only; SMA 200 gated on 1D, 1W only — YTD/1Y
@@ -35,15 +37,27 @@ chk('line view: 1M Candles is not Line', M.taIsLineView(stRange('1M', 'candles')
 chk('line view: 5Y is Line (Line-only range)', M.taIsLineView(stRange('5Y', 'line')) === true);
 chk('line view: unknown state is not Line', M.taIsLineView(null) === false && M.taIsLineView({}) === false);
 
-/* --- trendlines: gated on Line 1D/1W only --- */
+/* --- trendlines: NOT gated anywhere (Job 1 ungreyed Line 1D/1W) --- */
 RANGES.forEach(function (rng) {
   var line = rng === '1D' ? st1D('line') : stRange(rng, 'line');
   var cand = rng === '1D' ? st1D('1h') : (rng === '5Y' || rng === '10Y' || rng === 'Max' ? null : stRange(rng, 'candles'));
-  var wantLine = (rng === '1D' || rng === '1W');
-  chk('tl gated on Line ' + rng, M.taGated('tl', line) === wantLine, 'got ' + M.taGated('tl', line));
+  chk('tl NOT gated on Line ' + rng, M.taGated('tl', line) === false, 'got ' + M.taGated('tl', line));
   if (cand) chk('tl NOT gated on Candles ' + rng, M.taGated('tl', cand) === false);
 });
 chk('tl NOT gated on 5Y/10Y/Max Line (off by design, untouched)', ['5Y', '10Y', 'Max'].every(function (rng) { return M.taGated('tl', stRange(rng, 'line')) === false; }));
+
+/* --- Job 1: tlExpandLoHi — the bounded y-range expansion --- */
+function L(price) { return {type: 'level', price: price}; }
+function S(edge) { return {type: 'sloped', edgePrice: edge}; }
+chk('expand: no lines -> null', M.tlExpandLoHi([], 80000, 87000) === null);
+chk('expand: lines inside range -> null', M.tlExpandLoHi([L(83000), L(85000)], 80000, 87000) === null);
+chk('expand: line just below -> extends lo', JSON.stringify(M.tlExpandLoHi([L(79000)], 80000, 87000)) === JSON.stringify({lo: 79000, hi: 87000}));
+chk('expand: line just above -> extends hi', JSON.stringify(M.tlExpandLoHi([L(90000)], 80000, 87000)) === JSON.stringify({lo: 80000, hi: 90000}));
+chk('expand: both sides within one span', JSON.stringify(M.tlExpandLoHi([L(75000), L(92000)], 80000, 87000)) === JSON.stringify({lo: 75000, hi: 92000}));
+chk('expand: far line capped at one span per side', JSON.stringify(M.tlExpandLoHi([L(60000), L(120000)], 80000, 87000)) === JSON.stringify({lo: 73000, hi: 94000}));
+chk('expand: sloped lines use edgePrice', JSON.stringify(M.tlExpandLoHi([S(78000), S(89000)], 80000, 87000)) === JSON.stringify({lo: 78000, hi: 89000}));
+chk('expand: bad range -> null', M.tlExpandLoHi([L(79000)], 87000, 80000) === null && M.tlExpandLoHi([L(79000)], NaN, 87000) === null);
+chk('expand: non-finite prices ignored', M.tlExpandLoHi([L(NaN), L(79000)], 80000, 87000) !== null);
 
 /* --- Bollinger: gated on every range, both views --- */
 RANGES.forEach(function (rng) {

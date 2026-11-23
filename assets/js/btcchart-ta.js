@@ -165,7 +165,10 @@ function tlChartTf(st){
    on, the note shows). Pure functions, unit-tested in
    tests/test_ta_gating.js. Corrected lists (Sunil, 21 Nov ~19:16):
    Bollinger gated on EVERY range; SMA 200 kept on YTD/1Y, gated only
-   on 1D/1W; EMA 50 gated on 1W, EMA 200 on 1D/1W (same as the SMAs). */
+   on 1D/1W; EMA 50 gated on 1W, EMA 200 on 1D/1W (same as the SMAs).
+   Job 1 (21 Nov 2026): trendlines are NO LONGER gated on Line 1D/1W —
+   the Line y-range expands to include the drawn lines (tlExpandRange),
+   so the toggle is back on there. */
 var TA_GATE_BB_RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'];
 var TA_GATE_MA={sma20:['1W'],sma50:['1W'],sma200:['1D','1W'],ema50:['1W'],ema200:['1D','1W']};
 function taIsLineView(st){
@@ -182,7 +185,7 @@ function taGated(key,st){
      guards on geometry/state). Bollinger is gated on every range
      (Sunil, 21 Nov ~19:16) until the indicator-window rework. */
   if(!st||typeof st.rng!=='string')return false;
-  if(key==='tl')return taIsLineView(st)&&(st.rng==='1D'||st.rng==='1W');
+  if(key==='tl')return false; /* Job 1 (21 Nov 2026): trendlines are no longer gated on Line 1D/1W — the Line y-range now expands to include the drawn lines (tlExpandRange), so they draw there. */
   if(key==='bb')return TA_GATE_BB_RANGES.indexOf(st.rng)>=0;
   if(key==='rsi')return true;
   return false;
@@ -350,7 +353,7 @@ function tlSelectLinesForChart(file,chartTf,livePrice,nowMs,lastMs){
   });
   return out;
 }
-if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView};return;}
+if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView,tlExpandLoHi:tlExpandLoHi,tlExpandRange:tlExpandRange};return;}
 /* ---------- Stage 2: overlay drawing (browser only) ---------- */
 function fmtP(v){try{return (window.__BTCP&&window.__BTCP.fmt)?window.__BTCP.fmt(v):('$'+Math.round(v).toLocaleString('en-US'));}catch(e){return '$'+Math.round(v);}}
 function psC2(d,l){try{return window.psC?window.psC(d,l):d;}catch(e){return d;}}
@@ -559,6 +562,44 @@ function tlDrawLabels(ctx,g,labels,liveClose){
     ctx.fillText(lb.text,x-2,lb.y);
   });
 }
+function tlExpandLoHi(drawn,lo,hi){
+  /* Job 1 (Line-view trendlines): pure helper — the expanded y-range
+     covering the drawn lines' prices, bounded to one span per side
+     (total at most 3x the original span) so the price action is never
+     squashed into a thin band. Lines beyond the bound stay clipped —
+     they belong on wider views. Returns {lo,hi} or null if no change. */
+  if(!Array.isArray(drawn)||!drawn.length)return null;
+  if(!isFinite(lo)||!isFinite(hi)||!(hi>lo))return null;
+  var mn=Infinity,mx=-Infinity;
+  drawn.forEach(function(ln){
+    var p=ln&&ln.type==='sloped'?ln.edgePrice:ln&&ln.price;
+    if(isFinite(p)){if(p<mn)mn=p;if(p>mx)mx=p;}
+  });
+  if(!isFinite(mn)||!isFinite(mx))return null;
+  var span=hi-lo;
+  var nlo=Math.min(lo,Math.max(mn,lo-span));
+  var nhi=Math.max(hi,Math.min(mx,hi+span));
+  if(nlo===lo&&nhi===hi)return null;
+  return {lo:nlo,hi:nhi};
+}
+function tlExpandRange(st,livePrice,lastMs,lo,hi){
+  /* Job 1: the range the Line view should use when trendlines are on —
+     the drawn lines' prices (same selection as the drawer), bounded by
+     tlExpandLoHi. Null when trendlines are off, the file is not cached,
+     a comparison is on (TA hides), or nothing needs expanding. The panel
+     calls this before computing its y-mapping; when the TA module or the
+     file is not ready yet it returns null and the panel keeps the tight
+     range, and the file-load redraw picks the expansion up. */
+  if(!S.tl)return null;
+  if(isCmp())return null;
+  if(!tlCache.data||!tlCache.ok)return null;
+  var tf=tlChartTf(st);
+  if(!tf)return null;
+  if(!isFinite(livePrice)||!isFinite(lastMs))return null;
+  var sel=tlSelectLinesForChart(tlCache.data,tf,livePrice,Date.now(),lastMs);
+  if(!sel.drawn||!sel.drawn.length)return null;
+  return tlExpandLoHi(sel.drawn,lo,hi);
+}
 function tlDrawLines(g){
   /* Draws this chart's timeframe's lines plus the higher ones (rule 5,
      same-or-higher). Returns the draw result for the debug probe. Draws
@@ -573,10 +614,6 @@ function tlDrawLines(g){
   var tf=tlChartTf(st);
   res.tf=tf;
   if(!tf){res.status='unavailable';tlSetStatus('unavailable');return res;}
-  /* Stage 1 gating: trendlines do not draw on Line 1D/1W, even though the
-     file is fresh — the toggle is greyed out there and comes back to life
-     on views where the lines work. */
-  if(taGated('tl',st)){res.status='gated';tlSetStatus('gated');return res;}
   tlFetch();
   var liveClose=g.closes[g.n-1];
   res.liveClose=liveClose;
@@ -1158,6 +1195,6 @@ window.__TA_TL_DEBUG=function(){
   }catch(e){return null;}
 };
 
-window.__BTTA={init:init,typeLabel:typeLabel};
+window.__BTTA={init:init,typeLabel:typeLabel,tlExpandRange:tlExpandRange};
 if(API&&API.dlg)init(API);
 })();

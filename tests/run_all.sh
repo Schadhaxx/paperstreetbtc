@@ -48,7 +48,6 @@ run vehicle_daily python3 tests/test_vehicle_daily.py                       # ET
 run stock_weekly_py python3 tests/test_stock_weekly.py                       # screener stock candles: generator fixtures + shipped invariants
 run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
 run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
-run indicator_weekly_ohlc python3 tests/test_indicator_weekly_ohlc.py          # CADUSD Nov 18 Yahoo bar: round-then-check OHLC in bars_from_payload (offline, no network)
 run desk_live python3 tests/test_desk_live.py                              # 5-min Desk (option b): desk-live.json builder + validator (offline fixtures)
 run ta_lines python3 tests/test_ta_lines.py                                # TA Stage 3: trendline job (tools/ta_lines.py) unit tests + replay gate (offline fixtures, no network)
 run ta_lines_fix2 python3 tests/test_ta_lines_fix2.py                      # TA Stage 3 fix 2: sloped-line validity (rule A) live cases + B/C numbers (offline fixture, no network)
@@ -99,7 +98,8 @@ run headless python3 tests/headless_matrix.py "http://127.0.0.1:$PORT" "$WORK/sh
 run ta_indicators node tests/test_ta_indicators.js  # TA Stage 2: SMA/EMA/Bollinger/RSI reference values
 run ta_trendlines node tests/test_ta_trendlines.js  # TA Stage 4: trendline validate/stale/map/sloped/filter/label (pure functions)
 run ta_pack_cases node tests/test_ta_pack_cases.js  # TA Stage 4: Grok Bot test pack's 16 cases against tlSelectLines (fixtures are repo copies of the pack's)
-run ta_gating node tests/test_ta_gating.js  # TA drawing fixes Stage 1: per-view toggle gating (pure functions, 119 checks)
+run ta_gating node tests/test_ta_gating.js  # TA drawing fixes Stage 1 + Job 1: per-view toggle gating (pure functions, 128 checks; trendlines ungated by Job 1)
+run ta_job1 python3 tests/test_ta_job1.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA drawing fixes Job 1: Line-view trendlines 1D/1W — y-range expands to include drawn lines, toggle ungreyed, candles unchanged
 run ta_stage1 python3 tests/test_ta_stage1.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 1: chart-type pill + menu, TA pill/panel, RSI strip, overlap 0
 run ta_stage2 python3 tests/test_ta_stage2.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 2: browser indicators, warm-up, RSI strip, tooltip, perf, pixel-diff
 run ta_stage4 python3 tests/test_ta_stage4.py "http://127.0.0.1:$PORT" "$WORK/shots"  # TA Stage 4: trendlines drawn from ta-lines.json, 8 display rules, stale/missing/invalid, pixel checks

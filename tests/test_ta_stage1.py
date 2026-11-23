@@ -119,10 +119,11 @@ def main():
             chk('clock 390 dark: pill back to Line', pg.inner_text('#taTyp').strip().startswith('Line'))
             pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
             chk('clock 390 dark: TA panel opens with 4 toggles', pg.locator('.ta-panel .ta-sw').count() == 4)
-            # Stage 1 gating on 1D Line: Trends, Bollinger and RSI are
-            # greyed out (still visible); SMA 200 is greyed out too, while
-            # SMA 20 stays live and the RSI strip stays hidden.
-            chk('clock 390 dark: Trends toggle disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-key="tl"]'))
+            # Stage 1 gating on 1D Line: Bollinger and RSI are greyed out
+            # (still visible); SMA 200 is greyed out too, while SMA 20
+            # stays live and the RSI strip stays hidden. Trends is ENABLED
+            # on 1D Line (Job 1 ungreyed it — the lines draw there now).
+            chk('clock 390 dark: Trends toggle enabled on 1D (Job 1)', not pg.is_disabled('.ta-panel [data-ta-key="tl"]'))
             chk('clock 390 dark: Bollinger toggle disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
             chk('clock 390 dark: RSI toggle disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
             chk('clock 390 dark: SMA 200 chip disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
