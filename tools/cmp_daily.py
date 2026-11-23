@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Daily closes for the Maple Leaf comparison chart.
 
-Writes one combined file, assets/data/cmp-daily.json: the seven screener
-stocks plus three optional benchmarks (SPY, QQQ, BTC-USD).
+Writes one combined file, assets/data/cmp-daily.json: the sixteen screener
+stocks plus three benchmarks (SPY, QQQ, BTC-USD).
 
 Source: Yahoo chart API, unadjusted close (quote.close, never adjclose).
 Equity and ETF dates are the America/New_York session date. BTC-USD dates
@@ -34,11 +34,23 @@ SPECS = {
     'MU':   {'kind': 'stock', 'yahoo': 'MU',   'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'META': {'kind': 'stock', 'yahoo': 'META', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'SPCX': {'kind': 'stock', 'yahoo': 'SPCX', 'calendar': 'nyse', 'basis': 'listing', 'base': '2026-06-12', 'first': '2026-06-12'},
+    # New Desk stocks added 9 Nov 2026 (same YTD baseline as the original
+    # seven). BRK.B's Yahoo symbol is BRK-B (hyphen) — a raw 'BRK.B'
+    # fetch would 404, same as tools/stock_weekly.py YAHOO_MAP.
+    'BRK.B': {'kind': 'stock', 'yahoo': 'BRK-B', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'AAPL': {'kind': 'stock', 'yahoo': 'AAPL', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'AMZN': {'kind': 'stock', 'yahoo': 'AMZN', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'MSFT': {'kind': 'stock', 'yahoo': 'MSFT', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'NFLX': {'kind': 'stock', 'yahoo': 'NFLX', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'SPOT': {'kind': 'stock', 'yahoo': 'SPOT', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'XYZ':  {'kind': 'stock', 'yahoo': 'XYZ', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'GOOGL': {'kind': 'stock', 'yahoo': 'GOOGL', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'NVDA': {'kind': 'stock', 'yahoo': 'NVDA', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'SPY':  {'kind': 'benchmark', 'yahoo': 'SPY', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'QQQ':  {'kind': 'benchmark', 'yahoo': 'QQQ', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'BTC':  {'kind': 'benchmark', 'yahoo': 'BTC-USD', 'calendar': 'utc', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-01'},
 }
-ORDER = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX', 'SPY', 'QQQ', 'BTC']
+ORDER = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX', 'BRK.B', 'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA', 'SPY', 'QQQ', 'BTC']
 
 
 def closes_from_pairs(sym, pairs, calendar):

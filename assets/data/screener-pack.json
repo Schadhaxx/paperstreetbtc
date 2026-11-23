@@ -1,90 +1,90 @@
 {
-  "asOf": "2026-11-20",
+  "asOf": "2026-11-23",
   "indicators": [
     {
       "baseClose": null,
-      "dayChange": 0.41,
-      "dayChangePct": 0.49,
+      "dayChange": -3.73,
+      "dayChangePct": -4.44,
       "name": "WTI Crude Oil",
-      "prevClose": 83.21,
-      "price": 83.62,
+      "prevClose": 83.98,
+      "price": 80.25,
       "symbol": "WTI",
       "unit": "usd-barrel",
       "ytdPct": null
     },
     {
       "baseClose": null,
-      "dayChange": -146.5,
-      "dayChangePct": -3.98,
+      "dayChange": 119.0,
+      "dayChangePct": 3.39,
       "name": "Gold (COMEX futures)",
-      "prevClose": 3685.5,
-      "price": 3539.0,
+      "prevClose": 3515.4,
+      "price": 3634.4,
       "symbol": "GOLD",
       "unit": "usd-oz",
       "ytdPct": null
     },
     {
       "baseClose": null,
-      "dayChange": -0.14,
-      "dayChangePct": -2.77,
+      "dayChange": 0.006,
+      "dayChangePct": 0.12,
       "name": "10-Year Treasury Yield",
-      "prevClose": 5.052,
-      "price": 4.912,
+      "prevClose": 4.912,
+      "price": 4.918,
       "symbol": "US10Y",
       "unit": "pct",
       "ytdPct": null
     },
     {
       "baseClose": null,
-      "dayChange": 7.45,
-      "dayChangePct": 26.2,
+      "dayChange": -9.27,
+      "dayChangePct": -25.83,
       "name": "CBOE Volatility Index (VIX)",
-      "prevClose": 28.44,
-      "price": 35.89,
+      "prevClose": 35.89,
+      "price": 26.62,
       "symbol": "VIX",
       "unit": "points",
       "ytdPct": null
     },
     {
       "baseClose": null,
-      "dayChange": -9.71,
-      "dayChangePct": -1.98,
+      "dayChange": 14.72,
+      "dayChangePct": 3.06,
       "name": "DIA (SPDR Dow Jones ETF)",
-      "prevClose": 490.79,
-      "price": 481.08,
+      "prevClose": 481.08,
+      "price": 495.8,
       "symbol": "DIA",
       "unit": "usd",
       "ytdPct": null
     },
     {
       "baseClose": null,
-      "dayChange": -36.59,
-      "dayChangePct": -5.67,
+      "dayChange": 42.58,
+      "dayChangePct": 7.0,
       "name": "Invesco QQQ Trust",
-      "prevClose": 645.04,
-      "price": 608.45,
+      "prevClose": 608.45,
+      "price": 651.03,
       "symbol": "QQQ",
       "unit": "usd",
       "ytdPct": null
     },
     {
       "baseClose": 0.7302,
-      "dayChange": -0.0006,
-      "dayChangePct": -0.09,
+      "dayChange": -0.001,
+      "dayChangePct": -0.14,
       "name": "CAD/USD",
-      "prevClose": 0.6978,
-      "price": 0.6972,
+      "prevClose": 0.6972,
+      "price": 0.6962,
       "symbol": "USDCAD",
       "unit": "fx",
-      "ytdPct": -4.52
+      "ytdPct": -4.66
     },
     {
       "baseClose": null,
-      "dayChange": -0.09,
-      "dayChangePct": -0.09,
+      "dayChange": 0.53,
+      "dayChangePct": 0.51,
       "name": "US Dollar Index (DXY)",
-      "prevClose": 103.9,
-      "price": 103.81,
+      "prevClose": 103.81,
+      "price": 104.34,
       "symbol": "DXY",
       "unit": "points",
       "ytdPct": null
@@ -95,165 +95,165 @@
   "rows": [
     {
       "baseClose": 449.72,
-      "dayChange": -28.59,
-      "dayChangePct": -7.64,
+      "dayChange": 39.64,
+      "dayChangePct": 11.46,
       "name": "Tesla",
-      "prevClose": 374.41,
-      "price": 345.82,
+      "prevClose": 345.82,
+      "price": 385.46,
       "symbol": "TSLA",
-      "ytdPct": -23.1
+      "ytdPct": -14.29
     },
     {
       "baseClose": 177.75,
-      "dayChange": -10.19,
-      "dayChangePct": -6.63,
+      "dayChange": 15.87,
+      "dayChangePct": 11.06,
       "name": "Palantir",
-      "prevClose": 153.68,
-      "price": 143.49,
+      "prevClose": 143.49,
+      "price": 159.36,
       "symbol": "PLTR",
-      "ytdPct": -19.27
+      "ytdPct": -10.35
     },
     {
       "baseClose": 151.95,
-      "dayChange": -8.33,
-      "dayChangePct": -9.67,
+      "dayChange": 6.6,
+      "dayChangePct": 8.48,
       "name": "Strategy",
-      "prevClose": 86.13,
-      "price": 77.8,
+      "prevClose": 77.8,
+      "price": 84.4,
       "symbol": "MSTR",
-      "ytdPct": -48.8
+      "ytdPct": -44.46
     },
     {
       "baseClose": 49.65,
-      "dayChange": -2.06,
-      "dayChangePct": -5.87,
+      "dayChange": 1.6,
+      "dayChangePct": 4.85,
       "name": "iShares Bitcoin Trust",
-      "prevClose": 35.08,
-      "price": 33.02,
+      "prevClose": 33.02,
+      "price": 34.62,
       "symbol": "IBIT",
-      "ytdPct": -33.49
+      "ytdPct": -30.27
     },
     {
       "baseClose": 285.41,
-      "dayChange": -95.93,
-      "dayChangePct": -13.89,
+      "dayChange": 113.19,
+      "dayChangePct": 19.04,
       "name": "Micron Technology",
-      "prevClose": 690.44,
-      "price": 594.51,
+      "prevClose": 594.51,
+      "price": 707.7,
       "symbol": "MU",
-      "ytdPct": 108.3
+      "ytdPct": 147.96
     },
     {
       "baseClose": 160.95,
-      "dayChange": -10.64,
-      "dayChangePct": -7.69,
+      "dayChange": 5.56,
+      "dayChangePct": 4.35,
       "name": "Space Exploration Technologies",
-      "prevClose": 138.43,
-      "price": 127.79,
+      "prevClose": 127.79,
+      "price": 133.35,
       "symbol": "SPCX",
-      "ytdPct": -20.6
+      "ytdPct": -17.15
     },
     {
       "baseClose": 660.09,
-      "dayChange": -35.38,
-      "dayChangePct": -5.93,
+      "dayChange": 36.76,
+      "dayChangePct": 6.55,
       "name": "Meta Platforms",
-      "prevClose": 596.22,
-      "price": 560.84,
+      "prevClose": 560.84,
+      "price": 597.6,
       "symbol": "META",
-      "ytdPct": -15.04
+      "ytdPct": -9.47
     },
     {
       "baseClose": 502.65,
-      "dayChange": -2.04,
-      "dayChangePct": -0.36,
+      "dayChange": 2.36,
+      "dayChangePct": 0.41,
       "name": "Berkshire Hathaway Class B",
-      "prevClose": 572.04,
-      "price": 570.0,
+      "prevClose": 570.0,
+      "price": 572.36,
       "symbol": "BRK.B",
-      "ytdPct": 13.4
+      "ytdPct": 13.87
     },
     {
       "baseClose": 271.86,
-      "dayChange": -6.65,
-      "dayChangePct": -1.9,
+      "dayChange": 6.52,
+      "dayChangePct": 1.9,
       "name": "Apple",
-      "prevClose": 349.21,
-      "price": 342.56,
+      "prevClose": 342.56,
+      "price": 349.08,
       "symbol": "AAPL",
-      "ytdPct": 26.01
+      "ytdPct": 28.4
     },
     {
       "baseClose": 230.82,
-      "dayChange": -10.55,
-      "dayChangePct": -4.1,
+      "dayChange": 8.57,
+      "dayChangePct": 3.47,
       "name": "Amazon",
-      "prevClose": 257.37,
-      "price": 246.82,
+      "prevClose": 246.82,
+      "price": 255.39,
       "symbol": "AMZN",
-      "ytdPct": 6.93
+      "ytdPct": 10.64
     },
     {
       "baseClose": 483.62,
-      "dayChange": -13.78,
-      "dayChangePct": -2.77,
+      "dayChange": 7.98,
+      "dayChangePct": 1.65,
       "name": "Microsoft",
-      "prevClose": 498.3,
-      "price": 484.52,
+      "prevClose": 484.52,
+      "price": 492.5,
       "symbol": "MSFT",
-      "ytdPct": 0.19
+      "ytdPct": 1.84
     },
     {
       "baseClose": 93.76,
-      "dayChange": -1.73,
-      "dayChangePct": -2.96,
+      "dayChange": 1.37,
+      "dayChangePct": 2.41,
       "name": "Netflix",
-      "prevClose": 58.46,
-      "price": 56.73,
+      "prevClose": 56.73,
+      "price": 58.1,
       "symbol": "NFLX",
-      "ytdPct": -39.49
+      "ytdPct": -38.03
     },
     {
       "baseClose": 580.71,
-      "dayChange": -6.82,
-      "dayChangePct": -1.17,
+      "dayChange": 8.71,
+      "dayChangePct": 1.51,
       "name": "Spotify",
-      "prevClose": 583.85,
-      "price": 577.03,
+      "prevClose": 577.03,
+      "price": 585.74,
       "symbol": "SPOT",
-      "ytdPct": -0.63
+      "ytdPct": 0.87
     },
     {
       "baseClose": 65.09,
-      "dayChange": -4.57,
-      "dayChangePct": -6.16,
+      "dayChange": 3.58,
+      "dayChangePct": 5.14,
       "name": "Block",
-      "prevClose": 74.23,
-      "price": 69.66,
+      "prevClose": 69.66,
+      "price": 73.24,
       "symbol": "XYZ",
-      "ytdPct": 7.02
+      "ytdPct": 12.52
     },
     {
       "baseClose": 313.0,
-      "dayChange": -7.37,
-      "dayChangePct": -2.7,
+      "dayChange": 16.81,
+      "dayChangePct": 6.34,
       "name": "Alphabet Class A",
-      "prevClose": 272.66,
-      "price": 265.29,
+      "prevClose": 265.29,
+      "price": 282.1,
       "symbol": "GOOGL",
-      "ytdPct": -15.24
+      "ytdPct": -9.87
     },
     {
       "baseClose": 186.5,
-      "dayChange": -20.45,
-      "dayChangePct": -14.01,
+      "dayChange": 39.52,
+      "dayChangePct": 31.48,
       "name": "Nvidia",
-      "prevClose": 145.98,
-      "price": 125.53,
+      "prevClose": 125.53,
+      "price": 165.05,
       "symbol": "NVDA",
-      "ytdPct": -32.69
+      "ytdPct": -11.5
     }
   ],
-  "sources": "20 Nov 2026 closes (latest completed session; prev close 19 Nov 2026). Stocks from the site's own daily files (Yahoo unadjusted closes, ET dates). WTI/Gold/US10Y/VIX/DIA from the site's indicator daily files (Yahoo unadjusted closes). QQQ from Yahoo QQQ (unadjusted close; cmp-daily.json was still at 13 Nov 2026). CAD/USD (USD per CAD) from Yahoo CADUSD=X and DXY from Yahoo DX-Y.NYB (unadjusted closes). Base closes unchanged from the prior pack (31 Dec 2025, except SPCX listing 12 Jun 2026). Regenerated 23 Nov 2026 for the screener pack refresh (was 13 Nov 2026 closes).",
-  "version": 12
+  "sources": "23 Nov 2026 closes (latest completed session; prev close 20 Nov 2026). Stocks and QQQ from the site's comparison daily file (Yahoo unadjusted closes, ET dates). WTI/Gold/US10Y/VIX/DIA from Yahoo (CL=F, GC=F, ^TNX, ^VIX, DIA) and CAD/USD (USD per CAD) from Yahoo CADUSD=X and DXY from Yahoo DX-Y.NYB (unadjusted closes). Base closes unchanged from the prior pack (31 Dec 2025, except SPCX listing 12 Jun 2026). Regenerated 23 Nov 2026 for the Desk fixes (was 20 Nov 2026 closes).",
+  "version": 13
 }

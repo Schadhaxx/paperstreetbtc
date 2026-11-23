@@ -637,13 +637,34 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (sw) sw.style.display = ENH.boll ? 'inline-flex' : 'none';
     document.querySelectorAll('[data-bollmode]').forEach(function (b) {
       var on = b.getAttribute('data-bollmode') === bollMode;
+      var isDaily = b.getAttribute('data-bollmode') === 'daily';
+      // No daily file for this symbol (QQQ, USDCAD, DXY): the Daily
+      // button is disabled, so it can never draw weekly bands under a
+      // "daily Bollinger" title. loadDailyBoll keeps a fallback for
+      // the same case as a safety net.
+      var noDaily = isDaily && (!state.cfg || !state.cfg.dailyUrl);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       b.classList.toggle('active', on);
+      b.disabled = noDaily;
+      b.title = noDaily ? 'No daily history for this symbol' : '';
     });
   }
   function loadDailyBoll() {
     var cfg = state.cfg;
-    if (!cfg || !cfg.dailyUrl || !state.weeks.length) return;
+    if (!cfg || !state.weeks.length) return;
+    // No daily file for this symbol (QQQ, USDCAD, DXY): route through
+    // the same fallback as a failed fetch — show weekly bands with an
+    // honest note, and reset the mode — instead of silently drawing
+    // weekly bands under a "daily Bollinger" title.
+    if (!cfg.dailyUrl) {
+      state.dailyDays = null; state.dailyBoll = null;
+      state.dailyError = 'No daily history for this symbol — showing weekly bands.';
+      bollMode = 'weekly';
+      syncBollModeUI();
+      syncTitle();
+      draw();
+      return;
+    }
     if (state.dailyLoading) return;
     if (state.dailyDays && state.loadedDailySymbol === cfg.symbol) {
       state.dailyBoll = enhBollDaily(state.weeks, state.dailyDays);
@@ -672,7 +693,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         var lastSun = lastWeek ? (lastWeek.sunday instanceof Date ? lastWeek.sunday.toISOString().slice(0, 10) : String(lastWeek.sunday).slice(0, 10)) : null;
         if (lastSun) {
           var gap = (new Date(lastSun + 'T00:00:00Z') - new Date(lastDaily + 'T00:00:00Z')) / 86400000;
-          if (!(gap >= 0 && gap <= 10)) throw new Error('stale daily file');
+          // Only reject a daily file that is too OLD (gap > 10). A
+          // negative gap means the daily file is NEWER than the weekly
+          // file's last Sunday — harmless, because enhBollDaily only
+          // uses closes on or before each week's Sunday.
+          if (gap > 10) throw new Error('stale daily file');
         }
         state.dailyDays = days;
         state.loadedDailySymbol = cfg.symbol;
@@ -1361,8 +1386,20 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (e.key !== 'Enter' && e.key !== ' ') return;
     var t = e.target;
     if (!t || !t.getAttribute || t.getAttribute('data-symbol') == null) return;
-    if (!t.classList || !t.classList.contains('card')) return;
-    var kcfg = STOCKS[t.getAttribute('data-symbol')];
+    if (!t.classList) return;
+    var ksym = t.getAttribute('data-symbol');
+    // Tiles are tabindex="0" too (screener.js) — Enter/Space opens
+    // their modal, mirroring a click. (Cards are handled just below.)
+    if (t.classList.contains('tile')) {
+      var tcfg = CONFIGS[ksym];
+      if (!tcfg) return;
+      e.preventDefault();
+      if (state.cfg && state.cfg.symbol === tcfg.symbol && state.weeks.length) { state.cfg = tcfg; openModal(tcfg); }
+      else { state.weeks = []; openModal(tcfg); }
+      return;
+    }
+    if (!t.classList.contains('card')) return;
+    var kcfg = STOCKS[ksym];
     if (!kcfg) return;
     e.preventDefault();
     if (state.cfg && state.cfg.symbol === kcfg.symbol && state.weeks.length) openModal(kcfg);
