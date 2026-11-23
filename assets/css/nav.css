@@ -131,6 +131,7 @@
 .bc-sc{display:inline-flex;border:1px solid var(--border,#1e293b);border-radius:8px;overflow:hidden;margin-left:auto}
 .bc-sc button{border:0!important;border-radius:0!important;padding:4px 9px!important}
 .bc-sc button.on{background:rgba(34,211,238,.15)!important;color:#22d3ee!important}
+.bc-sc button:disabled{opacity:.45;cursor:default}
 .bc-box{position:relative;height:300px}#bcC{touch-action:pan-y}.bc-w.sheet .bc-box{height:min(380px,48vh)}
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){.bc-box{height:380px;}}
 /* Short landscape (iPhone landscape 844x390, 8 Nov 2026, round 3):

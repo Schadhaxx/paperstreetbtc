@@ -94,6 +94,11 @@ html[data-theme="light"] .v4-stage .ta-menu .ta-md{background:#eef2f7}
 .v4-stage .ta-panel .ta-cmp,.bc-w .ta-panel .ta-cmp{font-size:11.5px;color:#94a3b8;padding:2px 0 6px}
 html[data-theme="light"] .v4-stage .ta-panel .ta-cmp,
 html[data-theme="light"] .bc-w .ta-panel .ta-cmp{color:#64748b}
+/* Job 6 (22 Nov 2026): the same note outside the panel — a line under
+   the pills row, so it reads without opening the panel. Same type and
+   colour as the panel note; hidden unless a comparison is hiding TA. */
+.bc-w .ta-cmp-out{font-size:11.5px;color:#94a3b8;padding:6px 2px 0}
+html[data-theme="light"] .bc-w .ta-cmp-out{color:#64748b}
 /* Stage 4: trendline file status under the Smart Trendlines row. */
 .v4-stage .ta-panel .ta-tl-status,.bc-w .ta-panel .ta-tl-status{font-size:11.5px;color:#94a3b8;padding:0 0 6px}
 html[data-theme="light"] .v4-stage .ta-panel .ta-tl-status,
@@ -158,9 +163,9 @@ html[data-theme="light"] .bc-w .ta-panel .ta-ma-chip.on{color:#0f172a;background
 html.v4-fs-price .ta-panel{display:none !important}
 
 /* ---------- RSI strip (grid row after the chart; hidden when RSI is off) ---------- */
-.bc-w .ta-rsi{position:relative;height:50px;border-top:1px solid rgba(148,163,184,.14);box-sizing:border-box;min-width:0;margin-top:6px}
+.bc-w .ta-rsi{position:relative;height:76px;border-top:1px solid rgba(148,163,184,.14);box-sizing:border-box;min-width:0;margin-top:6px}
 .bc-w .ta-rsi canvas{position:absolute;left:0;right:0;bottom:0;top:0;width:100%;height:100%}
-.bc-w .ta-rsi-t{position:absolute;left:4px;top:3px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:999px;
+.bc-w .ta-rsi-t{position:absolute;right:4px;top:3px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:999px;
   font:600 10px/1.3 Inter,sans-serif;color:#94a3b8;background:rgba(2,6,23,.65);border:0;cursor:pointer}
 .bc-w .ta-rsi-t b{color:#c4b5fd;font-weight:700}
 .bc-w .ta-rsi-t svg{width:8px;height:8px}
@@ -170,12 +175,24 @@ html[data-theme="light"] .bc-w .ta-rsi{border-top-color:#e2e8f0}
 html[data-theme="light"] .bc-w .ta-rsi-t{color:#475569;background:rgba(255,255,255,.85)}
 html[data-theme="light"] .bc-w .ta-rsi-t b{color:#6d28d9}
 @media (orientation:landscape) and (max-height:500px) and (min-width:700px){
-  .bc-w .ta-rsi{height:38px}
+  .bc-w .ta-rsi{height:60px}
   .bc-w .ta-rsi.col{height:18px}
 }
 /* Clock inline: the strip is the grid's row 4 when shown. */
 body.ps-clock .v4-stage .bc-inline .ta-rsi{grid-column:1 / -1;grid-row:4}
 body.ps-clock .v4-stage .bc-inline.ta-rsi-on{grid-template-rows:auto auto 1fr auto !important}
+/* Job 6 (22 Nov 2026): the external comparison note needs an explicit
+   grid row on the clock page — without one it auto-places into the
+   chart's 1fr row and stretches (235px tall on phones, where the grid
+   has no align-items to save it). The dialog gains .ta-cmp-out-on
+   while the note shows, inserting an auto row between the pills row
+   and the chart; the box and the RSI strip shift down one row. Follows
+   the .ta-rsi-on precedent above. */
+body.ps-clock .v4-stage .bc-inline .ta-cmp-out{grid-column:1 / -1;grid-row:3;align-self:start}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on{grid-template-rows:auto auto auto 1fr !important}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on.ta-rsi-on{grid-template-rows:auto auto auto 1fr auto !important}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on .bc-box{grid-row:4}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on .ta-rsi{grid-row:5}
 /* Clock at phone width: the fixed Light/Dark pill sits bottom-right over
    the RSI strip's bottom-right corner (~48x20px). Lift the strip clear of
    it while RSI is on; the strip keeps full width so its x positions still

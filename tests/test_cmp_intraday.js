@@ -1,0 +1,124 @@
+#!/usr/bin/env node
+/* Job 10 (22 Nov 2026): 1D Line comparison — CmpIntraMath pure-block
+   unit tests (trim / align / rebase / stale rule), extracted from
+   assets/js/btcchart-panel.js the same way test_cmp.js extracts
+   CmpMath. Fixture sessions are synthetic Fri 20 Nov 2026 (EST) and
+   Fri 17 Jul 2026 (EDT), 27 bars, matching the Yahoo payload shape
+   verified live (range=2d&interval=15m, 27 bars, 0 nulls). */
+const fs = require('fs'), path = require('path');
+const R = path.join(__dirname, '..');
+let n = 0, f = 0;
+const chk = (name, ok, info) => { n++; if (!ok) { f++; console.log('FAIL', name, info === undefined ? '' : JSON.stringify(info)); } };
+const src = fs.readFileSync(path.join(R, 'assets/js/btcchart-panel.js'), 'utf8');
+const start = src.indexOf('var CmpIntraMath = (function () {');
+const end = src.indexOf('})();', start);
+if (start < 0 || end < 0) { console.log('FAIL CmpIntraMath block missing'); process.exit(1); }
+const CmpIntraMath = eval(src.slice(start + 'var CmpIntraMath = '.length, end + 5));
+const { etParts, sessionDateET, sessionOpenMs, sessionCloseEndMs, trimToSession, alignToPts, firstValue, rebaseTo100, isFresh } = CmpIntraMath;
+
+/* --- ET math (EST + EDT) --- */
+/* Fri 20 Nov 2026 9:30 AM EST = 14:30 UTC; 4:15 PM EST = 21:15 UTC. */
+chk('sessionOpenMs EST is 14:30 UTC', sessionOpenMs('2026-11-20') === Date.UTC(2026, 10, 20, 14, 30));
+chk('sessionCloseEndMs EST is 21:15 UTC', sessionCloseEndMs('2026-11-20') === Date.UTC(2026, 10, 20, 21, 15));
+/* Fri 17 Jul 2026 9:30 AM EDT = 13:30 UTC; 4:15 PM EDT = 20:15 UTC. */
+chk('sessionOpenMs EDT is 13:30 UTC', sessionOpenMs('2026-07-17') === Date.UTC(2026, 6, 17, 13, 30));
+chk('sessionCloseEndMs EDT is 20:15 UTC', sessionCloseEndMs('2026-07-17') === Date.UTC(2026, 6, 17, 20, 15));
+chk('etParts 14:30 UTC is 9:30 ET on 20 Nov', (function () { const p = etParts(Date.UTC(2026, 10, 20, 14, 30)); return p.date === '2026-11-20' && p.mins === 570; })());
+chk('etParts 21:00 UTC is 16:00 ET on 20 Nov', (function () { const p = etParts(Date.UTC(2026, 10, 20, 21, 0)); return p.date === '2026-11-20' && p.mins === 960; })());
+chk('etParts 13:30 UTC is 9:30 ET on 17 Jul (EDT)', (function () { const p = etParts(Date.UTC(2026, 6, 17, 13, 30)); return p.date === '2026-07-17' && p.mins === 570; })());
+chk('sessionDateET is the ET date', sessionDateET(Date.UTC(2026, 10, 20, 19, 0)) === '2026-11-20');
+chk('sessionDateET 02:00 UTC is still the ET previous date', sessionDateET(Date.UTC(2026, 10, 21, 2, 0)) === '2026-11-20');
+
+/* --- Fixtures: 27 BTC points, Fri 20 Nov 2026, 9:30 AM-4 PM ET --- */
+function btcPts(dateISO, utcHour, base, step) {
+  /* 27 points, 15-min apart, starting at utcHour:30 UTC on the date. */
+  const out = [];
+  const t0 = Date.UTC(2026, dateISO[1], dateISO[2], utcHour, 30, 0);
+  for (let i = 0; i < 27; i++) out.push({ t: t0 + i * 900000, v: base + i * step });
+  return out;
+}
+const PTS_NOV = btcPts([2026, 10, 20], 14, 60000, 45); /* 14:30-21:00 UTC, $60,000 -> $61,170 */
+const PTS_JUL = btcPts([2026, 6, 17], 13, 118000, -20); /* 13:30-20:00 UTC (EDT), $118,000 -> $117,480 */
+function barsFrom(pts, base, step) { return pts.map(function (p, i) { const c = base + i * step; return [p.t, c - 1, c + 1, c - 2, c]; }); }
+const SPX_BARS = barsFrom(PTS_NOV, 5980, 1.5);  /* 5,980 -> 6,019 */
+const GOLD_BARS = barsFrom(PTS_NOV, 3525, -0.5); /* 3,525 -> 3,512 */
+const MSTR_BARS = barsFrom(PTS_NOV, 210, 0.8);   /* 210 -> 230.8 */
+
+/* --- trimToSession --- */
+chk('trim keeps all 27 EST session points', trimToSession(PTS_NOV, '2026-11-20').length === 27);
+chk('trim keeps all 27 EDT session points', trimToSession(PTS_JUL, '2026-07-17').length === 27);
+chk('trim drops pre-open, post-close and other-day points', (function () {
+  const pts = [
+    { t: Date.UTC(2026, 10, 20, 14, 15), v: 59900 }, /* 9:15 AM ET */
+    { t: Date.UTC(2026, 10, 20, 21, 15), v: 61200 }, /* 4:15 PM ET */
+    { t: Date.UTC(2026, 10, 19, 14, 30), v: 59000 }, /* previous day */
+    { t: Date.UTC(2026, 10, 20, 14, 30), v: 60000 }, /* 9:30 AM ET — kept */
+    { t: Date.UTC(2026, 10, 20, 21, 0), v: 61170 }   /* 4:00 PM ET — kept */
+  ];
+  const out = trimToSession(pts, '2026-11-20');
+  return out.length === 2 && out[0].t === Date.UTC(2026, 10, 20, 14, 30) && out[1].t === Date.UTC(2026, 10, 20, 21, 0);
+})());
+chk('trim of a wrong session is empty', trimToSession(PTS_NOV, '2026-11-19').length === 0);
+chk('trim skips null and non-finite points', trimToSession([null, { t: NaN, v: 1 }, { t: Date.UTC(2026, 10, 20, 14, 30), v: 60000 }], '2026-11-20').length === 1);
+chk('trim of empty is empty', trimToSession([], '2026-11-20').length === 0);
+
+/* --- alignToPts --- */
+chk('align maps every bar to its point', (function () { const a = alignToPts(PTS_NOV, SPX_BARS); return a.length === 27 && a[0] === 5980 && a[26] === 6019; })());
+chk('align leaves a missing bar null', (function () {
+  const bars = SPX_BARS.slice(); bars[10] = null;
+  const a = alignToPts(PTS_NOV, bars);
+  return a.length === 27 && a[10] === null && a[9] === 5993.5 && a[11] === 5996.5;
+})());
+chk('align leaves a non-finite close null', (function () {
+  const bars = SPX_BARS.slice(); bars[5] = [PTS_NOV[5].t, 1, 2, 3, null];
+  return alignToPts(PTS_NOV, bars)[5] === null;
+})());
+chk('align ignores bars outside the window', (function () {
+  const bars = [[Date.UTC(2026, 10, 20, 22, 0), 1, 2, 3, 9999]].concat(SPX_BARS);
+  const a = alignToPts(PTS_NOV, bars);
+  return a.length === 27 && a.indexOf(9999) === -1;
+})());
+
+/* --- firstValue / rebaseTo100 --- */
+chk('firstValue skips nulls', firstValue([null, null, 42, 43]) === 42);
+chk('firstValue of all nulls is null', firstValue([null, null]) === null);
+chk('rebaseTo100 anchors at 100', (function () { const r = rebaseTo100([60000, 60600, 59400], 60000); return r[0] === 100 && r[1] === 101 && r[2] === 99; })());
+chk('rebaseTo100 keeps nulls null', (function () { const r = rebaseTo100([60000, null, 60600], 60000); return r[1] === null && r[2] === 101; })());
+chk('rebaseTo100 with no base is all null', rebaseTo100([60000, 60600], null).every(function (v) { return v === null; }));
+
+/* --- isFresh: the stale rule --- */
+function doc(session, asOf, withSymbols) {
+  return { v: 1, kind: 'cmp-intraday', asOf: asOf, session: session, sessionOpen: session + 'T14:30:00Z', symbols: withSymbols === false ? undefined : { SPX: { bars: SPX_BARS }, GOLD: { bars: GOLD_BARS }, MSTR: { bars: MSTR_BARS } }, failed: [] };
+}
+/* Live session: Fri 20 Nov 2 PM ET (19:00 UTC), asOf 10 min old -> fresh. */
+chk('live session fresh under 30 min', isFresh(doc('2026-11-20', '2026-11-20T18:50:00Z'), Date.UTC(2026, 10, 20, 19, 0)).ok === true);
+/* Live session, asOf 45 min old -> stale. */
+chk('live session stale over 30 min', isFresh(doc('2026-11-20', '2026-11-20T18:15:00Z'), Date.UTC(2026, 10, 20, 19, 0)).ok === false);
+/* Completed session: Fri 20 Nov 5 PM ET (22:00 UTC), asOf 4:30 PM -> fresh. */
+chk('completed session fresh after the close', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 20, 22, 0)).ok === true);
+/* Completed session, asOf from the previous day's run is still today's file -> fresh (asOf age is not capped after the close). */
+chk('completed session fresh with an old asOf', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 21, 2, 0)).ok === true);
+/* Last session: Sat 21 Nov 10 AM ET, session Fri 20 Nov, asOf Fri 4:30 PM -> fresh. */
+chk('last session fresh on Saturday', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 21, 15, 0)).ok === true);
+/* Last session: Sun 22 Nov -> fresh. */
+chk('last session fresh on Sunday', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 22, 15, 0)).ok === true);
+/* Last session: Mon 23 Nov 9 AM ET (before the open) -> fresh. */
+chk('last session fresh Monday before the open', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 23, 14, 0)).ok === true);
+/* Last session: Mon 23 Nov 10 AM ET (after the open) -> stale. */
+chk('last session stale Monday after the open', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 23, 15, 0)).ok === false);
+/* Last session: Tue 24 Nov, asOf Fri 4:30 PM (4 days old) -> stale. */
+chk('last session stale over 4 days', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 24, 15, 0)).ok === false);
+/* Future session -> stale. */
+chk('future session stale', isFresh(doc('2026-11-23', '2026-11-23T14:30:00Z'), Date.UTC(2026, 10, 20, 19, 0)).ok === false);
+/* Bad shapes -> stale. */
+chk('bad v stale', isFresh(doc('2026-11-20', '2026-11-20T18:50:00Z'), Date.UTC(2026, 10, 20, 19, 0)).ok === true && isFresh({ v: 2, kind: 'cmp-intraday', asOf: '2026-11-20T18:50:00Z', session: '2026-11-20', symbols: {} }, Date.UTC(2026, 10, 20, 19, 0)).ok === false);
+chk('bad kind stale', isFresh({ v: 1, kind: 'ta-lines', asOf: '2026-11-20T18:50:00Z', session: '2026-11-20', symbols: {} }, Date.UTC(2026, 10, 20, 19, 0)).ok === false);
+chk('bad session stale', isFresh({ v: 1, kind: 'cmp-intraday', asOf: '2026-11-20T18:50:00Z', session: '20 Nov', symbols: {} }, Date.UTC(2026, 10, 20, 19, 0)).ok === false);
+chk('bad asOf stale', isFresh({ v: 1, kind: 'cmp-intraday', asOf: 'soon', session: '2026-11-20', symbols: {} }, Date.UTC(2026, 10, 20, 19, 0)).ok === false);
+chk('no symbols stale', isFresh(doc('2026-11-20', '2026-11-20T18:50:00Z', false), Date.UTC(2026, 10, 20, 19, 0)).ok === false);
+chk('null doc stale', isFresh(null, Date.UTC(2026, 10, 20, 19, 0)).ok === false);
+/* EDT live session: Fri 17 Jul 2 PM EDT (18:00 UTC), asOf 10 min old -> fresh. */
+chk('live session fresh in EDT', isFresh(doc('2026-07-17', '2026-07-17T17:50:00Z'), Date.UTC(2026, 6, 17, 18, 0)).ok === true);
+
+console.log('test_cmp_intraday.js: ' + (n - f) + '/' + n + ' passed');
+process.exit(f ? 1 : 0);
