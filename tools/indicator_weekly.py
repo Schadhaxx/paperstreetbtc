@@ -137,11 +137,16 @@ def bars_from_payload(key, payload):
         day = dt.datetime.fromtimestamp(int(t), UTC).date()
         if day in out:
             raise RuntimeError(f'{key}: duplicate bar {day}')
+        # Round first, then check consistency on the rounded values.
+        # Yahoo FX bars can have close a few 1e-5 above high in the raw
+        # floats (CADUSD=X on 2026-11-18: close 0.00004 above high) while
+        # being consistent at the symbol's display decimals. Checking the
+        # raw values failed the live path even though bars_from_fixture_rows
+        # (desk_intraday) already rounded first. The high/low clamp stays.
+        o, h, l, c = (rnd(v, nd) for v in (o, h, l, c))
         if h < max(o, c) - 1e-9 or l > min(o, c) + 1e-9 or l > h:
             raise RuntimeError(f'{key}: OHLC inconsistent on {day}: o={o} h={h} l={l} c={c}')
-        b = {'open': rnd(o, nd), 'high': rnd(h, nd), 'low': rnd(l, nd), 'close': rnd(c, nd)}
-        b['high'] = max(b['high'], b['open'], b['close'])
-        b['low'] = min(b['low'], b['open'], b['close'])
+        b = {'open': o, 'high': max(h, o, c), 'low': min(l, o, c), 'close': c}
         out[day] = b
     if not out:
         raise RuntimeError(f'{key}: Yahoo returned no daily bars')
