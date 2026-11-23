@@ -1,49 +1,49 @@
 {
  "v": 1,
  "kind": "ta-lines",
- "asOf": "2026-11-23T14:22:22Z",
+ "asOf": "2026-11-23T15:22:21Z",
  "timeframes": {
   "1h": {
-   "asOf": "2026-11-23T14:00:00Z",
-   "lastClose": 63733.79,
-   "atr": 691.85,
+   "asOf": "2026-11-23T15:00:00Z",
+   "lastClose": 63293.66,
+   "atr": 738.41,
    "levels": [
+    {
+     "price": 62016.06,
+     "kind": "support",
+     "score": 5.206,
+     "rawScore": 6.617,
+     "distAtr": 1.73,
+     "touches": 9,
+     "lastTouch": "2026-11-23T09:00:00Z",
+     "ageCandles": 6,
+     "broken": true,
+     "held": false,
+     "extreme": false
+    },
     {
      "price": 64023.51,
      "kind": "resistance",
-     "score": 5.375,
-     "rawScore": 5.696,
-     "distAtr": 0.42,
+     "score": 4.964,
+     "rawScore": 5.693,
+     "distAtr": 0.99,
      "touches": 7,
      "lastTouch": "2026-11-19T13:00:00Z",
-     "ageCandles": 97,
+     "ageCandles": 98,
      "broken": true,
      "held": false,
      "extreme": false
     },
     {
-     "price": 65120.04,
+     "price": 65305.39,
      "kind": "resistance",
-     "score": 4.531,
-     "rawScore": 5.981,
-     "distAtr": 2.0,
-     "touches": 5,
+     "score": 4.846,
+     "rawScore": 7.07,
+     "distAtr": 2.72,
+     "touches": 9,
      "lastTouch": "2026-11-18T07:00:00Z",
-     "ageCandles": 127,
+     "ageCandles": 128,
      "broken": false,
-     "held": false,
-     "extreme": false
-    },
-    {
-     "price": 61934.54,
-     "kind": "support",
-     "score": 4.29,
-     "rawScore": 6.152,
-     "distAtr": 2.6,
-     "touches": 7,
-     "lastTouch": "2026-11-23T09:00:00Z",
-     "ageCandles": 5,
-     "broken": true,
      "held": false,
      "extreme": false
     }
@@ -51,65 +51,52 @@
    "sloped": [
     {
      "kind": "resistance",
-     "slope": -9.7928,
+     "slope": -10.5577,
      "anchor": {
-      "t": "2026-11-15T13:00:00Z",
-      "price": 65767.35
+      "t": "2026-11-15T23:00:00Z",
+      "price": 65480.77
      },
-     "touches": 10,
-     "score": 7.066,
-     "rawScore": 7.273,
-     "distAtr": 0.21,
-     "priceNow": 63877.35,
+     "touches": 9,
+     "score": 6.753,
+     "rawScore": 7.07,
+     "distAtr": 0.33,
+     "priceNow": 63538.16,
      "broken": false,
-     "held": false
+     "held": true
     },
     {
      "kind": "resistance",
-     "slope": -5.6148,
+     "slope": -5.8625,
      "anchor": {
-      "t": "2026-11-15T13:00:00Z",
-      "price": 65767.35
+      "t": "2026-11-15T23:00:00Z",
+      "price": 65480.77
      },
-     "touches": 8,
-     "score": 5.645,
-     "rawScore": 6.828,
-     "distAtr": 1.37,
-     "priceNow": 64683.69,
+     "touches": 9,
+     "score": 5.742,
+     "rawScore": 7.07,
+     "distAtr": 1.5,
+     "priceNow": 64402.07,
      "broken": false,
-     "held": false
+     "held": true
     }
    ],
    "missingSupport": false,
    "missingResistance": false
   },
   "4h": {
-   "asOf": "2026-11-23T08:00:00Z",
-   "lastClose": 61347.42,
-   "atr": 1303.93,
+   "asOf": "2026-11-23T12:00:00Z",
+   "lastClose": 63293.66,
+   "atr": 1463.84,
    "levels": [
-    {
-     "price": 61973.08,
-     "kind": "resistance",
-     "score": 3.583,
-     "rawScore": 3.829,
-     "distAtr": 0.48,
-     "touches": 2,
-     "lastTouch": "2026-11-18T20:00:00Z",
-     "ageCandles": 27,
-     "broken": true,
-     "held": false,
-     "extreme": false
-    },
     {
      "price": 63704.64,
      "kind": "resistance",
-     "score": 3.517,
-     "rawScore": 4.519,
-     "distAtr": 1.81,
+     "score": 4.341,
+     "rawScore": 4.513,
+     "distAtr": 0.28,
      "touches": 3,
      "lastTouch": "2026-11-19T12:00:00Z",
-     "ageCandles": 23,
+     "ageCandles": 24,
      "broken": true,
      "held": false,
      "extreme": false
@@ -117,43 +104,43 @@
     {
      "price": 65703.42,
      "kind": "resistance",
-     "score": 3.431,
-     "rawScore": 5.451,
-     "distAtr": 3.34,
+     "score": 4.335,
+     "rawScore": 5.446,
+     "distAtr": 1.65,
      "touches": 3,
      "lastTouch": "2026-11-17T12:00:00Z",
-     "ageCandles": 35,
+     "ageCandles": 36,
      "broken": false,
      "held": false,
      "extreme": false
     },
     {
-     "price": 55106.0,
+     "price": 61973.08,
      "kind": "support",
-     "score": 2.016,
-     "rawScore": 3.914,
-     "distAtr": 4.79,
-     "touches": 1,
-     "lastTouch": "2026-11-21T04:00:00Z",
-     "ageCandles": 13,
+     "score": 4.257,
+     "rawScore": 4.824,
+     "distAtr": 0.9,
+     "touches": 2,
+     "lastTouch": "2026-11-18T20:00:00Z",
+     "ageCandles": 28,
      "broken": false,
      "held": false,
-     "extreme": true
+     "extreme": false
     }
    ],
    "sloped": [
     {
      "kind": "resistance",
-     "slope": -113.3,
+     "slope": -55.1315,
      "anchor": {
-      "t": "2026-11-17T12:00:00Z",
-      "price": 65383.29
+      "t": "2026-11-15T08:00:00Z",
+      "price": 66100.0
      },
-     "touches": 5,
-     "score": 6.371,
-     "rawScore": 6.419,
-     "distAtr": 0.05,
-     "priceNow": 61417.79,
+     "touches": 4,
+     "score": 5.954,
+     "rawScore": 6.013,
+     "distAtr": 0.07,
+     "priceNow": 63398.55,
      "broken": false,
      "held": false
     },
@@ -165,12 +152,12 @@
       "price": 75035.1
      },
      "touches": 6,
-     "score": 4.087,
-     "rawScore": 6.729,
-     "distAtr": 3.6,
-     "priceNow": 56657.43,
+     "score": 3.527,
+     "rawScore": 6.724,
+     "distAtr": 4.65,
+     "priceNow": 56482.4,
      "broken": false,
-     "held": true
+     "held": false
     }
    ],
    "missingSupport": false,
@@ -178,15 +165,15 @@
   },
   "1d": {
    "asOf": "2026-11-23T00:00:00Z",
-   "lastClose": 63652.32,
-   "atr": 3059.37,
+   "lastClose": 63293.66,
+   "atr": 3109.44,
    "levels": [
     {
      "price": 65286.49,
      "kind": "resistance",
-     "score": 6.983,
+     "score": 6.88,
      "rawScore": 7.519,
-     "distAtr": 0.53,
+     "distAtr": 0.64,
      "touches": 11,
      "lastTouch": "2026-08-09T00:00:00Z",
      "ageCandles": 106,
@@ -197,9 +184,9 @@
     {
      "price": 58263.52,
      "kind": "support",
-     "score": 3.942,
+     "score": 4.022,
      "rawScore": 5.033,
-     "distAtr": 1.76,
+     "distAtr": 1.62,
      "touches": 3,
      "lastTouch": "2026-07-01T00:00:00Z",
      "ageCandles": 145,
@@ -210,9 +197,9 @@
     {
      "price": 79199.14,
      "kind": "resistance",
-     "score": 3.882,
+     "score": 3.864,
      "rawScore": 7.852,
-     "distAtr": 5.08,
+     "distAtr": 5.12,
      "touches": 11,
      "lastTouch": "2026-10-24T00:00:00Z",
      "ageCandles": 30,
@@ -230,9 +217,9 @@
       "price": 74420.69
      },
      "touches": 8,
-     "score": 4.947,
+     "score": 5.053,
      "rawScore": 6.833,
-     "distAtr": 2.33,
+     "distAtr": 2.18,
      "priceNow": 56522.44,
      "broken": false,
      "held": false
@@ -245,9 +232,9 @@
       "price": 76555.0
      },
      "touches": 9,
-     "score": 4.29,
+     "score": 4.394,
      "rawScore": 7.024,
-     "distAtr": 3.56,
+     "distAtr": 3.38,
      "priceNow": 52772.46,
      "broken": false,
      "held": false
