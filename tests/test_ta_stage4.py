@@ -211,8 +211,8 @@ def main():
         # ---- Phase A: fresh fixture, clock 390 dark ----
         FIXTURE['body'] = fixture('fresh')
         ctx = b.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce'); ctx.route('**/*', handler)
-        # Stage 1: seed Trends on, so the 1D Line gating checks below see the
-        # toggle's gated state (it cannot be clicked on while gated).
+        # Seed Trends on, so the 1D Line checks below see the lines draw
+        # (Job 1 ungreyed the toggle there; it is no longer gated).
         ctx.add_init_script("localStorage.setItem('ps-ta-v1', JSON.stringify({tl:true}));")
         pg = ctx.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
@@ -223,15 +223,15 @@ def main():
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
             chk('A clock 390 dark: chart paints', inked(pg))
             chk('A clock 390 dark: TA module + TL probe loaded', pg.evaluate("!!window.__BTTA && !!window.__BCTA && !!window.__TA_TL_DEBUG"))
-            # Stage 1 gating: on 1D Line the Trends switch is disabled and
-            # no lines draw (tl is seeded on); the same toggle works on
-            # 1D 1H candles below.
+            # Job 1: on 1D Line the Trends switch is ENABLED and the lines
+            # draw (the y-range expands to include them); the same toggle
+            # works on 1D 1H candles below.
             pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
-            chk('A 1D Line: Trends toggle disabled (gated)', pg.is_disabled('.ta-panel [data-ta-key="tl"]'))
-            wait_status(pg, 'gated')
+            chk('A 1D Line: Trends toggle enabled (Job 1)', not pg.is_disabled('.ta-panel [data-ta-key="tl"]'))
+            wait_status(pg, 'live')
             pr = tl(pg)
-            chk('A 1D Line: status gated, 0 lines draw', pr['status'] == 'gated' and pr['last']['lines'] == [], str(pr))
-            chk('A 1D Line: panel says Not available on this view', panel_status(pg) == 'Not available on this view', panel_status(pg))
+            chk('A 1D Line: status live, 12 lines draw (Job 1)', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
+            chk('A 1D Line: panel says Live 1h + 4h + 1d 12 lines (Job 1)', panel_status(pg) == 'Live · 1h + 4h + 1d · 12 lines', panel_status(pg))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             pick_size(pg, '1h'); wait_status(pg, 'live')
             pr = tl(pg)
@@ -276,10 +276,10 @@ def main():
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(1200)
             pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
             pg.click('.ta-menu [data-ta-pick="line"]'); pg.wait_for_timeout(1200)
-            wait_status(pg, 'gated')
+            wait_status(pg, 'live')
             pr = tl(pg)
-            chk('A back to 1D Line: gated again, 0 lines', pr['tf'] == '1h' and pr['status'] == 'gated' and pr['last']['lines'] == [], str(pr))
-            chk('A back to 1D Line: panel says Not available on this view', panel_status(pg) == 'Not available on this view', panel_status(pg))
+            chk('A back to 1D Line: live, 12 lines (Job 1)', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
+            chk('A back to 1D Line: panel says Live 1h + 4h + 1d 12 lines (Job 1)', panel_status(pg) == 'Live · 1h + 4h + 1d · 12 lines', panel_status(pg))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             pick_size(pg, '1h'); wait_status(pg, 'live')
             pr = tl(pg)

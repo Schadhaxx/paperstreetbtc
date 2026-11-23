@@ -159,9 +159,11 @@ def main():
             chk('A hint does not cover Keep screen on', not ov(q['hint'], q['keep']), str(q['keep']))
             chk('A hint does not cover the Light pill', not ov(q['hint'], q['light']), str(q['light']))
             chk('A hint does not cover Exit (hidden in normal mode)', not ov(q['hint'], q['exit']), str(q['exit']))
-            # Stage 1: RSI is gated everywhere, so the strip stays hidden
-            # even with RSI seeded on — the hint has no strip to cover.
-            chk('A RSI strip stays hidden (gated) with RSI on', pg.evaluate("document.getElementById('taRsi').hidden"))
+            # Job 3: RSI is ungated now, so the strip shows with RSI
+            # seeded on — the hint sits inside the chart box, above the
+            # strip, and must not cover it.
+            chk('A RSI strip shows (Job 3) with RSI on', not pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('A hint does not cover the RSI strip', not ov(q['hint'], q['rsi']), str(q['rsi']))
             pg.screenshot(path=str(shots / 'rotate-hint-390-dark-portrait.png'), animations='disabled')
             # ---- Phase B: tap the hint ----
             pg.click('#rotateHint'); pg.wait_for_timeout(800)

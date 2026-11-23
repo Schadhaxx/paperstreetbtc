@@ -14,6 +14,9 @@ var INLINE=!!INLINEHOST;
 var DATA=null,PROV=false,dataP=null,SPX=null,SPXK=[],SHOWSPX=false,GOLD=null,GOLDK=[],SHOWGLD=false,MSTR=null,MSTRK=[],SHOWMSTR=false,CBDAILY=null;
 /* Test branch 26 Oct 2026: 1D chart type Line | 1H | 4H, default Line. Only shown when 1D is selected. */
 var CT='line';
+/* Job 5: last 1D candle size picked (1h default), so a trip to a range
+   and back to 1D restores the 1D candles instead of dropping to Line. */
+var last1DCT='1h';
 /* Intraday 1D (deployed 26 Oct 2026, Part 1): Coinbase 15-min candles, last 24h.
    Fallback chain: Coinbase 15-min -> CoinGecko 1-day market chart -> daily closes (in draw1D).
    S&P 500 / Gold toggles are off for 1D only; SHOWSPX/SHOWGLD are preserved for other ranges. */
@@ -589,7 +592,11 @@ function drawRange(){
   if(!RGSEEN[rng]){RGGRAN=defaultGran(rng);RGSEEN[rng]=true;}
   if(allowed.length&&allowed.indexOf(RGGRAN)<0)RGGRAN=defaultGran(rng);
   syncCg();
-  var fallback=function(msg){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;syncCg();};
+  var fallback=function(msg){/* Job 5: the chart falls back to Line here,
+    so the type state must say Line too — before, RGCT stayed 'candles'
+    while the chart showed Line, and the menu/pill ticks lied about the
+    current type. The user can re-pick Candles to retry the load. */
+    RGCT='line';drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;syncCg();};
   if(rng==='1W'&&RGGRAN==='4h'){
     if(!CB4H||Date.now()-CB4H_AT>5*60*1000){
       if(CB4H_ERR){RGGRAN='daily';clearCandState();fallback('Coinbase 4-hour candles unavailable — showing daily closes.');return;}
@@ -700,7 +707,7 @@ function draw1D(){
   var cg1=$('bcCg');if(cg1)syncCg();
   if(!INTRA){
     $('bcRr').textContent='Loading intraday…';
-    getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){if(dlg&&!dlg.hidden){drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' Intraday unavailable — showing daily closes.';}});
+    getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){if(dlg&&!dlg.hidden){/* Job 5: intraday failed, the chart falls back to Line — the type state must say Line too, so the menu/pill ticks match the drawing. */CT='line';drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' Intraday unavailable — showing daily closes.';}});
     return;
   }
   if(Date.now()-INTRA_AT>5*60*1000&&!intraP){getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){});}
@@ -717,7 +724,11 @@ function draw1D(){
     }
   }
   /* Line view: any open candle pill/selection from the candle view is gone,
-     and nothing here repaints candles (see fix note at candViewActive). */
+     and nothing here repaints candles (see fix note at candViewActive).
+     Job 5: if we got here with CT set to candles, too few candles formed
+     to draw — the chart is Line, so the type state must say Line too,
+     or the menu/pill ticks lie about the current type. */
+  if(CT!=='line')CT='line';
   clearCandState();
   if(hasLive&&pts.length&&Date.now()>pts[pts.length-1].t)pts.push({t:Date.now(),v:live.usd,live:true});
   var n=pts.length,a=pts[0].v,b=pts[n-1].v,pc=(b/a-1)*100;
@@ -853,7 +864,7 @@ function agg4hWarm(hourly){
   });
   return out;
 }
-var TAW={},TAW_H1=null,TAW_H1_P=null;
+var TAW={},TAW_H1=null,TAW_H1_P=null,TAW_RETRIED={}; /* TAW_RETRIED: kinds that already used their one Job 2 retry. */
 function fetchHourlyWarm(){
   if(TAW_H1)return Promise.resolve(TAW_H1);
   if(TAW_H1_P)return TAW_H1_P;
@@ -879,6 +890,25 @@ function taWarmFetch(kind,cb){
     TAW[kind]={done:true,closes:closes||[]};
     e.cbs.forEach(function(f){try{f(TAW[kind].closes);}catch(_){}});
   };
+  var fail=function(){
+    /* Job 2 (Indicator windows): a failed warm-up used to be sticky-empty
+       for the session, so one transient failure (rate limit, network
+       blip) left the indicators computed from the visible window alone
+       until reload. Retry once after 10s; if that fails too, leave it
+       empty. Bounded: at most two attempts per kind per session. On a
+       successful retry, redraw so the corrected lines appear promptly. */
+    finish([]);
+    if(!TAW_RETRIED[kind]){
+      TAW_RETRIED[kind]=true;
+      setTimeout(function(){
+        var e2=TAW[kind];
+        if(e2&&e2.done&&(!e2.closes||!e2.closes.length)){
+          delete TAW[kind];
+          try{taWarmFetch(kind,function(c){if(c&&c.length){try{if(typeof draw==='function')draw();}catch(_){}}});}catch(_){}
+        }
+      },10000);
+    }
+  };
   if(kind==='1d-line'){
     /* 15-min closes for the 3 days before the visible 24h window (one
        request, 288 bars under the 300-bar limit). */
@@ -889,7 +919,7 @@ function taWarmFetch(kind,cb){
         if(!Array.isArray(j))throw new Error('bad candles');
         var pts=j.map(function(c){return {t:c[0]*1000,c:c[4]};}).filter(function(p){return isFinite(p.c)&&p.c>0;}).sort(function(a,b){return a.t-b.t;});
         finish(pts.map(function(p){return p.c;}));
-      }).catch(function(){finish([]);});
+      }).catch(fail);
   }else{
     /* 1h bars for the last 50 days (paged, shared cache) — the 1h warm-up
        for 1D 1h candles, and the 4h warm-up (aggregated) for 1D 4h and
@@ -905,7 +935,7 @@ function taWarmFetch(kind,cb){
         var bars=agg4hWarm(hourly);
         finish(bars.filter(function(b){return b.end<=cut;}).map(function(b){return b.c;}).slice(-250));
       }
-    }).catch(function(){finish([]);});
+    }).catch(fail);
   }
 }
 function syncTypePill(){
@@ -923,8 +953,8 @@ var taLoaded=false;
 function loadTA(){
   if(taLoaded)return;taLoaded=true;
   try{
-    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta8');document.head.appendChild(l);
-    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta8');
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta15');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta15');
     s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
     s.onerror=function(){taLoaded=false;};
     document.head.appendChild(s);
@@ -947,7 +977,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
      the clock, so it is skipped in inline mode. */
   if(pxEl&&!INLINE)pxEl.addEventListener('dblclick',function(e){e.preventDefault();window.open(U('../../clock/index.html'),'_blank','noopener');});
   dim.addEventListener('click',close);
-  $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;draw();});
+  $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;if(CT==='1h'||CT==='4h')last1DCT=CT;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
   $('bcX').addEventListener('click',close);
   /* Tapping a non-interactive part of the popover (header, note, gaps) dismisses
@@ -955,7 +985,18 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
      Canvas taps, buttons and links are excluded: the canvas has its own handler,
      buttons/links do their own thing, and the pill ✕ stops propagation. */
   dlg.addEventListener('click',function(e){if(!candViewActive())return;if(e.target.closest('canvas,button,a'))return;dismissCandInfo();});
-  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
+  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){
+    /* Job 5: the chart type survives a range switch. CT (1D) and RGCT
+       (ranges) are separate state, so 1D Candles used to silently become
+       Line on 1W, and a candles range back to 1D came back Line. Carry
+       the type over: a candles view stays candles, a line view stays
+       line. RGGRAN still resets to the new range's default (1W 4H is the
+       sensible size for a 1D 4H carry; 1D 1H has no 1W equivalent). */
+    var wasCandles=candViewActive(),wasGran=RGGRAN;
+    rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);
+    if(rng==='1D'){if(wasCandles&&CT==='line')CT=(wasGran==='4h')?'4h':last1DCT;else if(!wasCandles)CT='line';}
+    else{if(wasCandles)RGCT='candles';else RGCT='line';}
+  }else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(INLINE||dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
@@ -1290,6 +1331,14 @@ function draw1DNative(pts){
     var hasLive=pts[pts.length-1].live===true;
     var vals=pts.map(function(p){return p.v;});
     var lo=Math.min.apply(null,vals),hi=Math.max.apply(null,vals);
+    /* Job 1 (Line-view trendlines): when trendlines are on and the file
+       is cached, extend the y-range to include the drawn lines' prices
+       (bounded to one span per side), so they draw instead of being
+       clipped outside the plot. Falls back to the tight range when the
+       TA module or the file is not ready yet. */
+    var _tlR=null;
+    try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR=window.__BTTA.tlExpandRange(window.__BCTA.state(),vals[vals.length-1],pts[pts.length-1].t,lo,hi);}catch(e){}
+    if(_tlR&&isFinite(_tlR.lo)&&isFinite(_tlR.hi)&&_tlR.hi>_tlR.lo){lo=_tlR.lo;hi=_tlR.hi;}
     /* No explicit pad: Chart.js does not pad the data range — its nice
        ticks provide the padding. An 8% pad (the candle pattern) would
        extend the axis below Chart.js (e.g. $74k instead of $75k). */
@@ -1469,6 +1518,14 @@ function drawDailyNative(d,cmp){
         [1,2,5].forEach(function(m){var tv=m*pw;if(tv>=lo*(1-1e-9)&&tv<=hi*(1+1e-9))yTicks.push(tv);});
       }
     }else{
+      /* Job 1: on 1W Line only, extend the y-range for trendlines
+         (bounded, same as draw1DNative). Other Line ranges are not
+         gated and already show their lines. */
+      if(rng==='1W'){
+        var _tlR2=null;
+        try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR2=window.__BTTA.tlExpandRange(window.__BCTA.state(),d[d.length-1][1],Date.parse(d[d.length-1][0]+'T00:00:00Z'),lo,hi);}catch(e){}
+        if(_tlR2&&isFinite(_tlR2.lo)&&isFinite(_tlR2.hi)&&_tlR2.hi>_tlR2.lo){lo=_tlR2.lo;hi=_tlR2.hi;}
+      }
       var ticks=nativeNiceTicks(lo,hi,ih);
       if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
       yTicks=ticks;
