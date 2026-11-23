@@ -40,7 +40,7 @@
   // Finnhub's free /quote endpoint and always come from prices.json.
   // The Worker URL is a single configurable constant.
   var WORKER_URL = 'https://paperstreet-quotes.schadha08.workers.dev/';
-  var PACK_ASOF = '2026-11-13';
+  var PACK_ASOF = '2026-11-20';
   var state = { q: '', filter: 'all', sortKey: 'symbol', sortDir: 1 };
   var packRows = [];
   var packIndicators = [];
@@ -411,7 +411,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    fetch('assets/data/screener-pack.json?v=dia1')
+    fetch('assets/data/screener-pack.json?v=dia2')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];

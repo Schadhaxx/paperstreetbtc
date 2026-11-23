@@ -158,13 +158,26 @@ jobs:
                   r_ = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d')['chart']['result'][0]
                   m = r_['meta']
                   c_ = m.get('regularMarketPrice')
-                  # prior session close = 2nd-to-last daily bar's close (NOT chartPreviousClose = close before the 5d window)
+                  # prior session close = last valid daily close before the latest bar
+                  # (NOT chartPreviousClose = close before the 5d window). Skip None
+                  # bars (weekends/holidays have no close) so a None in the
+                  # 2nd-to-last slot does not stall the update (DXY, Nov 2026).
                   cl_ = ((r_.get('indicators') or {}).get('quote') or [{}])[0].get('close') or []
-                  pc_ = cl_[-2] if len(cl_) >= 2 else None
+                  valid_ = [c for c in cl_[:-1] if isinstance(c, (int, float)) and not isinstance(c, bool) and math.isfinite(c)]
+                  pc_ = valid_[-1] if valid_ else None
                   if not (isinstance(pc_, (int, float)) and not isinstance(pc_, bool) and math.isfinite(pc_)): pc_ = None
                   if not (isinstance(c_, (int, float)) and not isinstance(c_, bool) and math.isfinite(c_)): c_ = None
+                  # t: Yahoo's regularMarketTime, but if it lags the fetch by >30 min
+                  # (Yahoo's ^TNX timestamp stalls while the price is current), stamp
+                  # the fetch time instead so a just-fetched price reads Live. Only
+                  # when the fetch succeeded and c_ is valid; a fresh Yahoo timestamp
+                  # is used as-is.
+                  t_ = m.get('regularMarketTime')
                   if isinstance(c_, (int, float)) and c_ > 0 and isinstance(pc_, (int, float)) and pc_ > 0:
-                      out['stocks'][key] = {'c': c_, 'pc': pc_, 't': m.get('regularMarketTime')}; ok += 1
+                      now_ep = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+                      if isinstance(t_, (int, float)) and (now_ep - t_) > 30 * 60:
+                          t_ = now_ep
+                      out['stocks'][key] = {'c': c_, 'pc': pc_, 't': t_}; ok += 1
                   else: print(key, 'bad Yahoo meta, keeping previous')
               except Exception as e: print(key, 'Yahoo failed, keeping previous:', type(e).__name__)
           try:
