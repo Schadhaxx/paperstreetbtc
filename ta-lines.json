@@ -1,48 +1,48 @@
 {
  "v": 1,
  "kind": "ta-lines",
- "asOf": "2026-11-23T23:22:22Z",
+ "asOf": "2026-11-24T00:22:20Z",
  "timeframes": {
   "1h": {
-   "asOf": "2026-11-23T23:00:00Z",
-   "lastClose": 61382.95,
-   "atr": 694.51,
+   "asOf": "2026-11-24T00:00:00Z",
+   "lastClose": 61197.36,
+   "atr": 668.38,
    "levels": [
-    {
-     "price": 62016.06,
-     "kind": "resistance",
-     "score": 6.667,
-     "rawScore": 7.565,
-     "distAtr": 0.91,
-     "touches": 9,
-     "lastTouch": "2026-11-23T09:00:00Z",
-     "ageCandles": 14,
-     "broken": false,
-     "held": false,
-     "extreme": false
-    },
     {
      "price": 61153.88,
      "kind": "support",
-     "score": 6.203,
-     "rawScore": 6.493,
-     "distAtr": 0.33,
+     "score": 6.429,
+     "rawScore": 6.487,
+     "distAtr": 0.07,
      "touches": 5,
      "lastTouch": "2026-11-23T12:00:00Z",
-     "ageCandles": 11,
+     "ageCandles": 12,
      "broken": false,
      "held": false,
      "extreme": false
     },
     {
-     "price": 64023.51,
+     "price": 61934.54,
      "kind": "resistance",
-     "score": 3.344,
-     "rawScore": 5.665,
-     "distAtr": 3.8,
+     "score": 6.082,
+     "rawScore": 7.087,
+     "distAtr": 1.1,
      "touches": 7,
+     "lastTouch": "2026-11-23T09:00:00Z",
+     "ageCandles": 15,
+     "broken": false,
+     "held": false,
+     "extreme": false
+    },
+    {
+     "price": 63974.9,
+     "kind": "resistance",
+     "score": 3.022,
+     "rawScore": 5.376,
+     "distAtr": 4.16,
+     "touches": 6,
      "lastTouch": "2026-11-19T13:00:00Z",
-     "ageCandles": 106,
+     "ageCandles": 107,
      "broken": true,
      "held": false,
      "extreme": false
@@ -57,10 +57,10 @@
       "price": 65626.98
      },
      "touches": 9,
-     "score": 5.776,
-     "rawScore": 7.138,
-     "distAtr": 1.53,
-     "priceNow": 62443.4,
+     "score": 5.53,
+     "rawScore": 7.134,
+     "distAtr": 1.84,
+     "priceNow": 62425.41,
      "broken": false,
      "held": false
     },
@@ -72,10 +72,10 @@
       "price": 60452.05
      },
      "touches": 3,
-     "score": 4.945,
-     "rawScore": 5.639,
-     "distAtr": 0.95,
-     "priceNow": 60724.93,
+     "score": 5.117,
+     "rawScore": 5.633,
+     "distAtr": 0.69,
+     "priceNow": 60734.34,
      "broken": false,
      "held": false
     }
@@ -85,15 +85,15 @@
   },
   "4h": {
    "asOf": "2026-11-23T20:00:00Z",
-   "lastClose": 61382.95,
-   "atr": 1443.01,
+   "lastClose": 61189.97,
+   "atr": 1445.12,
    "levels": [
     {
      "price": 60584.97,
      "kind": "support",
-     "score": 4.599,
+     "score": 4.686,
      "rawScore": 4.966,
-     "distAtr": 0.55,
+     "distAtr": 0.42,
      "touches": 2,
      "lastTouch": "2026-11-23T00:00:00Z",
      "ageCandles": 5,
@@ -104,9 +104,9 @@
     {
      "price": 63704.64,
      "kind": "resistance",
-     "score": 3.602,
+     "score": 3.537,
      "rawScore": 4.502,
-     "distAtr": 1.61,
+     "distAtr": 1.74,
      "touches": 3,
      "lastTouch": "2026-11-19T12:00:00Z",
      "ageCandles": 26,
@@ -117,9 +117,9 @@
     {
      "price": 65703.42,
      "kind": "resistance",
-     "score": 3.589,
+     "score": 3.525,
      "rawScore": 5.435,
-     "distAtr": 2.99,
+     "distAtr": 3.12,
      "touches": 3,
      "lastTouch": "2026-11-17T12:00:00Z",
      "ageCandles": 38,
@@ -137,9 +137,9 @@
       "price": 66100.0
      },
      "touches": 4,
-     "score": 4.998,
+     "score": 4.907,
      "rawScore": 6.002,
-     "distAtr": 1.32,
+     "distAtr": 1.45,
      "priceNow": 63288.29,
      "broken": false,
      "held": false
@@ -152,9 +152,9 @@
       "price": 75035.1
      },
      "touches": 6,
-     "score": 4.053,
+     "score": 4.132,
      "rawScore": 6.712,
-     "distAtr": 3.64,
+     "distAtr": 3.5,
      "priceNow": 56132.35,
      "broken": false,
      "held": false
@@ -164,19 +164,19 @@
    "missingResistance": false
   },
   "1d": {
-   "asOf": "2026-11-23T00:00:00Z",
-   "lastClose": 61382.95,
-   "atr": 3109.44,
+   "asOf": "2026-11-24T00:00:00Z",
+   "lastClose": 61235.31,
+   "atr": 2902.73,
    "levels": [
     {
      "price": 65286.49,
      "kind": "resistance",
-     "score": 6.318,
-     "rawScore": 7.519,
-     "distAtr": 1.26,
+     "score": 6.194,
+     "rawScore": 7.516,
+     "distAtr": 1.4,
      "touches": 11,
      "lastTouch": "2026-08-09T00:00:00Z",
-     "ageCandles": 106,
+     "ageCandles": 107,
      "broken": false,
      "held": false,
      "extreme": false
@@ -184,43 +184,43 @@
     {
      "price": 58263.52,
      "kind": "support",
-     "score": 4.379,
-     "rawScore": 5.033,
-     "distAtr": 1.0,
+     "score": 4.365,
+     "rawScore": 5.03,
+     "distAtr": 1.02,
      "touches": 3,
      "lastTouch": "2026-07-01T00:00:00Z",
-     "ageCandles": 145,
+     "ageCandles": 146,
      "broken": false,
      "held": false,
      "extreme": false
     },
     {
-     "price": 79199.14,
+     "price": 79066.59,
      "kind": "resistance",
-     "score": 3.548,
-     "rawScore": 7.852,
-     "distAtr": 5.73,
-     "touches": 11,
+     "score": 3.271,
+     "rawScore": 7.665,
+     "distAtr": 6.14,
+     "touches": 10,
      "lastTouch": "2026-10-24T00:00:00Z",
-     "ageCandles": 30,
+     "ageCandles": 31,
      "broken": false,
-     "held": false,
+     "held": true,
      "extreme": false
     }
    ],
    "sloped": [
     {
      "kind": "support",
-     "slope": -30.0811,
+     "slope": -35.2898,
      "anchor": {
-      "t": "2025-04-07T00:00:00Z",
-      "price": 74420.69
+      "t": "2025-02-28T00:00:00Z",
+      "price": 78167.81
      },
-     "touches": 8,
-     "score": 5.502,
-     "rawScore": 6.833,
-     "distAtr": 1.56,
-     "priceNow": 56522.44,
+     "touches": 9,
+     "score": 5.89,
+     "rawScore": 7.637,
+     "distAtr": 1.87,
+     "priceNow": 55794.06,
      "broken": false,
      "held": false
     },
@@ -232,10 +232,10 @@
       "price": 76555.0
      },
      "touches": 9,
-     "score": 4.785,
-     "rawScore": 7.024,
-     "distAtr": 2.77,
-     "priceNow": 52772.46,
+     "score": 4.678,
+     "rawScore": 7.021,
+     "distAtr": 2.93,
+     "priceNow": 52734.23,
      "broken": false,
      "held": false
     }
