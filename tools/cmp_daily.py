@@ -182,6 +182,21 @@ def _utc_cutoff(now):
     return day
 
 
+def check_btc_cutoff(built, now):
+    """BTC is UTC-calendar: its last date must equal the UTC cutoff, not
+    the NYSE asOf. A run before 00:15 UTC ends BTC a day behind asOf —
+    correct by design (the still-forming UTC bar is dropped, never
+    written). Returns an error string, or None when the invariant
+    holds (or BTC was not built, e.g. a fixture run without it)."""
+    if 'BTC' not in built:
+        return None
+    utc_cut = _utc_cutoff(now).isoformat()
+    last = built['BTC']['dates'][-1]
+    if last != utc_cut:
+        return f'BTC: last {last} != UTC cutoff {utc_cut}'
+    return None
+
+
 def build_doc(symbols, now):
     now = sw.parse_now(now)
     # asOf is the equity cutoff (what the page labels). BTC may end the same UTC day.
@@ -342,6 +357,11 @@ def main(argv):
             print(f'FAILED {sym}: last {s["dates"][-1]} != asOf {doc["asOf"]}', file=sys.stderr)
             print('cmp-daily: no file written', file=sys.stderr)
             return 1
+    btc_err = check_btc_cutoff(built, now)
+    if btc_err:
+        print(f'FAILED {btc_err}', file=sys.stderr)
+        print('cmp-daily: no file written', file=sys.stderr)
+        return 1
     bad = validate_doc(doc, rows, None if fx is not None else weekly_dir)
     if bad:
         print('FAILED validation: ' + '; '.join(bad), file=sys.stderr)

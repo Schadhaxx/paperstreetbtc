@@ -514,16 +514,71 @@
       if (e.key === 'Escape') closeNotePill();
     });
     window.addEventListener('scroll', closeNotePill, true);
-    /* Batch B bug 5: the floating 'Live BTC Chart' pill overlaps stock tile
-       prices while scrolling — hide it on scroll, show it again shortly
-       after the scroll stops. */
-    var clockFloat = document.querySelector('.clock-float'), scrollHideT = 0;
+    /* Batch B bug 5 (revised 24 Nov 2026): the floating 'Live BTC Chart'
+       pill overlaps stock tile prices. The old version hid it on any
+       scroll and showed it 200ms after scrolling stopped, so it sat on
+       the bottom-center tile whenever the user paused. Direction-based:
+       it is out of the way while scrolling down and back when the user
+       scrolls up (or is at the top). Strengthened 24 Nov 2026 (Sunil:
+       FIXED, not half fixed — the pill must NEVER cover a tile): a
+       timer alone still leaves it on a tile for the delay after the
+       user pauses, and moving it bottom-right cannot guarantee it
+       either (at 390px the tile grid is single-column full-width, so
+       every bottom position is over a tile). So the guarantee is a
+       live overlap check: the pill is only ever visible while its rect
+       intersects NO tile rect, in any scroll state. "Tile" means both
+       tile kinds — the 16 stock cards (#screener-body .card) and the
+       8 indicator tiles (#indicators-body .tile). The direction logic
+       decides the intent to show; the overlap check vetoes showing
+       whenever a tile is underneath. A 1s timer re-checks after
+       scrolling stops, and a resize re-checks too. Tiles render
+       asynchronously after the data loads, so the pill state is also
+       re-checked whenever either tile container changes (a
+       MutationObserver — this covers the initial render and every
+       5-minute refresh, filter, sort and search re-render), once
+       subresources have loaded, and once webfonts settle — otherwise
+       the pill could sit visible over tiles that did not exist when
+       the page first evaluated it. 1s, not 2.5s, because the overlap
+       check, not the timer, is now the guarantee, so the timer only
+       needs to catch layout changes promptly and never hides a pill
+       that is safely placed. */
+    var clockFloat = document.querySelector('.clock-float'), lastScrollY = window.scrollY || window.pageYOffset || 0, pillHideTimer = null, pillScrollingDown = false;
+    function pillOverlapsTile() {
+      if (!clockFloat) return false;
+      var pr = clockFloat.getBoundingClientRect();
+      var tiles = document.querySelectorAll('#screener-body .card[data-symbol], #indicators-body .tile[data-symbol]');
+      for (var i = 0; i < tiles.length; i++) {
+        var tr = tiles[i].getBoundingClientRect();
+        if (tr.bottom <= 0 || tr.top >= window.innerHeight) continue;
+        if (pr.left < tr.right && pr.right > tr.left && pr.top < tr.bottom && pr.bottom > tr.top) return true;
+      }
+      return false;
+    }
+    function refreshPill() {
+      if (!clockFloat) return;
+      var show = !pillScrollingDown && !pillOverlapsTile();
+      clockFloat.classList.toggle('scroll-hide', !show);
+    }
     if (clockFloat) {
       window.addEventListener('scroll', function () {
-        clockFloat.classList.add('scroll-hide');
-        clearTimeout(scrollHideT);
-        scrollHideT = setTimeout(function () { clockFloat.classList.remove('scroll-hide'); }, 200);
+        var y = window.scrollY || window.pageYOffset || 0;
+        if (pillHideTimer) { clearTimeout(pillHideTimer); pillHideTimer = null; }
+        pillScrollingDown = (y > lastScrollY && y > 0);
+        lastScrollY = y;
+        refreshPill();
+        pillHideTimer = setTimeout(refreshPill, 1000);
       }, true);
+      window.addEventListener('resize', refreshPill);
+      window.addEventListener('load', refreshPill);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(refreshPill);
+      if (typeof MutationObserver !== 'undefined') {
+        var pillObs = new MutationObserver(refreshPill);
+        ['screener-body', 'indicators-body'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) pillObs.observe(el, { childList: true, subtree: true });
+        });
+      }
+      refreshPill();
     }
     window.addEventListener('resize', closeNotePill);
     var search = document.getElementById('screener-search');

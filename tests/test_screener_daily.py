@@ -218,6 +218,21 @@ class TestIndicatorBuild(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             sd.closes_from_payload('GOLD', bad, False)
 
+    def test_indicator_payload_skips_null_before_first_session(self):
+        # PR #15 dropped 2025-12-25 from IND_HOLIDAYS; ^VIX has a null
+        # bar on Christmas, and the Yahoo fetch starts 2025-12-20, so
+        # the null bar reached the parser and failed every run. A null
+        # bar dated before firstSession (2026-01-02) is outside the
+        # shipped series and must be skipped, not fail the symbol.
+        # Timestamps are UTC midnights: Dec 25 2025 (Thu, null),
+        # Jan 1 2026 (Thu, holiday, null), Jan 2 (Fri), Jan 5 (Mon).
+        payload = {
+            'timestamp': [1766620800, 1767225600, 1767312000, 1767571200],
+            'indicators': {'quote': [{'close': [None, None, 100.0, 101.0]}]},
+        }
+        out = sd.closes_from_payload('VIX', payload, False)
+        self.assertEqual(sorted(out), [dt.date(2026, 1, 2), dt.date(2026, 1, 5)])
+
     def test_stock_payload_null_close_is_hard_error(self):
         payload = {
             'timestamp': [1767312000, 1767398400],
@@ -242,6 +257,39 @@ class TestCheckOnly(unittest.TestCase):
             self.assertEqual(rc, 0)
 
 
+class TestIndStaleCheck(unittest.TestCase):
+    def _write(self, td, key, asof):
+        with open(os.path.join(td, f'ind-daily-{key}.json'), 'w') as f:
+            json.dump({'asOf': asof, 'days': []}, f)
+
+    def test_stale_check_flags_lagging_file(self):
+        # VIX at Nov 20 while the other four are at Nov 23: exactly the
+        # silent lag the recap job committed without noticing.
+        with tempfile.TemporaryDirectory() as td:
+            for k in ('wti', 'gold', 'us10y', 'dia'):
+                self._write(td, k, '2026-11-23')
+            self._write(td, 'vix', '2026-11-20')
+            self.assertEqual(sd.check_ind_stale(td), ['VIX'])
+
+    def test_stale_check_ok_when_all_agree(self):
+        with tempfile.TemporaryDirectory() as td:
+            for k in ('wti', 'gold', 'us10y', 'vix', 'dia'):
+                self._write(td, k, '2026-11-23')
+            self.assertEqual(sd.check_ind_stale(td), [])
+
+    def test_stale_check_missing_file_counts_as_lagging(self):
+        with tempfile.TemporaryDirectory() as td:
+            for k in ('wti', 'gold', 'us10y', 'dia'):
+                self._write(td, k, '2026-11-23')
+            self.assertEqual(sd.check_ind_stale(td), ['VIX'])
+
+    def test_stale_check_cli_exit_codes(self):
+        with tempfile.TemporaryDirectory() as td:
+            for k in ('wti', 'gold', 'us10y', 'vix', 'dia'):
+                self._write(td, k, '2026-11-23')
+            self.assertEqual(sd.main(['--stale-check', '--out-dir', td]), 0)
+            self._write(td, 'vix', '2026-11-20')
+            self.assertEqual(sd.main(['--stale-check', '--out-dir', td]), 1)
 
 
 class TestPartialWrite(unittest.TestCase):
