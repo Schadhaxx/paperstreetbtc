@@ -177,7 +177,7 @@ def main():
     if not writes: print(f'{m}: up to date (through {ME}{", final" if final else ""})'); return 0
     if a.dry_run: print('would write', list(writes)); return 0
     for f, txt in writes.items():
-        os.makedirs(os.path.dirname(f), exist_ok=True); open(f + '.tmp', 'w').write(txt)
+        os.makedirs(os.path.dirname(f) or '.', exist_ok=True); open(f + '.tmp', 'w').write(txt)
     for f in writes: os.replace(f + '.tmp', f)
     print(f'{m}: wrote {list(writes)} (through {ME}{", FINAL" if final else ", month to date"}; best {best[0]} {best[1]:+.2f}%)')
     return 0
