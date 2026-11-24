@@ -1,53 +1,52 @@
 {
- "hold_reason": "parse: prices.json shrank: 28 stocks vs 29 published; inclusion: dropped published live symbol(s): DJIA",
- "last_run": "2026-11-24T00:05:26Z",
- "status": "held",
+ "last_run": "2026-11-24T00:10:24Z",
+ "status": "ok",
  "symbols": {
   "AAPL": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "AMZN": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "BRK.B": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "yahoo"
   },
   "BTC": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": true,
    "source": "yahoo"
   },
   "DIA": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "DXY": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 60,
+   "price_age_minutes": 65,
    "provisional": false,
    "source": "live"
   },
   "FBTC": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "GLD": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "yahoo"
   },
@@ -59,97 +58,97 @@
   },
   "GOOGL": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "IBIT": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "META": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "MSFT": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "MSTR": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "yahoo"
   },
   "MU": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "NFLX": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "NVDA": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "PLTR": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "yahoo"
   },
   "QQQ": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "yahoo"
   },
   "SPCX": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "SPOT": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   },
   "SPY": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "yahoo"
   },
   "STRC": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "yahoo"
   },
   "TSLA": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "yahoo"
   },
   "US10Y": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 245,
+   "price_age_minutes": 250,
    "provisional": false,
    "source": "live"
   },
@@ -161,7 +160,7 @@
   },
   "VIX": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 170,
+   "price_age_minutes": 175,
    "provisional": false,
    "source": "live"
   },
@@ -173,7 +172,7 @@
   },
   "XYZ": {
    "last_close_date": "2026-11-23",
-   "price_age_minutes": 185,
+   "price_age_minutes": 190,
    "provisional": false,
    "source": "live"
   }
@@ -181,8 +180,8 @@
  "validation": [
   {
    "check": "parse",
-   "detail": "prices.json shrank: 28 stocks vs 29 published",
-   "status": "fail"
+   "detail": "226 closes, 28 live stocks",
+   "status": "pass"
   },
   {
    "check": "sessions",
@@ -216,8 +215,8 @@
   },
   {
    "check": "inclusion",
-   "detail": "dropped published live symbol(s): DJIA",
-   "status": "fail"
+   "detail": "226 dates, 9 symbols incl. core, 28 live stocks; nothing dropped, nothing changed",
+   "status": "pass"
   }
  ]
 }
