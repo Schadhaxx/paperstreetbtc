@@ -205,7 +205,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   }
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0 };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, tilePrice: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0 };
 
 
   // --- Experimental live feel: pure helpers (also exposed for harness) ---
@@ -516,7 +516,15 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     } else {
       if (liveEl) liveEl.style.display = 'none';
       var last = state.weeks[state.weeks.length - 1];
-      setStatus('Market closed · Last close ' + state.cfg.format(last.close) + ' · ' + countdownText() + ' · Tap a candle for its week.');
+      /* Modal "Last close" vs tile (24 Nov 2026): when the row isn't Live
+         the tile keeps moving overnight from prices.json (USDCAD/DXY trade
+         overnight) while the last shipped weekly candle is frozen at the
+         cash close — so show the tile's price here, not the weekly close.
+         Falls back to the weekly close when no tile price is available
+         (rows not loaded yet). The candle itself still uses the weekly
+         close; only this displayed value changes. */
+      var closeVal = (typeof state.tilePrice === 'number' && isFinite(state.tilePrice)) ? state.tilePrice : last.close;
+      setStatus('Market closed · Last close ' + state.cfg.format(closeVal) + ' · ' + countdownText() + ' · Tap a candle for its week.');
     }
   }
   function refreshLive() {
@@ -526,6 +534,10 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var wasOn = state.liveOn, wasPrice = state.livePrice;
     state.liveOn = !!(row && row._src === 'live' && typeof row.price === 'number' && isFinite(row.price));
     state.livePrice = state.liveOn ? row.price : null;
+    /* Tile price, live or not: the modal's "Last close" uses this when the
+       row isn't Live, so it always agrees with the tile (see
+       refreshLiveStatus). row.price is the prices.json quote either way. */
+    state.tilePrice = (row && typeof row.price === 'number' && isFinite(row.price)) ? row.price : null;
     if (state.liveOn) state.livePrev = wasPrice;
     var modal = el('ind-modal');
     var open = !!(modal && modal.classList.contains('open'));
