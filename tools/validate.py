@@ -139,6 +139,16 @@ SESSION_CLOSE_HM = (16, 0)  # NYSE session close, for price-age computation
 
 CORE_SYMBOLS = ('BTC', 'MSTR', 'STRC', 'TSLA', 'PLTR', 'SPY', 'QQQ', 'BRK.B', 'GLD')
 
+# Symbols deliberately retired from prices.json. A retired symbol may be
+# dropped from the candidate without tripping the shrink / inclusion
+# checks: the pipeline no longer carries it forward, so the published
+# file is the last generation that has it. Add a symbol here only when
+# its removal is intentional and nothing on the site reads it.
+# DJIA retired 23 Nov 2026 (PR #15): DIA replaced the DJIA tile on
+# 13 Nov 2026 and nothing reads DJIA; it was a stale orphan (~10 days
+# old) carried forward by the pipeline.
+RETIRED_SYMBOLS = frozenset({'DJIA'})
+
 # STRC declared dividends in ledger.js: [record, ex-date, pay date, $/share]
 STRC_DIV_RE = re.compile(
     r"\[\s*'(\d{4}-\d\d-\d\d)'\s*,\s*'(\d{4}-\d\d-\d\d)'\s*,"
@@ -226,10 +236,14 @@ def check_parse(new_hist, new_prices, prev_hist, prev_prices, sizes):
                             % (len(hist.get('closes') or {}),
                                len(prev_hist[0].get('closes') or {})))
     if isinstance(prices, dict) and isinstance(prev_prices[0], dict):
-        if len(prices.get('stocks') or {}) < len(prev_prices[0].get('stocks') or {}):
+        # A candidate may be smaller only by retired symbols it dropped;
+        # any other shrinkage is data loss.
+        new_stocks = prices.get('stocks') or {}
+        prev_stocks = prev_prices[0].get('stocks') or {}
+        retired_dropped = len((set(prev_stocks) - set(new_stocks)) & RETIRED_SYMBOLS)
+        if len(new_stocks) + retired_dropped < len(prev_stocks):
             problems.append('prices.json shrank: %d stocks vs %d published'
-                            % (len(prices.get('stocks') or {}),
-                               len(prev_prices[0].get('stocks') or {})))
+                            % (len(new_stocks), len(prev_stocks)))
     for key in ('history', 'prices'):
         new_b, prev_b = sizes.get(key, (None, None))
         if new_b is not None and prev_b:
@@ -679,7 +693,8 @@ def check_inclusion(new_hist, new_prices, prev_hist, prev_prices):
         problems.append('session(s) missing core symbol(s): %s' % '; '.join(missing_core[:5]))
     new_stocks = (new_prices or {}).get('stocks') or {}
     prev_stocks = (prev_prices or {}).get('stocks') or {}
-    dropped_live = sorted(set(prev_stocks) - set(new_stocks))
+    # Retired symbols may be dropped deliberately (see RETIRED_SYMBOLS).
+    dropped_live = sorted((set(prev_stocks) - set(new_stocks)) - RETIRED_SYMBOLS)
     if dropped_live:
         problems.append('dropped published live symbol(s): %s' % ', '.join(dropped_live[:10]))
     replaced = []
