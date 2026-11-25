@@ -1,0 +1,2147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>PaperStreet Keychain Prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) { min-height: 2rem; }
+      * { box-sizing: border-box; }
+      :root{
+        --bg:#f6f8fb; --surface:#ffffff; --surface2:#eef2f7; --ink:#0f172a; --muted:#475569;
+        --line:#dbe3ec; --orange:#c2410c; --orange-bright:#f97316; --cyan:#0284c7; --green:#15803d; --red:#b91c1c;
+        --panel-radius:14px;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#070b18; --surface:#121a2e; --surface2:#0d1425; --ink:#e8eef7; --muted:#9aa6bc;
+          --line:#22304d; --orange:#f97316; --orange-bright:#f97316; --cyan:#22d3ee; --green:#22c55e; --red:#ef4444;
+        }
+      }
+      /* Manual theme choice (Light / Dark / System) — overrides the OS setting when picked */
+      :root[data-theme="light"]{
+        --bg:#f6f8fb; --surface:#ffffff; --surface2:#eef2f7; --ink:#0f172a; --muted:#475569;
+        --line:#dbe3ec; --orange:#c2410c; --orange-bright:#f97316; --cyan:#0284c7; --green:#15803d; --red:#b91c1c;
+        color-scheme: light;
+      }
+      :root[data-theme="dark"]{
+        --bg:#070b18; --surface:#121a2e; --surface2:#0d1425; --ink:#e8eef7; --muted:#9aa6bc;
+        --line:#22304d; --orange:#f97316; --orange-bright:#f97316; --cyan:#22d3ee; --green:#22c55e; --red:#ef4444;
+        color-scheme: dark;
+      }
+      :root[data-theme="dark"] .action-btn.primary{ color:#052530; }
+      html,body{ margin:0; padding:0; }
+      body{
+        background:var(--bg); color:var(--ink);
+        font-family:"Inter", system-ui, sans-serif;
+        -webkit-font-smoothing:antialiased;
+      }
+      .layout{
+        max-width:1180px; margin:0 auto; padding:22px 20px 40px;
+        display:grid; grid-template-columns:minmax(0,1fr) 372px; gap:20px 28px; align-items:start;
+      }
+      @media (max-width:900px){
+        .layout{ grid-template-columns:1fr; padding:16px 14px 34px; }
+      }
+
+      /* ---------- Simulation dashboard framing ---------- */
+      .dash-banner{
+        grid-column:1 / -1;
+        background:var(--surface); border:1.5px dashed var(--cyan); border-radius:14px;
+        padding:16px 18px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;
+      }
+      .dash-banner h1{
+        font-family:"Outfit",sans-serif; font-size:20px; font-weight:800; margin:0; letter-spacing:.01em;
+        display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      }
+      .dash-banner h1 .sim-tag{
+        font-family:"Inter",sans-serif; font-size:11px; font-weight:800; letter-spacing:.14em;
+        background:var(--cyan); color:#fff; border-radius:999px; padding:4px 10px;
+      }
+      @media (prefers-color-scheme: dark){ .dash-banner h1 .sim-tag{ color:#052530; } }
+      :root[data-theme="dark"] .dash-banner h1 .sim-tag{ color:#052530; }
+      :root[data-theme="light"] .dash-banner h1 .sim-tag{ color:#fff; }
+      .dash-banner p{ margin:6px 0 0; font-size:13.5px; line-height:1.55; color:var(--muted); max-width:620px; }
+      .dash-banner p b{ color:var(--ink); }
+      .dash-status{ display:flex; flex-direction:column; gap:7px; flex:none; }
+      .dash-status span{
+        display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--ink);
+        background:var(--surface2); border:1px solid var(--line); border-radius:999px; padding:6px 12px; min-height:30px;
+      }
+      .dash-status i{ width:8px; height:8px; border-radius:50%; background:var(--green); flex:none; animation:pulse 1.6s infinite; }
+      @media (prefers-reduced-motion: reduce){ .dash-status i{ animation:none; } }
+      .panel-head{ padding:2px 2px 0; }
+      .panel-head .panel-kicker{
+        font-size:11px; font-weight:800; letter-spacing:.16em; color:var(--cyan);
+      }
+      .panel-head h2{ font-family:"Outfit",sans-serif; font-size:17px; font-weight:700; margin:3px 0 4px; }
+      .panel-head p{ margin:0; font-size:12.5px; color:var(--muted); line-height:1.5; }
+      .device-sim-tag{
+        display:inline-flex; align-items:center; gap:7px; margin:10px auto 4px;
+        font-size:11px; font-weight:800; letter-spacing:.14em; color:var(--muted);
+        border:1px dashed var(--line); border-radius:999px; padding:5px 11px; background:var(--bg);
+      }
+      .device-sim-tag::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--cyan); flex:none; }
+      .dash-foot{
+        grid-column:1 / -1; text-align:center; font-size:12.5px; color:var(--muted); line-height:1.55;
+        border-top:1px solid var(--line); padding-top:14px;
+      }
+      .dash-foot b{ color:var(--ink); }
+
+      /* ---------- Stage ---------- */
+      .stage-wrap{
+        display:flex; flex-direction:column; align-items:center; min-width:0;
+        background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px 14px 20px;
+      }
+      .stage-head{
+        width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px;
+        margin-bottom:8px; flex-wrap:wrap;
+      }
+      .stage-title{ font-family:"Outfit",sans-serif; font-weight:700; font-size:19px; letter-spacing:.01em; }
+      .stage-title small{ display:block; font-family:"Inter",sans-serif; font-weight:500; font-size:12.5px; color:var(--muted); margin-top:2px; }
+      .sim-badge{
+        display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; color:var(--muted);
+        background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:7px 12px; min-height:32px;
+      }
+      .sim-dot{ width:8px; height:8px; border-radius:50%; background:var(--green); animation:pulse 1.6s infinite; }
+      @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.35} }
+      @media (prefers-reduced-motion: reduce){ .sim-dot{ animation:none; } }
+
+      .device-stage{
+        --zoom:1;
+        width:calc(216px * var(--zoom));
+        height:calc(428px * var(--zoom));
+        position:relative; flex:none;
+      }
+
+      /* ---------- Device / case ---------- */
+      .device{
+        width:216px; height:428px; position:absolute; top:0; left:0;
+        transform:scale(var(--zoom)); transform-origin:top left;
+        user-select:none; -webkit-user-select:none; touch-action:none;
+      }
+      .ring{
+        position:absolute; top:2px; left:50%; margin-left:-26px; width:52px; height:52px; border-radius:50%;
+        border:5px solid #8b95a7; border-top-color:#c7cedb; border-left-color:#aeb6c6;
+        background:transparent; z-index:1;
+        box-shadow:0 1px 2px rgba(0,0,0,.35);
+      }
+      .case{
+        position:absolute; top:34px; left:11px; width:194px; height:382px; z-index:2;
+        background:linear-gradient(160deg,#232a38 0%,#141a26 55%,#0d1119 100%);
+        border-radius:30px;
+        box-shadow:0 18px 34px rgba(2,6,17,.45), 0 3px 8px rgba(2,6,17,.4), inset 0 1px 0 rgba(255,255,255,.14), inset 0 -2px 0 rgba(0,0,0,.5);
+        border:1px solid #2e3748;
+      }
+      .case-tab{
+        position:absolute; top:-16px; left:50%; margin-left:-21px; width:42px; height:26px;
+        background:linear-gradient(180deg,#1c2331,#12161f); border:1px solid #2e3748; border-bottom:none;
+        border-radius:10px 10px 0 0;
+      }
+      .case-tab::after{
+        content:""; position:absolute; top:5px; left:50%; margin-left:-7px; width:14px; height:14px; border-radius:50%;
+        background:var(--bg); box-shadow:inset 0 1px 3px rgba(0,0,0,.55);
+      }
+      .screw{ position:absolute; width:7px; height:7px; border-radius:50%; background:#39435a; box-shadow:inset 0 0 0 1.5px #171d2a, inset 0 1px 1px rgba(255,255,255,.25); }
+      .screw::after{ content:""; position:absolute; left:1px; right:1px; top:3px; height:1.2px; background:#141a26; transform:rotate(38deg); }
+      .screw.tl{ top:9px; left:9px; } .screw.tr{ top:9px; right:9px; }
+      .screw.bl{ bottom:9px; left:9px; } .screw.br{ bottom:9px; right:9px; }
+      .brand{
+        position:absolute; bottom:7px; left:0; right:0; text-align:center;
+        font-family:"Outfit",sans-serif; font-size:7.5px; font-weight:700; letter-spacing:.34em;
+        color:#5b6678;
+      }
+      .usbc{
+        position:absolute; bottom:-3px; left:50%; margin-left:-13px; width:26px; height:6px; border-radius:3px;
+        background:#05070b; box-shadow:inset 0 1px 2px rgba(255,255,255,.25);
+      }
+      .hw-btn{
+        position:absolute; right:-4px; width:5px; border-radius:2px; background:linear-gradient(90deg,#39435a,#1a2130);
+        border:none; padding:0; min-height:0; cursor:pointer; z-index:3;
+      }
+      .hw-btn.power{ top:88px; height:34px; }
+      .hw-btn.alt{ top:132px; height:22px; }
+      .hw-btn:active{ transform:translateX(1px); }
+      .hw-label{
+        position:absolute; right:-64px; width:56px; font-size:9.5px; color:var(--muted); font-weight:600; line-height:1.25;
+      }
+      .hw-label.p{ top:92px; } .hw-label.a{ top:130px; }
+      @media (max-width:520px){ .hw-label{ display:none; } }
+
+      /* ---------- Screen (logical 170 x 320) ---------- */
+      .screen-shell{
+        position:absolute; top:19px; left:12px; width:170px; height:320px; border-radius:9px; overflow:hidden;
+        background:#04060c; box-shadow:0 0 0 2px #000, inset 0 0 0 1px #1b2334;
+      }
+      .screen{
+        position:absolute; inset:0; background:#05080f; color:#e8eef7;
+        font-family:"Inter",sans-serif; transition:filter .25s ease, opacity .25s ease;
+      }
+      .screen.off{ filter:brightness(.06) !important; }
+      .viewport{ position:absolute; inset:0; overflow:hidden; }
+      .track{ display:flex; width:1020px; height:320px; transition:transform .34s cubic-bezier(.32,.72,.28,1); }
+      @media (prefers-reduced-motion: reduce){ .track{ transition:none; } }
+      .page{ width:170px; height:320px; flex:none; padding:0 8px; position:relative; overflow:hidden; }
+      .dots{
+        position:absolute; bottom:5px; left:0; right:0; display:flex; justify-content:center; gap:5px; z-index:5; pointer-events:none;
+      }
+      .dots i{ width:5px; height:5px; border-radius:50%; background:#2b3852; display:block; }
+      .dots i.on{ background:#22d3ee; width:13px; border-radius:3px; }
+      .wake-veil{
+        position:absolute; inset:0; z-index:8; display:none; align-items:center; justify-content:center; flex-direction:column; gap:6px;
+        background:#000; color:#8fa0bd; cursor:pointer; text-align:center;
+      }
+      .screen.off + .wake-veil{ display:flex; }
+      .wake-veil .owl{ font-family:"Outfit",sans-serif; font-weight:800; font-size:21px; color:#22d3ee; letter-spacing:.06em; }
+      .wake-veil span{ font-size:8px; letter-spacing:.18em; font-weight:600; }
+
+      /* status bar inside firmware */
+      .statusbar{
+        height:15px; display:flex; align-items:center; justify-content:space-between;
+        font-family:"IBM Plex Mono",monospace; font-size:7.5px; color:#8fa0bd; padding-top:2px;
+      }
+      .statusbar .sb-right{ display:flex; align-items:center; gap:4px; }
+      .batt{ width:15px; height:7px; border:1px solid #54637f; border-radius:2px; position:relative; }
+      .batt::after{ content:""; position:absolute; right:-3px; top:1.5px; width:2px; height:3px; background:#54637f; border-radius:0 1px 1px 0; }
+      .batt i{ position:absolute; inset:1px; right:14%; background:#22c55e; border-radius:1px; display:block; }
+
+      /* page 1 : price + chart — styled after the site's chart panel / price-only view */
+      .p-head{ display:flex; align-items:flex-start; justify-content:space-between; margin-top:3px; gap:4px; }
+      .p-head .sym{ font-size:6px; font-weight:700; letter-spacing:.06em; color:#9aa6bc; white-space:nowrap; }
+      .p-head .block-line{ font-family:"IBM Plex Mono",monospace; font-size:6.5px; font-weight:600; letter-spacing:.1em; color:#67748e; margin-top:2px; }
+      .cur-pill{ display:flex; background:#0b1120; border:1px solid #1d2942; border-radius:999px; padding:1px; gap:1px; flex:none; }
+      .cur-pill button{
+        min-height:12px; padding:1px 3px; border:none; border-radius:999px; background:transparent; cursor:pointer;
+        font-family:"Inter",sans-serif; font-size:6px; font-weight:700; letter-spacing:.02em; color:#67748e; white-space:nowrap;
+      }
+      .cur-pill button.on{ background:#22d3ee; color:#052530; }
+      .price{
+        font-family:"Outfit",sans-serif; font-weight:800; font-size:29px; line-height:1.05; letter-spacing:-.01em;
+        margin-top:2px; white-space:nowrap; color:#fff;
+        text-shadow:0 0 18px rgba(34,211,238,.25);
+      }
+      .price .dollar{ color:#22d3ee; }
+      .chg-row{ display:flex; align-items:center; gap:4px; margin-top:1px; font-family:"IBM Plex Mono",monospace; font-size:8px; white-space:nowrap; }
+      .chg{ font-weight:700; }
+      .chg.up{ color:#22c55e; } .chg.down{ color:#ef4444; }
+      .chg-row .per{ color:#67748e; font-size:7px; white-space:nowrap; }
+      .scrub-read{
+        height:13px; margin-top:4px; font-family:"IBM Plex Mono",monospace; font-size:8px; color:#22d3ee;
+        display:flex; justify-content:space-between; white-space:nowrap; overflow:hidden;
+      }
+      .scrub-read .dim{ color:#54637f; }
+      .chart-box{ position:relative; margin-top:1px; }
+      .chart-box svg{ display:block; }
+      .axis{ display:flex; justify-content:space-between; font-family:"IBM Plex Mono",monospace; font-size:6.5px; color:#54637f; margin-top:2px; padding-left:27px; }
+      .ranges{ display:flex; flex-wrap:wrap; gap:3px; margin-top:5px; }
+      .ranges button{
+        flex:1 1 26px; min-height:17px; padding:0; border:1px solid #1d2942; background:#0b1120; color:#9aa6bc;
+        font-family:"IBM Plex Mono",monospace; font-size:7.5px; font-weight:600; border-radius:5px; cursor:pointer;
+      }
+      .ranges button.on{ background:#22d3ee; border-color:#22d3ee; color:#052530; font-weight:700; }
+      .type-row{ display:flex; align-items:center; gap:4px; margin-top:4px; }
+      .type-row .type-lbl{ font-size:6.3px; font-weight:700; letter-spacing:.12em; color:#67748e; flex:none; }
+      .type-pill{ display:flex; background:#0b1120; border:1px solid #1d2942; border-radius:999px; padding:1px; gap:1px; flex:none; }
+      .type-pill button{
+        min-height:12px; padding:1px 5px; border:none; border-radius:999px; background:transparent; cursor:pointer;
+        font-family:"Inter",sans-serif; font-size:6.5px; font-weight:700; letter-spacing:.02em; color:#67748e; white-space:nowrap;
+      }
+      .type-pill button.on{ background:#22d3ee; color:#052530; }
+      .candle-note{ font-family:"IBM Plex Mono",monospace; font-size:6.5px; color:#67748e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .candle-note b{ color:#22c55e; font-weight:700; }
+      .cmp-row{ display:flex; align-items:center; gap:3px; margin-top:4px; }
+      .cmp-row.disabled{ opacity:.38; pointer-events:none; }
+      .ranges button:disabled{ opacity:.32; cursor:default; text-decoration:line-through; }
+      .cmp-row .cmp-lbl{ font-size:6.3px; font-weight:700; letter-spacing:.12em; color:#67748e; flex:none; }
+      .cmp-chip{
+        flex:1; min-height:16px; padding:0 2px; border:1px solid #1d2942; background:#0b1120; color:#67748e;
+        font-family:"IBM Plex Mono",monospace; font-size:7px; font-weight:600; border-radius:5px; cursor:pointer;
+        display:flex; align-items:center; justify-content:center; gap:3px; white-space:nowrap;
+      }
+      .cmp-chip i{ width:5px; height:5px; border-radius:50%; display:block; flex:none; }
+      .cmp-chip .cmp-pct{ font-weight:700; }
+      .cmp-chip[data-comp="SPX"] i{ background:#a78bfa; }
+      .cmp-chip[data-comp="GOLD"] i{ background:#fbbf24; }
+      .cmp-chip[data-comp="MSTR"] i{ background:#fb923c; }
+      .cmp-chip[data-comp="SPX"].on{ border-color:#a78bfa; color:#a78bfa; background:rgba(167,139,250,.10); }
+      .cmp-chip[data-comp="GOLD"].on{ border-color:#fbbf24; color:#fbbf24; background:rgba(251,191,36,.10); }
+      .cmp-chip[data-comp="MSTR"].on{ border-color:#fb923c; color:#fb923c; background:rgba(251,146,60,.10); }
+      .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:3px; margin-top:5px; }
+      .stat{
+        background:#0b1120; border:1px solid #16203a; border-radius:7px; padding:4px 7px 3px;
+      }
+      .stat .k{ font-size:6.3px; font-weight:700; letter-spacing:.14em; color:#67748e; }
+      .stat .v{ font-family:"Outfit",sans-serif; font-size:11px; font-weight:700; color:#e8eef7; margin-top:1px; white-space:nowrap; }
+      .stat .v small{ font-size:7.5px; color:#67748e; font-weight:500; }
+
+      /* page 2 : block clock — styled after the site's /clock/ focus screens */
+      .page-title{ font-size:8px; font-weight:700; letter-spacing:.22em; color:#9aa6bc; margin-top:3px; display:flex; justify-content:space-between; align-items:center;}
+      .page-title .tag{ color:#22d3ee; letter-spacing:.1em; }
+      .page-title .live-dot{ color:#22c55e; letter-spacing:.12em; font-size:6.5px; display:inline-flex; align-items:center; gap:3px; }
+      .page-title .live-dot i{ width:4.5px; height:4.5px; border-radius:50%; background:#22c55e; display:block; animation:pulse 1.6s infinite; }
+      .focus{
+        margin-top:6px; height:118px; background:#0b1120; border:1px solid #16203a; border-radius:9px;
+        padding:7px 8px; position:relative; overflow:hidden;
+      }
+      .focus-view{ display:none; }
+      .focus-view.on{ display:block; }
+      .focus-label{ font-size:6.3px; font-weight:700; letter-spacing:.16em; color:#67748e; }
+      .focus-big{
+        font-family:"Outfit",sans-serif; font-weight:800; font-size:27px; letter-spacing:-.01em; margin-top:3px; color:#fff; line-height:1.1;
+      }
+      .focus-big.cyan{ color:#22d3ee; }
+      .focus-big small{ font-size:11px; font-weight:700; color:#9aa6bc; }
+      .focus-note{ font-size:7px; line-height:1.5; color:#67748e; margin-top:4px; }
+      .ring-row{ display:flex; align-items:center; gap:8px; margin-top:5px; }
+      .ring-row .ring-t{ font-family:"Outfit",sans-serif; font-weight:700; font-size:12.5px; color:#fff; }
+      .ring-row .focus-note{ margin-top:1px; }
+      .ring-svg{ flex:none; filter:drop-shadow(0 0 5px rgba(34,211,238,.45)); }
+      .focus-dots{ display:flex; gap:4px; margin-top:6px; }
+      .focus-dots button{
+        min-height:6px; height:6px; width:16px; padding:0; border:none; border-radius:3px; background:#1a2438; cursor:pointer;
+      }
+      .focus-dots button.on{ background:#22d3ee; width:26px; box-shadow:0 0 6px rgba(34,211,238,.55); }
+      .bar{ height:5px; border-radius:3px; background:#1a2438; margin-top:6px; overflow:hidden; }
+      .bar i{ display:block; height:100%; width:65.2%; background:#22d3ee; border-radius:3px; }
+      .bar-row{ display:flex; justify-content:space-between; font-family:"IBM Plex Mono",monospace; font-size:6.5px; color:#67748e; margin-top:4px; }
+      .bar-row b{ color:#e8eef7; }
+      .clock-big{ font-family:"Outfit",sans-serif; font-weight:800; font-size:21px; margin-top:8px; }
+      .clock-big small{ font-size:10px; color:#9aa6bc; font-weight:700; }
+      .block-sub{ font-family:"IBM Plex Mono",monospace; font-size:7.5px; color:#67748e; margin-top:1px; }
+
+      /* pages 3-4 : QR */
+      .qr-head{ display:flex; align-items:center; gap:5px; margin-top:3px; }
+      .qr-badge{ width:15px; height:15px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:"Outfit",sans-serif; font-weight:800; font-size:9px; color:#0b0f16; flex:none;}
+      .qr-badge.jade{ background:#34d399; } .qr-badge.ln{ background:#fbbf24; }
+      .qr-head .t{ font-size:8.5px; font-weight:700; letter-spacing:.18em; }
+      .qr-head .s{ font-size:6.5px; color:#67748e; letter-spacing:.08em; font-weight:600; margin-left:auto; }
+      .qr-card{
+        margin:9px auto 0; width:138px; height:138px; background:#fff; border-radius:10px; padding:7px;
+        cursor:pointer;
+      }
+      .qr-card canvas{ display:block; width:124px; height:124px; }
+      .qr-addr{
+        margin-top:9px; font-family:"IBM Plex Mono",monospace; font-size:8px; color:#9aa6bc; text-align:center; line-height:1.5;
+        word-break:break-all; padding:0 4px;
+      }
+      .qr-note{ margin-top:5px; text-align:center; font-size:7px; color:#54637f; font-weight:600; letter-spacing:.06em; }
+      .qr-full{ display:none; margin-top:10px; background:#0b1120; border:1px solid #16203a; border-radius:8px; padding:9px 8px; }
+      .qr-full .a{ font-family:"IBM Plex Mono",monospace; font-size:8.5px; line-height:1.65; word-break:break-all; color:#e8eef7; }
+      .qr-full .w{ margin-top:7px; font-size:7.5px; line-height:1.5; color:#fbbf24; font-weight:600; }
+      .page.show-addr .qr-card, .page.show-addr .qr-addr, .page.show-addr .qr-note{ display:none; }
+      .page.show-addr .qr-full{ display:block; }
+
+      /* page 2 : price only — the site's full-screen price, on the keychain */
+      .po-wrap{ display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:16px; }
+      .po-label{ font-size:6.5px; font-weight:700; letter-spacing:.14em; color:#9aa6bc; }
+      .po-block{ font-family:"IBM Plex Mono",monospace; font-size:6.5px; font-weight:600; letter-spacing:.1em; color:#67748e; margin-top:3px; }
+      .po-price{
+        font-family:"Outfit",sans-serif; font-weight:800; font-size:30px; line-height:1.05; letter-spacing:-.01em;
+        margin-top:12px; white-space:nowrap; color:#fff; text-shadow:0 0 18px rgba(34,211,238,.25);
+      }
+      .po-price .dollar{ color:#22d3ee; }
+      .po-chg-row{ display:flex; align-items:center; gap:4px; margin-top:5px; font-family:"IBM Plex Mono",monospace; font-size:9px; white-space:nowrap; }
+      .po-chg-row .per{ color:#67748e; font-size:7.5px; }
+      .po-rule{ width:36px; height:2px; border-radius:2px; background:#22d3ee; margin:15px 0 13px; box-shadow:0 0 8px rgba(34,211,238,.55); }
+      .po-stats{ display:flex; flex-direction:column; gap:9px; }
+      .po-stat .k{ font-size:6.3px; font-weight:700; letter-spacing:.14em; color:#67748e; }
+      .po-stat .v{ font-family:"Outfit",sans-serif; font-size:15px; font-weight:700; color:#e8eef7; margin-top:1px; }
+      .po-stat .v small{ font-size:8px; color:#67748e; font-weight:500; }
+      .po-cur{ margin-top:14px; }
+      .po-hint{ position:absolute; bottom:17px; left:8px; right:8px; text-align:center; font-size:6.3px; font-weight:600; letter-spacing:.1em; color:#54637f; }
+
+      /* ---------- Keychain screen · light mode ---------- */
+      .screen.light{ background:#f6f8fb; color:#0f172a; }
+      .screen.light .statusbar{ color:#64748b; }
+      .screen.light .batt{ border-color:#94a3b8; } .screen.light .batt::after{ background:#94a3b8; }
+      .screen.light .dots i{ background:#cbd5e1; } .screen.light .dots i.on{ background:#0284c7; }
+      .screen.light .p-head .sym, .screen.light .po-label{ color:#475569; }
+      .screen.light .p-head .block-line, .screen.light .po-block{ color:#64748b; }
+      .screen.light .cur-pill{ background:#ffffff; border-color:#dbe3ec; }
+      .screen.light .cur-pill button{ color:#64748b; }
+      .screen.light .cur-pill button.on{ background:#0284c7; color:#ffffff; }
+      .screen.light .price, .screen.light .po-price{ color:#0f172a; text-shadow:none; }
+      .screen.light .price .dollar, .screen.light .po-price .dollar{ color:#0284c7; }
+      .screen.light .chg.up{ color:#15803d; } .screen.light .chg.down{ color:#b91c1c; }
+      .screen.light .chg-row .per, .screen.light .po-chg-row .per{ color:#64748b; }
+      .screen.light .scrub-read{ color:#0284c7; } .screen.light .scrub-read .dim{ color:#94a3b8; }
+      .screen.light .axis{ color:#64748b; }
+      .screen.light .ranges button{ border-color:#dbe3ec; background:#ffffff; color:#475569; }
+      .screen.light .ranges button.on{ background:#0284c7; border-color:#0284c7; color:#ffffff; }
+      .screen.light .type-lbl{ color:#64748b; }
+      .screen.light .type-pill{ background:#ffffff; border-color:#dbe3ec; }
+      .screen.light .type-pill button{ color:#64748b; }
+      .screen.light .type-pill button.on{ background:#0284c7; color:#ffffff; }
+      .screen.light .candle-note{ color:#64748b; }
+      .screen.light .cmp-row .cmp-lbl{ color:#64748b; }
+      .screen.light .cmp-chip{ border-color:#dbe3ec; background:#ffffff; color:#64748b; }
+      .screen.light .stat{ background:#ffffff; border-color:#dbe3ec; }
+      .screen.light .stat .k{ color:#64748b; }
+      .screen.light .stat .v{ color:#0f172a; } .screen.light .stat .v small{ color:#64748b; }
+      .screen.light .page-title{ color:#475569; } .screen.light .page-title .tag{ color:#0284c7; }
+      .screen.light .focus{ background:#ffffff; border-color:#dbe3ec; }
+      .screen.light .focus-label{ color:#64748b; }
+      .screen.light .focus-big{ color:#0f172a; } .screen.light .focus-big.cyan{ color:#0284c7; }
+      .screen.light .focus-big small{ color:#475569; }
+      .screen.light .focus-note{ color:#64748b; }
+      .screen.light .ring-row .ring-t{ color:#0f172a; }
+      .screen.light .ring-svg{ filter:none; }
+      .screen.light .focus-dots button{ background:#dbe3ec; }
+      .screen.light .focus-dots button.on{ background:#0284c7; box-shadow:none; }
+      .screen.light .bar{ background:#dbe3ec; } .screen.light .bar i{ background:#0284c7; }
+      .screen.light .bar-row{ color:#64748b; } .screen.light .bar-row b{ color:#0f172a; }
+      .screen.light .block-sub{ color:#64748b; }
+      .screen.light .qr-head .s{ color:#64748b; }
+      .screen.light .qr-addr{ color:#475569; }
+      .screen.light .qr-note{ color:#64748b; }
+      .screen.light .qr-full{ background:#ffffff; border-color:#dbe3ec; }
+      .screen.light .qr-full .a{ color:#0f172a; } .screen.light .qr-full .w{ color:#b45309; }
+
+      .screen.light .auth-hide-btn{ background:#ffffff; border-color:#dbe3ec; color:#0284c7; }
+      .screen.light .auth-timer-row{ color:#64748b; } .screen.light .auth-timer-row b{ color:#0284c7; }
+      .screen.light .auth-bar{ background:#dbe3ec; } .screen.light .auth-bar i{ background:#0284c7; }
+      .screen.light .auth-item{ background:#ffffff; border-color:#dbe3ec; }
+      .screen.light .auth-item.on{ border-color:#0284c7; box-shadow:inset 0 0 0 1px #0284c7; }
+      .screen.light .auth-issuer{ color:#0f172a; } .screen.light .auth-acct{ color:#64748b; }
+      .screen.light .auth-code{ color:#0f172a; }
+      .screen.light .auth-big{ background:#ffffff; border-color:#dbe3ec; }
+      .screen.light .auth-big .k{ color:#64748b; } .screen.light .auth-big .v{ color:#0284c7; }
+      .screen.light .auth-note{ color:#94a3b8; }
+      .screen.light .po-rule{ background:#0284c7; box-shadow:none; }
+      .screen.light .po-stat .k{ color:#64748b; } .screen.light .po-stat .v{ color:#0f172a; } .screen.light .po-stat .v small{ color:#64748b; }
+      .screen.light .po-hint{ color:#94a3b8; }
+      .screen.light svg g[stroke="#141d31"]{ stroke:#e2e8f0; }
+      .screen.light #yLabels{ fill:#64748b; }
+      .screen.light #scrubLine{ stroke:#0f172a; }
+      .screen.light #scrubDot{ fill:#0f172a; stroke:#ffffff; }
+      .screen.light #endDot, .screen.light #cmpDotSPX, .screen.light #cmpDotGOLD, .screen.light #cmpDotMSTR{ stroke:#ffffff; }
+      .screen.light #ringProg{ stroke:#0284c7; }
+      .screen.light .ring-svg circle:first-child{ stroke:#dbe3ec; }
+
+
+      /* page 6 : authenticator — personal TOTP app */
+      .auth-head-row{ display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:3px; }
+      .auth-hide-btn{ min-height:16px; padding:2px 7px; border:1px solid #1d2942; background:#0b1120; color:#22d3ee; font-family:"Inter",sans-serif; font-size:6.5px; font-weight:800; letter-spacing:.1em; border-radius:999px; cursor:pointer; flex:none; }
+      .auth-timer-row{ display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-family:"IBM Plex Mono",monospace; font-size:6.5px; color:#67748e; letter-spacing:.04em; }
+      .auth-timer-row b{ color:#22d3ee; font-size:8px; }
+      .auth-bar{ height:4px; border-radius:2px; background:#1a2438; margin-top:4px; overflow:hidden; }
+      .auth-bar i{ display:block; height:100%; background:#22d3ee; border-radius:2px; transition:width .9s linear; }
+      .auth-list{ display:flex; flex-direction:column; gap:5px; margin-top:7px; }
+      .auth-item{ width:100%; display:flex; align-items:center; gap:7px; text-align:left; background:#0b1120; border:1px solid #16203a; border-radius:8px; padding:6px 7px; cursor:pointer; color:inherit; font-family:"Inter",sans-serif; min-height:44px; }
+      .auth-item.on{ border-color:#22d3ee; box-shadow:inset 0 0 0 1px #22d3ee; }
+      .auth-avatar{ width:25px; height:25px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:"Outfit",sans-serif; font-weight:800; font-size:10px; color:#052530; flex:none; }
+      .auth-avatar.a1{ background:#22d3ee; } .auth-avatar.a2{ background:#a78bfa; color:#1e1b2e; } .auth-avatar.a3{ background:#fbbf24; color:#2a1d05; }
+      .auth-meta{ flex:1; min-width:0; }
+      .auth-issuer{ font-size:8.5px; font-weight:700; color:#e8eef7; white-space:nowrap; }
+      .auth-acct{ font-size:6.5px; color:#67748e; font-weight:600; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .auth-code{ font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:700; letter-spacing:.06em; color:#fff; white-space:nowrap; }
+      .auth-big{ margin-top:7px; background:#0b1120; border:1px solid #16203a; border-radius:8px; padding:6px 8px; text-align:center; }
+      .auth-big .k{ font-size:6.3px; font-weight:700; letter-spacing:.14em; color:#67748e; }
+      .auth-big .v{ font-family:"IBM Plex Mono",monospace; font-size:19px; font-weight:700; letter-spacing:.14em; color:#22d3ee; margin-top:1px; }
+      .auth-note{ margin-top:6px; text-align:center; font-size:6.3px; font-weight:700; letter-spacing:.09em; color:#54637f; line-height:1.5; padding:0 4px; }
+      .hint{ margin-top:14px; font-size:13px; color:var(--muted); text-align:center; max-width:420px; line-height:1.55; }
+      .hint b{ color:var(--ink); }
+
+      /* ---------- Control panel ---------- */
+      .panel{ display:flex; flex-direction:column; gap:14px; min-width:0; }
+      .card{
+        background:var(--surface); border:1px solid var(--line); border-radius:var(--panel-radius); padding:16px;
+      }
+      .card h2{ font-family:"Outfit",sans-serif; font-size:15px; font-weight:700; margin:0 0 4px; }
+      .card p.sub{ margin:0 0 12px; font-size:12.5px; color:var(--muted); line-height:1.5; }
+      .btn-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+      .ctl-btn{
+        display:flex; align-items:center; gap:9px; padding:10px 11px; min-height:48px; border-radius:10px; cursor:pointer;
+        background:var(--surface2); border:1px solid var(--line); color:var(--ink); font-family:"Inter",sans-serif;
+        font-size:13px; font-weight:600; text-align:left;
+      }
+      .ctl-btn .sw{ width:10px; height:10px; border-radius:3px; flex:none; }
+      .ctl-btn small{ display:block; font-size:11px; color:var(--muted); font-weight:500; }
+      .ctl-btn.on{ border-color:var(--cyan); box-shadow:inset 0 0 0 1px var(--cyan); }
+      .seg{ display:flex; background:var(--surface2); border:1px solid var(--line); border-radius:10px; padding:3px; gap:3px; }
+      .seg button{
+        flex:1; min-height:38px; border:none; background:transparent; color:var(--muted); font-family:"Inter",sans-serif;
+        font-size:12.5px; font-weight:600; border-radius:7px; cursor:pointer; padding:6px 4px;
+      }
+      .seg button.on{ background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(2,6,17,.18); }
+      .row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+      .row-between + .row-between{ margin-top:12px; }
+      .lbl{ font-size:13px; font-weight:600; }
+      .lbl small{ display:block; font-size:11.5px; color:var(--muted); font-weight:500; margin-top:1px; }
+      .action-btn{
+        min-height:40px; padding:8px 14px; border-radius:9px; border:1px solid var(--line); cursor:pointer;
+        background:var(--surface2); color:var(--ink); font-family:"Inter",sans-serif; font-size:13px; font-weight:600; flex:none;
+      }
+      .action-btn.primary{ background:var(--cyan); border-color:var(--cyan); color:#ffffff; }
+      @media (prefers-color-scheme: dark){ .action-btn.primary{ color:#052530; } }
+      input[type="range"]{ width:130px; accent-color:var(--cyan); min-height:32px; }
+      .spec-list{ list-style:none; margin:0; padding:0; font-size:13px; line-height:1.45; }
+      .spec-list li{ display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--line); }
+      .spec-list li:last-child{ border-bottom:none; }
+      .spec-list .k{ color:var(--muted); font-weight:500; }
+      .spec-list .v{ font-weight:600; text-align:right; font-family:"IBM Plex Mono",monospace; font-size:12px; }
+      .fit-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; font-size:13px; line-height:1.5; }
+      .fit-list li{ display:flex; gap:9px; }
+      .fit-list .mark{ flex:none; width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; margin-top:1px; }
+      .fit-list .mark.yes{ background:color-mix(in srgb, var(--green) 18%, transparent); color:var(--green); }
+      .fit-list .mark.no{ background:color-mix(in srgb, var(--red) 14%, transparent); color:var(--red); }
+      .fit-list b{ font-weight:700; }
+      .fit-list span{ color:var(--muted); }
+
+      /* ---------- Landscape chart view — turn the keychain sideways ---------- */
+      .device-stage{ transition:width .38s cubic-bezier(.32,.72,.28,1), height .38s cubic-bezier(.32,.72,.28,1); }
+      .rotate-btn{
+        min-height:36px; padding:7px 13px; border-radius:999px; border:1px solid var(--cyan); cursor:pointer;
+        background:var(--surface); color:var(--cyan); font-family:"Inter",sans-serif; font-size:12.5px; font-weight:700; flex:none;
+      }
+      .rotate-btn.on{ background:var(--cyan); color:#fff; }
+      :root[data-theme="dark"] .rotate-btn.on{ color:#052530; }
+      .device-stage.is-landscape{ width:calc(428px * var(--zoom)); height:calc(216px * var(--zoom)); }
+      .device-stage.is-landscape .device{ width:428px; height:216px; }
+      .device-stage.is-landscape .ring{ left:2px; top:50%; margin-left:0; margin-top:-26px; }
+      .device-stage.is-landscape .case{ top:11px; left:34px; width:382px; height:194px; }
+      .device-stage.is-landscape .case-tab{
+        top:50%; left:-16px; margin-left:0; margin-top:-21px; width:26px; height:42px;
+        border-radius:10px 0 0 10px; border:1px solid #2e3748; border-right:none;
+      }
+      .device-stage.is-landscape .case-tab::after{ top:50%; left:5px; margin-left:0; margin-top:-7px; }
+      .device-stage.is-landscape .screen-shell{ top:12px; left:19px; width:320px; height:170px; }
+      .device-stage.is-landscape .track{ width:1920px; height:170px; }
+      .device-stage.is-landscape .page{ width:320px; height:170px; padding:0 10px; }
+      .device-stage.is-landscape .hw-btn{ top:auto; bottom:-4px; right:auto; height:5px; }
+      .device-stage.is-landscape .hw-btn.power{ left:88px; width:34px; }
+      .device-stage.is-landscape .hw-btn.alt{ left:132px; width:22px; }
+      .device-stage.is-landscape .hw-label{ display:none; }
+      .device-stage.is-landscape .usbc{ left:auto; right:-3px; top:50%; bottom:auto; margin-left:0; margin-top:-13px; width:6px; height:26px; }
+      /* Chart page in landscape: chart-first grid — price and change share a row,
+         the chart stretches the full 300 px width, and type / comparisons / ranges
+         share one control row. The portrait stat tiles give way to the wider chart. */
+      .device-stage.is-landscape .page[data-page="0"]{
+        display:grid; grid-template-columns:62px 102px 1fr; grid-template-rows:13px 17px 25px 12px 66px 10px 19px;
+        column-gap:4px; row-gap:1px; align-content:start;
+      }
+      .device-stage.is-landscape .page[data-page="0"] .statusbar{ grid-column:1 / -1; grid-row:1; }
+      .device-stage.is-landscape .page[data-page="0"] .p-head{ grid-column:1 / -1; grid-row:2; margin-top:0; align-items:center; }
+      .device-stage.is-landscape .page[data-page="0"] .price{ grid-column:1 / 3; grid-row:3; font-size:22px; margin-top:0; align-self:center; }
+      .device-stage.is-landscape .page[data-page="0"] .chg-row{ grid-column:3; grid-row:3; margin-top:0; align-self:center; justify-self:end; }
+      .device-stage.is-landscape .page[data-page="0"] .scrub-read{ grid-column:1 / -1; grid-row:4; margin-top:0; height:12px; }
+      .device-stage.is-landscape .page[data-page="0"] .chart-box{ grid-column:1 / -1; grid-row:5; margin-top:0; }
+      .device-stage.is-landscape .page[data-page="0"] .chart-box svg{ width:300px; height:66px; }
+      .device-stage.is-landscape .page[data-page="0"] .axis{ grid-column:1 / -1; grid-row:6; margin-top:0; }
+      .device-stage.is-landscape .page[data-page="0"] .type-row{ grid-column:1; grid-row:7; margin-top:0; }
+      .device-stage.is-landscape .page[data-page="0"] .type-row .type-lbl{ display:none; }
+      .device-stage.is-landscape .page[data-page="0"] .cmp-row{ grid-column:2; grid-row:7; margin-top:0; }
+      .device-stage.is-landscape .page[data-page="0"] .cmp-row .cmp-lbl{ display:none; }
+      .device-stage.is-landscape .page[data-page="0"] .cmp-chip{ font-size:6.5px; padding:0 1px; min-height:16px; }
+      .device-stage.is-landscape .page[data-page="0"] .ranges{ grid-column:3; grid-row:7; margin-top:0; flex-wrap:nowrap; gap:2px; }
+      .device-stage.is-landscape .page[data-page="0"] .ranges button{ flex:1 1 0; min-height:16px; font-size:6.5px; padding:0; }
+      .device-stage.is-landscape .page[data-page="0"] .chg-row .per{ display:none; }
+      .device-stage.is-landscape .page[data-page="0"] .cmp-chip .cmp-pct{ display:none; }
+      .device-stage.is-landscape .page[data-page="0"] .stat-grid{ display:none; }
+      /* The other screens stay usable sideways, just tighter */
+      .device-stage.is-landscape .po-wrap{ padding-top:5px; }
+      .device-stage.is-landscape .po-price{ font-size:34px; margin-top:5px; }
+      .device-stage.is-landscape .po-rule{ margin:8px 0 7px; }
+      .device-stage.is-landscape .po-stats{ flex-direction:row; gap:20px; }
+      .device-stage.is-landscape .po-cur{ margin-top:9px; }
+      .device-stage.is-landscape .po-hint{ bottom:8px; }
+      .device-stage.is-landscape .page[data-page="2"] .focus{ height:84px; margin-top:4px; padding:5px 8px; }
+      .device-stage.is-landscape .page[data-page="2"] .focus-big{ font-size:20px; margin-top:1px; }
+      .device-stage.is-landscape .page[data-page="2"] .stat-grid{ display:none; }
+      .device-stage.is-landscape .page[data-page="2"] .clock-big{ margin-top:5px; font-size:16px; }
+      .device-stage.is-landscape .qr-card{ width:88px; height:88px; padding:5px; margin-top:5px; }
+      .device-stage.is-landscape .qr-card canvas{ width:78px; height:78px; }
+      .device-stage.is-landscape .qr-addr{ margin-top:5px; }
+      .device-stage.is-landscape .qr-note{ margin-top:2px; }
+      .device-stage.is-landscape .auth-item{ min-height:33px; padding:4px 7px; }
+      .device-stage.is-landscape .auth-list{ gap:3px; margin-top:4px; }
+      .device-stage.is-landscape .auth-big{ margin-top:4px; padding:4px 8px; }
+      .device-stage.is-landscape .auth-big .v{ font-size:15px; }
+      .device-stage.is-landscape .auth-note{ display:none; }
+      /* On a narrow phone the sideways device scales down to fit instead of pushing the page sideways */
+      @media (max-width:480px){
+        .device-stage.is-landscape{ width:calc(428px * var(--zoom) * .8); height:calc(216px * var(--zoom) * .8); }
+        .device-stage.is-landscape .device{ transform:scale(calc(var(--zoom) * .8)); }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="layout">
+      <!-- ===== Simulation banner — the whole page is the dashboard ===== -->
+      <header class="dash-banner">
+        <div>
+          <h1>Keychain simulator <span class="sim-tag">SIMULATION</span></h1>
+          <p><b>This whole page is a dashboard for a simulation — with a live feed.</b> The keychain below is not real hardware — it's an interactive mockup on a web page, with the device preview on the left and the full simulator dashboard beside it. But the numbers are real: the mockup now reads the same live data as paperstreetbtc.com — live BTC spot, the site's own daily price files for the chart and comparisons, and mempool.space for block height and fees — so you can play with the screens, ranges and controls exactly as they would behave on the real ESP32 device, on real prices.</p>
+        </div>
+        <div class="dash-status" aria-label="Simulation status">
+          <span><i aria-hidden="true"></i> <span id="feedStatus">Feed: Connecting to paperstreetbtc.com…</span></span>
+          <span><i aria-hidden="true"></i> Device: Mockup — no hardware</span>
+          <span><i aria-hidden="true"></i> Default currency: USD</span>
+        </div>
+      </header>
+
+      <!-- ===== Stage ===== -->
+      <section class="stage-wrap" aria-label="Keychain device prototype">
+        <div class="stage-head">
+          <div class="stage-title">The keychain, on your iPad
+            <small>LilyGo T-Display-S3 Touch · 170 × 320 screen, shown at actual size — use Display below to scale it up</small>
+          </div>
+          <div class="sim-badge"><span class="sim-dot" aria-hidden="true"></span> <span id="simBadge">Live feed — connecting…</span></div>
+          <button class="rotate-btn" id="btnRotate" aria-pressed="false" title="Turn the keychain sideways for a wider chart">⟳ Landscape chart</button>
+        </div>
+        <div class="device-sim-tag">Device preview — live data</div>
+
+        <div class="device-stage" id="deviceStage">
+          <div class="device" id="device">
+            <div class="ring" aria-hidden="true"></div>
+            <div class="case">
+              <div class="case-tab" aria-hidden="true"></div>
+              <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
+              <button class="hw-btn power" id="btnPower" aria-label="Power button — sleep or wake the screen"></button>
+              <button class="hw-btn alt" id="btnNext" aria-label="Side button — next screen"></button>
+              <span class="hw-label p">Power</span>
+              <span class="hw-label a">Next screen</span>
+
+              <div class="screen-shell">
+                <div class="screen" id="screen">
+                  <div class="viewport" id="viewport">
+                    <div class="track" id="track">
+
+                      <!-- PAGE 1 · PRICE + CHART -->
+                      <div class="page" data-page="0">
+                        <div class="statusbar"><span class="sb-clock">--:--</span>
+                          <span class="sb-right">
+                            <svg width="11" height="8" viewBox="0 0 12 9" aria-hidden="true"><path d="M6 8.2 1.2 3.6a7 7 0 0 1 9.6 0L6 8.2Z" fill="#8fa0bd"/><circle cx="6" cy="7.4" r="1.1" fill="#8fa0bd"/></svg>
+                            <span class="batt"><i id="battFill"></i></span><span id="battPct">87%</span>
+                          </span>
+                        </div>
+                        <div class="p-head">
+                          <div>
+                            <div class="sym">BITCOIN · LIVE PRICE</div>
+                            <div class="block-line">BLOCK <span class="block-val">976,842</span></div>
+                          </div>
+                          <div class="cur-pill" role="group" aria-label="Currency">
+                            <button data-curdev="USD" class="on">USD $</button>
+                            <button data-curdev="CAD">CAD $</button>
+                          </div>
+                        </div>
+                        <div class="price"><span class="dollar">$</span><span class="price-val">92,593</span></div>
+                        <div class="chg-row"><span class="chg up" id="chgMain">▲ 2.38%</span><span class="per">· <span id="chgPer">24h</span> · Updated <span id="chgUpd">--:--</span></span></div>
+                        <div class="scrub-read" id="scrubRead"><span class="dim">Drag chart to scrub</span><span class="dim" id="scrubRet"></span></div>
+                        <div class="chart-box" id="chartBox">
+                          <svg id="chart" width="154" height="58" viewBox="0 0 154 58" role="img" aria-label="Bitcoin price chart — line view or candlestick view up to one year, with price labels on the left and optional comparison lines in line view">
+                            <g id="gridLines" stroke="#141d31" stroke-width="1">
+                              <line x1="0" y1="14" x2="154" y2="14"/><line x1="0" y1="29" x2="154" y2="29"/><line x1="0" y1="44" x2="154" y2="44"/>
+                            </g>
+                            <path id="chartArea" fill="rgba(34,211,238,.13)" d=""/>
+                            <path id="cmpSPX" fill="none" stroke="#a78bfa" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" d=""/>
+                            <path id="cmpGOLD" fill="none" stroke="#fbbf24" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" d=""/>
+                            <path id="cmpMSTR" fill="none" stroke="#fb923c" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" d=""/>
+                            <path id="chartLine" fill="none" stroke="#22d3ee" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" d=""/>
+                            <g id="candleGroup"></g>
+                            <circle id="cmpDotSPX" r="2" fill="#a78bfa" stroke="#05080f" stroke-width="1" opacity="0"/>
+                            <circle id="cmpDotGOLD" r="2" fill="#fbbf24" stroke="#05080f" stroke-width="1" opacity="0"/>
+                            <circle id="cmpDotMSTR" r="2" fill="#fb923c" stroke="#05080f" stroke-width="1" opacity="0"/>
+                            <line id="scrubLine" x1="0" y1="0" x2="0" y2="58" stroke="#ffffff" stroke-width="1" opacity="0"/>
+                            <circle id="scrubDot" r="3" fill="#ffffff" stroke="#05080f" stroke-width="1.2" opacity="0"/>
+                            <circle id="endDot" r="2.6" fill="#22d3ee" stroke="#05080f" stroke-width="1.2"/>
+                            <g id="yLabels" font-family="IBM Plex Mono, monospace" font-size="5.5" fill="#67748e"></g>
+                          </svg>
+                        </div>
+                        <div class="axis" id="axisRow"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>Now</span></div>
+                        <div class="type-row">
+                          <span class="type-lbl">CHART</span>
+                          <div class="type-pill" id="typeToggle" role="group" aria-label="Chart type">
+                            <button data-ctype="line" class="on">Line</button>
+                            <button data-ctype="candles">Candles</button>
+                          </div>
+                          <span class="candle-note" id="candleNote">Line · all ranges</span>
+                        </div>
+                        <div class="cmp-row" id="cmpRow" role="group" aria-label="Comparison overlays, rebased to the start of the range">
+                          <span class="cmp-lbl">VS</span>
+                          <button class="cmp-chip" data-comp="SPX" aria-pressed="false"><i></i>S&amp;P<span class="cmp-pct"></span></button>
+                          <button class="cmp-chip" data-comp="GOLD" aria-pressed="false"><i></i>GOLD<span class="cmp-pct"></span></button>
+                          <button class="cmp-chip" data-comp="MSTR" aria-pressed="false"><i></i>MSTR<span class="cmp-pct"></span></button>
+                        </div>
+                        <div class="ranges" id="ranges" role="group" aria-label="Chart range">
+                          <button data-range="1D" class="on">1D</button>
+                          <button data-range="1W">1W</button>
+                          <button data-range="1M">1M</button>
+                          <button data-range="3M">3M</button>
+                          <button data-range="6M">6M</button>
+                          <button data-range="YTD">YTD</button>
+                          <button data-range="1Y">1Y</button>
+                          <button data-range="5Y">5Y</button>
+                          <button data-range="MAX">MAX</button>
+                        </div>
+                        <div class="stat-grid">
+                          <div class="stat"><div class="k">SATS PER DOLLAR</div><div class="v" id="statSats">1,080</div></div>
+                          <div class="stat"><div class="k">BLOCK HEIGHT</div><div class="v block-val">976,842</div></div>
+                          <div class="stat"><div class="k" id="statHiK">24H HIGH</div><div class="v" id="statHi">—</div></div>
+                          <div class="stat"><div class="k" id="statLoK">24H LOW</div><div class="v" id="statLo">—</div></div>
+                        </div>
+                      </div>
+
+                      <!-- PAGE 2 · PRICE ONLY -->
+                      <div class="page" data-page="1">
+                        <div class="statusbar"><span class="sb-clock">--:--</span>
+                          <span class="sb-right">
+                            <svg width="11" height="8" viewBox="0 0 12 9" aria-hidden="true"><path d="M6 8.2 1.2 3.6a7 7 0 0 1 9.6 0L6 8.2Z" fill="#8fa0bd"/><circle cx="6" cy="7.4" r="1.1" fill="#8fa0bd"/></svg>
+                            <span class="batt"><i></i></span><span>87%</span>
+                          </span>
+                        </div>
+                        <div class="po-wrap">
+                          <div class="po-label">BITCOIN · LIVE PRICE</div>
+                          <div class="po-block">BLOCK <span class="block-val">976,842</span></div>
+                          <div class="po-price"><span class="dollar">$</span><span class="price-val">92,593</span></div>
+                          <div class="po-chg-row"><span class="chg up po-chg">▲ 2.38%</span><span class="per">· 24h</span></div>
+                          <div class="po-rule" aria-hidden="true"></div>
+                          <div class="po-stats">
+                            <div class="po-stat"><div class="k">SATS PER DOLLAR</div><div class="v"><span class="sats-val">1,080</span> <small>sats</small></div></div>
+                            <div class="po-stat"><div class="k">BLOCK HEIGHT</div><div class="v">#<span class="block-val">976,842</span></div></div>
+                          </div>
+                          <div class="cur-pill po-cur" role="group" aria-label="Currency">
+                            <button data-curdev="USD" class="on">USD $</button>
+                            <button data-curdev="CAD">CAD $</button>
+                          </div>
+                        </div>
+                        <div class="po-hint">NOTHING BUT THE PRICE — SWIPE FOR THE CHART</div>
+                      </div>
+
+                      <!-- PAGE 3 · BLOCK CLOCK -->
+                      <div class="page" data-page="2">
+                        <div class="statusbar"><span class="sb-clock">--:--</span>
+                          <span class="sb-right">
+                            <svg width="11" height="8" viewBox="0 0 12 9" aria-hidden="true"><path d="M6 8.2 1.2 3.6a7 7 0 0 1 9.6 0L6 8.2Z" fill="#8fa0bd"/><circle cx="6" cy="7.4" r="1.1" fill="#8fa0bd"/></svg>
+                            <span class="batt"><i></i></span><span>87%</span>
+                          </span>
+                        </div>
+                        <div class="page-title">BLOCK CLOCK <span class="live-dot"><i></i>LIVE · AUTO</span></div>
+                        <div class="focus" id="focusBox">
+                          <div class="focus-view on" data-focus="0">
+                            <div class="focus-label">NOW MINING · BLOCK HEIGHT</div>
+                            <div class="focus-big">#<span class="block-val">976,842</span></div>
+                            <div class="ring-row">
+                              <svg class="ring-svg" width="44" height="44" viewBox="0 0 46 46" aria-hidden="true">
+                                <circle cx="23" cy="23" r="19" fill="none" stroke="#1a2438" stroke-width="5"/>
+                                <circle id="ringProg" cx="23" cy="23" r="19" fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round" stroke-dasharray="119.4" stroke-dashoffset="69.3" transform="rotate(-90 23 23)"/>
+                              </svg>
+                              <div>
+                                <div class="ring-t"><span id="sinceBlock">4 min 12 s</span> ago</div>
+                                <div class="focus-note">Since the last block. The ring fills toward a 10-minute target — a gauge, not a promise.</div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="focus-view" data-focus="1">
+                            <div class="focus-label">SATS PER DOLLAR</div>
+                            <div class="focus-big cyan"><span class="sats-val">1,080</span> <small>sats</small></div>
+                            <div class="focus-note">One dollar buys this many satoshis right now. When the price falls, this number climbs — that is the whole point of watching it.</div>
+                          </div>
+                          <div class="focus-view" data-focus="2">
+                            <div class="focus-label">NEXT HALVING · THE CLOCK INSIDE THE CLOCK</div>
+                            <div class="focus-big" id="halvingBlocks">—</div>
+                            <div class="focus-note">blocks to go, to block 1,050,000</div>
+                            <div class="bar"><i id="halvingBar"></i></div>
+                            <div class="bar-row"><span id="halvingPct">— OF THE EPOCH</span><b>≈ APR 2028</b></div>
+                          </div>
+                        </div>
+                        <div class="focus-dots" id="focusDots" role="group" aria-label="Clock focus screens">
+                          <button class="on" data-f="0" aria-label="Focus: block height"></button>
+                          <button data-f="1" aria-label="Focus: sats per dollar"></button>
+                          <button data-f="2" aria-label="Focus: next halving"></button>
+                        </div>
+                        <div class="stat-grid">
+                          <div class="stat"><div class="k">SATS PER $10 / $100</div><div class="v" id="satsX">10,800 / 108,000</div></div>
+                          <div class="stat"><div class="k">DIFFICULTY ADJUSTMENT</div><div class="v" id="statDiff">—</div></div>
+                          <div class="stat"><div class="k">NETWORK FEES · FASTEST</div><div class="v"><span id="statFee">—</span> <small>sat/vB</small></div></div>
+                          <div class="stat"><div class="k">MEMPOOL</div><div class="v"><span id="statMempool">—</span> <small>MB</small></div></div>
+                        </div>
+                        <div class="clock-big"><span class="clock-et">--:--</span> <small>ET</small></div>
+                        <div class="block-sub" id="dateLine">—</div>
+                      </div>
+
+                      <!-- PAGE 4 · JADE QR -->
+                      <div class="page" data-page="3" id="pageJade">
+                        <div class="statusbar"><span class="sb-clock">--:--</span>
+                          <span class="sb-right">
+                            <svg width="11" height="8" viewBox="0 0 12 9" aria-hidden="true"><path d="M6 8.2 1.2 3.6a7 7 0 0 1 9.6 0L6 8.2Z" fill="#8fa0bd"/><circle cx="6" cy="7.4" r="1.1" fill="#8fa0bd"/></svg>
+                            <span class="batt"><i></i></span><span>87%</span>
+                          </span>
+                        </div>
+                        <div class="qr-head"><span class="qr-badge jade">J</span><span class="t">JADE</span><span class="s">ON-CHAIN · RECEIVE</span></div>
+                        <div class="qr-card" data-flip="pageJade" role="button" tabindex="0" aria-label="Show the full Jade receive address"><canvas id="qrJade" width="248" height="248"></canvas></div>
+                        <div class="qr-addr">bc1qxy2kgdygjrsqtzq2n0yrf<br/>2493p83kkfjhx0wlh</div>
+                        <div class="qr-note">TAP QR FOR FULL ADDRESS</div>
+                        <div class="qr-full">
+                          <div class="a">bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</div>
+                          <div class="w">Receive only. This is a watch-only address — the keychain holds no keys and can never sign or send.</div>
+                        </div>
+                      </div>
+
+                      <!-- PAGE 5 · LIGHTNING QR -->
+                      <div class="page" data-page="4" id="pageLn">
+                        <div class="statusbar"><span class="sb-clock">--:--</span>
+                          <span class="sb-right">
+                            <svg width="11" height="8" viewBox="0 0 12 9" aria-hidden="true"><path d="M6 8.2 1.2 3.6a7 7 0 0 1 9.6 0L6 8.2Z" fill="#8fa0bd"/><circle cx="6" cy="7.4" r="1.1" fill="#8fa0bd"/></svg>
+                            <span class="batt"><i></i></span><span>87%</span>
+                          </span>
+                        </div>
+                        <div class="qr-head"><span class="qr-badge ln">ϟ</span><span class="t">LIGHTNING</span><span class="s">RECEIVE</span></div>
+                        <div class="qr-card" data-flip="pageLn" role="button" tabindex="0" aria-label="Show the full Lightning address"><canvas id="qrLn" width="248" height="248"></canvas></div>
+                        <div class="qr-addr">paperstreet@walletofsatoshi.com</div>
+                        <div class="qr-note">TAP QR FOR DETAILS</div>
+                        <div class="qr-full">
+                          <div class="a">paperstreet@walletofsatoshi.com</div>
+                          <div class="w">Lightning address — anyone can pay it, nothing on the device can spend from it. Amounts are set by the sender.</div>
+                        </div>
+                      </div>
+
+                      <!-- PAGE 6 · AUTHENTICATOR -->
+                      <div class="page" data-page="5" id="pageAuth">
+                        <div class="statusbar"><span class="sb-clock">--:--</span>
+                          <span class="sb-right">
+                            <svg width="11" height="8" viewBox="0 0 12 9" aria-hidden="true"><path d="M6 8.2 1.2 3.6a7 7 0 0 1 9.6 0L6 8.2Z" fill="#8fa0bd"/><circle cx="6" cy="7.4" r="1.1" fill="#8fa0bd"/></svg>
+                            <span class="batt"><i></i></span><span>87%</span>
+                          </span>
+                        </div>
+                        <div class="auth-head-row">
+                          <div class="page-title" style="margin-top:0">AUTHENTICATOR <span class="tag">TOTP</span></div>
+                          <button class="auth-hide-btn" id="authHideBtn" aria-label="Hide or show authenticator codes">HIDE CODES</button>
+                        </div>
+                        <div class="auth-timer-row"><span>NEW CODES IN</span><b><span id="authTimer">30</span>s</b></div>
+                        <div class="auth-bar"><i id="authBar" style="width:100%"></i></div>
+                        <div class="auth-list" id="authList" role="group" aria-label="Authenticator accounts">
+                          <button class="auth-item on" data-auth="0"><span class="auth-avatar a1">P</span><span class="auth-meta"><span class="auth-issuer">PaperStreet</span><span class="auth-acct" style="display:block">personal login</span></span><span class="auth-code" data-code="0">000 000</span></button>
+                          <button class="auth-item" data-auth="1"><span class="auth-avatar a2">G</span><span class="auth-meta"><span class="auth-issuer">GitHub</span><span class="auth-acct" style="display:block">personal account</span></span><span class="auth-code" data-code="1">000 000</span></button>
+                          <button class="auth-item" data-auth="2"><span class="auth-avatar a3">M</span><span class="auth-meta"><span class="auth-issuer">Email</span><span class="auth-acct" style="display:block">personal inbox</span></span><span class="auth-code" data-code="2">000 000</span></button>
+                        </div>
+                        <div class="auth-big"><div class="k" id="authBigLabel">PAPERSTREET · TAP AN ACCOUNT TO ENLARGE</div><div class="v" id="authBigCode">000 000</div></div>
+                        <div class="auth-note">DEMO CODES — SIMULATION ONLY<br/>NO REAL SECRETS ARE STORED ON THIS MOCKUP</div>
+                      </div>
+
+                    </div>
+                  </div>
+                  <div class="dots" id="dots"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+                </div>
+                <div class="wake-veil" id="wakeVeil" role="button" aria-label="Wake the screen">
+                  <div class="owl">₿</div><span>SCREEN ASLEEP<br/>TAP TO WAKE</span>
+                </div>
+              </div>
+              <div class="brand">PAPERSTREET</div>
+              <div class="usbc" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint"><b>Try it:</b> swipe left / right on the little screen — the second screen is price only, nothing but the big price like the site's full-screen view — drag across the chart to scrub it, tap <b>Line / Candles</b> under the chart to switch chart type (candles work up to 1Y — try 1Y for weekly candles, 1D for hourly), tap the S&amp;P / GOLD / MSTR chips in line view to overlay a comparison, pick a longer range, tap a QR code, swipe to the Authenticator for your personal 2FA codes (they refresh every 30 seconds — tap an account to enlarge it), turn the keychain sideways with the <b>Landscape chart</b> button above it (or Orientation in Display) for a full-width chart view, or use the power and side buttons on the case edge. On the block clock, the focus screen rotates on its own like the site's — tap its cyan dots to jump between block height, sats and halving. Use the Theme switch in Display to flip this page and the keychain screen between light and dark.</p>
+      </section>
+
+      <!-- ===== Controls — the dashboard ===== -->
+      <aside class="panel" aria-label="Simulator dashboard">
+        <div class="panel-head">
+          <div class="panel-kicker">Dashboard</div>
+          <h2>Simulator dashboard</h2>
+          <p>Every control for the simulation lives here on the page — screens, display, theme, currency and the live feed. Changing anything here drives the mockup device; nothing here connects to real hardware.</p>
+        </div>
+        <div class="card">
+          <h2>Screens</h2>
+          <p class="sub">Six screens is what fits comfortably in ESP32 firmware — everything else is a swipe away, nothing is buried in menus.</p>
+          <div class="btn-grid" id="screenBtns">
+            <button class="ctl-btn on" data-goto="0"><span class="sw" style="background:#22d3ee"></span><span>Price + chart<small>Line + candles to 1Y · 9 ranges</small></span></button>
+            <button class="ctl-btn" data-goto="1"><span class="sw" style="background:#22d3ee"></span><span>Price only<small>Just the big price, like the site</small></span></button>
+            <button class="ctl-btn" data-goto="2"><span class="sw" style="background:#22d3ee"></span><span>Block clock<small>Ring gauge · rotating focus</small></span></button>
+            <button class="ctl-btn" data-goto="3"><span class="sw" style="background:#34d399"></span><span>Jade QR<small>On-chain receive</small></span></button>
+            <button class="ctl-btn" data-goto="4"><span class="sw" style="background:#fbbf24"></span><span>Lightning QR<small>Lightning address</small></span></button>
+            <button class="ctl-btn" data-goto="5"><span class="sw" style="background:#34d399"></span><span>Authenticator<small>Personal 2FA codes · refresh 30 s</small></span></button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Authenticator</h2>
+          <p class="sub">The keychain's personal authentication app — swipe to the last screen on the device. It shows time-based one-time (TOTP) 2FA codes for PaperStreet, GitHub and email, with a countdown bar to the next refresh. Tap an account on the device to enlarge its code, or hide all codes for privacy. These are demo codes generated in the page for the simulation — no real secrets are stored. A real build would need encrypted storage and a PIN lock, because the ESP32 has no secure element.</p>
+          <div class="row-between">
+            <span class="lbl">Codes on device<small>Hide them on the keychain screen itself, too</small></span>
+            <button class="action-btn" id="btnAuthToggle">Hide codes</button>
+          </div>
+          <div class="row-between">
+            <span class="lbl">Next refresh<small>All codes change together, every 30 seconds</small></span>
+            <span class="lbl" style="font-family:'IBM Plex Mono',monospace"><span id="dashAuthTimer">--</span>s</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Display</h2>
+          <p class="sub">The screen above is drawn at its true 170 × 320 pixels — these buttons just scale the drawing up, like holding the real thing closer.</p>
+          <div class="row-between" style="margin-bottom:14px">
+            <span class="lbl">Theme<small>Applies to this page and the keychain screen</small></span>
+            <div class="seg" id="themeSeg" style="width:190px; flex:none" role="group" aria-label="Theme">
+              <button data-theme-mode="light">Light</button>
+              <button data-theme-mode="dark">Dark</button>
+              <button data-theme-mode="system" class="on">System</button>
+            </div>
+          </div>
+          <div class="row-between" style="margin-bottom:14px">
+            <span class="lbl">Orientation<small>Turn it sideways for the chart — the screen becomes 320 × 170 and the chart stretches full width</small></span>
+            <div class="seg" id="orientSeg" style="width:190px; flex:none" role="group" aria-label="Orientation">
+              <button data-orient="portrait" class="on">Portrait</button>
+              <button data-orient="landscape">Landscape</button>
+            </div>
+          </div>
+          <div class="seg" id="zoomSeg" role="group" aria-label="Display scale">
+            <button data-zoom="1" class="on">1× · Actual size</button>
+            <button data-zoom="1.55">1.5×</button>
+            <button data-zoom="2">2× · iPad</button>
+            <button data-zoom="2.45">2.5×</button>
+          </div>
+          <div class="row-between" style="margin-top:14px">
+            <span class="lbl">Screen brightness<small>Same slider the firmware would use</small></span>
+            <input type="range" id="bright" min="45" max="100" value="100" aria-label="Screen brightness" />
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Live feed</h2>
+          <p class="sub">Live BTC spot is asked from four independent sources in parallel — mempool.space, CoinGecko, Coinbase and Kraken — and a price is only shown once two sources agree, or it matches the last real close, so one blocked or bad feed can't freeze or fake the price. The site's own <span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px">prices.json</span> joins in only while its pipeline timestamp is under 15 minutes old. The chart's daily closes come from the site's data files extended by its <span style="font-family:'IBM Plex Mono',monospace; font-size:11.5px">history.json</span>, Coinbase 15-minute candles power the 1D line, and mempool.space supplies block height, fees and mempool. Polls every 60 seconds, like the real keychain would over Wi-Fi. If a fetch fails, the last good data stays on screen and the feed status up top says so. <span id="feedDetail">Connecting…</span></p>
+          <div class="row-between">
+            <span class="lbl">Currency<small>Tap the price's currency on-device too</small></span>
+            <div class="seg" id="curSeg" style="width:150px" role="group" aria-label="Currency">
+              <button data-cur="USD" class="on">USD</button>
+              <button data-cur="CAD">CAD</button>
+            </div>
+          </div>
+          <div class="row-between">
+            <span class="lbl">Live polling<small>Spot price + block data, every 60 s</small></span>
+            <button class="action-btn" id="btnPause">Pause</button>
+          </div>
+          <div class="row-between">
+            <span class="lbl">Refresh now<small>One manual poll, like a button press</small></span>
+            <button class="action-btn primary" id="btnRefresh">Refresh</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>What fits — and what doesn't</h2>
+          <p class="sub">Scaled down from the full PaperStreet chart, keeping everything a 170-pixel-wide line chart can honestly show — and now wearing the site's own clothes.</p>
+          <ul class="fit-list">
+            <li><span class="mark yes">✓</span><span><b>Now matches the site:</b> the price screen mimics paperstreetbtc.com's price-only view and chart panel — cyan $ with the big white price, “BITCOIN · LIVE PRICE” label with the block number under it, USD $ / CAD $ pill, ▲ change · range · Updated line, cyan BTC line with $ labels down the left, and the active range pill in cyan instead of orange</span></li>
+            <li><span class="mark yes">✓</span><span><b>Now matches the site:</b> the block clock mimics /clock/ — a focus card with the huge # block height and the glowing cyan ring filling toward the 10-minute target, rotating on its own through sats per dollar and the next halving (tap the dots to jump), over the site's small cards: sats per $10 / $100, difficulty adjustment, network fees</span></li>
+            <li><span class="mark yes">✓</span><span><b>Kept:</b> live price, line chart with nine ranges — 1D / 1W / 1M / 3M / 6M / YTD / 1Y / 5Y / MAX — % change, range high &amp; low, scrub readout <span>(return only, while you drag)</span>. Longer ranges just ship fewer, wider-spaced points, which a line chart handles fine at this size</span></li>
+            <li><span class="mark yes">✓</span><span><b>Kept:</b> comparisons — tap S&amp;P, GOLD or MSTR under the chart to overlay that line, rebased to 100 at the start of the range like the full Compare chart, with its own % for the range on the chip. Any mix of the three, on any range</span></li>
+            <li><span class="mark yes">✓</span><span><b>New:</b> price only — a whole swipe screen with nothing but the big price, its 24h change, sats per dollar and block height, plus light and dark themes for the screen (and this page) from the Theme switch in Display; System follows your device setting</span></li>
+            <li><span class="mark yes">✓</span><span><b>Kept:</b> sats per dollar, block height, halving countdown, fees — the block-clock page</span></li>
+            <li><span class="mark yes">✓</span><span><b>Kept:</b> Jade + Lightning receive QRs on swipe screens — static addresses, no keys on the device, ever</span></li>
+            <li><span class="mark yes">✓</span><span><b>New: landscape chart view</b> — turn the keychain sideways (Landscape chart button by the device, or Orientation in Display) and the firmware redraws at 320 × 170: the chart stretches the full width at nearly double the portrait resolution, price and change share one row, and chart type, comparisons and all nine ranges share a single control row underneath. Scrubbing, candles and comparisons all keep working sideways; the portrait stat tiles give way to the wider chart. Turn it back to portrait for the other screens at their natural size</span></li>
+            <li><span class="mark yes">✓</span><span><b>New: Authenticator</b> — a personal TOTP app on the last swipe screen: demo 2FA codes for PaperStreet, GitHub and email, refreshing every 30 s with a countdown bar; tap an account to enlarge its code, or hide the codes for privacy. This simulation stores no real secrets — a real build would need encrypted storage plus a PIN lock, since the ESP32 has no secure element</span></li>
+            <li><span class="mark yes">✓</span><span><b>Now trying — candles up to 1Y (this Space only):</b> tap Candles under the chart. Candles are aggregated so each one stays readable at 170 px — 1D = 24 hourly, 1W = 28 × 6h, 1M = 30 daily, 3M = ~45, 6M / YTD / 1Y = 52 weekly candles (~2–3 px wide on 1Y). That reads surprisingly well for shape and big swings: green/red bodies and wicks are clear at 1.5×–2× zoom, tighter at actual size. Daily candles for a full year (365) would be sub-pixel noise, so 1Y uses weekly — and 5Y / MAX stay line-only for the same reason. Scrub still works in candle view (shows that candle's close + date); comparisons are line-only and grey out in candle view</span></li>
+            <li><span class="mark no">✕</span><span><b>Left out:</b> TA overlays — Bollinger, SMA/EMA and RSI need history windows and vertical room this screen doesn't have</span></li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2>The real hardware this mimics</h2>
+          <ul class="spec-list">
+            <li><span class="k">Board</span><span class="v">LilyGo T-Display-S3 Touch</span></li>
+            <li><span class="k">Chip</span><span class="v">ESP32-S3 · Wi-Fi</span></li>
+            <li><span class="k">Screen</span><span class="v">1.9″ · 170 × 320 · touch</span></li>
+            <li><span class="k">Battery</span><span class="v">1,000 mAh LiPo</span></li>
+            <li><span class="k">Case</span><span class="v">3D-printed PETG</span></li>
+            <li><span class="k">Priced build (Canada)</span><span class="v">≈ $86.89 + HST</span></li>
+          </ul>
+        </div>
+      </aside>
+
+      <footer class="dash-foot"><b>Simulation with a live feed.</b> This dashboard and the keychain above are a prototype mockup — no real hardware — but the prices, chart, comparisons and block data are read live from paperstreetbtc.com's own sources. The hardware list is what the real build would mimic.</footer>
+    </main>
+
+    <script>
+    (function(){
+      "use strict";
+      var $ = function(s, r){ return (r||document).querySelector(s); };
+      var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
+
+      /* ---------------- State ---------------- */
+      var state = {
+        page: 0,
+        range: "1D",
+        chartType: "line",
+        ohlcDisplay: null,
+        _rawOHLC: null,
+        cur: "USD",
+        priceUSD: 92593,                 /* placeholder until the first live poll lands */
+        fxCAD: 1.37,                     /* CAD per 1 USD — replaced by the live CoinGecko rate on first poll */
+        paused: false,
+        asleep: false,
+        brightness: 1,
+        series: [],                      /* current range series, in USD */
+        times: [],                       /* timestamp (ms) per series point, for axis + scrub labels */
+        comps: { SPX: false, GOLD: false, MSTR: false },
+        authLocked: false,
+        authSel: 0,
+        landscape: false,
+        compSeries: {},                  /* comparison series per range, rebased later to 100 */
+        scrubbing: false
+      };
+
+      /* ---------------- Live data (the site's own sources) ----------------
+         Spot: mempool.space, CoinGecko, Coinbase and Kraken asked in
+         parallel and cross-checked against each other; the site's
+         prices.json joins in only while its own timestamp is fresh.
+         Chart history: the site's own daily files on paperstreetbtc.com
+         (btc/spx/gold/mstr-daily.json), extended past their end dates by the
+         data-branch history.json, exactly like the site's btcchart.js does.
+         1D / 1W / 1M lines: Coinbase candles, the site's intraday source.
+         Block data: mempool.space, the site's clock-page source.
+         If every fetch fails the prototype series below stays on screen and
+         the feed status says the feed is offline — the page never blanks. */
+      var SITE_DATA = "https://paperstreetbtc.com/assets/data/";
+      var RAW_DATA = "https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/";
+      var live = {
+        ok: false,            /* at least one live spot poll has succeeded */
+        lastGoodUSD: null,    /* last spot tick that passed the sanity check — the guard's anchor */
+        retryPending: false,  /* a fast 15 s retry is already scheduled after a failed first poll */
+        daily: null,          /* {t:[ms], btc:[], SPX:[], GOLD:[], MSTR:[]} date-aligned, forward-filled */
+        intra: {},            /* range -> {t:[ms], p:[usd]} Coinbase candle cache */
+        intraAt: {},          /* range -> ms timestamp of last intraday fetch */
+        block: { height: null, timeMs: null, fee: null, mempoolMB: null, diffPct: null },
+        lastOk: null,
+        spotErrors: [],       /* per-source errors from the latest spot poll, for on-page diagnostics */
+        cspViolations: [],    /* securitypolicyviolation events seen by this page */
+        probe: []             /* one-off load-probe results, for on-page diagnostics */
+      };
+      /* Diagnostics: record any Content-Security-Policy violation the
+         browser reports for this page, so a blocked fetch can be told apart
+         from a network failure on the page itself. */
+      window.addEventListener("securitypolicyviolation", function(e){
+        live.cspViolations.push(
+          "violatedDirective=" + (e.violatedDirective || "") +
+          " effectiveDirective=" + (e.effectiveDirective || "") +
+          " blockedURI=" + (e.blockedURI || "")
+        );
+      });
+      function fetchJSON(url, timeoutMs){
+        var ctl = ("AbortController" in window) ? new AbortController() : null;
+        var to = ctl ? setTimeout(function(){ ctl.abort(); }, timeoutMs || 12000) : null;
+        return fetch(url, { cache: "no-store", signal: ctl ? ctl.signal : undefined })
+          .then(function(r){ if (to) clearTimeout(to); if (!r.ok) throw new Error(r.status); return r.json(); });
+      }
+      function fetchText(url, timeoutMs){
+        var ctl = ("AbortController" in window) ? new AbortController() : null;
+        var to = ctl ? setTimeout(function(){ ctl.abort(); }, timeoutMs || 12000) : null;
+        return fetch(url, { cache: "no-store", signal: ctl ? ctl.signal : undefined })
+          .then(function(r){ if (to) clearTimeout(to); if (!r.ok) throw new Error(r.status); return r.text(); });
+      }
+
+      /* Deterministic pseudo-random so every range looks the same on each load */
+      function rng(seed){
+        var s = seed >>> 0;
+        return function(){
+          s = (s * 1664525 + 1013904223) >>> 0;
+          return s / 4294967296;
+        };
+      }
+
+      var RANGES = {
+        "1D": { n: 96,  change:  2.38, seed: 1101, vol: 0.0035, per: "past 24 hours", hi: "24H HIGH", lo: "24H LOW",
+                axis: ["12a","6a","12p","6p","Now"],    fmt: function(i,n){ var m = i*15; var h = Math.floor(m/60)%24; var mm = m%60; var ap = h<12?"a":"p"; var hh = h%12===0?12:h%12; return hh + ":" + (mm<10?"0":"") + mm + ap; } },
+        "1W": { n: 84,  change: -1.84, seed: 2202, vol: 0.006,  per: "past 7 days",    hi: "7D HIGH",  lo: "7D LOW",
+                axis: ["7d ago","5d","3d","1d","Now"], fmt: function(i,n){ return Math.round((n-i)/12) + "d ago"; } },
+        "1M": { n: 90,  change:  8.62, seed: 3303, vol: 0.011,  per: "past 30 days",   hi: "30D HIGH", lo: "30D LOW",
+                axis: ["30d ago","22d","15d","7d","Now"], fmt: function(i,n){ return Math.round((n-i)/3) + "d ago"; } },
+        "3M": { n: 90,  change: -4.27, seed: 4404, vol: 0.014,  per: "past 3 months",  hi: "3M HIGH",  lo: "3M LOW",
+                axis: ["3mo ago","2mo","1mo","2w","Now"], fmt: function(i,n){ return Math.round((n-i)/7.5) + "w ago"; } },
+        "6M": { n: 90,  change: 12.40, seed: 6606, vol: 0.015,  per: "past 6 months",  hi: "6M HIGH",  lo: "6M LOW",
+                axis: ["6mo ago","4mo","3mo","1mo","Now"], fmt: function(i,n){ return Math.round((n-i)/15) + "mo ago"; } },
+        "YTD": { n: 96, change: 28.70, seed: 7707, vol: 0.016,  per: "year to date",   hi: "YTD HIGH", lo: "YTD LOW",
+                axis: ["Jan","Apr","Jul","Oct","Now"], fmt: function(i,n){ var mo = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov"]; return mo[Math.min(10, Math.floor(i / n * 11))]; } },
+        "1Y": { n: 104, change: 41.90, seed: 5505, vol: 0.02,   per: "past 12 months", hi: "1Y HIGH",  lo: "1Y LOW",
+                axis: ["1y ago","9mo","6mo","3mo","Now"], fmt: function(i,n){ return Math.round((n-i)/8.6) + "mo ago"; } },
+        "5Y": { n: 104, change: 312.0, seed: 8808, vol: 0.028,  per: "past 5 years",   hi: "5Y HIGH",  lo: "5Y LOW",
+                axis: ["5y ago","4y","2y","1y","Now"], fmt: function(i,n){ return Math.round((n-i)/20.8) + "y ago"; } },
+        "MAX": { n: 120, change: 920.0, seed: 9909, vol: 0.034, per: "all available history", hi: "MAX HIGH", lo: "MAX LOW",
+                axis: ["6y ago","4y","3y","1y","Now"], fmt: function(i,n){ return Math.round((n-i)/20) + "y ago"; } }
+      };
+
+      /* Comparisons: same closes the full site compares against, drawn rebased to 100.
+         factor/bias shape each asset's move relative to BTC's for the range; vol scales its wiggliness. */
+      var COMP_DEFS = {
+        SPX:  { factor: 0.32, bias:  0.4, vol: 0.38, seedOff: 101 },
+        GOLD: { factor: 0.18, bias:  0.9, vol: 0.45, seedOff: 202 },
+        MSTR: { factor: 1.85, bias: -1.2, vol: 1.55, seedOff: 303 }
+      };
+
+      function genCompSeries(key){
+        var cfg = RANGES[key];
+        var out = {};
+        Object.keys(COMP_DEFS).forEach(function(ck){
+          var def = COMP_DEFS[ck];
+          var change = cfg.change * def.factor + def.bias;
+          var rand = rng(cfg.seed + def.seedOff);
+          var start = 100, end = 100 * (1 + change / 100), v = start, pts = [];
+          for (var i = 0; i < cfg.n; i++){
+            var drift = (end - v) / (cfg.n - i) * 0.55;
+            v += drift + (rand() - 0.5) * 2 * cfg.vol * def.vol * v;
+            pts.push(v);
+          }
+          pts[cfg.n - 1] = end;
+          out[ck] = pts;
+        });
+        return out;
+      }
+
+      function genSeries(key, endPrice){
+        var cfg = RANGES[key];
+        var rand = rng(cfg.seed);
+        var start = endPrice / (1 + cfg.change/100);
+        var pts = [], v = start;
+        for (var i = 0; i < cfg.n; i++){
+          var drift = (endPrice - v) / (cfg.n - i) * 0.55;
+          v += drift + (rand() - 0.5) * 2 * cfg.vol * v;
+          pts.push(v);
+        }
+        pts[cfg.n - 1] = endPrice;
+        return pts;
+      }
+
+      /* ---------------- Live series builders ---------------- */
+      /* Merge the site's static daily files with history.json extensions.
+         SPX is extended by SPY % moves and GOLD by GLD % moves (the site's own
+         method in btcchart.js); MSTR and BTC extend with their actual closes. */
+      function buildDaily(btcJ, spxJ, goldJ, mstrJ, histJ){
+        function toMap(j){
+          var m = {};
+          if (j && j.d) j.d.forEach(function(row){ m[row[0]] = row[1]; });
+          return m;
+        }
+        var btcM = toMap(btcJ), spxM = toMap(spxJ), goldM = toMap(goldJ), mstrM = toMap(mstrJ);
+        var closes = (histJ && histJ.closes) || {};
+        Object.keys(closes).forEach(function(d){
+          var c = closes[d];
+          if (typeof c.BTC === "number") btcM[d] = c.BTC;
+          if (typeof c.MSTR === "number") mstrM[d] = c.MSTR;
+        });
+        function extendByProxy(baseM, proxyKey){
+          var dates = Object.keys(baseM).sort();
+          if (!dates.length) return;
+          var lastD = dates[dates.length - 1], lastV = baseM[lastD];
+          var baseRow = closes[lastD];
+          if (!baseRow || typeof baseRow[proxyKey] !== "number") return;
+          var ratio = lastV / baseRow[proxyKey];
+          Object.keys(closes).sort().forEach(function(d){
+            if (d > lastD && typeof closes[d][proxyKey] === "number") baseM[d] = closes[d][proxyKey] * ratio;
+          });
+        }
+        extendByProxy(spxM, "SPY");
+        extendByProxy(goldM, "GLD");
+        var allDates = Object.keys(btcM).sort();
+        var out = { t: [], btc: [], SPX: [], GOLD: [], MSTR: [] };
+        var last = { SPX: null, GOLD: null, MSTR: null };
+        allDates.forEach(function(d){
+          if (typeof spxM[d] === "number") last.SPX = spxM[d];
+          if (typeof goldM[d] === "number") last.GOLD = goldM[d];
+          if (typeof mstrM[d] === "number") last.MSTR = mstrM[d];
+          out.t.push(Date.parse(d + "T12:00:00Z"));
+          out.btc.push(btcM[d]);
+          out.SPX.push(last.SPX); out.GOLD.push(last.GOLD); out.MSTR.push(last.MSTR);
+        });
+        return out;
+      }
+      function loadDaily(){
+        function opt(u){ return fetchJSON(u).catch(function(){ return null; }); }
+        return Promise.all([
+          fetchJSON(SITE_DATA + "btc-daily.json"),
+          opt(SITE_DATA + "spx-daily.json"), opt(SITE_DATA + "gold-daily.json"), opt(SITE_DATA + "mstr-daily.json"),
+          opt(RAW_DATA + "history.json?t=" + Date.now())
+        ]).then(function(res){
+          live.daily = buildDaily(res[0], res[1], res[2], res[3], res[4]);
+          return live.daily;
+        });
+      }
+      /* Slice the aligned daily data to a window ending now; downsample to
+         at most maxPts points; the BTC line's last point is the live spot. */
+      function dailySlice(startMs, maxPts){
+        var D = live.daily; if (!D) return null;
+        var idx = [];
+        for (var i = 0; i < D.t.length; i++) if (D.t[i] >= startMs) idx.push(i);
+        if (idx.length < 2) return null;
+        var step = Math.max(1, Math.ceil(idx.length / maxPts));
+        var pick = [];
+        for (var j = 0; j < idx.length; j += step) pick.push(idx[j]);
+        if (pick[pick.length - 1] !== idx[idx.length - 1]) pick.push(idx[idx.length - 1]);
+        var out = { t: [], btc: [], SPX: [], GOLD: [], MSTR: [] };
+        pick.forEach(function(i){
+          out.t.push(D.t[i]); out.btc.push(D.btc[i]);
+          out.SPX.push(D.SPX[i]); out.GOLD.push(D.GOLD[i]); out.MSTR.push(D.MSTR[i]);
+        });
+        out.btc[out.btc.length - 1] = state.priceUSD;
+        out.t[out.t.length - 1] = Date.now();
+        return out;
+      }
+      /* Comparison line for an intraday window: each BTC timestamp takes the
+         asset's most recent daily close on or before that day (real closes,
+         stepped — the site has no intraday comparison history yet). */
+      function compForTimes(key, times){
+        var D = live.daily; if (!D) return null;
+        var arr = D[key], out = [], p = 0;
+        for (var i = 0; i < times.length; i++){
+          while (p < D.t.length - 1 && D.t[p + 1] <= times[i] + 43200000) p++;
+          out.push(arr[p]);
+        }
+        if (out.some(function(v){ return v == null; })) return null;
+        return out;
+      }
+      function loadIntraday(range){
+        var spec = { "1D": [900, 86400], "1W": [3600, 604800], "1M": [21600, 2592000] }[range];
+        if (!spec) return Promise.resolve(null);
+        var end = new Date(), start = new Date(end.getTime() - spec[1] * 1000);
+        var url = "https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=" + spec[0] +
+                  "&start=" + start.toISOString() + "&end=" + end.toISOString();
+        return fetchJSON(url).then(function(rows){
+          if (!rows || !rows.length) throw new Error("no candles");
+          rows.sort(function(a, b){ return a[0] - b[0]; });
+          var t = [], p = [], ohlc = [];
+          /* Coinbase candle: [time, low, high, open, close, volume] */
+          rows.forEach(function(r){ t.push(r[0] * 1000); p.push(r[4]); ohlc.push({ l: r[1], h: r[2], o: r[3], c: r[4] }); });
+          p[p.length - 1] = state.priceUSD;
+          if (ohlc.length) ohlc[ohlc.length - 1].c = state.priceUSD;
+          t[t.length - 1] = Date.now();
+          live.intra[range] = { t: t, p: p, ohlc: ohlc };
+          live.intraAt[range] = Date.now();
+          return live.intra[range];
+        }).catch(function(){
+          /* CoinGecko market_chart fallback — the site's own 1D fallback */
+          if (range !== "1D") throw new Error("intra unavailable");
+          return fetchJSON("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1")
+            .then(function(j){
+              var prices = (j && j.prices) || [];
+              if (prices.length < 2) throw new Error("no market_chart");
+              var t = [], p = [];
+              prices.forEach(function(pt){ t.push(pt[0]); p.push(pt[1]); });
+              /* thin to ~96 points */
+              var step = Math.max(1, Math.floor(t.length / 96)), tt = [], pp = [];
+              for (var i = 0; i < t.length; i += step){ tt.push(t[i]); pp.push(p[i]); }
+              pp[pp.length - 1] = state.priceUSD; tt[tt.length - 1] = Date.now();
+              live.intra[range] = { t: tt, p: pp };
+              live.intraAt[range] = Date.now();
+              return live.intra[range];
+            });
+        });
+      }
+      /* Apply a built slice to the chart state */
+      function applySlice(s){
+        /* drop any leading points where a comparison has no close yet */
+        var start = 0;
+        while (start < s.btc.length - 2 && (s.SPX[start] == null || s.GOLD[start] == null || s.MSTR[start] == null)) start++;
+        state.series = s.btc.slice(start); state.times = s.t.slice(start);
+        state._rawOHLC = null;
+        state.compSeries = { SPX: s.SPX.slice(start), GOLD: s.GOLD.slice(start), MSTR: s.MSTR.slice(start) };
+      }
+      function applyIntra(range, d){
+        state.series = d.p; state.times = d.t;
+        state._rawOHLC = d.ohlc || null;
+        var out = {};
+        ["SPX", "GOLD", "MSTR"].forEach(function(k){
+          out[k] = compForTimes(k, d.t) || genCompSeries(range)[k];
+        });
+        state.compSeries = out;
+      }
+      function applyFallback(range){
+        state.series = genSeries(range, state.priceUSD);
+        state._rawOHLC = null;
+        state.compSeries = genCompSeries(range);
+        var cfg = RANGES[range], now = Date.now(), spanMs = { "1D": 864e5, "1W": 6048e5, "1M": 2592e6, "3M": 7776e6, "6M": 15552e6, "YTD": 31536e6, "1Y": 31536e6, "5Y": 15768e7, "MAX": 189216e6 }[range] || 864e5;
+        state.times = state.series.map(function(_, i){ return now - spanMs + spanMs * i / (cfg.n - 1); });
+      }
+
+      /* ---------------- Formatting ---------------- */
+      function dispPrice(usd){ return state.cur === "USD" ? usd : usd * state.fxCAD; }
+      function fmtMoney(usd){
+        var v = dispPrice(usd);
+        return "$" + Math.round(v).toLocaleString("en-US");
+      }
+      function fmtMoneyFull(usd){
+        var v = dispPrice(usd);
+        return "$" + v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      }
+      function fmtNum(usd){
+        return Math.round(dispPrice(usd)).toLocaleString("en-US");
+      }
+      function fmtK(usd){
+        var v = dispPrice(usd);
+        return "$" + (v / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+      }
+      var SHORT = { "1D": "24h", "1W": "7d", "1M": "30d", "3M": "3mo", "6M": "6mo", "YTD": "YTD", "1Y": "1y", "5Y": "5y", "MAX": "Max" };
+      function updStamp(){
+        var d = new Date();
+        var h = d.getHours(), ap = h < 12 ? "AM" : "PM", hh = h % 12 === 0 ? 12 : h % 12;
+        var el = $("#chgUpd");
+        if (el) el.textContent = hh + ":" + pad(d.getMinutes()) + " " + ap;
+      }
+      function satsPerDollar(){ return Math.round(100000000 / dispPrice(state.priceUSD)); }
+
+      /* ---------------- Candles (up to 1Y, this Space only) ----------------
+         Daily candles for a full year would be 365 bodies in 127 px — noise.
+         So each range aggregates to a readable count: the label says what
+         each candle represents. OHLC is built from the same live closes
+         (and real Coinbase highs/lows on intraday ranges): open = first
+         close in the bucket, close = last, high/low = bucket extremes
+         widened by a small deterministic wick so bodies don't look flat. */
+      var CANDLE_TARGET = { "1D": 24, "1W": 28, "1M": 30, "3M": 45, "6M": 52, "YTD": 52, "1Y": 52 };
+      var CANDLE_LABEL = { "1D": "24 × 1h", "1W": "28 × 6h", "1M": "30 daily", "3M": "45 candles", "6M": "52 weekly", "YTD": "52 weekly", "1Y": "52 weekly" };
+      function buildCandles(){
+        if (state.chartType !== "candles"){ state.ohlcDisplay = null; return; }
+        var target = CANDLE_TARGET[state.range];
+        var pts = state.series, ts = state.times;
+        if (!target || !pts || pts.length < 2){ state.ohlcDisplay = null; return; }
+        var n = Math.min(target, pts.length);
+        var bucket = Math.ceil(pts.length / n);
+        var seed = (RANGES[state.range] ? RANGES[state.range].seed : 1234) + 777;
+        var rand = rng(seed);
+        var raw = state._rawOHLC;
+        var out = [];
+        for (var b = 0; b < pts.length; b += bucket){
+          var slice = pts.slice(b, b + bucket);
+          var o = slice[0], c = slice[slice.length - 1];
+          var h = Math.max.apply(null, slice.concat([o, c]));
+          var l = Math.min.apply(null, slice.concat([o, c]));
+          if (raw){
+            var rs = raw.slice(b, b + bucket);
+            if (rs.length){
+              o = rs[0].o; c = rs[rs.length - 1].c;
+              rs.forEach(function(r){ if (r){ h = Math.max(h, r.h); l = Math.min(l, r.l); } });
+              if (b + bucket >= pts.length) c = pts[pts.length - 1]; /* keep the live spot as the last close */
+            }
+          }
+          var spread = (h - l) || (c * 0.004);
+          h = h + spread * 0.16 + c * 0.001 * rand();
+          l = l - spread * 0.16 - c * 0.001 * rand();
+          out.push({ o: o, h: h, l: l, c: c, t: ts ? ts[b] : null });
+        }
+        state.ohlcDisplay = out;
+      }
+      function axisLabelsCandles(){
+        var cs = state.ohlcDisplay, cfg = RANGES[state.range];
+        if (!cs || cs.length < 2 || !cs[0].t) return cfg.axis;
+        function pick(f){ return cs[Math.round(f * (cs.length - 1))].t; }
+        function hm(ms){ var d = new Date(ms); var h = d.getHours(), ap = h < 12 ? "a" : "p"; return (h % 12 === 0 ? 12 : h % 12) + ap; }
+        function md(ms){ var d = new Date(ms); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()] + " " + d.getDate(); }
+        function my(ms){ var d = new Date(ms); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()] + " '" + String(d.getFullYear()).slice(2); }
+        var f = state.range === "1D" ? hm : (state.range === "1W" || state.range === "1M" || state.range === "3M") ? md : my;
+        return [f(pick(0)), f(pick(0.25)), f(pick(0.5)), f(pick(0.75)), "Now"];
+      }
+      function drawCandlesChart(){
+        var cs = state.ohlcDisplay, n = cs.length;
+        var light = $("#screen").classList.contains("light");
+        var upCol = light ? "#15803d" : "#22c55e", dnCol = light ? "#dc2626" : "#ef4444";
+        var allH = cs.map(function(k){ return k.h; }), allL = cs.map(function(k){ return k.l; });
+        var min = Math.min.apply(null, allL), max = Math.max.apply(null, allH);
+        var span = (max - min) || 1; min -= span * 0.07; max += span * 0.07; span = max - min;
+        function X(i){ return GUT + (i / (n - 1 || 1)) * (W - GUT); }
+        function Y(v){ return PAD + (1 - (v - min) / span) * (H - PAD * 2); }
+        /* hide line artefacts */
+        $("#chartLine").setAttribute("d", ""); $("#chartArea").setAttribute("d", "");
+        Object.keys(COMP_DEFS).forEach(function(k){
+          $("#cmp" + k).setAttribute("d", "");
+          $("#cmpDot" + k).setAttribute("opacity", "0");
+          var c2 = state.compSeries[k];
+          if (c2 && c2.length){
+            var pct = (c2[c2.length - 1] - c2[0]) / c2[0] * 100;
+            var chip = $('.cmp-chip[data-comp="' + k + '"] .cmp-pct');
+            if (chip) chip.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+          }
+        });
+        $("#endDot").setAttribute("opacity", "0");
+        var g = $("#candleGroup"); g.innerHTML = "";
+        var slot = (W - GUT) / n;
+        var bodyW = Math.max(1.2, Math.min(5, slot * 0.62));
+        var NS = "http://www.w3.org/2000/svg";
+        cs.forEach(function(k, i){
+          var col = k.c >= k.o ? upCol : dnCol;
+          var x = X(i);
+          var wick = document.createElementNS(NS, "line");
+          wick.setAttribute("x1", x.toFixed(1)); wick.setAttribute("x2", x.toFixed(1));
+          wick.setAttribute("y1", Y(k.h).toFixed(1)); wick.setAttribute("y2", Y(k.l).toFixed(1));
+          wick.setAttribute("stroke", col); wick.setAttribute("stroke-width", "0.7");
+          g.appendChild(wick);
+          var yTop = Y(Math.max(k.o, k.c)), yBot = Y(Math.min(k.o, k.c));
+          var rect = document.createElementNS(NS, "rect");
+          rect.setAttribute("x", (x - bodyW / 2).toFixed(1)); rect.setAttribute("y", yTop.toFixed(1));
+          rect.setAttribute("width", bodyW.toFixed(1)); rect.setAttribute("height", Math.max(1, yBot - yTop).toFixed(1));
+          rect.setAttribute("fill", col);
+          g.appendChild(rect);
+        });
+        var yl = $("#yLabels"); yl.innerHTML = "";
+        [PAD + 2, H / 2, H - PAD - 2].forEach(function(y){
+          var v = min + (1 - (y - PAD) / (H - PAD * 2)) * span;
+          var t = document.createElementNS(NS, "text");
+          t.setAttribute("x", "0"); t.setAttribute("y", String(y + 2));
+          t.textContent = fmtK(v);
+          yl.appendChild(t);
+        });
+        state._x = X;
+        state._y = function(vAbs){ return Y(vAbs); };
+        state._min = min; state._max = max;
+        var hi = Math.max.apply(null, allH), lo = Math.min.apply(null, allL);
+        $("#statHi").textContent = fmtMoney(hi);
+        $("#statLo").textContent = fmtMoney(lo);
+        var cfg = RANGES[state.range];
+        $("#statHiK").textContent = cfg.hi; $("#statLoK").textContent = cfg.lo;
+        var chg = (cs[n - 1].c - cs[0].o) / cs[0].o * 100;
+        var el = $("#chgMain");
+        el.textContent = (chg >= 0 ? "▲ " : "▼ ") + Math.abs(chg).toFixed(2) + "%";
+        el.className = "chg " + (chg >= 0 ? "up" : "down");
+        $$(".po-chg").forEach(function(p){
+          p.textContent = el.textContent;
+          p.className = "chg po-chg " + (chg >= 0 ? "up" : "down");
+          var per = p.parentElement ? p.parentElement.querySelector(".per") : null;
+          if (per) per.textContent = "· " + (SHORT[state.range] || "24h");
+        });
+        $("#chgPer").textContent = SHORT[state.range] || cfg.per;
+        var ax = $("#axisRow"); ax.innerHTML = "";
+        axisLabelsCandles().forEach(function(t){ var s = document.createElement("span"); s.textContent = t; ax.appendChild(s); });
+        var note = $("#candleNote");
+        if (note) note.innerHTML = "<b>Candles</b> · " + (CANDLE_LABEL[state.range] || "");
+      }
+
+      /* ---------------- Chart ---------------- */
+      var W = 154, H = 58, PAD = 4, GUT = 27;   /* GUT = left gutter for the $ axis labels, like the site chart */
+      function drawChart(){
+        buildCandles();
+        if (state.chartType === "candles" && state.ohlcDisplay && state.ohlcDisplay.length > 1){ drawCandlesChart(); return; }
+        var cg = $("#candleGroup"); if (cg) cg.innerHTML = "";
+        var ed = $("#endDot"); if (ed) ed.setAttribute("opacity", "1");
+        var note0 = $("#candleNote"); if (note0 && state.chartType === "line") note0.textContent = "Line · all ranges";
+        var pts = state.series, n = pts.length;
+        var active = Object.keys(state.comps).filter(function(k){ return state.comps[k]; });
+        /* When a comparison is on, every line is rebased to 100 at the range start —
+           the same trick the full Compare chart uses — so assets share one scale. */
+        function rebase(arr){ return arr.map(function(v){ return v / arr[0] * 100; }); }
+        var btcR = rebase(pts);
+        var compR = {}, all = btcR.slice();
+        active.forEach(function(k){
+          compR[k] = rebase(state.compSeries[k]);
+          all = all.concat(compR[k]);
+        });
+        var min = Math.min.apply(null, all), max = Math.max.apply(null, all);
+        var span = (max - min) || 1; min -= span * 0.08; max += span * 0.08; span = max - min;
+        function X(i){ return GUT + (i / (n - 1)) * (W - GUT); }
+        function Y(v){ return PAD + (1 - (v - min) / span) * (H - PAD * 2); }
+        function pathOf(arr){
+          var d = "";
+          for (var i = 0; i < arr.length; i++) d += (i === 0 ? "M" : "L") + X(i).toFixed(1) + " " + Y(arr[i]).toFixed(1) + " ";
+          return d;
+        }
+        $("#chartLine").setAttribute("d", pathOf(btcR));
+        $("#chartArea").setAttribute("d", pathOf(btcR) + "L" + W + " " + H + " L" + GUT + " " + H + " Z");
+        /* $ axis labels down the left, converted back from the rebased scale — the site's $61.5k style */
+        var yl = $("#yLabels"); yl.innerHTML = "";
+        [PAD + 2, H / 2, H - PAD - 2].forEach(function(y){
+          var v = min + (1 - (y - PAD) / (H - PAD * 2)) * span;
+          var t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          t.setAttribute("x", "0"); t.setAttribute("y", String(y + 2));
+          t.textContent = fmtK(pts[0] * v / 100);
+          yl.appendChild(t);
+        });
+        Object.keys(COMP_DEFS).forEach(function(k){
+          var on = state.comps[k] && compR[k];
+          $("#cmp" + k).setAttribute("d", on ? pathOf(compR[k]) : "");
+          var dot = $("#cmpDot" + k);
+          if (on){ dot.setAttribute("cx", X(n - 1)); dot.setAttribute("cy", Y(compR[k][n - 1])); dot.setAttribute("opacity", "1"); }
+          else dot.setAttribute("opacity", "0");
+          /* each chip carries its asset's % for this range, on or off */
+          var cs = state.compSeries[k];
+          var pct = (cs[cs.length - 1] - cs[0]) / cs[0] * 100;
+          var chip = $('.cmp-chip[data-comp="' + k + '"] .cmp-pct');
+          if (chip) chip.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+        });
+        var ex = X(n - 1), ey = Y(btcR[n - 1]);
+        var end = $("#endDot"); end.setAttribute("cx", ex); end.setAttribute("cy", ey);
+        state._x = X;
+        state._y = function(vAbs){ return Y(vAbs / pts[0] * 100); };
+        state._min = min; state._max = max;
+
+        /* stats for this range */
+        var hi = Math.max.apply(null, pts), lo = Math.min.apply(null, pts);
+        $("#statHi").textContent = fmtMoney(hi);
+        $("#statLo").textContent = fmtMoney(lo);
+        var cfg = RANGES[state.range];
+        $("#statHiK").textContent = cfg.hi;
+        $("#statLoK").textContent = cfg.lo;
+        var chg = (pts[n-1] - pts[0]) / pts[0] * 100;
+        var el = $("#chgMain");
+        el.textContent = (chg >= 0 ? "▲ " : "▼ ") + Math.abs(chg).toFixed(2) + "%";
+        el.className = "chg " + (chg >= 0 ? "up" : "down");
+        $$(".po-chg").forEach(function(p){
+          p.textContent = el.textContent;
+          p.className = "chg po-chg " + (chg >= 0 ? "up" : "down");
+          var per = p.parentElement ? p.parentElement.querySelector(".per") : null;
+          if (per) per.textContent = "· " + (SHORT[state.range] || "24h");
+        });
+        $("#chgPer").textContent = SHORT[state.range] || cfg.per;
+        var ax = $("#axisRow"); ax.innerHTML = "";
+        var lbls = axisLabels();
+        lbls.forEach(function(t){ var s = document.createElement("span"); s.textContent = t; ax.appendChild(s); });
+      }
+      /* Axis labels from the real timestamps behind the line */
+      function axisLabels(){
+        var ts = state.times, cfg = RANGES[state.range];
+        if (!ts || ts.length < 2) return cfg.axis;
+        function pick(f){ return ts[Math.round(f * (ts.length - 1))]; }
+        function hm(ms){ var d = new Date(ms); var h = d.getHours(), ap = h < 12 ? "a" : "p"; return (h % 12 === 0 ? 12 : h % 12) + ap; }
+        function md(ms){ var d = new Date(ms); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()] + " " + d.getDate(); }
+        function my(ms){ var d = new Date(ms); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()] + " '" + String(d.getFullYear()).slice(2); }
+        function yr(ms){ return String(new Date(ms).getFullYear()); }
+        var f;
+        if (state.range === "1D") f = hm;
+        else if (state.range === "1W" || state.range === "1M" || state.range === "3M") f = md;
+        else if (state.range === "5Y" || state.range === "MAX") f = yr;
+        else f = my;
+        return [f(pick(0)), f(pick(0.25)), f(pick(0.5)), f(pick(0.75)), "Now"];
+      }
+      /* Scrub label from the point's real timestamp */
+      function scrubLabel(i){
+        var ts = state.times;
+        if (!ts || !ts[i]) return RANGES[state.range].fmt(i, state.series.length);
+        var d = new Date(ts[i]);
+        if (state.range === "1D" || state.range === "1W"){
+          var h = d.getHours(), ap = h < 12 ? "a" : "p", hh = h % 12 === 0 ? 12 : h % 12;
+          var base = hh + ":" + pad(d.getMinutes()) + ap;
+          return state.range === "1D" ? base : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()] + " " + d.getDate() + " " + base;
+        }
+        return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+      }
+
+      var DAILY_START = {
+        "3M": function(now){ return now - 90 * 864e5; },
+        "6M": function(now){ return now - 182 * 864e5; },
+        "YTD": function(now){ return new Date(new Date(now).getFullYear(), 0, 1).getTime(); },
+        "1Y": function(now){ return now - 365 * 864e5; },
+        "5Y": function(now){ return now - 1826 * 864e5; },
+        "MAX": function(){ return 0; }
+      };
+      function setRange(key){
+        if (state.chartType === "candles" && !CANDLE_TARGET[key]) key = "1Y";
+        state.range = key;
+        $$("#ranges button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-range") === key); });
+        clearScrub();
+        if (DAILY_START[key]){
+          var s = live.daily ? dailySlice(DAILY_START[key](Date.now()), 110) : null;
+          if (s) applySlice(s); else applyFallback(key);
+          drawChart();
+          return;
+        }
+        /* intraday ranges: cached Coinbase candles, refetched when stale */
+        var cached = live.intra[key];
+        if (cached && Date.now() - (live.intraAt[key] || 0) < 5 * 60 * 1000){
+          cached.p[cached.p.length - 1] = state.priceUSD;
+          applyIntra(key, cached); drawChart(); return;
+        }
+        if (cached){ applyIntra(key, cached); drawChart(); }
+        else { applyFallback(key); drawChart(); }
+        loadIntraday(key).then(function(d){
+          if (d && state.range === key){ applyIntra(key, d); drawChart(); }
+        }).catch(function(){ /* keep what's on screen */ });
+      }
+
+      /* scrub */
+      var chartBox = $("#chartBox");
+      function scrubTo(clientX){
+        var rect = chartBox.getBoundingClientRect();
+        var frac = (clientX - rect.left) / rect.width;
+        /* account for the left $ gutter: pointer over the plot area only */
+        frac = Math.max(0, Math.min(1, frac));
+        var line = $("#scrubLine"), dot = $("#scrubDot");
+        if (state.chartType === "candles" && state.ohlcDisplay && state.ohlcDisplay.length){
+          var cs = state.ohlcDisplay, nc = cs.length;
+          var ic = Math.round(frac * (nc - 1));
+          var xc = state._x(ic), yc = state._y(cs[ic].c);
+          line.setAttribute("x1", xc); line.setAttribute("x2", xc); line.setAttribute("opacity", "0.7");
+          dot.setAttribute("cx", xc); dot.setAttribute("cy", yc); dot.setAttribute("opacity", "1");
+          var retc = (cs[ic].c - cs[0].o) / cs[0].o * 100;
+          var dc = cs[ic].t ? new Date(cs[ic].t) : null;
+          var lblc = dc ? (["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][dc.getMonth()] + " " + dc.getDate() + (state.range === "1D" || state.range === "1W" ? "" : ", " + dc.getFullYear())) : scrubLabel(ic);
+          if (dc && (state.range === "1D")) lblc = (dc.getHours() % 12 === 0 ? 12 : dc.getHours() % 12) + ":" + pad(dc.getMinutes()) + (dc.getHours() < 12 ? "a" : "p");
+          $("#scrubRead").innerHTML = "";
+          var ac = document.createElement("span"); ac.textContent = fmtMoneyFull(cs[ic].c) + " · " + lblc;
+          var bc = document.createElement("span"); bc.textContent = (retc >= 0 ? "+" : "") + retc.toFixed(1) + "%";
+          bc.style.color = retc >= 0 ? "#22c55e" : "#ef4444"; bc.style.fontWeight = "700";
+          $("#scrubRead").appendChild(ac); $("#scrubRead").appendChild(bc);
+          return;
+        }
+        var pts = state.series, n = pts.length;
+        var i = Math.round(frac * (n - 1));
+        var x = state._x(i), y = state._y(pts[i]);
+        line.setAttribute("x1", x); line.setAttribute("x2", x); line.setAttribute("opacity", "0.7");
+        dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("opacity", "1");
+        var ret = (pts[i] - pts[0]) / pts[0] * 100;
+        $("#scrubRead").innerHTML = "";
+        var a = document.createElement("span"); a.textContent = fmtMoneyFull(pts[i]) + " · " + scrubLabel(i);
+        var b = document.createElement("span"); b.textContent = (ret >= 0 ? "+" : "") + ret.toFixed(1) + "%";
+        b.style.color = ret >= 0 ? "#22c55e" : "#ef4444"; b.style.fontWeight = "700";
+        $("#scrubRead").appendChild(a); $("#scrubRead").appendChild(b);
+      }
+      function clearScrub(){
+        $("#scrubLine").setAttribute("opacity", "0");
+        $("#scrubDot").setAttribute("opacity", "0");
+        $("#scrubRead").innerHTML = '<span class="dim">Drag chart to scrub</span><span class="dim"></span>';
+      }
+      chartBox.addEventListener("pointerdown", function(e){ state.scrubbing = true; chartBox.setPointerCapture(e.pointerId); scrubTo(e.clientX); e.stopPropagation(); });
+      chartBox.addEventListener("pointermove", function(e){ if (state.scrubbing) scrubTo(e.clientX); });
+      chartBox.addEventListener("pointerup", function(){ state.scrubbing = false; setTimeout(clearScrub, 900); });
+      chartBox.addEventListener("pointercancel", function(){ state.scrubbing = false; clearScrub(); });
+
+      $$("#ranges button").forEach(function(b){
+        b.addEventListener("click", function(e){ e.stopPropagation(); setRange(b.getAttribute("data-range")); });
+      });
+
+      $$("#cmpRow .cmp-chip").forEach(function(b){
+        b.addEventListener("click", function(e){
+          e.stopPropagation();
+          if (state.chartType === "candles") return;
+          var k = b.getAttribute("data-comp");
+          state.comps[k] = !state.comps[k];
+          b.classList.toggle("on", state.comps[k]);
+          b.setAttribute("aria-pressed", state.comps[k] ? "true" : "false");
+          drawChart();
+        });
+      });
+
+      /* Chart type: Line (all ranges) / Candles (up to 1Y only) */
+      function setChartType(t){
+        if (t === "candles" && !CANDLE_TARGET[state.range]){
+          state.chartType = t;
+          setRange("1Y");
+        } else {
+          state.chartType = t;
+        }
+        $$("#typeToggle button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-ctype") === state.chartType); });
+        var cmp = $("#cmpRow"); if (cmp) cmp.classList.toggle("disabled", state.chartType === "candles");
+        $$("#ranges button").forEach(function(b){
+          var r = b.getAttribute("data-range");
+          b.disabled = (state.chartType === "candles" && !CANDLE_TARGET[r]);
+        });
+        clearScrub();
+        drawChart();
+      }
+      $$("#typeToggle button").forEach(function(b){
+        b.addEventListener("click", function(e){ e.stopPropagation(); setChartType(b.getAttribute("data-ctype")); });
+      });
+
+      /* ---------------- Price / tick ---------------- */
+      function renderPrice(){
+        $$(".price-val").forEach(function(el){ el.textContent = fmtNum(state.priceUSD); });
+        var cl = $("#curLbl"); if (cl) cl.textContent = state.cur;
+        $("#statSats").textContent = satsPerDollar().toLocaleString("en-US");
+        $$(".sats-val").forEach(function(el){ el.textContent = satsPerDollar().toLocaleString("en-US"); });
+        var sx = $("#satsX");
+        if (sx) sx.textContent = (satsPerDollar() * 10).toLocaleString("en-US") + " / " + (satsPerDollar() * 100).toLocaleString("en-US");
+      }
+      /* ---------------- Live polling ---------------- */
+      function setFeedStatus(mode, detail){
+        var pill = $("#feedStatus"), badge = $("#simBadge"), det = $("#feedDetail");
+        var t = mode === "live" ? "Feed: Live — paperstreetbtc.com" :
+                mode === "offline" ? "Feed: Offline — showing last data" : "Feed: Connecting to paperstreetbtc.com…";
+        if (pill) pill.textContent = t;
+        if (badge) badge.textContent = mode === "live" ? "Live feed · paperstreetbtc.com" :
+                                       mode === "offline" ? "Feed offline — last data shown" : "Live feed — connecting…";
+        if (det && detail) det.textContent = detail;
+      }
+      /* Spot sources — all keyless and CORS-open (each verified live
+         22 Nov 2026). The old build asked sources one at a time with 10 s
+         timeouts, so one hanging or blocked source froze the sample price
+         on screen for up to 30 s: CoinGecko is commonly blocked by tracker
+         blockers and rate-limits shared IPs. Worse, the last resort was
+         the site's prices.json, whose pipeline has been stale since
+         21 Nov 02:30 UTC — it was served stamped as a fresh live update.
+         Now every source is asked in parallel and the answers are
+         cross-checked before one is trusted. */
+      function spotFromMempool(){
+        /* Same host the block clock already reads — price + CAD in one call */
+        return fetchJSON("https://mempool.space/api/v1/prices", 8000).then(function(d){
+          if (!d || typeof d.USD !== "number" || !(d.USD > 0)) throw new Error("bad mempool price");
+          return { usd: d.USD, fx: (typeof d.CAD === "number" && d.USD > 0) ? d.CAD / d.USD : null, src: "mempool.space" };
+        });
+      }
+      function spotFromCoinGecko(){
+        return fetchJSON("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,cad&include_24hr_change=true", 8000)
+          .then(function(d){
+            var b = d && d.bitcoin;
+            if (!b || typeof b.usd !== "number") throw new Error("bad coingecko");
+            return { usd: b.usd, fx: (typeof b.cad === "number" && b.usd > 0) ? b.cad / b.usd : null, src: "CoinGecko" };
+          });
+      }
+      function spotFromCoinbase(){
+        return fetchJSON("https://api.coinbase.com/v2/prices/BTC-USD/spot", 8000).then(function(d){
+          var a = parseFloat(d && d.data && d.data.amount);
+          if (!(a > 0)) throw new Error("bad coinbase");
+          return { usd: a, fx: null, src: "Coinbase" };
+        });
+      }
+      function spotFromKraken(){
+        return fetchJSON("https://api.kraken.com/0/public/Ticker?pair=XBTUSD", 8000).then(function(d){
+          var c = d && d.result && d.result.XXBTZUSD && d.result.XXBTZUSD.c;
+          var a = c ? parseFloat(c[0]) : NaN;
+          if (!(a > 0)) throw new Error("bad kraken");
+          return { usd: a, fx: null, src: "Kraken" };
+        });
+      }
+      function spotFromSiteFile(){
+        /* The site's own prices.json — trusted only while its own pipeline
+           timestamp is fresh (<= 15 min old). An older file is a stale
+           carried value, not a live price, and is never shown as one. */
+        return fetchJSON(RAW_DATA + "prices.json?t=" + Date.now(), 8000).then(function(d){
+          var u = d && d.btc && d.btc.usd;
+          var t = Date.parse((d && d.btc && d.btc.time) || (d && d.updated) || "");
+          if (typeof u !== "number" || !(u > 0)) throw new Error("bad prices.json");
+          if (!isFinite(t) || Date.now() - t > 15 * 60 * 1000) throw new Error("stale prices.json");
+          return { usd: u, fx: null, src: "prices.json" };
+        });
+      }
+      /* Sanity check: trust a tick only when another independent source
+         lands within 1.5% of it, or it sits within 12% of the last good
+         real price (falling back to the latest real daily close). A lone
+         wild tick is held, never drawn. The sample placeholder is never
+         used as the anchor. */
+      function pickSpot(cands, final){
+        if (!cands.length) return null;
+        var anchor = live.lastGoodUSD;
+        if (anchor == null && live.daily && live.daily.btc.length) anchor = live.daily.btc[live.daily.btc.length - 1];
+        var i, j, pick = null;
+        for (i = 0; i < cands.length && !pick; i++){
+          for (j = 0; j < cands.length; j++){
+            if (i !== j && Math.abs(cands[i].usd - cands[j].usd) / cands[j].usd <= 0.015){ pick = cands[i]; break; }
+          }
+        }
+        if (!pick && anchor != null){
+          for (i = 0; i < cands.length; i++){
+            if (Math.abs(cands[i].usd - anchor) / anchor <= 0.12){ pick = cands[i]; break; }
+          }
+        }
+        if (!pick && final && anchor == null) pick = cands[0]; /* nothing to check against yet — a lone live source still beats the sample */
+        if (pick && pick.fx == null){
+          for (i = 0; i < cands.length; i++) if (cands[i].fx != null){ pick = { usd: pick.usd, fx: cands[i].fx, src: pick.src }; break; }
+        }
+        return pick;
+      }
+      function pollSpot(){
+        var makers = [spotFromMempool, spotFromCoinGecko, spotFromCoinbase, spotFromKraken, spotFromSiteFile];
+        var makerNames = ["mempool.space", "CoinGecko", "Coinbase", "Kraken", "prices.json"];
+        live.spotErrors = [];
+        var results = [];
+        return new Promise(function(resolve, reject){
+          var settled = 0, done = false;
+          function finish(final){
+            if (done) return;
+            var pick = pickSpot(results, final);
+            if (!pick && !final) return;      /* keep waiting for the rest */
+            done = true;
+            if (pick) resolve(pick); else reject(new Error("no sane spot"));
+          }
+          makers.forEach(function(make, mi){
+            make().then(function(r){ results.push(r); })
+              .catch(function(err){
+                /* Diagnostics: keep the real per-source error instead of
+                   swallowing it, so it can be surfaced on the page. */
+                var rec = makerNames[mi] + ": " + (err && err.name ? err.name : "Error") + ": " +
+                          (err && err.message ? err.message : String(err));
+                if (err && typeof err.status === "number") rec += " (HTTP " + err.status + ")";
+                else if (err && err.message && /^\d{3}$/.test(String(err.message))) rec += " (HTTP " + err.message + ")";
+                live.spotErrors.push(rec);
+              })
+              .then(function(){
+                settled++;
+                if (settled === makers.length) finish(true); else finish(false);
+              });
+          });
+          setTimeout(function(){ finish(true); }, 9000); /* hard cap — a poll never hangs */
+        });
+      }
+      function renderBlock(){
+        var b = live.block;
+        if (b.height != null) $$(".block-val").forEach(function(el){ el.textContent = b.height.toLocaleString("en-US"); });
+        if (b.fee != null){ var f = $("#statFee"); if (f) f.textContent = String(b.fee); }
+        if (b.mempoolMB != null){ var m = $("#statMempool"); if (m) m.textContent = b.mempoolMB.toLocaleString("en-US"); }
+        if (b.diffPct != null){ var df = $("#statDiff"); if (df) df.textContent = b.diffPct.toFixed(1) + "%"; }
+        if (b.height != null){
+          var toGo = 1050000 - b.height;
+          var hb = $("#halvingBlocks"); if (hb) hb.textContent = toGo.toLocaleString("en-US");
+          var pct = (b.height % 210000) / 210000 * 100;
+          var hp = $("#halvingPct"); if (hp) hp.textContent = pct.toFixed(1) + "% OF THE EPOCH";
+          var bar = $("#halvingBar"); if (bar) bar.style.width = pct.toFixed(1) + "%";
+        }
+      }
+      function pollBlock(){
+        var jobs = [
+          fetchText("https://mempool.space/api/blocks/tip/height", 10000).then(function(t){
+            var h = parseInt(t, 10); if (h > 0) live.block.height = h;
+          }).catch(function(){}),
+          fetchJSON("https://mempool.space/api/blocks", 10000).then(function(rows){
+            if (rows && rows[0] && rows[0].timestamp) live.block.timeMs = rows[0].timestamp * 1000;
+          }).catch(function(){}),
+          fetchJSON("https://mempool.space/api/v1/fees/recommended", 10000).then(function(d){
+            if (d && typeof d.fastestFee === "number") live.block.fee = d.fastestFee;
+          }).catch(function(){}),
+          fetchJSON("https://mempool.space/api/mempool", 10000).then(function(d){
+            if (d && typeof d.vsize === "number") live.block.mempoolMB = Math.round(d.vsize / 1000000);
+          }).catch(function(){}),
+          fetchJSON("https://mempool.space/api/v1/difficulty-adjustment", 10000).then(function(d){
+            if (d && typeof d.progressPercent === "number") live.block.diffPct = d.progressPercent;
+          }).catch(function(){})
+        ];
+        return Promise.all(jobs).then(renderBlock);
+      }
+      function refreshLive(manual){
+        var btn = $("#btnRefresh");
+        if (manual && btn) btn.textContent = "Refreshing…";
+        return Promise.all([pollSpot(), pollBlock()]).then(function(res){
+          var spot = res[0];
+          state.priceUSD = spot.usd;
+          live.lastGoodUSD = spot.usd;
+          if (spot.fx) state.fxCAD = spot.fx;
+          live.ok = true; live.lastOk = new Date();
+          /* push the fresh spot into the current line's last point */
+          if (state.series.length){
+            state.series[state.series.length - 1] = state.priceUSD;
+            if (state.times.length) state.times[state.times.length - 1] = Date.now();
+          }
+          renderPrice(); drawChart(); updStamp();
+          var hh = live.lastOk.getHours(), ap = hh < 12 ? "AM" : "PM", h12 = hh % 12 === 0 ? 12 : hh % 12;
+          setFeedStatus("live", "Last live update " + h12 + ":" + pad(live.lastOk.getMinutes()) + " " + ap + " via " + spot.src + " · block data via mempool.space.");
+          if (manual && btn){ btn.textContent = "Refreshed ✓"; setTimeout(function(){ btn.textContent = "Refresh"; }, 1200); }
+        }).catch(function(){
+          var humanMsg = live.ok ? "A poll just failed — showing the last good live data; the next poll is in 60 s."
+                    : "Couldn't reach the live sources — showing sample data until a poll succeeds.";
+          /* Diagnostics: human message first, then the raw facts — page
+             origin, the per-source errors and any CSP violations. */
+          var diag = "Diagnostics — origin: " + (window.location.origin || window.location.href) + ".";
+          diag += (live.spotErrors && live.spotErrors.length)
+            ? " Source errors: " + live.spotErrors.join(" · ") + "."
+            : " Source errors: none recorded.";
+          diag += (live.cspViolations && live.cspViolations.length)
+            ? " CSP violations: " + live.cspViolations.join(" · ") + "."
+            : " CSP violations: none recorded.";
+          setFeedStatus(live.ok ? "live" : "offline", humanMsg + " " + diag);
+          if (manual && btn){ btn.textContent = "Refresh"; }
+          /* Until the first live tick lands, retry every 15 s instead of
+             leaving the sample price up for a full polling minute. */
+          if (!live.ok && !live.retryPending){
+            live.retryPending = true;
+            setTimeout(function(){
+              live.retryPending = false;
+              if (!state.paused && !state.asleep) refreshLive(false);
+            }, 15000);
+          }
+        });
+      }
+      /* One-off load probes (diagnostics only): can this page fetch its own
+         URL, and can it load a cross-origin image from mempool.space? Both
+         results are appended to the feed detail line on the page. */
+      function runLoadProbes(){
+        function note(txt){
+          live.probe.push(txt);
+          var det = $("#feedDetail");
+          if (det) det.textContent = det.textContent + " " + txt;
+        }
+        fetch(window.location.href, { cache: "no-store" }).then(function(r){
+          note("Probe: same-origin fetch OK (HTTP " + r.status + ").");
+        }).catch(function(err){
+          note("Probe: same-origin fetch FAILED — " + (err && err.name ? err.name : "Error") + ": " +
+               (err && err.message ? err.message : String(err)) + ".");
+        });
+        var probeImg = new Image();
+        probeImg.onload = function(){ note("Probe: mempool.space favicon image loaded OK."); };
+        probeImg.onerror = function(){ note("Probe: mempool.space favicon image FAILED to load."); };
+        probeImg.src = "https://mempool.space/favicon.ico";
+      }
+      setInterval(function(){ if (!state.paused && !state.asleep) refreshLive(false); }, 60000);
+
+      $("#btnPause").addEventListener("click", function(){
+        state.paused = !state.paused;
+        this.textContent = state.paused ? "Resume" : "Pause";
+      });
+      $("#btnRefresh").addEventListener("click", function(){ refreshLive(true); });
+
+      /* currency */
+      function setCur(cur){
+        state.cur = cur;
+        $$("#curSeg button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-cur") === cur); });
+        $$("[data-curdev]").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-curdev") === cur); });
+        renderPrice(); drawChart();
+      }
+      $$("#curSeg button").forEach(function(b){ b.addEventListener("click", function(){ setCur(b.getAttribute("data-cur")); }); });
+      $$("[data-curdev]").forEach(function(b){ b.addEventListener("click", function(e){ e.stopPropagation(); setCur(b.getAttribute("data-curdev")); }); });
+      $(".price").addEventListener("click", function(){ setCur(state.cur === "USD" ? "CAD" : "USD"); });
+
+      /* ---------------- Paging / swipe ---------------- */
+      var track = $("#track"), viewport = $("#viewport");
+      function goTo(p){
+        state.page = (p + 6) % 6;
+        track.style.transform = "translateX(" + (-state.page * (state.landscape ? 320 : 170)) + "px)";
+        $$("#dots i").forEach(function(d, i){ d.classList.toggle("on", i === state.page); });
+        $$("#screenBtns .ctl-btn").forEach(function(b){ b.classList.toggle("on", +b.getAttribute("data-goto") === state.page); });
+      }
+      $$("#screenBtns .ctl-btn").forEach(function(b){ b.addEventListener("click", function(){ wake(); goTo(+b.getAttribute("data-goto")); }); });
+      $("#btnNext").addEventListener("click", function(){ wake(); goTo(state.page + 1); });
+
+      var swipeX = null, swipeY = null;
+      viewport.addEventListener("pointerdown", function(e){ swipeX = e.clientX; swipeY = e.clientY; });
+      viewport.addEventListener("pointerup", function(e){
+        if (swipeX === null || state.scrubbing) { swipeX = null; return; }
+        var dx = e.clientX - swipeX, dy = e.clientY - (swipeY || 0);
+        if (Math.abs(dx) > 34 && Math.abs(dx) > Math.abs(dy) * 1.4) goTo(state.page + (dx < 0 ? 1 : -1));
+        swipeX = null;
+      });
+      viewport.addEventListener("pointercancel", function(){ swipeX = null; });
+
+      /* QR flip */
+      $$(".qr-card").forEach(function(card){
+        function flip(){ $("#" + card.getAttribute("data-flip")).classList.toggle("show-addr"); }
+        card.addEventListener("click", function(e){ e.stopPropagation(); flip(); });
+        card.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } });
+      });
+
+      /* ---------------- Power / brightness / zoom ---------------- */
+      var screenEl = $("#screen");
+      function wake(){ if (state.asleep){ state.asleep = false; screenEl.classList.remove("off"); } }
+      function togglePower(){
+        state.asleep = !state.asleep;
+        screenEl.classList.toggle("off", state.asleep);
+      }
+      $("#btnPower").addEventListener("click", togglePower);
+      $("#wakeVeil").addEventListener("click", wake);
+      $("#bright").addEventListener("input", function(){
+        state.brightness = this.value / 100;
+        if (!state.asleep) screenEl.style.filter = "brightness(" + state.brightness + ")";
+      });
+      screenEl.style.filter = "brightness(1)";
+      /* keep brightness when waking */
+      new MutationObserver(function(){
+        if (!state.asleep) screenEl.style.filter = "brightness(" + state.brightness + ")";
+      }).observe(screenEl, { attributes: true, attributeFilter: ["class"] });
+
+      /* ---------------- Theme (page + keychain screen) ---------------- */
+      var themeMode = "system";
+      var darkMQ = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+      function applyTheme(){
+        var dark = themeMode === "dark" || (themeMode === "system" && darkMQ && darkMQ.matches);
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+        screenEl.classList.toggle("light", !dark);
+        $$("#themeSeg button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-theme-mode") === themeMode); });
+        if (typeof drawChart === "function" && state.series && state.series.length) drawChart();
+      }
+      $$("#themeSeg button").forEach(function(b){
+        b.addEventListener("click", function(){ themeMode = b.getAttribute("data-theme-mode"); applyTheme(); });
+      });
+      if (darkMQ){
+        if (darkMQ.addEventListener) darkMQ.addEventListener("change", function(){ if (themeMode === "system") applyTheme(); });
+        else if (darkMQ.addListener) darkMQ.addListener(function(){ if (themeMode === "system") applyTheme(); });
+      }
+      applyTheme();
+
+      var stage = $("#deviceStage");
+      /* Default to actual size (1×) on every screen — phone, iPad and desktop alike.
+         The Display scale buttons remain available to scale it up on demand. */
+      stage.style.setProperty("--zoom", "1");
+      $$("#zoomSeg button").forEach(function(x){ x.classList.toggle("on", x.getAttribute("data-zoom") === "1"); });
+      $$("#zoomSeg button").forEach(function(b){
+        b.addEventListener("click", function(){
+          stage.style.setProperty("--zoom", b.getAttribute("data-zoom"));
+          $$("#zoomSeg button").forEach(function(x){ x.classList.toggle("on", x === b); });
+        });
+      });
+
+      /* ---------------- Landscape chart view ----------------
+         Turning the keychain sideways swaps the screen to 320 × 170.
+         The chart geometry (W / H) follows, the grid lines and scrub
+         line are resized to match, and the track re-translates at the
+         new 320 px page width. Landscape is a chart view first, so
+         switching to it lands on the price + chart screen. */
+      function updateChartSize(){
+        var svg = $("#chart");
+        if (svg){
+          svg.setAttribute("width", String(W));
+          svg.setAttribute("height", String(H));
+          svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+        }
+        var gl = $("#gridLines");
+        if (gl){
+          var lines = gl.querySelectorAll("line");
+          for (var i = 0; i < lines.length; i++){
+            var y = String(Math.round(H * (i + 1) / 4));
+            lines[i].setAttribute("x1", "0"); lines[i].setAttribute("x2", String(W));
+            lines[i].setAttribute("y1", y); lines[i].setAttribute("y2", y);
+          }
+        }
+        var sl = $("#scrubLine");
+        if (sl) sl.setAttribute("y2", String(H));
+      }
+      function setLandscape(on){
+        state.landscape = !!on;
+        stage.classList.toggle("is-landscape", state.landscape);
+        W = state.landscape ? 300 : 154;
+        H = state.landscape ? 66 : 58;
+        updateChartSize();
+        $$("#orientSeg button").forEach(function(b){
+          b.classList.toggle("on", (b.getAttribute("data-orient") === "landscape") === state.landscape);
+        });
+        var rb = $("#btnRotate");
+        if (rb){
+          rb.textContent = state.landscape ? "⟳ Portrait" : "⟳ Landscape chart";
+          rb.classList.toggle("on", state.landscape);
+          rb.setAttribute("aria-pressed", state.landscape ? "true" : "false");
+        }
+        clearScrub();
+        if (state.landscape) goTo(0); else goTo(state.page);
+        drawChart();
+      }
+      $$("#orientSeg button").forEach(function(b){
+        b.addEventListener("click", function(){ wake(); setLandscape(b.getAttribute("data-orient") === "landscape"); });
+      });
+      var btnRotateEl = $("#btnRotate");
+      if (btnRotateEl) btnRotateEl.addEventListener("click", function(){ wake(); setLandscape(!state.landscape); });
+
+      /* ---------------- Clocks ---------------- */
+      var sinceSec = 252;
+      function pad(n){ return (n < 10 ? "0" : "") + n; }
+      function clocks(){
+        var now = new Date();
+        var local = pad(now.getHours()) + ":" + pad(now.getMinutes());
+        $$(".sb-clock").forEach(function(el){ el.textContent = local; });
+        try {
+          var et = new Date(now.toLocaleString("en-US", { timeZone: "America/Toronto" }));
+          $$(".clock-et").forEach(function(el){ el.textContent = pad(et.getHours()) + ":" + pad(et.getMinutes()) + ":" + pad(et.getSeconds()); });
+          var dl = $("#dateLine");
+          if (dl) dl.textContent = et.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) + " · Ottawa";
+        } catch (err) { /* timezone fallback: leave placeholders */ }
+        sinceSec += 1;
+        var elapsed = live.block.timeMs ? Math.max(0, Math.floor((Date.now() - live.block.timeMs) / 1000)) : sinceSec;
+        var sb = $("#sinceBlock");
+        if (sb) sb.textContent = Math.floor(elapsed / 60) + " min " + pad(elapsed % 60) + " s";
+        renderAuth();
+        var ring = $("#ringProg");
+        if (ring) ring.setAttribute("stroke-dashoffset", String(119.4 * (1 - Math.min(elapsed / 600, 1))));
+      }
+
+      /* ---------------- Clock focus rotation (like /clock/ — rotates on its own, dots jump) ---------------- */
+      var focusIdx = 0, focusTimer = null;
+      function setFocus(i, user){
+        focusIdx = ((i % 3) + 3) % 3;
+        $$(".focus-view").forEach(function(v){ v.classList.toggle("on", +v.getAttribute("data-focus") === focusIdx); });
+        $$("#focusDots button").forEach(function(b){ b.classList.toggle("on", +b.getAttribute("data-f") === focusIdx); });
+        if (user) restartFocus();
+      }
+      function restartFocus(){
+        if (focusTimer) clearInterval(focusTimer);
+        focusTimer = setInterval(function(){ setFocus(focusIdx + 1, false); }, 12000);
+      }
+      $$("#focusDots button").forEach(function(b){
+        b.addEventListener("click", function(e){ e.stopPropagation(); setFocus(+b.getAttribute("data-f"), true); });
+      });
+      restartFocus();
+      setInterval(clocks, 1000);
+
+      /* ---------------- Authenticator (personal TOTP app, demo codes) ----------------
+         Codes are generated in-page from the current 30-second window —
+         the same rhythm a real TOTP app uses — but from demo seeds, so no
+         real secret ever touches this simulation. */
+      var AUTH_SEEDS = ["paperstreet-demo-seed", "github-demo-seed", "email-demo-seed"];
+      var AUTH_NAMES = ["PAPERSTREET", "GITHUB", "EMAIL"];
+      function authCodeFor(seed, counter){
+        var s = seed + ":" + counter, h = 2166136261;
+        for (var i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = (h * 16777619) >>> 0; }
+        h ^= h >>> 16; h = (h * 2246822507) >>> 0; h ^= h >>> 13; h = (h * 3266489909) >>> 0; h ^= h >>> 16;
+        var code = String(h % 1000000);
+        while (code.length < 6) code = "0" + code;
+        return code.slice(0, 3) + " " + code.slice(3);
+      }
+      function renderAuth(){
+        var nowSec = Math.floor(Date.now() / 1000);
+        var counter = Math.floor(nowSec / 30);
+        var remain = 30 - (nowSec % 30);
+        var tEl = $("#authTimer"); if (tEl) tEl.textContent = String(remain);
+        var dEl = $("#dashAuthTimer"); if (dEl) dEl.textContent = String(remain);
+        var bar = $("#authBar"); if (bar) bar.style.width = (remain / 30 * 100) + "%";
+        $$(".auth-code").forEach(function(el){
+          var idx = +el.getAttribute("data-code");
+          el.textContent = state.authLocked ? "••• •••" : authCodeFor(AUTH_SEEDS[idx], counter);
+        });
+        var big = $("#authBigCode");
+        if (big) big.textContent = state.authLocked ? "••• •••" : authCodeFor(AUTH_SEEDS[state.authSel], counter);
+        var lbl = $("#authBigLabel");
+        if (lbl) lbl.textContent = state.authLocked ? "CODES HIDDEN — TAP SHOW CODES" : (AUTH_NAMES[state.authSel] + " · TAP AN ACCOUNT TO ENLARGE");
+      }
+      function setAuthLocked(locked){
+        state.authLocked = locked;
+        var b1 = $("#authHideBtn"); if (b1) b1.textContent = locked ? "SHOW CODES" : "HIDE CODES";
+        var b2 = $("#btnAuthToggle"); if (b2) b2.textContent = locked ? "Show codes" : "Hide codes";
+        renderAuth();
+      }
+      var ahb = $("#authHideBtn");
+      if (ahb) ahb.addEventListener("click", function(e){ e.stopPropagation(); setAuthLocked(!state.authLocked); });
+      var bat = $("#btnAuthToggle");
+      if (bat) bat.addEventListener("click", function(){ wake(); goTo(5); setAuthLocked(!state.authLocked); });
+      $$("#authList .auth-item").forEach(function(item){
+        item.addEventListener("click", function(e){
+          e.stopPropagation();
+          state.authSel = +item.getAttribute("data-auth");
+          $$("#authList .auth-item").forEach(function(x){ x.classList.toggle("on", x === item); });
+          renderAuth();
+        });
+      });
+
+      /* ---------------- QR codes (deterministic, decorative) ---------------- */
+      function drawQR(canvasId, seedText){
+        var cv = $("#" + canvasId); if (!cv) return;
+        var ctx = cv.getContext("2d");
+        var N = 29, S = 248, cell = S / N;
+        var h = 2166136261;
+        for (var c = 0; c < seedText.length; c++){ h ^= seedText.charCodeAt(c); h = (h * 16777619) >>> 0; }
+        var rand = rng(h);
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, S, S);
+        ctx.fillStyle = "#0b0f16";
+        function finder(fx, fy){
+          return fx < 8 && fy < 8 || fx >= N - 8 && fy < 8 || fx < 8 && fy >= N - 8;
+        }
+        for (var y = 0; y < N; y++) for (var x = 0; x < N; x++){
+          if (finder(x, y)) continue;
+          if (rand() > 0.52) ctx.fillRect(Math.floor(x * cell), Math.floor(y * cell), Math.ceil(cell), Math.ceil(cell));
+        }
+        function drawFinder(ox, oy){
+          ctx.fillStyle = "#0b0f16"; ctx.fillRect(ox * cell, oy * cell, 7 * cell, 7 * cell);
+          ctx.fillStyle = "#ffffff"; ctx.fillRect((ox + 1) * cell, (oy + 1) * cell, 5 * cell, 5 * cell);
+          ctx.fillStyle = "#0b0f16"; ctx.fillRect((ox + 2) * cell, (oy + 2) * cell, 3 * cell, 3 * cell);
+        }
+        drawFinder(0, 0); drawFinder(N - 7, 0); drawFinder(0, N - 7);
+      }
+      drawQR("qrJade", "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh");
+      drawQR("qrLn", "paperstreet@walletofsatoshi.com");
+
+      /* ---------------- Init ---------------- */
+      applyFallback("1D");
+      renderPrice();
+      drawChart();
+      updStamp();
+      clocks();
+      renderAuth();
+      goTo(0);
+      /* Go live: daily history first (so range switches are instant), then the
+         first spot + block poll, then the 1D intraday line. Failures leave the
+         sample series on screen with an honest feed status. */
+      loadDaily().then(function(){
+        if (DAILY_START[state.range]) setRange(state.range);
+        else if (live.intra[state.range]) applyIntra(state.range, live.intra[state.range]);
+        drawChart();
+      }).catch(function(){ /* daily files unreachable — sample history stays */ });
+      refreshLive(false).then(function(){
+        if (!DAILY_START[state.range]) setRange(state.range);
+      });
+      runLoadProbes();
+    })();
+    </script>
+  </body>
+</html>
