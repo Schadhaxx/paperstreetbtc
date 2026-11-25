@@ -1,9 +1,9 @@
 {
  "v": 1,
  "source": "Yahoo Finance IBIT/FBTC daily close (unadjusted, Nasdaq sessions, ET dates)",
- "end": "2026-11-23",
+ "end": "2026-11-24",
  "start": "2025-12-31",
- "sessions": 226,
+ "sessions": 227,
  "note": "Separate vehicle series for the Bitcoin vehicle toggle (Day 1 data). Spot BTC closes are NOT in this file and are NOT overwritten by it. ETF prices already reflect ~0.25%/yr fees; no separate fee deduction is applied. STRC dividends in ETF mode buy the ETF (locked 29 Oct 2026).",
  "vehicles": {
   "IBIT": [
@@ -910,6 +910,10 @@
    [
     "2026-11-23",
     34.62
+   ],
+   [
+    "2026-11-24",
+    33.76
    ]
   ],
   "FBTC": [
@@ -1816,6 +1820,10 @@
    [
     "2026-11-23",
     53.15
+   ],
+   [
+    "2026-11-24",
+    51.9
    ]
   ]
  }
