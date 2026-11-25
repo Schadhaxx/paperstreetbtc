@@ -832,7 +832,7 @@ jobs:
         run: |
           mkdir -p /tmp/screener-daily
           set +e
-          python3 tools/screener_daily.py --out-dir /tmp/screener-daily --weekly-dir assets/data 2>&1 | tee /tmp/screener-daily.log
+          python3 tools/screener_daily.py --out-dir /tmp/screener-daily --weekly-dir assets/data --history /tmp/history.json 2>&1 | tee /tmp/screener-daily.log
           gen_rc=${PIPESTATUS[0]}
           chk_rc=0
           if [ "$gen_rc" -eq 0 ]; then
