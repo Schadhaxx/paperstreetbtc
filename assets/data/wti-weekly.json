@@ -1,7 +1,7 @@
 {
   "source": "Yahoo CL=F (NYMEX front-month WTI futures, continuous series), $/barrel",
-  "asOf": "24 Nov 2026, 4:45 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026: its close $104.24 was an intraday snapshot at 30 Oct 2026, 3:42 p.m. ET, NOT a final daily close. WTI is a continuous front-month series; there are gaps where contracts roll over. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Preserved shipped weeks (not overwritten): week of 2026-10-26 shipped close 104.24 differs from Yahoo recomputed 104.12 \u2014 preserved as shipped, pending review. Latest week (23 Nov 2026 \u2013 29 Nov 2026) refreshed in progress as of 24 Nov 2026, 4:45 PM ET; its close is not a final close.",
+  "asOf": "25 Nov 2026, 4:15 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026: its close $104.24 was an intraday snapshot at 30 Oct 2026, 3:42 p.m. ET, NOT a final daily close. WTI is a continuous front-month series; there are gaps where contracts roll over. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Preserved shipped weeks (not overwritten): week of 2026-10-26 shipped close 104.24 differs from Yahoo recomputed 104.12 \u2014 preserved as shipped, pending review. Latest week (23 Nov 2026 \u2013 29 Nov 2026) refreshed in progress as of 25 Nov 2026, 4:15 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -524,13 +524,13 @@
       "monday": "2026-11-23",
       "sunday": "2026-11-29",
       "label": "23 Nov 2026 \u2013 29 Nov 2026",
-      "days": 2,
+      "days": 3,
       "open": 83.67,
-      "high": 83.95,
+      "high": 84.16,
       "low": 79.07,
-      "close": 81.51,
-      "volume": 512927
+      "close": 84.11,
+      "volume": 745107
     }
   ],
-  "inProgress": "in progress, as of 24 Nov 2026, 4:45 PM ET"
+  "inProgress": "in progress, as of 25 Nov 2026, 4:15 PM ET"
 }

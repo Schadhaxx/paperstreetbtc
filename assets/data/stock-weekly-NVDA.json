@@ -1,15 +1,15 @@
 {
   "source": "Yahoo NVDA unadjusted daily OHLC",
-  "asOf": "2026-11-24",
-  "asOfLabel": "24 Nov 2026",
+  "asOf": "2026-11-25",
+  "asOfLabel": "25 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "baseClose": 186.5,
   "baseSession": "2025-12-31",
   "baseLabel": "31 Dec close",
-  "lastSession": "2026-11-24",
-  "inProgress": "in progress, through last completed session 24 Nov 2026 \u2014 week not finished",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 24 Nov 2026, 4:15 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "lastSession": "2026-11-25",
+  "inProgress": "in progress, through last completed session 25 Nov 2026 \u2014 week not finished",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is in progress as of 25 Nov 2026, 4:15 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -532,12 +532,12 @@
       "monday": "2026-11-23",
       "sunday": "2026-11-29",
       "label": "23 Nov 2026 \u2013 29 Nov 2026",
-      "days": 2,
+      "days": 3,
       "open": 167.04,
       "high": 171.5,
-      "low": 150.5,
-      "close": 155.38,
-      "volume": 1161830417
+      "low": 141.17,
+      "close": 149.3,
+      "volume": 1525571571
     }
   ]
 }
