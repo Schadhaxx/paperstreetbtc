@@ -889,7 +889,7 @@ jobs:
           # still-forming bar; a run before the cutoff would end BTC a day
           # behind the NYSE asOf, which is correct by design.
           set +e
-          python3 tools/cmp_daily.py --out /tmp/cmp-daily.json --pack assets/data/screener-pack.json --weekly-dir assets/data 2>&1 | tee /tmp/cmp-daily.log
+          python3 tools/cmp_daily.py --out /tmp/cmp-daily.json --pack assets/data/screener-pack.json --weekly-dir assets/data --history /tmp/history.json --shipped assets/data/cmp-daily.json 2>&1 | tee /tmp/cmp-daily.log
           gen_rc=${PIPESTATUS[0]}
           chk_rc=0
           if [ "$gen_rc" -eq 0 ]; then
