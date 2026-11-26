@@ -29,6 +29,7 @@ for m in months:
     chk(f'{m} through date inside month', ME.startswith(m))
     chk(f'{m} BTC table headers say High/Low close (in Month)', bool(re.search(r'<th>High close \(in (\w+)\)</th><th>Low close \(in \1\)</th>', s)))
     chk(f'{m} live ticker (pollPX) and et.js present', 'pollPX(' in s and 'assets/js/et.js' in s)
+    chk(f'{m} self-canonical https://paperstreetbtc.com/recap/{m}/', f'<link rel="canonical" href="https://paperstreetbtc.com/recap/{m}/">' in s)
     chk(f'{m} through date {ME} is a FINAL close (not provisional, or Tiingo-confirmed)', ME not in prov or ME in tf)
     nav = re.search(r'<nav class="pn"[^>]*>(.*?)</nav>', s, re.S).group(1)
     i = months.index(m); nxt = months[i + 1] if i + 1 < len(months) else None
