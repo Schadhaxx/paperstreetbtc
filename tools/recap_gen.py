@@ -111,6 +111,15 @@ def main():
     title = f'{full} {y}' + ('' if final else f' (month to date, through {nicey(ME)})')
     s = src
     s = sub1(s, r'<title>[^<]*</title>', f'<title>{title} Recap · Paperstreet BTC</title>')
+    # self-canonical (26 Nov 2026): every month page points at its own directory URL,
+    # so /recap/YYYY-MM/ and /recap/YYYY-MM/index.html are not two pages to Google.
+    # Insert after <title> if missing (old pages, new-month clone); correct it if
+    # the clone carried the previous month's URL.
+    canon = f'<link rel="canonical" href="{SITE}/recap/{m}/">'
+    if 'rel="canonical"' in s:
+        s = sub1(s, r'<link rel="canonical" href="[^"]*">', canon)
+    else:
+        s = s.replace('</title>', '</title>\n' + canon, 1)
     s = sub1(s, r'<h1>[^<]*</h1>', f'<h1>{title} recap</h1>')
     s = sub1(s, r'(<p class="sub">)How the four sleeves did in [A-Za-z]+ against spot BTC, (?:latest|month-end) close [A-Za-z]+ \d+, \d{4}\.',
              f'<p class="sub">How the four sleeves did in {full} against spot BTC, {"month-end" if final else "latest"} close {nicey(ME)}.')
@@ -154,6 +163,7 @@ def main():
     if 'NaN' in s or 'undefined' in s.split('<script>')[0] or 'NaN' in ent: err.append('NaN/undefined in output')
     if not (0.5 * len(src) < len(s) < 2 * len(src)): err.append('page size out of range')
     if f"const ME='{ME}'" not in s or ME != LASTF: err.append('through date mismatch')
+    if f'<link rel="canonical" href="{SITE}/recap/{m}/">' not in s: err.append('self-canonical missing/wrong')
     if mj2.count('{slug:') != mj.count('{slug:') + (1 if new_month else 0): err.append('months.js entry count wrong')
     for txt in (s,):
         if txt.count('<html') != 1 or txt.count('</html>') != 1: err.append('html not well-formed')
