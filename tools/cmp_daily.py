@@ -15,8 +15,27 @@ Fails loud. A missing session, a null close, a Yahoo error, or a stock
 baseline that disagrees with the pack by more than one cent aborts with
 exit 1 and does not write. Closes are never invented or interpolated.
 
+History fallback (never invents a number). When Yahoo's close for a
+bar is null, the Yahoo parser first looks the value up in the site's
+own history (--history history.json, the ledger engine's daily closes,
+keyed by date then symbol) and then in the already shipped
+cmp-daily.json (--shipped assets/data/cmp-daily.json, the value the
+site already published for that symbol and date). A value found in
+either source is used and logged as a FALLBACK line; a value in
+neither source still fails loud for that symbol. Every fallback value
+goes through the same validation as a Yahoo close (finite, positive,
+rounded to cents). History covers BTC, BRK.B, MSTR, PLTR, QQQ, SPY
+and TSLA of the nineteen symbols (it also holds GLD and STRC, which
+this tool does not carry); the other twelve symbols have no history
+entry, so for them only the shipped file can fill a null bar — and
+only for a date already shipped. A null bar on a new session with no
+site-held value still fails loud, as before. The fixture path does
+not use the fallback: a fixture is the operator's exact bars.
+For BTC the lookup uses the bar's UTC date, the same date the PR #19
+fixture took from history for the null 24 Nov 2026 bar.
+
 usage:
-  python3 tools/cmp_daily.py [--out assets/data/cmp-daily.json] [--pack assets/data/screener-pack.json]
+  python3 tools/cmp_daily.py [--out assets/data/cmp-daily.json] [--pack assets/data/screener-pack.json] [--history history.json] [--shipped assets/data/cmp-daily.json]
   python3 tools/cmp_daily.py --fixture bars.json --pack pack.json --out FILE [--now ISO]
   python3 tools/cmp_daily.py --check-only [--out assets/data/cmp-daily.json] [--pack ...] [--weekly-dir assets/data]
 """
@@ -53,27 +72,51 @@ SPECS = {
 ORDER = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX', 'BRK.B', 'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA', 'SPY', 'QQQ', 'BTC']
 
 
-def closes_from_pairs(sym, pairs, calendar):
-    """pairs: iterable of (unix_seconds, close). Dates follow `calendar`."""
+def closes_from_pairs(sym, pairs, calendar, history=None, shipped=None, fallbacks=None):
+    """pairs: iterable of (unix_seconds, close). Dates follow `calendar`.
+    `history` is the history.json closes dict ({date: {symbol: close}});
+    `shipped` is the already shipped cmp-daily.json as {sym: {date: close}}.
+    When a close is null and fallback sources are given, the value is
+    looked up there (history first, shipped second) and each use is
+    recorded in `fallbacks` (a list of (sym, date, close, source)); with
+    neither source holding the value it raises, as before. Callers that
+    pass no sources (the fixture path) keep the old strict behaviour:
+    any null close raises. A null timestamp always raises — there is no
+    date to look a value up under."""
     out = {}
     for t, c in pairs:
-        if t is None or c is None:
-            raise RuntimeError(f'{sym}: null close — refusing to skip or fill')
-        if isinstance(c, bool) or not isinstance(c, (int, float)) or not math.isfinite(float(c)) or float(c) <= 0:
-            raise RuntimeError(f'{sym}: bad close {c!r}')
+        if t is None:
+            raise RuntimeError(f'{sym}: null timestamp — refusing to skip')
         if calendar == 'utc':
             day = dt.datetime.fromtimestamp(int(t), dt.timezone.utc).date()
         else:
             day = dt.datetime.fromtimestamp(int(t), sw.NY).date()
         if day in out:
             raise RuntimeError(f'{sym}: duplicate close {day}')
+        if c is None:
+            # A null Yahoo close on a real bar date. The site may already
+            # hold that symbol and date (history first, shipped file
+            # second). A fallback value is logged by the caller; a value
+            # in neither source still fails loud. No holiday/weekend skip
+            # is needed here (unlike the screener's indicators): Yahoo
+            # returns bars only for equity sessions, and BTC trades every
+            # day, so a null in a returned bar is always a real gap.
+            v, src = _fallback_value(sym, day, history, shipped)
+            if v is None:
+                raise RuntimeError(f'{sym}: null close on {day} — refusing to skip or fill')
+            if fallbacks is not None:
+                fallbacks.append((sym, day, v, src))
+            out[day] = v
+            continue
+        if isinstance(c, bool) or not isinstance(c, (int, float)) or not math.isfinite(float(c)) or float(c) <= 0:
+            raise RuntimeError(f'{sym}: bad close {c!r}')
         out[day] = sw.cents(c)
     if not out:
         raise RuntimeError(f'{sym}: no closes')
     return out
 
 
-def closes_from_yahoo_payload(sym, payload, calendar):
+def closes_from_yahoo_payload(sym, payload, calendar, history=None, shipped=None, fallbacks=None):
     meta = payload.get('meta') or {}
     cur = meta.get('currency')
     if cur not in (None, 'USD'):
@@ -83,10 +126,10 @@ def closes_from_yahoo_payload(sym, payload, calendar):
         ts = payload['timestamp']
     except (KeyError, IndexError, TypeError) as e:
         raise RuntimeError(f'{sym}: Yahoo payload missing closes ({type(e).__name__})')
-    return closes_from_pairs(sym, zip(ts, q.get('close') or []), calendar)
+    return closes_from_pairs(sym, zip(ts, q.get('close') or []), calendar, history, shipped, fallbacks)
 
 
-def fetch_yahoo(spec):
+def fetch_yahoo(spec, history=None, shipped=None, fallbacks=None):
     sym = spec['yahoo']
     since = dt.date.fromisoformat(spec['base'])
     p1 = int(dt.datetime(since.year, since.month, since.day, tzinfo=dt.timezone.utc).timestamp()) - 5 * 86400
@@ -102,7 +145,79 @@ def fetch_yahoo(spec):
     res = (body.get('chart') or {}).get('result') or []
     if not res:
         raise RuntimeError(f'{sym}: Yahoo returned no result ({err})')
-    return closes_from_yahoo_payload(spec['yahoo'], res[0], spec['calendar'])
+    return closes_from_yahoo_payload(spec['yahoo'], res[0], spec['calendar'], history, shipped, fallbacks)
+
+
+def load_history(path):
+    """Load the site's history.json (the ledger engine's daily closes).
+    Returns {date_str: {symbol: close}} or None if the file cannot be
+    read. Values are validated on use (finite, positive); a bad value
+    is treated as no value, never used. History covers BTC, BRK.B,
+    MSTR, PLTR, QQQ, SPY and TSLA of the nineteen symbols here (it
+    also holds GLD and STRC, which this tool does not carry); the
+    other twelve symbols have no entry."""
+    try:
+        with open(path) as f:
+            doc = json.load(f)
+    except Exception as e:
+        print(f'WARNING history unreadable ({path}): {type(e).__name__}: {e}; continuing without history fallback', file=sys.stderr)
+        return None
+    closes = doc.get('closes')
+    if not isinstance(closes, dict):
+        print(f'WARNING history has no closes dict ({path}); continuing without history fallback', file=sys.stderr)
+        return None
+    return closes
+
+
+def load_shipped_cmp(path):
+    """Load the already shipped cmp-daily.json (the combined file, the
+    value the site already published for each symbol and date).
+    Returns {sym: {date: close}} or an empty dict if the file is
+    missing or unreadable. Used as the second fallback source for a
+    null Yahoo bar, after history."""
+    try:
+        with open(path) as f:
+            doc = json.load(f)
+    except Exception:
+        return {}
+    out = {}
+    for sym, s in (doc.get('symbols') or {}).items():
+        per = {}
+        for d, c in zip(s.get('dates') or [], s.get('closes') or []):
+            try:
+                day = dt.date.fromisoformat(d)
+            except Exception:
+                continue
+            if isinstance(c, bool) or not isinstance(c, (int, float)) or not math.isfinite(c) or c <= 0:
+                continue
+            per[day] = c
+        if per:
+            out[sym] = per
+    return out
+
+
+def _fallback_value(sym, day, history, shipped):
+    """Look up a null Yahoo close in the site's own records. History
+    first (the ledger), then the shipped cmp-daily file. Returns the
+    rounded close and a source label, or (None, None) if neither
+    source holds a valid value for that symbol and date. Never
+    invents a number: a missing or invalid value is no value."""
+    if history is not None:
+        try:
+            v = (history.get(day.isoformat()) or {}).get(sym)
+        except Exception:
+            v = None
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
+            v = None
+        if v is not None:
+            return sw.cents(v), 'site history'
+    if shipped is not None:
+        v = (shipped.get(sym) or {}).get(day)
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
+            v = None
+        if v is not None:
+            return sw.cents(v), 'shipped cmp-daily file'
+    return None, None
 
 
 def closes_from_fixture(sym, rows, calendar):
@@ -287,8 +402,9 @@ def write_doc(path, doc):
 
 
 def main(argv):
-    out, pack_path, fixture, now, check_only, weekly_dir = (
-        'assets/data/cmp-daily.json', 'assets/data/screener-pack.json', None, None, False, 'assets/data')
+    out, pack_path, fixture, now, check_only, weekly_dir, history_path, shipped_path = (
+        'assets/data/cmp-daily.json', 'assets/data/screener-pack.json', None, None, False, 'assets/data',
+        None, 'assets/data/cmp-daily.json')
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -302,6 +418,10 @@ def main(argv):
             now = argv[i + 1]; i += 2
         elif a == '--weekly-dir':
             weekly_dir = argv[i + 1]; i += 2
+        elif a == '--history':
+            history_path = argv[i + 1]; i += 2
+        elif a == '--shipped':
+            shipped_path = argv[i + 1]; i += 2
         elif a == '--check-only':
             check_only = True; i += 1
         else:
@@ -331,6 +451,9 @@ def main(argv):
     want = [s for s in ORDER if (fx is None or s in (fx.get('symbols') or {}))]
     if not want:
         print('fixture has no symbols', file=sys.stderr); return 1
+    history = load_history(history_path) if history_path else None
+    shipped = load_shipped_cmp(shipped_path) if shipped_path else {}
+    fallbacks = []
     built = {}
     for sym in want:
         spec = SPECS[sym]
@@ -343,12 +466,16 @@ def main(argv):
             if fx is not None:
                 closes = closes_from_fixture(sym, fx['symbols'][sym], spec['calendar'])
             else:
-                closes = fetch_yahoo(spec)
+                closes = fetch_yahoo(spec, history, shipped, fallbacks)
             built[sym] = build_symbol(sym, closes, now, pack_row)
         except Exception as e:
             print(f'FAILED {sym}: {e}', file=sys.stderr)
             print('cmp-daily: no file written', file=sys.stderr)
             return 1
+    for sym, day, v, src in fallbacks:
+        print(f'FALLBACK {sym}: {day} close {v} from {src} (Yahoo null)')
+    if fallbacks:
+        print(f'cmp-daily: {len(fallbacks)} fallback(s) used (see FALLBACK lines above)')
     doc = build_doc(built, now)
     # NYSE names must share the equity cutoff. A benchmark may end on asOf
     # or, for BTC, on the UTC cutoff, which can be the next calendar day.
