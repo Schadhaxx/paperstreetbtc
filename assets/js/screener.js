@@ -40,6 +40,49 @@
 // not a signed number, so it keeps the default light text, not black.
 // No buy/sell action.
 (function () {
+  // Scroll restoration (25 Nov 2026, Sunil): own the scroll position
+  // across tab eviction instead of relying on the browser's default
+  // restore, which saved whatever drifted spot the page had reached
+  // (chart / heat map) and put Sunil there on return. 'manual' so the
+  // browser does not fight the restore below; if nothing is saved the
+  // page simply stays at the top — never the bottom.
+  if ('scrollRestoration' in history) { try { history.scrollRestoration = 'manual'; } catch (e) {} }
+  var SCROLL_KEY = 'ps-desk-scroll-y';
+  var userMoved = false, restoreAt = 0;
+  // Read the saved offset ONCE at load. Every restore in this page
+  // uses this value: re-reading sessionStorage would pick up a clamped
+  // restore position the saver wrote in the meantime. (First version
+  // re-read on every restore and the load-time restore clobbered the
+  // good value with its own clamped one — see the load listener note
+  // below, removed for the same reason.)
+  var savedScrollY = null;
+  try {
+    var _raw = sessionStorage.getItem(SCROLL_KEY);
+    var _y = (_raw === null || _raw === '') ? NaN : parseInt(_raw, 10);
+    if (!isNaN(_y) && _y > 0) savedScrollY = _y;
+  } catch (e) {}
+  function modalOpen() {
+    var m = document.getElementById('ind-modal');
+    return !!(m && m.classList.contains('open'));
+  }
+  function saveScrollY() {
+    // Never save while the chart modal is open: the body is locked
+    // then, so scrollY reads 0 and would clobber the real position
+    // (the modal saves the pre-modal position itself on open).
+    // Also never save within 500ms of a restore: the restore's own
+    // scroll event would otherwise write the restored (possibly
+    // clamped) position over the user's real one.
+    if (modalOpen() || (restoreAt && Date.now() - restoreAt < 500)) return;
+    try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || window.pageYOffset || 0)); } catch (e) {}
+  }
+  function restoreScrollY() {
+    if (savedScrollY === null) return false;
+    var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    if (max <= 0) return false;
+    restoreAt = Date.now();
+    window.scrollTo(0, Math.min(savedScrollY, max));
+    return true;
+  }
   var PRICES_URL = 'https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/prices.json';
   // CF-3 (Cloudflare Worker, Nov 2026): the Desk pills/tiles take
   // their live quotes from the Cloudflare live-quote Worker first
@@ -490,6 +533,23 @@
         setSpyBridge(eff);
         render();
         notifyChart();
+        // First render populated the tile grids, so the document is
+        // near full height: restore the saved scroll position now.
+        // This runs once — a later render() (e.g. the 5-min refresh)
+        // must never yank the page.
+        restoreScrollY();
+        // Second attempt: the comparison-chart section populates after
+        // this render (cmp-daily fetch), so the document can still grow
+        // after the first restore clamped to the then-max. Re-apply the
+        // saved offset once the page is full height — but only if the
+        // user has not moved it themselves. Deliberately a timer after
+        // the first render, NOT a load listener: load fires before the
+        // first render (subresources finish before the data fetches do),
+        // so a load-time restore clamped to the short document and the
+        // saver then clobbered the good value with it. Once Friday's
+        // CLS fix reserves the grid heights, the first restore is
+        // already against the full height and this is a no-op.
+        setTimeout(function () { if (!userMoved) restoreScrollY(); }, 2000);
         setInterval(refreshLive, 5 * 60 * 1000);
         // Tab return: the chart's today-point goes stale after ~20 min
         // (desk-live/Worker freshness), so re-fetch it when the tab
@@ -580,6 +640,28 @@
       }
       refreshPill();
     }
+    // Scroll-position saving (25 Nov 2026): throttled to once per
+    // frame, same pattern as Friday's pill throttle — never on every
+    // scroll event. Also saved on pagehide and when the tab hides,
+    // which is the 30-min return path (iOS evicts the background tab;
+    // the saved offset is what the next load restores). userMoved
+    // tracks real user gestures (wheel/touch), not the programmatic
+    // restore scrolls, so the delayed second attempt above only runs
+    // before the user has moved the page themselves.
+    var scrollSaveQueued = false;
+    window.addEventListener('scroll', function () {
+      if (scrollSaveQueued) return;
+      scrollSaveQueued = true;
+      (window.requestAnimationFrame || function (f) { setTimeout(f, 16); })(function () {
+        scrollSaveQueued = false;
+        saveScrollY();
+      });
+    }, true);
+    window.addEventListener('pagehide', saveScrollY);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) saveScrollY(); });
+    ['wheel', 'touchmove'].forEach(function (ev) {
+      window.addEventListener(ev, function () { userMoved = true; }, { passive: true });
+    });
     window.addEventListener('resize', closeNotePill);
     var search = document.getElementById('screener-search');
     if (search) search.addEventListener('input', function (e) { state.q = e.target.value; render(); });
