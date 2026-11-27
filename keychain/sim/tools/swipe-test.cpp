@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
   check(dotsOk(), "dots follow to page 3");
   dump("swipe-p3-jade");
 
-  // 4. Swipe left: Jade -> Lightning QR (seg pill stays as well).
+  // 4. Swipe left: Jade -> Lightning QR.
   swipe(85, 25, 35, 25);
   check(curPage() == 4 && qrPage == 1, "swipe left 3 -> 4 Lightning QR");
   check(dotsOk(), "dots follow to page 4");
@@ -152,9 +152,9 @@ int main(int argc, char **argv) {
 
   // 11. Back to the chart via pills (kept as an alternative way to
   // move), then a chart scrub must NOT change page.
-  tap(53, 302);  // Chart nav pill on the QR page
+  goToPage(PAGE_CHART);  // shortcut pills dropped; swipe / dots remain
   runLoopFor(1000);
-  check(curPage() == 0, "Chart pill returns to page 0");
+  check(curPage() == 0, "return to chart page 0");
   swipe(85, 125, 35, 125);  // drag inside the chart (CH_Y 96, CH_H 58) = scrub
   check(curPage() == 0 && scrubIdx == -1, "chart scrub does not change page");
   check(dotsOk(), "dots intact after scrub");

@@ -85,15 +85,15 @@ int main(int argc, char **argv) {
   tap(92, 238); runLoopFor(2000); dump("dark-clock-0");    // Clock nav -> block focus (Auth nav row y 226, Pass 5 finding 11)
   tapBtn(31); runLoopFor(500); dump("dark-clock-1");     // dot 2: sats
   tapBtn(32); runLoopFor(500); dump("dark-clock-2");    // dot 3: halving
-  tap(87, 302); runLoopFor(1000); dump("dark-qr-jade");    // QR nav -> Jade
-  tap(85, 136); runLoopFor(500); dump("dark-qr-jade-flip");// tap QR card
+  goToPage(PAGE_QR_JADE); runLoopFor(1000); dump("dark-qr-jade");
+  tap(85, 116); runLoopFor(500); dump("dark-qr-jade-flip");// tap QR card
   tap(85, 250); runLoopFor(500);                           // tap anywhere: back
-  tap(98, 49); runLoopFor(1000); dump("dark-qr-ln");       // Lightning seg
-  tap(85, 136); runLoopFor(500); dump("dark-qr-ln-flip");  // tap QR card
+  goToPage(PAGE_QR_LN); runLoopFor(1000); dump("dark-qr-ln");
+  tap(85, 116); runLoopFor(500); dump("dark-qr-ln-flip");  // tap QR card
   tap(85, 250); runLoopFor(500);                           // back
 
   // ---- light pass: back to chart, flip theme, walk the same views ----
-  tap(53, 302); runLoopFor(1000);                          // Chart nav -> chart (1Y comps)
+  goToPage(PAGE_CHART); runLoopFor(1000);                   // back to chart (1Y comps)
   themeDark = false; drawAll();                            // Light (chart theme pill dropped)
   fprintf(stderr, "[frames] after Light tap: themeDark=%d\n", (int)themeDark);
   if (themeDark) { themeDark = false; drawAll(); fprintf(stderr, "[frames] WARNING: Light tap missed, forced light\n"); }
@@ -106,11 +106,11 @@ int main(int argc, char **argv) {
   tapBtn(30); runLoopFor(500); dump("light-clock-0");    // dot 1: block focus
   tapBtn(31); runLoopFor(500); dump("light-clock-1");
   tapBtn(32); runLoopFor(500); dump("light-clock-2");
-  tap(87, 302); runLoopFor(1000); tap(58, 49); runLoopFor(500); dump("light-qr-jade");
-  tap(85, 136); runLoopFor(500); dump("light-qr-jade-flip");
+  goToPage(PAGE_QR_JADE); runLoopFor(1000); dump("light-qr-jade");
+  tap(85, 116); runLoopFor(500); dump("light-qr-jade-flip");
   tap(85, 250); runLoopFor(500);
-  tap(98, 49); runLoopFor(1000); dump("light-qr-ln");
-  tap(85, 136); runLoopFor(500); dump("light-qr-ln-flip");
+  goToPage(PAGE_QR_LN); runLoopFor(1000); dump("light-qr-ln");
+  tap(85, 116); runLoopFor(500); dump("light-qr-ln-flip");
 
   fprintf(stderr, "[frames] done\n");
   return 0;

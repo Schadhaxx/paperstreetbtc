@@ -2701,6 +2701,25 @@ void drawQRCode(const char *text, int16_t cardX, int16_t cardY,
   }
 }
 
+// Coloured 15x15 badge: green "J" for Jade, amber lightning for LN.
+// The lightning mark is drawn (the fonts have no ϟ glyph).
+void drawQRBadge(int16_t x, int16_t y, bool jade) {
+  const uint16_t jadeCol = 0x36D3;  // #34d399
+  const uint16_t ink = 0x0862;      // #0b0f16
+  fillPillSolid(x, y, 15, 15, 4, jade ? jadeCol : C_AMBER, C_BG);
+  if (jade) {
+    setF(F_LABEL9, 4);
+    tft.setTextColor(ink, jadeCol);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("J", x + 7, y + 8);
+    tft.setTextDatum(TL_DATUM);
+  } else {
+    // Compact bolt inside the 15 px badge.
+    tft.fillTriangle(x + 8, y + 2, x + 4, y + 8, x + 8, y + 8, ink);
+    tft.fillTriangle(x + 6, y + 7, x + 10, y + 7, x + 6, y + 13, ink);
+  }
+}
+
 void drawQRAll() {
   nBtns = 0;
   applyTheme();
@@ -2708,59 +2727,62 @@ void drawQRAll() {
   drawStatusBar(15, false);
   bool jade = (qrPage == 0);
   const char *addr = jade ? QR_JADE_ADDR : QR_LN_ADDR;
-  // title
+  // header: coloured badge + title + right-aligned subtitle
+  drawQRBadge(8, 20, jade);
   setF(F_MONO8B, 2);
   tft.setTextColor(C_TEXT, C_BG);
-  tft.setCursor(8, 24);
-  tft.print(jade ? "JADE · ON-CHAIN" : "LIGHTNING · RECEIVE");
-  // Jade | Lightning segmented pill, centred
-  int16_t segW = segPillWidth("Jade", "Lightning", F_PILL8);
-  drawSegPill((SW - segW) / 2, 42, 14, "Jade", "Lightning", jade, 39, 40, F_PILL8);
+  tft.setCursor(28, 23);
+  tft.print(jade ? "JADE" : "LIGHTNING");
+  setF(F_MONO6, 1);
+  tft.setTextColor(C_MUTED, C_BG);
+  const char *sub = jade ? "ON-CHAIN \xC2\xB7 RECEIVE" : "RECEIVE";
+  int16_t sw = tft.textWidth(sub);
+  tft.setCursor(CX1 - sw, 24);
+  tft.print(sub);
+
   if (!qrFlipped) {
-    // QR card (white in both themes) + truncated address + note.
-    // The address + note block is centred in the space between the
-    // card (ends 210) and the nav row (294) — it used to sit at
-    // 216-246 with a 54 px dead gap down to the nav. (Pass 5 finding 8.)
-    fillPill(11, 62, 148, 148, 7, 0xFFFF, C_TILEBD, C_BG);
-    drawQRCode(addr, 11, 62, 148);
-    btns[nBtns++] = {11, 62, 148, 148, 41};  // tap QR card to flip
+    // QR card stays 148 px (4 px modules + quiet zone) so the
+    // encoded grid is unchanged. With the Jade|Lightning pill gone,
+    // the card starts higher, closer to the prototype's 9 px gap.
+    const int16_t cardY = 42;
+    fillPill(11, cardY, 148, 148, 7, 0xFFFF, C_TILEBD, C_BG);
+    drawQRCode(addr, 11, cardY, 148);
+    btns[nBtns++] = {11, cardY, 148, 148, 41};  // tap QR card to flip
     setF(F_MONO7, 2);
     tft.setTextColor(C_MUTED, C_BG);
     if (jade) {
-      // bc1q address, split across two centred lines
       char l1[24], l2[24];
       snprintf(l1, sizeof(l1), "%.21s", addr);
       snprintf(l2, sizeof(l2), "%s", addr + 21);
       int16_t w = tft.textWidth(l1);
-      tft.setCursor((SW - w) / 2, 237);
+      tft.setCursor((SW - w) / 2, 200);
       tft.print(l1);
       w = tft.textWidth(l2);
-      tft.setCursor((SW - w) / 2, 246);
+      tft.setCursor((SW - w) / 2, 209);
       tft.print(l2);
     } else {
       int16_t w = tft.textWidth(addr);
-      tft.setCursor((SW - w) / 2, 241);
+      tft.setCursor((SW - w) / 2, 204);
       tft.print(addr);
     }
     setF(F_MONO6, 1);
     tft.setTextColor(C_DIM, C_BG);
     const char *note = jade ? "TAP QR FOR FULL ADDRESS" : "TAP QR FOR DETAILS";
     int16_t w = tft.textWidth(note);
-    tft.setCursor((SW - w) / 2, 258);
+    tft.setCursor((SW - w) / 2, 222);
     tft.print(note);
   } else {
-    // Flipped: full address + watch-only warning. The address is
-    // split at a natural boundary — the 21-char split the unflipped
-    // Jade view already uses, '@' for Lightning — because
-    // drawWrapped would break it mid-word (the address has no
-    // spaces, so it splits at the width limit). The card is grown to
-    // fill 62-236 (174 px, vs 112 before) with the content
-    // vertically centred in it (113-185): the old layout left a
-    // 66-row dead gap below the 62-174 card, and merely moving the
-    // note up to 182 would have moved that gap below the note
-    // (measured: 107 rows) instead of removing it. The note now
-    // sits just below the grown card (244). (Pass 5 finding 8.)
-    fillPill(11, 62, 148, 174, 7, C_SURFACE, C_TILEBD, C_BG);
+    // Flipped: a single address + warning card from below the header
+    // down to just above the page dots, so there is no empty band.
+    // Warning is amber, like the prototype. Encode path is unused
+    // here — the strings and ECC are unchanged.
+    // Compact card hugging the address + warning, like the prototype's
+    // .qr-full. A full-height card left a cavernous empty body; the
+    // page background below the card is the same calm gap the
+    // unflipped view already has. Height covers two address lines,
+    // the wrapped warning (~4 lines) and padding.
+    const int16_t cardY = 42, cardH = 118;
+    fillPill(8, cardY, 154, cardH, 7, C_SURFACE, C_TILEBD, C_BG);
     char a1[24], a2[24];
     if (jade) {
       snprintf(a1, sizeof(a1), "%.21s", addr);
@@ -2773,35 +2795,26 @@ void drawQRAll() {
     }
     setF(F_MONO8, 2);
     tft.setTextColor(C_TEXT, C_SURFACE);
-    tft.setCursor(19, 113);
+    tft.setCursor(16, cardY + 12);
     tft.print(a1);
-    tft.setCursor(19, 127);
+    tft.setCursor(16, cardY + 26);
     tft.print(a2);
     const char *warn = jade
         ? "Receive only. This is a watch-only address - the keychain "
           "holds no keys and can never sign or send."
         : "Lightning address - anyone can pay it, nothing on the "
           "device can spend from it. Amounts are set by the sender.";
-    drawWrapped(warn, 19, 149, 132, 9, F_MONO7, 2, C_MUTED, C_SURFACE);
+    drawWrapped(warn, 16, cardY + 48, 138, 10, F_MONO7, 2, C_AMBER, C_SURFACE);
     setF(F_MONO6, 1);
     tft.setTextColor(C_DIM, C_BG);
     const char *note = "TAP ANYWHERE TO GO BACK";
     int16_t w = tft.textWidth(note);
-    tft.setCursor((SW - w) / 2, 244);
+    tft.setCursor((SW - w) / 2, cardY + cardH + 10);
     tft.print(note);
   }
-  // nav row: Chart / Clock / Auth (centred as a group)
-  setF(F_PILL8, 2);
-  int16_t wChart = tft.textWidth("Chart") + 12;
-  int16_t wClock = tft.textWidth("Clock") + 12;
-  int16_t wAuth = tft.textWidth("Auth") + 12;
-  int16_t total = wChart + wClock + wAuth + 8;
-  int16_t x = (SW - total) / 2;
-  x += drawSinglePill(x, 294, 16, "Chart", false, 36, F_PILL8) + 4;
-  x += drawSinglePill(x, 294, 16, "Clock", false, 37, F_PILL8) + 4;
-  drawSinglePill(x, 294, 16, "Auth", false, 38, F_PILL8);
   drawPageDots();
 }
+
 
 // ==================================================================
 // Landscape chart view (320x170) — setRotation(1)
