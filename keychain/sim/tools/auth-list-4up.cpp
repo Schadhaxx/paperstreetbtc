@@ -68,10 +68,23 @@ int main(int argc, char **argv) {
   appMode = MODE_AUTH;
   drawAll();
   dump("dark-auth-4up");
-  tap(146, 29); runLoopFor(500); dump("dark-auth-4up-hidden");  // HIDE
-  tap(146, 29); runLoopFor(500);                                // SHOW
-  tap(85, 151); runLoopFor(500); dump("dark-auth-4up-sel3");    // select row 3
-  tap(51, 270); runLoopFor(500);                                // Price -> chart (Auth nav, unchanged)
+  // HIDE / SHOW by id 53; row 3 by id 63; nav pills were dropped.
+  {
+    for (int i = 0; i < nBtns; i++) if (btns[i].id == 53)
+      tap(btns[i].x + btns[i].w / 2, btns[i].y + btns[i].h / 2);
+  }
+  runLoopFor(500); dump("dark-auth-4up-hidden");
+  {
+    for (int i = 0; i < nBtns; i++) if (btns[i].id == 53)
+      tap(btns[i].x + btns[i].w / 2, btns[i].y + btns[i].h / 2);
+  }
+  runLoopFor(500);
+  {
+    for (int i = 0; i < nBtns; i++) if (btns[i].id == 63)
+      tap(btns[i].x + btns[i].w / 2, btns[i].y + btns[i].h / 2);
+  }
+  runLoopFor(500); dump("dark-auth-4up-sel3");
+  goToPage(PAGE_CHART); runLoopFor(500);
   themeDark = false; drawAll();                                 // Light (chart theme pill dropped)
   goToPage(PAGE_AUTH); runLoopFor(1000); dump("light-auth-4up");
   fprintf(stderr, "[frames] done\n");

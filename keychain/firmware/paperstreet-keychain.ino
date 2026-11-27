@@ -3170,18 +3170,14 @@ bool authIsDemo() {
 // tapping a row selects it for the enlarged box. The numbers above
 // are the 4-account geometry; short lists are centred (see
 // authShift), so the full layout is pixel-identical.
-#define AU_TITLE_Y 24
-#define AU_TIMER_Y 44
-#define AU_BAR_Y   58
-#define AU_BAR_H   5
-#define AU_LIST_Y  68
-#define AU_ROW_H   30
-#define AU_ROW_GAP 4
-#define AU_CODE_Y  204
-#define AU_CODE_H  44
-#define AU_NAV_Y   258
-#define AU_NAV_H   24
-#define AU_HINT_Y  292
+#define AU_TITLE_Y 20
+#define AU_TIMER_Y 36
+#define AU_BAR_Y   48
+#define AU_BAR_H   4
+#define AU_LIST_Y  56
+#define AU_ROW_H   44
+#define AU_ROW_GAP 5
+#define AU_CODE_H  38
 
 // Short lists (Finding 6): with 1 account ~100 px of dead black sat
 // between the list and the code box. The block (list + box + nav +
@@ -3209,8 +3205,7 @@ static int16_t authCodeY() {
   int n = nAuth > 0 ? nAuth : 1;
   return authListY() + n * AU_ROW_H + (n - 1) * AU_ROW_GAP + 4;
 }
-static int16_t authNavY() { return authCodeY() + authCodeH() + 10; }
-static int16_t authHintY() { return authNavY() + AU_NAV_H + 10; }
+static int16_t authHintY() { return authCodeY() + authCodeH() + 6; }
 
 // Six dots for a hidden code (the MonoB13/19 vlw charsets are
 // digits-only, so a "••• •••" string would render blank — the dots
@@ -3234,7 +3229,7 @@ void drawHiddenDots(int16_t x, int16_t y, int16_t r, int16_t step,
 void drawAuthCodeText() {
   for (int i = 0; i < nAuth; i++) {
     int16_t ry = authListY() + i * (AU_ROW_H + AU_ROW_GAP);
-    tft.fillRect(98, ry + 5, 58, AU_ROW_H - 10, C_SURFACE);
+    tft.fillRect(90, ry + 8, 66, AU_ROW_H - 16, C_SURFACE);
     if (authHideCodes) {
       drawHiddenDots(112, ry + AU_ROW_H / 2, 2, 7, 11);
     } else {
@@ -3244,7 +3239,7 @@ void drawAuthCodeText() {
       setF(F_CODE13, 2);
       tft.setTextColor(C_TEXT, C_SURFACE);
       int16_t w = tft.textWidth(spaced);
-      tft.setCursor(155 - w, ry + 9);
+      tft.setCursor(155 - w, ry + (AU_ROW_H - 13) / 2);
       tft.print(spaced);
     }
   }
@@ -3276,11 +3271,11 @@ void drawAuthCodeText() {
 
 // Seconds left in this 30 s window + a thin progress bar.
 void drawAuthCountdown() {
-  tft.fillRect(0, AU_TIMER_Y - 2, SW, 16, C_BG);
+  tft.fillRect(0, AU_TIMER_Y - 2, SW, 14, C_BG);
   char num[8];
   int left = 0;
   if (!timeOk) {
-    snprintf(num, sizeof(num), "--");
+    snprintf(num, sizeof(num), "--s");
   } else {
     time_t now = time(nullptr);
     left = 30 - (int)(now % 30);
@@ -3288,16 +3283,15 @@ void drawAuthCountdown() {
     if (left > 30) left = 30;
     snprintf(num, sizeof(num), "%ds", left);
   }
+  setF(F_MONO6, 1);
+  tft.setTextColor(C_MUTED, C_BG);
+  tft.setCursor(8, AU_TIMER_Y);
+  tft.print("NEW CODES IN");
   setF(F_MONO8B, 2);
   tft.setTextColor(C_CYAN, C_BG);
-  tft.setCursor(8, AU_TIMER_Y);
-  tft.print(num);
   int16_t nw = tft.textWidth(num);
-  setF(F_MONO7, 2);
-  tft.setTextColor(C_MUTED, C_BG);
-  tft.setCursor(8 + nw + 2, AU_TIMER_Y + 1);
-  tft.print("until new code");
-  // bar: 4 px, radius 2, track + cyan fill
+  tft.setCursor(CX1 - nw, AU_TIMER_Y - 1);
+  tft.print(num);
   int16_t bx = 8, bw = SW - 16;
   fillPillSolid(bx, AU_BAR_Y, bw, AU_BAR_H, 2, C_BARBG, C_BG);
   int frac = timeOk ? (left * bw / 30) : 0;
@@ -3308,15 +3302,9 @@ void drawAuthCountdown() {
 // (Clock, QR). (nBtns is reset by drawAuthAll, not here — this only
 // appends.) The old < Prev / Next > pager is gone with the list view.
 void drawAuthButtons() {
-  setF(F_PILL8, 2);
-  int16_t wPrice = tft.textWidth("Price") + 12;
-  int16_t wClock = tft.textWidth("Clock") + 12;
-  int16_t wQR = tft.textWidth("QR") + 12;
-  int16_t total = wPrice + wClock + wQR + 8;
-  int16_t x = (SW - total) / 2;
-  x += drawSinglePill(x, authNavY(), AU_NAV_H, "Price", false, 22, F_PILL8) + 4;
-  x += drawSinglePill(x, authNavY(), AU_NAV_H, "Clock", false, 51, F_PILL8) + 4;
-  drawSinglePill(x, authNavY(), AU_NAV_H, "QR", false, 52, F_PILL8);
+  // Chart / Clock / QR / Price shortcut pills were dropped (Phase 2).
+  // Swipe and the page dots are the way off this screen. The Price
+  // button's old "goes to the chart" nit is gone with the button.
 }
 
 void drawAuthAll() {
@@ -3324,26 +3312,38 @@ void drawAuthAll() {
   applyTheme();
   tft.fillScreen(C_BG);
   drawStatusBar(15, false);
-  // title: "AUTHENTICATOR" + a cyan TOTP tag + HIDE/SHOW pill
-  setF(F_MONO8B, 2);
+  // title + TOTP tag + HIDE CODES / SHOW CODES (prototype wording)
+  setF(F_PILL6, 1);
   tft.setTextColor(C_TEXT, C_BG);
   tft.setCursor(8, AU_TITLE_Y);
   tft.print("AUTHENTICATOR");
   int16_t tw = tft.textWidth("AUTHENTICATOR");
-  setF(F_PILL8, 2);
-  int16_t tagW = tft.textWidth("TOTP") + 10;
-  fillPillSolid(8 + tw + 6, AU_TITLE_Y - 1, tagW, 11, 5, C_CYAN, C_BG);
-  tft.setTextColor(C_ONTXT, C_CYAN);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("TOTP", 8 + tw + 6 + tagW / 2, AU_TITLE_Y + 4);
+  tft.setTextColor(C_CYAN, C_BG);
+  tft.setCursor(8 + tw + 5, AU_TITLE_Y);
+  tft.print("TOTP");
+  // Inter vlw has no space glyph, so the two words are drawn with a
+  // manual gap. InterB7's 'S' also sits on its advance, unlike the
+  // 6 px cut which left a hole before the last letter.
+  setF(F_PILL7, 1);
+  const char *hideW1 = authHideCodes ? "SHOW" : "HIDE";
+  const char *hideW2 = "CODES";
+  int16_t gap = 3;
+  int16_t hideW = tft.textWidth(hideW1) + gap + tft.textWidth(hideW2) + 16;
+  int16_t hideX = CX1 - hideW;
+  int16_t hideY = AU_TITLE_Y - 2;
+  uint16_t hideBg = authHideCodes ? C_BTN_ON : C_BTN;
+  uint16_t hideFg = authHideCodes ? C_ONTXT : C_BTN_TXT;
+  if (authHideCodes) fillPillSolid(hideX, hideY, hideW, 16, 8, C_BTN_ON, C_BG);
+  else               fillPill(hideX, hideY, hideW, 16, 8, C_BTN, C_BORD, C_BG);
+  tft.setTextColor(hideFg, hideBg);
   tft.setTextDatum(TL_DATUM);
-  // HIDE / SHOW codes pill, right-aligned (cyan when codes hidden)
-  const char *hideLbl = authHideCodes ? "SHOW" : "HIDE";
-  int16_t hideW = tft.textWidth(hideLbl) + 12;
-  drawSinglePill(CX1 - hideW, AU_TITLE_Y - 2, 14, hideLbl, authHideCodes, 53, F_PILL8);
-  // list: one row per account (up to 4), each with a coloured
-  // avatar, label, subline and code; the selected row gets a cyan
-  // border. Tap a row to enlarge its code in the box below.
+  int16_t tx = hideX + 8;
+  tft.setCursor(tx, hideY + 4);
+  tft.print(hideW1);
+  tx += tft.textWidth(hideW1) + gap;
+  tft.setCursor(tx, hideY + 4);
+  tft.print(hideW2);
+  btns[nBtns++] = {hideX, hideY, hideW, 16, 53};
   uint16_t avBg[4] = {C_CYAN, C_PURP, C_AMBER, C_GREEN};
   uint16_t avTx[4] = {C_ONTXT, 0x18C5, 0x28E0, 0x0162};
   if (nAuth > 0) {
@@ -3353,70 +3353,80 @@ void drawAuthAll() {
       bool sel = (i == authIdx);
       fillPill(8, ry, 154, AU_ROW_H, 7, C_SURFACE, sel ? C_CYAN : C_TILEBD, C_BG);
       int ai = i % 4;
-      tft.fillCircle(24, ry + AU_ROW_H / 2, 11, avBg[ai]);
+      tft.fillCircle(24, ry + AU_ROW_H / 2, 12, avBg[ai]);
       setF(F_LABEL9, 4);
       tft.setTextColor(avTx[ai], avBg[ai]);
       tft.setTextDatum(MC_DATUM);
       char init[2] = {label[0] ? label[0] : '?', 0};
       tft.drawString(init, 24, ry + AU_ROW_H / 2);
       tft.setTextDatum(TL_DATUM);
-      // label, truncated to fit before the code
       char lab[21];
       snprintf(lab, sizeof(lab), "%s", label);
       setF(F_LABEL9, 4);
-      while (tft.textWidth(lab) > 52 && strlen(lab) > 1)
+      while (tft.textWidth(lab) > 58 && strlen(lab) > 1)
         lab[strlen(lab) - 1] = 0;
       tft.setTextColor(C_TEXT, C_SURFACE);
-      tft.setCursor(42, ry + 5);
+      // Issuer only: firmware accounts store a label, not a separate
+      // account subline, so we do not invent "personal login". The
+      // row is 44 px like the prototype; the issuer is vertically
+      // centred.
+      tft.setCursor(42, ry + (AU_ROW_H - 9) / 2);
       tft.print(lab);
-      setF(F_MONO7, 2);
-      tft.setTextColor(C_MUTED, C_SURFACE);
-      tft.setCursor(42, ry + 18);
-      tft.print("One-time code");
       btns[nBtns++] = {8, ry, 154, AU_ROW_H, (int16_t)(60 + i)};
     }
   } else {
     fillPill(8, authListY(), 154, AU_ROW_H, 7, C_SURFACE, C_TILEBD, C_BG);
     setF(F_LABEL9, 4);
     tft.setTextColor(C_TEXT, C_SURFACE);
-    tft.setCursor(42, authListY() + 11);
+    tft.setCursor(42, authListY() + (AU_ROW_H - 9) / 2);
     tft.print("No accounts");
   }
-  // enlarged code box for the selected account
+  // enlarged code box
   fillPill(8, authCodeY(), 154, authCodeH(), 7, C_SURFACE, C_TILEBD, C_BG);
   setF(F_MONO6, 1);
   tft.setTextColor(C_PILL2, C_SURFACE);
-  tft.setCursor(16, authCodeY() + 8);
-  tft.print("CODE");
+  tft.setCursor(16, authCodeY() + 6);
+  if (authHideCodes) {
+    tft.print("CODES HIDDEN - TAP SHOW CODES");
+  } else if (nAuth > 0) {
+    // "{NAME} · TAP AN ACCOUNT TO ENLARGE"
+    const char mid[] = " \xC2\xB7 ";
+    char cap[48];
+    char name[16];
+    snprintf(name, sizeof(name), "%s", authAccts[authIdx].label);
+    // Uppercase for the prototype's voice; truncate to fit.
+    for (char *q = name; *q; q++) if (*q >= 'a' && *q <= 'z') *q -= 32;
+    snprintf(cap, sizeof(cap), "%s%sTAP AN ACCOUNT TO ENLARGE", name, mid);
+    while (tft.textWidth(cap) > 138 && strlen(name) > 3) {
+      name[strlen(name) - 1] = 0;
+      snprintf(cap, sizeof(cap), "%s%sTAP AN ACCOUNT TO ENLARGE", name, mid);
+    }
+    tft.print(cap);
+  } else {
+    tft.print("TAP AN ACCOUNT TO ENLARGE");
+  }
   drawAuthCodeText();
   drawAuthCountdown();
   drawAuthButtons();
-  // hint: how to add a real account — or the time-sync warning
-  // (codes would be wrong), or the DEMO warning when the shipped
-  // test account is showing.
-  setF(F_MONO7, 2);
+  setF(F_MONO6, 1);
   if (!timeOk) {
     tft.setTextColor(C_RED, C_BG);
     tft.setCursor(8, authHintY());
     tft.print("waiting for time sync");
-    tft.setCursor(8, authHintY() + 12);
+    tft.setCursor(8, authHintY() + 10);
     tft.print("codes may be wrong");
   } else if (authIsDemo()) {
     tft.setTextColor(C_ORANGE, C_BG);
     tft.setCursor(8, authHintY());
-    tft.print("DEMO - not a real account");
-    tft.setTextColor(C_MUTED, C_BG);
-    tft.setCursor(8, authHintY() + 12);
-    tft.print("ADD <label> <secret>");
+    tft.print("DEMO CODES - SIMULATION ONLY");
   } else {
     tft.setTextColor(C_MUTED, C_BG);
     tft.setCursor(8, authHintY());
-    tft.print("Add via USB Serial:");
-    tft.setCursor(8, authHintY() + 12);
-    tft.print("ADD <label> <secret>");
+    tft.print("Add via USB: ADD <label> <secret>");
   }
   drawPageDots();
 }
+
 
 // --- Serial provisioning (USB) ---
 // Commands (one per line, case-insensitive):

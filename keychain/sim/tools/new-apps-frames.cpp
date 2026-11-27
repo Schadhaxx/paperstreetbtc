@@ -80,9 +80,9 @@ int main(int argc, char **argv) {
   tapBtn(43); tapBtn(44); tapBtn(45); runLoopFor(3000);     // SPX, GOLD, MSTR
   dump("dark-1y-comps");                                     // 1Y line + comps
   goToPage(PAGE_AUTH); runLoopFor(1500); dump("dark-auth-list"); // Auth (chart shortcut dropped)
-  tap(146, 29); runLoopFor(500); dump("dark-auth-hidden"); // HIDE codes
-  tap(146, 29); runLoopFor(500);                           // SHOW again
-  tap(92, 238); runLoopFor(2000); dump("dark-clock-0");    // Clock nav -> block focus (Auth nav row y 226, Pass 5 finding 11)
+  tapBtn(53); runLoopFor(500); dump("dark-auth-hidden"); // HIDE codes
+  tapBtn(53); runLoopFor(500);                           // SHOW again
+  goToPage(PAGE_CLOCK); runLoopFor(2000); dump("dark-clock-0"); // clock (Auth nav pills dropped)
   tapBtn(31); runLoopFor(500); dump("dark-clock-1");     // dot 2: sats
   tapBtn(32); runLoopFor(500); dump("dark-clock-2");    // dot 3: halving
   goToPage(PAGE_QR_JADE); runLoopFor(1000); dump("dark-qr-jade");
@@ -100,9 +100,9 @@ int main(int argc, char **argv) {
   runLoopFor(500);
   dump("light-1y-comps");
   goToPage(PAGE_AUTH); runLoopFor(1500); dump("light-auth-list");
-  tap(146, 29); runLoopFor(500); dump("light-auth-hidden");
-  tap(146, 29); runLoopFor(500);
-  tap(92, 238); runLoopFor(2000); dump("light-clock-2x"); // entry keeps focus 2 (Auth nav row y 226)
+  tapBtn(53); runLoopFor(500); dump("light-auth-hidden");
+  tapBtn(53); runLoopFor(500);
+  goToPage(PAGE_CLOCK); runLoopFor(2000); dump("light-clock-2x"); // entry keeps focus 2
   tapBtn(30); runLoopFor(500); dump("light-clock-0");    // dot 1: block focus
   tapBtn(31); runLoopFor(500); dump("light-clock-1");
   tapBtn(32); runLoopFor(500); dump("light-clock-2");

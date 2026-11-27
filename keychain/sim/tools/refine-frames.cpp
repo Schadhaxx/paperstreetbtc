@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
   goToPage(PAGE_PRICE); runLoopFor(1500); dump("dark-price-only");    // price-only
   goToPage(PAGE_CHART); runLoopFor(500);                    // swipe back; tests jump
   goToPage(PAGE_AUTH); runLoopFor(1500); dump("dark-auth");         // Auth
-  tap(51, 238); runLoopFor(500);                             // Price pill (Auth nav row y 226, Pass 5 finding 11) -> back to chart (1Y line)
+  goToPage(PAGE_CHART); runLoopFor(500);                    // nav pills dropped; back to chart (1Y line)
 
   // ---- stale-state capture (dark): 1D line, then change range with
   // no loop() in between — exactly what onTap's drawAll paints
@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
   goToPage(PAGE_PRICE); runLoopFor(1500); dump("light-price-only");
   goToPage(PAGE_CHART); runLoopFor(500);
   goToPage(PAGE_AUTH); runLoopFor(1500); dump("light-auth");
-  tap(51, 238); runLoopFor(500);                             // Price pill (Auth nav row y 226) -> back to chart
+  goToPage(PAGE_CHART); runLoopFor(500);
   tap(23, 213); runLoopFor(2000);                            // 1D line
   rangeIdx = 1; drawAll(); dump("light-stale-1w");
   runLoopFor(2000); dump("light-fresh-1w");
