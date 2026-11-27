@@ -214,10 +214,26 @@ int main(int argc, char **argv) {
   goToPage(2);
   runLoopFor(500);
   check(curPage() == 2, "on clock page for dot test");
-  tap(85, 181);  // focus dot 2 (sats) — centre (85,181)
+  // Capsule dots are left-aligned (prototype); tap by id so the
+  // growing active pill does not invalidate hard-coded centres.
+  {
+    bool hit = false;
+    for (int i = 0; i < nBtns; i++) if (btns[i].id == 31) {
+      tap(btns[i].x + btns[i].w / 2, btns[i].y + btns[i].h / 2);
+      hit = true;
+    }
+    if (!hit) tap(46, 181);
+  }
   runLoopFor(500);
   check(clockFocus == 1, "slow tap on clock dot 2 selects sats focus");
-  tap(69, 181);  // focus dot 1 (block) — centre (69,181)
+  {
+    bool hit = false;
+    for (int i = 0; i < nBtns; i++) if (btns[i].id == 30) {
+      tap(btns[i].x + btns[i].w / 2, btns[i].y + btns[i].h / 2);
+      hit = true;
+    }
+    if (!hit) tap(16, 181);
+  }
   runLoopFor(500);
   check(clockFocus == 0, "slow tap on clock dot 1 selects block focus");
 

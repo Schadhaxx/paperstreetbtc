@@ -83,8 +83,8 @@ int main(int argc, char **argv) {
   tap(146, 29); runLoopFor(500); dump("dark-auth-hidden"); // HIDE codes
   tap(146, 29); runLoopFor(500);                           // SHOW again
   tap(92, 238); runLoopFor(2000); dump("dark-clock-0");    // Clock nav -> block focus (Auth nav row y 226, Pass 5 finding 11)
-  tap(85, 178); runLoopFor(500); dump("dark-clock-1");     // dot 2: sats
-  tap(101, 178); runLoopFor(500); dump("dark-clock-2");    // dot 3: halving
+  tapBtn(31); runLoopFor(500); dump("dark-clock-1");     // dot 2: sats
+  tapBtn(32); runLoopFor(500); dump("dark-clock-2");    // dot 3: halving
   tap(87, 302); runLoopFor(1000); dump("dark-qr-jade");    // QR nav -> Jade
   tap(85, 136); runLoopFor(500); dump("dark-qr-jade-flip");// tap QR card
   tap(85, 250); runLoopFor(500);                           // tap anywhere: back
@@ -103,9 +103,9 @@ int main(int argc, char **argv) {
   tap(146, 29); runLoopFor(500); dump("light-auth-hidden");
   tap(146, 29); runLoopFor(500);
   tap(92, 238); runLoopFor(2000); dump("light-clock-2x"); // entry keeps focus 2 (Auth nav row y 226)
-  tap(69, 178); runLoopFor(500); dump("light-clock-0");    // dot 1: block focus
-  tap(85, 178); runLoopFor(500); dump("light-clock-1");
-  tap(101, 178); runLoopFor(500); dump("light-clock-2");
+  tapBtn(30); runLoopFor(500); dump("light-clock-0");    // dot 1: block focus
+  tapBtn(31); runLoopFor(500); dump("light-clock-1");
+  tapBtn(32); runLoopFor(500); dump("light-clock-2");
   tap(87, 302); runLoopFor(1000); tap(58, 49); runLoopFor(500); dump("light-qr-jade");
   tap(85, 136); runLoopFor(500); dump("light-qr-jade-flip");
   tap(85, 250); runLoopFor(500);

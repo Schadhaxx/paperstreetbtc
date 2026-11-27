@@ -1035,12 +1035,13 @@ void fmtPct1(float pct, char *out, size_t n) {
   }
 }
 
-// "4:32 PM" — 12-hour clock, Eastern, or "--:--" if not synced.
+// "4:32:08 PM" — 12-hour clock with seconds, Eastern, or "--:--"
+// if not synced. Sunil chose 12-hour for the block-clock time.
 void fmtClock12(char *out, size_t n) {
   struct tm t;
   if (!getLocalTime(&t, 0)) { snprintf(out, n, "--:--"); return; }
-  char b[16];
-  strftime(b, sizeof(b), "%I:%M %p", &t);
+  char b[20];
+  strftime(b, sizeof(b), "%I:%M:%S %p", &t);
   const char *s = b;
   if (s[0] == '0') s++;
   snprintf(out, n, "%s", s);
@@ -2311,10 +2312,8 @@ void drawPriceOnly() {
 #define CK_DOTS_Y  178
 #define CK_GRID_Y  192
 #define CK_GRID_H  25
-#define CK_CLOCK_Y 252
-#define CK_DATE_Y  278
-#define CK_NAV_Y   294
-#define CK_NAV_H   16
+#define CK_CLOCK_Y 266
+#define CK_DATE_Y  294
 
 // Ring gauge: a track circle plus a filled arc from the top,
 // clockwise, `frac` of the way round. Per-pixel annulus fill (Pass 5
@@ -2382,8 +2381,8 @@ void drawClockAgo() {
 // the two dots are fillCircles), then " PM · ET" in Mono bold 8.
 // Falls back to "--:--" in Mono when the clock is not synced.
 void drawClockBig() {
-  tft.fillRect(0, CK_CLOCK_Y, SW, 24, C_BG);
-  char clk[16];
+  tft.fillRect(0, CK_CLOCK_Y, SW, 26, C_BG);
+  char clk[20];
   fmtClock12(clk, sizeof(clk));
   if (clk[0] == '-') {
     setF(F_MONO8B, 2);
@@ -2393,42 +2392,40 @@ void drawClockBig() {
     tft.print("--:--");
     return;
   }
-  // Split "4:32 PM" -> hour "4", min "32", suffix " PM".
-  char hour[4] = "", min[4] = "", suf[8] = "";
-  char *colon = strchr(clk, ':');
-  char *sp = strchr(clk, ' ');
-  if (colon && sp) {
-    size_t hl = (size_t)(colon - clk);
-    if (hl > 3) hl = 3;
-    strncpy(hour, clk, hl); hour[hl] = 0;
-    size_t ml = (size_t)(sp - (colon + 1));
-    if (ml > 3) ml = 3;
-    strncpy(min, colon + 1, ml); min[ml] = 0;
-    snprintf(suf, sizeof(suf), " %s", sp + 1);  // " PM"
-  } else {
-    snprintf(hour, sizeof(hour), "%s", clk);
-  }
-  char sufFull[16];
-  snprintf(sufFull, sizeof(sufFull), "%s · ET", suf);
+  // "4:32:08 PM" -> hour, min, sec, "PM".
+  int hour = 0, min = 0, sec = 0;
+  char ap[4] = "";
+  sscanf(clk, "%d:%d:%d %3s", &hour, &min, &sec, ap);
+  char hs[4], ms[4], ss[4];
+  snprintf(hs, sizeof(hs), "%d", hour);
+  snprintf(ms, sizeof(ms), "%02d", min);
+  snprintf(ss, sizeof(ss), "%02d", sec);
+  char sufFull[12];
+  snprintf(sufFull, sizeof(sufFull), "%s ET", ap);
   setF(F_PRICE_L, 4);
-  int16_t hw = tft.textWidth(hour);
-  int16_t mw = tft.textWidth(min);
+  int16_t hw = tft.textWidth(hs);
+  int16_t mw = tft.textWidth(ms);
+  int16_t swd = tft.textWidth(ss);
   setF(F_MONO8B, 2);
-  int16_t sw = tft.textWidth(sufFull);
-  int16_t total = hw + 6 + mw + 4 + sw;
+  int16_t suw = tft.textWidth(sufFull);
+  const int16_t gap = 6;  // digit group + colon-dot column
+  int16_t total = hw + gap + mw + gap + swd + 4 + suw;
   int16_t x = (SW - total) / 2;
   setF(F_PRICE_L, 4);
   tft.setTextColor(C_TEXT, C_BG);
   tft.setCursor(x, CK_CLOCK_Y);
-  tft.print(hour);
-  int16_t cx = x + hw + 3;
-  tft.fillCircle(cx, CK_CLOCK_Y + 8, 2, C_TEXT);
-  tft.fillCircle(cx, CK_CLOCK_Y + 15, 2, C_TEXT);
-  tft.setCursor(x + hw + 6, CK_CLOCK_Y);
-  tft.print(min);
+  tft.print(hs);
+  tft.fillCircle(x + hw + 3, CK_CLOCK_Y + 8, 2, C_TEXT);
+  tft.fillCircle(x + hw + 3, CK_CLOCK_Y + 15, 2, C_TEXT);
+  tft.setCursor(x + hw + gap, CK_CLOCK_Y);
+  tft.print(ms);
+  tft.fillCircle(x + hw + gap + mw + 3, CK_CLOCK_Y + 8, 2, C_TEXT);
+  tft.fillCircle(x + hw + gap + mw + 3, CK_CLOCK_Y + 15, 2, C_TEXT);
+  tft.setCursor(x + hw + gap + mw + gap, CK_CLOCK_Y);
+  tft.print(ss);
   setF(F_MONO8B, 2);
   tft.setTextColor(C_MUTED, C_BG);
-  tft.setCursor(x + hw + 6 + mw + 4, CK_CLOCK_Y + 8);
+  tft.setCursor(x + hw + gap + mw + gap + swd + 4, CK_CLOCK_Y + 8);
   tft.print(sufFull);
 }
 
@@ -2464,6 +2461,7 @@ void drawClockFocus() {
     setF(F_PRICE, 6);
     tft.setTextColor(C_TEXT, C_SURFACE);
     tft.setCursor(16, cy + 18);
+    tft.print("#");
     tft.print(hb);
     drawClockRing();
     drawClockAgo();
@@ -2489,15 +2487,20 @@ void drawClockFocus() {
     // (2) Next halving.
     setF(F_MONO6, 1);
     tft.setTextColor(C_PILL2, C_SURFACE);
-    tft.setCursor(16, cy + 8);
+    tft.setCursor(16, cy + 6);
     tft.print("NEXT HALVING");
+    // The prototype is one line ("NEXT HALVING · THE CLOCK INSIDE
+    // THE CLOCK") but that does not fit the 138 px card at Mono 6,
+    // so the tag sits on the line under the label.
+    tft.setCursor(16, cy + 14);
+    tft.print("Â· THE CLOCK INSIDE THE CLOCK");
     char toGo[16];
     long left = (blockHeight > 0) ? (HALVING_BLOCK - blockHeight) : -1;
     if (left >= 0) fmtComma(left, toGo, sizeof(toGo));
     else snprintf(toGo, sizeof(toGo), "--");
     setF(F_PRICE, 6);
     tft.setTextColor(C_TEXT, C_SURFACE);
-    tft.setCursor(16, cy + 18);
+    tft.setCursor(16, cy + 24);
     tft.print(toGo);
     setF(F_MONO7, 2);
     tft.setTextColor(C_MUTED, C_SURFACE);
@@ -2544,36 +2547,42 @@ void drawClockAll() {
   applyTheme();
   tft.fillScreen(C_BG);
   drawStatusBar(15, false);
-  // title + LIVE · AUTO tag (Mono: '·' is not in the Inter vlw charset)
+  // title + green LIVE · AUTO (a live-dot, not a cyan pill)
   setF(F_MONO8B, 2);
   tft.setTextColor(C_TEXT, C_BG);
   tft.setCursor(8, CK_TITLE_Y);
   tft.print("BLOCK CLOCK");
-  int16_t tw = tft.textWidth("BLOCK CLOCK");
-  int16_t tagW = tft.textWidth("LIVE · AUTO") + 10;
-  fillPillSolid(8 + tw + 6, CK_TITLE_Y - 1, tagW, 11, 5, C_CYAN, C_BG);
-  tft.setTextColor(C_ONTXT, C_CYAN);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("LIVE · AUTO", 8 + tw + 6 + tagW / 2, CK_TITLE_Y + 4);
-  tft.setTextDatum(TL_DATUM);
+  const char live[] = "LIVE \xC2\xB7 AUTO";
+  setF(F_MONO6, 1);
+  int16_t lw = tft.textWidth(live);
+  int16_t lx = CX1 - lw;
+  tft.fillCircle(lx - 7, CK_TITLE_Y + 3, 2, C_GREEN);
+  tft.setTextColor(C_GREEN, C_BG);
+  tft.setCursor(lx, CK_TITLE_Y + 1);
+  tft.print(live);
   // focus card
   fillPill(8, CK_CARD_Y, 154, CK_CARD_H, 7, C_SURFACE, C_TILEBD, C_BG);
   drawClockFocus();
-  // dots (tap to jump; restarts the 12 s timer)
-  for (int f = 0; f < 3; f++) {
-    int16_t cx = 85 + (f - 1) * 16;
-    bool on = (clockFocus == f);
-    tft.fillCircle(cx, CK_DOTS_Y + 3, on ? 4 : 3, on ? C_CYAN : C_DIM);
-    btns[nBtns++] = {(int16_t)(cx - 7), (int16_t)(CK_DOTS_Y - 4), 14, 14, (int16_t)(30 + f)};
+  // capsule dots, left-aligned like the prototype: inactive 16x6,
+  // active 26x6, 4 px gaps. Hit box is taller than the 6 px visual.
+  {
+    int16_t x = 8;
+    for (int f = 0; f < 3; f++) {
+      bool on = (clockFocus == f);
+      int16_t w = on ? 26 : 16;
+      fillPillSolid(x, CK_DOTS_Y, w, 6, 3, on ? C_CYAN : C_DIM, C_BG);
+      btns[nBtns++] = {x, (int16_t)(CK_DOTS_Y - 5), w, 16, (int16_t)(30 + f)};
+      x += w + 4;
+    }
   }
   // 2x2 stat grid
   char satsX[24], diffV[12], feeV[16], memV[12];
   long sats = satsPerDollar();
   if (sats > 0) {
-    // k-form in Mono 8 px: the full "16,500 / 165,000" is 16 chars
-    // and fits no tile font at a readable size; "16.5k / 165k" does.
-    snprintf(satsX, sizeof(satsX), "%.1fk / %.0fk",
-             sats * 10 / 1000.0f, sats * 100 / 1000.0f);
+    char a[12], b[12];
+    fmtComma(sats * 10, a, sizeof(a));
+    fmtComma(sats * 100, b, sizeof(b));
+    snprintf(satsX, sizeof(satsX), "%s / %s", a, b);
   } else {
     snprintf(satsX, sizeof(satsX), "--");
   }
@@ -2583,27 +2592,19 @@ void drawClockAll() {
   else snprintf(feeV, sizeof(feeV), "--");
   if (mempoolMB >= 0) snprintf(memV, sizeof(memV), "%ld MB", mempoolMB);
   else snprintf(memV, sizeof(memV), "--");
+  // Full figures in Mono 6 — "16,770 / 167,700" fits the 75 px tile;
+  // Mono 8 did not, which is why the old draw used the k-form.
   drawStatTile(8, CK_GRID_Y, 75, CK_GRID_H, "SATS PER $10 / $100", satsX,
-               false, F_MONO8, 2);
+               false, F_MONO6, 1);
   drawStatTile(87, CK_GRID_Y, 76, CK_GRID_H, "DIFFICULTY ADJ", diffV,
                false, F_MONO8, 2);
   drawStatTile(8, CK_GRID_Y + CK_GRID_H + 5, 75, CK_GRID_H, "FEES · FASTEST", feeV,
                false, F_MONO8, 2);
   drawStatTile(87, CK_GRID_Y + CK_GRID_H + 5, 76, CK_GRID_H, "MEMPOOL", memV,
                false, F_MONO8, 2);
-  // big ET clock + date line
+  // big 12-hour ET clock + date line
   drawClockBig();
   drawClockDate();
-  // nav row: Chart / QR / Auth (centred as a group)
-  setF(F_PILL8, 2);
-  int16_t wChart = tft.textWidth("Chart") + 12;
-  int16_t wQR = tft.textWidth("QR") + 12;
-  int16_t wAuth = tft.textWidth("Auth") + 12;
-  int16_t total = wChart + wQR + wAuth + 8;
-  int16_t x = (SW - total) / 2;
-  x += drawSinglePill(x, CK_NAV_Y, CK_NAV_H, "Chart", false, 33, F_PILL8) + 4;
-  x += drawSinglePill(x, CK_NAV_Y, CK_NAV_H, "QR", false, 34, F_PILL8) + 4;
-  drawSinglePill(x, CK_NAV_Y, CK_NAV_H, "Auth", false, 35, F_PILL8);
   drawPageDots();
 }
 
