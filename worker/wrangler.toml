@@ -12,3 +12,12 @@ compatibility_date = "2026-11-14"
 # No [vars] here on purpose: secrets are set in the dashboard, never in code.
 # No custom domain: the Worker is served on workers.dev only. Do NOT touch
 # DNS or the paperstreetbtc.com domain (separate Dec 20 transfer).
+#
+# Stage 2 analytics (27 Nov 2026): page-error reports go to D1
+# `paperstreet-errors` (created by Site Launch 26 Nov 2026; the
+# database_id is not a secret). The read secret ERR_READ_SECRET is set in
+# the dashboard and is NEVER in this file or the repo.
+[[d1_databases]]
+binding = "ERR_DB"
+database_name = "paperstreet-errors"
+database_id = "c2576d50-569c-443a-ac3a-f838aeda6c85"

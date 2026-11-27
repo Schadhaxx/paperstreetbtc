@@ -55,6 +55,8 @@ run candle_date_guardrail node tests/test_candle_date_guardrail.js             #
 run desk_monday_candle node tests/test_desk_monday_candle.js               # Desk chart: append the fresh desk-live candle as a new in-progress week on the first trading day (16 Nov 2026)
 run money_format node tests/test_money_format.js                             # -$153.50 money formatters, including the stock card line
 run speed_lazy_panel node tests/test_speed_option2.js                        # lazy BTC panel split (et24): eager pill + lazy panel, live-feel/4H/FLIP/CAD/inline
+run worker node --test worker/test/worker.test.mjs                              # Stage 2: Worker /err report + read routes (fake D1, placeholder secret)
+run ps_err node tests/test_ps_err.js                                            # Stage 2: ps-err.js hook, beacon loader, /me/ page, pins
 run s2_hero_cosmetic node tests/test_s2_hero_cosmetic.js                     # YTD hero: legend wrap + light grid + tooltip no-clip + fonts.ready redraw (15 Nov 2026 nice-to-haves)
 run no_chartjs python3 tests/test_no_chartjs.py                              # Chart.js removed (20 Nov 2026): no refs, vendor files gone, BTC + YTD charts draw with chart.umd blocked
 run desk_boll_title python3 tests/test_desk_boll_title.py                     # Desk: Bollinger title follows each symbol's own Weekly/Daily mode (21 Nov 2026)

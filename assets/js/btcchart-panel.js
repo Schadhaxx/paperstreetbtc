@@ -1416,8 +1416,12 @@ var lineRetry=false; /* true after a failed native line draw: a resize or live t
    before drawing candles (the line view is leaving the canvas). */
 function clearLineChart(){lineRetry=false;lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;cancelNativeResize();}
 /* Failed native line draw (no fallback library): clear the line state but
-   keep a pending retry so the next resize or live tick draws again. */
-function lineFail(){lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;lineRetry=true;}
+   keep a pending retry so the next resize or live tick draws again.
+   Stage 2 analytics (27 Nov 2026): report the failure once per lineFail
+   call through the ps-err.js hook, guarded so a missing hook can never
+   break the draw. The hook's own rate limit (5/load, 10 s apart) stops
+   resize retries from flooding the Worker. */
+function lineFail(){lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;window.__BTC_LINE_LAYOUT=null;window.__BTC_LINE_HOVER=-1;lineRetry=true;try{if(typeof window.__psErr==='function'){var d=null;try{d=window.__BTC_DRAWERR;}catch(_){}window.__psErr('lineFail',d&&d.msg?d.msg:'native line draw failed','btcchart-panel.js',0);}}catch(_){}}
 /* F1: redraw the native line at the current size (Chart.js responsive:true
    replacement — flag F4). No-op unless the native line is showing or a
    failed line draw is waiting for a retry. */
