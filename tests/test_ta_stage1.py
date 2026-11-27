@@ -141,12 +141,19 @@ def main():
             pg.click('#bcRgs button[data-r="5Y"]'); pg.wait_for_timeout(900)
             chk('clock 390 dark: 5Y pill disabled, says Line', pg.evaluate("document.getElementById('taTyp').disabled && document.getElementById('taTyp').textContent.trim().startsWith('Line')"))
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(1200)
-            # Item 17 (cleanup rebase, 21 Nov 2026): a range switch keeps the
-            # chart type — the viewer was in candles on 1M, 5Y forced line
-            # (no candles there), and returning to 1D restores the remembered
-            # candle type at its finest size (1H). The old expectation here
-            # (Line) predates item 17, when a range switch never touched CT.
-            chk('clock 390 dark: back to 1D restores 1H candles (item 17)', pg.inner_text('#taTyp').strip().startswith('1H candles'))
+            # Must-fix (27 Nov 2026) supersedes item 17's restore: the type
+            # only carries when the candle view is actually active
+            # (candViewActive). The viewer was in candles on 1M, 5Y forced
+            # line (no candles there), and on 5Y the candle view is NOT
+            # active — so returning to 1D stays Line (CT was 'line': the
+            # viewer picked Line on 1D before the candle ranges). The old
+            # expectation (1H candles) was the leftover-RGCT memory the
+            # must-fix removes.
+            chk('clock 390 dark: back to 1D stays Line (must-fix 27 Nov)', pg.inner_text('#taTyp').strip().startswith('Line'))
+            # And the reported bug itself: 1D Line with leftover RGCT must
+            # open the next range in line, not candles.
+            pg.click('#bcRgs button[data-r="1W"]'); pg.wait_for_timeout(900)
+            chk('clock 390 dark: 1D Line opens 1W in Line (must-fix 27 Nov)', pg.inner_text('#taTyp').strip().startswith('Line'))
             chk('clock 390 dark: no console errors', not errs, '; '.join(errs[:3]))
         except Exception as e:
             chk('clock 390 dark', False, str(e)[:200])

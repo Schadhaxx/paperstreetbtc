@@ -1025,8 +1025,8 @@ var taLoaded=false;
 function loadTA(){
   if(taLoaded)return;taLoaded=true;
   try{
-    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta6');document.head.appendChild(l);
-    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta6');
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta9');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta9');
     s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
     s.onerror=function(){taLoaded=false;};
     document.head.appendChild(s);
@@ -1059,15 +1059,20 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
   dlg.addEventListener('click',function(e){if(!candViewActive())return;if(e.target.closest('canvas,button,a'))return;dismissCandInfo();});
   $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){
     /* Item 17: a range switch keeps the chart type — a candle viewer stays
-       in candles, a line viewer stays in line, both ways. RGCT/CT hold the
-       viewer's last type choice in each view, so they are the memory that
-       survives a trip through a no-candle range (5Y/10Y/Max): switching
-       back to a candle range restores candles. On landing in candles the
-       new range opens on its FINEST candle size (1D 1H, 1W 4H, 1M Daily,
-       3M/6M/YTD/1Y Weekly); RGSEEN is marked so drawRange's first-visit
-       rule does not clobber that with the coarsest default. The existing
-       data-failure fallback to line (fallback() in drawRange) is untouched. */
-    var wasCandles=RGCT==='candles'||CT!=='line';
+       in candles, a line viewer stays in line, both ways. Must-fix
+       (27 Nov 2026): the carry test is candViewActive(), the actually
+       active view — the leftover RGCT/CT memory must NOT carry the type,
+       or 1D Line opens the next range in candles. A trip through a
+       no-candle range (5Y/10Y/Max) is a line view, so switching back
+       does not restore candles. The line branch below also clears RGCT
+       on a candle range: without that the leftover RGCT='candles' would
+       still route draw() to candles even with the carry test fixed.
+       On landing in candles the new range opens on its FINEST candle
+       size (1D 1H, 1W 4H, 1M Daily, 3M/6M/YTD/1Y Weekly); RGSEEN is
+       marked so drawRange's first-visit rule does not clobber that with
+       the coarsest default. The existing data-failure fallback to line
+       (fallback() in drawRange) is untouched. */
+    var wasCandles=candViewActive();
     var oldRng=rng;
     rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;
     /* Re-clicking the range already shown changes nothing (a redundant
@@ -1076,9 +1081,12 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
     if(wasCandles){
       if(rng==='1D'){CT='1h';}
       else if(CANDLE_RANGES.indexOf(rng)>=0){RGCT='candles';RGGRAN=finestGran(rng);RGSEEN[rng]=true;}
-      /* 5Y/10Y/Max: no candles — draw() routes to line; RGCT/CT keep the
-         remembered type so switching back restores candles. */
+      /* 5Y/10Y/Max: no candles — draw() routes to line. RGCT/CT are left
+         alone here (they belong to the range/1D views), but the next
+         switch re-tests candViewActive(), so the 5Y line view itself
+         never restores candles (must-fix, 27 Nov 2026). */
     }else{
+      if(CANDLE_RANGES.indexOf(rng)>=0){RGCT='line';}
       RGGRAN=defaultGran(rng);
     }
   }else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
