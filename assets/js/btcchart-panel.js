@@ -182,6 +182,8 @@ function drawCandles1D(candles,label,per){
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
+  try{if(window.__BTTA&&window.__BTTA.ovExpandRange){var _ovC=window.__BTTA.ovExpandRange(window.__BCTA.state(),'candles-1d',candles.map(function(k){return k.c;}),lo,hi);if(_ovC&&isFinite(_ovC.lo)&&isFinite(_ovC.hi)&&_ovC.hi>_ovC.lo){var _spC=_ovC.hi-_ovC.lo;if(_ovC.lo<lo)lo=_ovC.lo-_spC*0.02;if(_ovC.hi>hi)hi=_ovC.hi+_spC*0.02;}}}catch(e){}
+  if(lo<0)lo=0; /* price axis never below zero (item 8) */
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   /* TA Stage 1, candle inset (item 1): half a slot at each end, so the first
      and last candles sit fully inside the plot instead of on its edges.
@@ -190,7 +192,7 @@ function drawCandles1D(candles,label,per){
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
-  ctx.textAlign='center';CANDGEOM=[];drawCandles1D._lastTx=null;
+  ctx.textAlign='center';CANDGEOM=[];drawCandles1D._lastTx=null;var _xLab=[];
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
@@ -204,7 +206,7 @@ function drawCandles1D(candles,label,per){
     var phoneW=W<=640;
     var step=phoneW?Math.max(1,Math.ceil(candles.length/4)):Math.max(1,Math.floor(candles.length/6));
     if(i%step===0&&x>L+32&&x<W-R-32){
-      var _prevX=drawCandles1D._lastTx;if(_prevX==null||x-_prevX>=62){ctx.fillText(etTime(k.t),x,H-8);drawCandles1D._lastTx=x;}
+      var _prevX=drawCandles1D._lastTx;if(_prevX==null||x-_prevX>=62){ctx.fillStyle=psC('#9aa6bc','#475569');ctx.fillText(etTime(k.t),x,H-8);drawCandles1D._lastTx=x;_xLab.push(etTime(k.t));}
     }
     var prev=candles[i-1],dayChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
     if(dayChange){
@@ -224,6 +226,7 @@ function drawCandles1D(candles,label,per){
      draw the overlays — here, not at the call site, so hover redraws
      (redrawCandles) repaint the overlays too. */
   TAGEOM={kind:'candles-1d',xs:CANDGEOM.map(function(g){return g.x;}),yFor:Y,log:false,closes:candles.map(function(k){return k.c;}),times:candles.map(function(k){return k.t;}),n:candles.length,W:W,H:H,pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih};
+  window.__BTC_CANDLE_LAYOUT={kind:'candles-1d',lo:lo,hi:hi,yLabels:[0,0.33,0.66,1].map(function(f){return lo+(hi-lo)*f;}),xLabels:_xLab};
   taAfterDraw('candles-1d');
   /* interaction listeners, attached once (shared with the range candle view) */
   bindCandListeners(c);
@@ -406,6 +409,8 @@ function drawCandlesRange(){
   ctx.clearRect(0,0,W,H);
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
+  try{if(window.__BTTA&&window.__BTTA.ovExpandRange){var _ovR=window.__BTTA.ovExpandRange(window.__BCTA.state(),'candles-range',candles.map(function(k){return k.c;}),lo,hi);if(_ovR&&isFinite(_ovR.lo)&&isFinite(_ovR.hi)&&_ovR.hi>_ovR.lo){var _spR=_ovR.hi-_ovR.lo;if(_ovR.lo<lo)lo=_ovR.lo-_spR*0.02;if(_ovR.hi>hi)hi=_ovR.hi+_spR*0.02;}}}catch(e){}
+  if(lo<0)lo=0; /* price axis never below zero (item 8) */
   var L=62,T=18,B=44;
   /* TA Stage 1, CAD live-tag fix (item 8): the LIVE tag was sized at USD width
      (R=78), so in CAD the wider tag ran off the canvas edge. Measure the tag
@@ -423,7 +428,7 @@ function drawCandlesRange(){
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];
-  var lastTx=null,labIdx=rangeLabelIndices(candles.length,iw);
+  var lastTx=null,lastLab=null,labIdx=rangeLabelIndices(candles.length,iw),_xLab=[];
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
@@ -437,9 +442,14 @@ function drawCandlesRange(){
        separate last-candle label on a second row is gone: the last candle
        is in this row, so it is no longer skipped by its own x test. */
     if(labIdx.indexOf(i)>=0){
-      var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});
+      /* Long ranges show the year (5Y/10Y month-day labels repeat and
+         carry no year); yearly granularity is the year alone. A label
+         is drawn once per text — the 1W 4H step lands 2-3 times on the
+         same date, so repeats are skipped, not drawn twice. */
+      var _dt=new Date(k.t),_long=/^(5Y|10Y|Max)$/.test(rng);
+      var md=_long?(CANDGRAN==='yearly'?String(_dt.getUTCFullYear()):_dt.toLocaleDateString('en-US',{timeZone:'UTC',month:'short'})+" '"+String(_dt.getUTCFullYear()).slice(2)):new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});
       var dx=Math.max(24,Math.min(W-24,x));
-      if(lastTx==null||dx-lastTx>=56){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastTx=dx;}
+      if(md!==lastLab&&(lastTx==null||dx-lastTx>=56)){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastTx=dx;lastLab=md;_xLab.push(md);}
     }
   });
   if(typeof RGLIVE!=='undefined'&&RGLIVE&&live.usd!=null&&candles.length){
@@ -468,6 +478,7 @@ function drawCandlesRange(){
      draw the overlays — here, not at the call site, so hover redraws
      (redrawCandles) repaint the overlays too. */
   TAGEOM={kind:'candles-range',xs:CANDGEOM.map(function(g){return g.x;}),yFor:Y,log:false,closes:candles.map(function(k){return k.c;}),times:candles.map(function(k){return k.t;}),n:candles.length,W:W,H:H,pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih};
+  window.__BTC_CANDLE_LAYOUT={kind:'candles-range',lo:lo,hi:hi,yLabels:[0,0.33,0.66,1].map(function(f){return lo+(hi-lo)*f;}),xLabels:_xLab};
   taAfterDraw('candles-range');
   bindCandListeners(c);
   return true;
@@ -981,14 +992,16 @@ function syncTypePill(){
   else{lab=RGGRAN==='4h'?'4H candles':(RGGRAN==='daily'?'Candles \u00b7 Daily':RGGRAN==='weekly'?'Candles \u00b7 Weekly':RGGRAN==='yearly'?'Candles \u00b7 Yearly':'Candles \u00b7 Monthly');}
   var s=b.querySelector('span');if(s)s.textContent=lab;
   b.disabled=dis;b.setAttribute('aria-disabled',dis?'true':'false');
-  b.setAttribute('aria-label','Chart type: '+lab);
+  b.setAttribute('aria-label','Chart type: '+lab+(dis?' ('+rng+' is Line only)':''));
+  if(dis)b.setAttribute('title',rng+' is Line only. Candles resume on shorter ranges.');
+  else b.removeAttribute('title');
 }
 var taLoaded=false;
 function loadTA(){
   if(taLoaded)return;taLoaded=true;
   try{
-    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta16');document.head.appendChild(l);
-    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta16');
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta17');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta17');
     s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
     s.onerror=function(){taLoaded=false;};
     document.head.appendChild(s);
@@ -1026,7 +1039,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
        the type over: a candles view stays candles, a line view stays
        line. RGGRAN still resets to the new range's default (1W 4H is the
        sensible size for a 1D 4H carry; 1D 1H has no 1W equivalent). */
-    var wasCandles=candViewActive(),wasGran=RGGRAN;
+    var wasCandles=candViewActive()||(/^(5Y|10Y|Max)$/.test(rng)&&RGCT==='candles'),wasGran=RGGRAN;
     rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);
     if(rng==='1D'){if(wasCandles&&CT==='line')CT=(wasGran==='4h')?'4h':last1DCT;else if(!wasCandles)CT='line';}
     else{if(wasCandles)RGCT='candles';else RGCT='line';}
@@ -1068,6 +1081,7 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   var mpc=M&&m0?(M[n-1]/m0-1)*100:null;
   $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · from '+d[0][0]+' ('+pa+')'+cadTag();
   $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(LOG?' Log scale.':'');
+  if(rng==='Max'&&RGCT==='candles'){var _nt=$('bcNt');if(_nt)_nt.textContent+=' Max is Line only. Candles resume on shorter ranges.';}
   /* Native range line (Chart.js removed 20 Nov 2026; no fallback library). */
   var nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG});lineDrawn=nativeOK;
   if(nativeOK)lineRetry=false;else lineFail();
@@ -1373,6 +1387,9 @@ function draw1DNative(pts){
     var _tlR=null;
     try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR=window.__BTTA.tlExpandRange(window.__BCTA.state(),vals[vals.length-1],pts[pts.length-1].t,lo,hi);}catch(e){}
     if(_tlR&&isFinite(_tlR.lo)&&isFinite(_tlR.hi)&&_tlR.hi>_tlR.lo){lo=_tlR.lo;hi=_tlR.hi;}
+    var _ovR=null;
+    try{if(window.__BTTA&&window.__BTTA.ovExpandRange)_ovR=window.__BTTA.ovExpandRange(window.__BCTA.state(),'1d-line',vals,lo,hi);}catch(e){}
+    if(_ovR&&isFinite(_ovR.lo)&&isFinite(_ovR.hi)&&_ovR.hi>_ovR.lo){lo=_ovR.lo;hi=_ovR.hi;}
     /* No explicit pad: Chart.js does not pad the data range — its nice
        ticks provide the padding. An 8% pad (the candle pattern) would
        extend the axis below Chart.js (e.g. $74k instead of $75k). */
@@ -1449,7 +1466,7 @@ function yTickDaily(v,sx,log){
     var q=v-100;return (q>0?'+':'')+(Math.abs(q)>=1000?Math.round(q).toLocaleString('en-US'):Math.round(q))+'%';
   }
   if(log){var l=Math.log10(v);if(Math.abs(l-Math.round(l))>1e-6)return null;}
-  var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);
+  var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv).toLocaleString('en-US');
 }
 function drawDailyTooltip(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH){
   /* Tooltip content = the Chart.js drawDaily tooltip (title: 'Now (live) · date'
@@ -1560,6 +1577,14 @@ function drawDailyNative(d,cmp){
         try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR2=window.__BTTA.tlExpandRange(window.__BCTA.state(),d[d.length-1][1],Date.parse(d[d.length-1][0]+'T00:00:00Z'),lo,hi);}catch(e){}
         if(_tlR2&&isFinite(_tlR2.lo)&&isFinite(_tlR2.hi)&&_tlR2.hi>_tlR2.lo){lo=_tlR2.lo;hi=_tlR2.hi;}
       }
+      var _ovR2=null;
+      try{if(window.__BTTA&&window.__BTTA.ovExpandRange)_ovR2=window.__BTTA.ovExpandRange(window.__BCTA.state(),'daily-line',d.map(function(p){return p[1];}),lo,hi);}catch(e){}
+      if(_ovR2&&isFinite(_ovR2.lo)&&isFinite(_ovR2.hi)&&_ovR2.hi>_ovR2.lo){lo=_ovR2.lo;hi=_ovR2.hi;}
+      /* Price axis never below zero: the Max Bollinger band dips to -$3
+         on the earliest (near-$0) closes, and the expansion above would
+         otherwise drag the floor to -$20,000. Compare (% axes) may go
+         negative, so this clamps the price axis only. */
+      if(!sx&&lo<0)lo=0;
       var ticks=nativeNiceTicks(lo,hi,ih);
       if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
       yTicks=ticks;
@@ -1600,17 +1625,26 @@ function drawDailyNative(d,cmp){
       ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(L+iw,y);ctx.stroke();
       ctx.fillText(s,L-6,y);
     });
-    /* X labels: Chart.js autoSkip step (ceil(n/maxTicksLimit), 7 desktop /
-       5 phone); the callback shows the year for n>400, else month-day. */
+    /* X labels: month-day for n<=400 (Chart.js autoSkip step,
+       ceil(n/maxTicksLimit), 7 desktop / 5 phone). For n>400 one label
+       per calendar year, at the first point of each year, so the years
+       are evenly spaced and none is skipped or repeated (a fixed step
+       lands twice in one year on 5Y and skips years on 10Y). */
     var maxX=isPhone()?5:7,step=Math.max(1,Math.ceil(n/maxX)),xIdx=[];
-    for(var i=0;i<n;i+=step)xIdx.push(i);
     var lab=d.map(function(p){return p[0];});
+    if(n>400){
+      var _lastYr='';
+      for(var i=0;i<n;i++){var _yr=lab[i].slice(0,4);if(_yr!==_lastYr){xIdx.push(i);_lastYr=_yr;}}
+    }else{
+      for(var i=0;i<n;i+=step)xIdx.push(i);
+    }
     xIdx.forEach(function(i){
       var x=X(i);
       ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
     });
     ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle=psC('#9aa6bc','#475569');
-    nativeXLabels(ctx,xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);}),xIdx.map(function(i){return X(i);}),L,R,W,T+ih+6);
+    var xLab=xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);});
+    nativeXLabels(ctx,xLab,xIdx.map(function(i){return X(i);}),L,R,W,T+ih+6);
     /* Trace a dataset's line. spanGaps bridges nulls into one path
        (S&P, MSTR); without it the line breaks at nulls (Gold). */
     function traceDS(ys,spanGaps){
@@ -1662,7 +1696,7 @@ function drawDailyNative(d,cmp){
     }
     linePts={d:d,cmp:cmp};
     lineGeom={kind:'daily',pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,n:n,xs:xs,ys:btcYs,ysSPX:spxYs,ysGLD:gldYs,ysMSTR:mstrYs,hasLive:hasLive,sx:sx,log:LOG};
-    window.__BTC_LINE_LAYOUT={kind:'daily',w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:drawnY,xLabels:xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);}),hasLive:hasLive,livePrice:hasLive?d[n-1][1]:null,sx:sx,log:LOG};
+    window.__BTC_LINE_LAYOUT={kind:'daily',w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:drawnY,xLabels:xLab,hasLive:hasLive,livePrice:hasLive?d[n-1][1]:null,sx:sx,log:LOG};
     window.__BTC_LINE_HOVER=lineHover;
     nativeTooltipBind(c);
     /* Redraw once Inter loads, so canvas text sharpens (YTD backup pattern). */
