@@ -108,6 +108,23 @@ chk('last session fresh Monday before the open', isFresh(doc('2026-11-20', '2026
 chk('last session stale Monday after the open', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 23, 15, 0)).ok === false);
 /* Last session: Tue 24 Nov, asOf Fri 4:30 PM (4 days old) -> stale. */
 chk('last session stale over 4 days', isFresh(doc('2026-11-20', '2026-11-20T21:30:00Z'), Date.UTC(2026, 10, 24, 15, 0)).ok === false);
+/* Holiday (must-fix 27 Nov 2026): Thu 26 Nov is Thanksgiving — no
+   session today, so the Wed 25 Nov file stays fresh all day, including
+   after 9:30 AM ET (before the fix it went stale at the open and 1D
+   compare stayed off). */
+chk('last session fresh on a holiday after the open', isFresh(doc('2026-11-25', '2026-11-25T21:30:00Z'), Date.UTC(2026, 10, 26, 20, 0)).ok === true);
+chk('last session fresh on a holiday before the open', isFresh(doc('2026-11-25', '2026-11-25T21:30:00Z'), Date.UTC(2026, 10, 26, 14, 0)).ok === true);
+/* Early close (must-fix 27 Nov 2026): Fri 27 Nov closes 1:00 PM ET,
+   so the close end is 1:15 PM ET (18:15 UTC, EST), not 4:15 PM. */
+chk('sessionCloseEndMs early close is 18:15 UTC', sessionCloseEndMs('2026-11-27') === Date.UTC(2026, 10, 27, 18, 15));
+/* Early-close live session: Fri 27 Nov noon ET, asOf 10 min old -> fresh. */
+chk('early-close live session fresh under 30 min', isFresh(doc('2026-11-27', '2026-11-27T16:50:00Z'), Date.UTC(2026, 10, 27, 17, 0)).ok === true);
+/* Early-close completed session: Fri 27 Nov 2 PM ET, asOf the 1:15 PM
+   final tick -> fresh (before the fix the file went stale from ~1:45 PM
+   until 4:15 PM, because the close end was 4:15 PM and the 30-min rule
+   kept failing on the final tick). */
+chk('early-close completed session fresh at 2 PM ET', isFresh(doc('2026-11-27', '2026-11-27T18:15:00Z'), Date.UTC(2026, 10, 27, 19, 0)).ok === true);
+chk('early-close completed session fresh at 1:45 PM ET', isFresh(doc('2026-11-27', '2026-11-27T18:15:00Z'), Date.UTC(2026, 10, 27, 18, 45)).ok === true);
 /* Future session -> stale. */
 chk('future session stale', isFresh(doc('2026-11-23', '2026-11-23T14:30:00Z'), Date.UTC(2026, 10, 20, 19, 0)).ok === false);
 /* Bad shapes -> stale. */

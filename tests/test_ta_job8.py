@@ -145,7 +145,7 @@ MEASURE_JS = """() => {
 }"""
 
 COLOURS = {'bb': (167, 139, 250), 'sma20': (244, 114, 182), 'sma50': (251, 191, 36),
-           'sma200': (52, 211, 153), 'ema20': (56, 189, 248), 'ema50': (251, 146, 60),
+           'sma200': (232, 238, 247), 'ema20': (56, 189, 248), 'ema50': (251, 146, 60),
            'ema200': (163, 230, 53), 'tl': (34, 197, 94)}
 
 def colour_count(pg, rgb, sel='#bcC', tol=10):
@@ -289,7 +289,7 @@ def main():
             m['fvBB'] == 0 and (m['fv'] or {}).get('sma200') == 0 and m['fvRSI'] == 0,
             'fvBB=%s fvSMA200=%s fvRSI=%s' % (m['fvBB'], (m['fv'] or {}).get('sma200'), m['fvRSI']))
         chk('1W Line: Bollinger violet draws', m['px']['bb'] > 0, 'px=%d' % m['px']['bb'])
-        chk('1W Line: SMA 200 green draws (a real line, not edge pixels)', m['px']['sma200'] >= 50, 'px=%d' % m['px']['sma200'])
+        chk('1W Line: SMA 200 white draws (a real line, not edge pixels)', m['px']['sma200'] >= 50, 'px=%d' % m['px']['sma200'])
         chk('1W Line: EMA 20 draws', m['px']['ema20'] > 0, 'px=%d' % m['px']['ema20'])
         chk('1W Line: trendlines live with lines', (m['tl'] or {}).get('status') == 'live' and (m['tl'] or {}).get('lines', 0) > 0, str(m['tl']))
         chk('1W Line: RSI strip visible with a live value', (m['rsiStrip'] or {}).get('hidden') is False and (m['rsiStrip'] or {}).get('header') not in (None, '', '—'), str(m['rsiStrip']))
@@ -310,8 +310,8 @@ def main():
         chk('1W 4H: Bollinger + SMA 200 + RSI valid from index 0',
             m['fvBB'] == 0 and (m['fv'] or {}).get('sma200') == 0 and m['fvRSI'] == 0)
         chk('1W 4H: Bollinger violet draws', m['px']['bb'] > 0, 'px=%d' % m['px']['bb'])
-        s200 = colour_span(pg, (52, 211, 153))
-        chk('1W 4H: SMA 200 green draws (a real line across the chart, Job 12)',
+        s200 = colour_span(pg, (232, 238, 247))
+        chk('1W 4H: SMA 200 white draws (a real line across the chart, Job 12)',
             s200.get('count', 0) > 0 and s200.get('maxX', 0) - s200.get('minX', 0) >= 200,
             'span=%s' % s200)
         chk('1W 4H: trendlines live with lines (4h + higher 1d)', (m['tl'] or {}).get('status') == 'live' and (m['tl'] or {}).get('lines', 0) >= 4, str(m['tl']))
@@ -340,7 +340,7 @@ def main():
         m = measure(pg, '6M Line')
         chk('6M Line: warm-up present (warm=250)', m['warm'] == 250, 'warm=%s' % m['warm'])
         chk('6M Line: SMA 200 valid from index 0', (m['fv'] or {}).get('sma200') == 0, 'fv=%s' % (m['fv'] or {}).get('sma200'))
-        chk('6M Line: SMA 200 green draws (a real line)', m['px']['sma200'] >= 50, 'px=%d' % m['px']['sma200'])
+        chk('6M Line: SMA 200 white draws (a real line)', m['px']['sma200'] >= 50, 'px=%d' % m['px']['sma200'])
         sma200_check(m, '6M Line')
         ensure_panel(pg)
         chk('6M Line: SMA 200 chip enabled (ungated — Job 8 decision)',
@@ -354,7 +354,7 @@ def main():
         m = measure(pg, '6M weekly')
         chk('6M weekly: warm-up present (warm=250)', m['warm'] == 250, 'warm=%s' % m['warm'])
         chk('6M weekly: SMA 200 valid from index 0', (m['fv'] or {}).get('sma200') == 0, 'fv=%s' % (m['fv'] or {}).get('sma200'))
-        chk('6M weekly: SMA 200 green draws (a real line)', m['px']['sma200'] >= 50, 'px=%d' % m['px']['sma200'])
+        chk('6M weekly: SMA 200 white draws (a real line)', m['px']['sma200'] >= 50, 'px=%d' % m['px']['sma200'])
         sma200_check(m, '6M weekly')
 
         # ---- 6M Candles monthly: the 200s can never compute ----

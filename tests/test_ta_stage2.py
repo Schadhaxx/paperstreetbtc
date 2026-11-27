@@ -272,8 +272,8 @@ def main():
             tipS = pg.evaluate("window.__BCTA.taTip('daily-line', 20)")
             chk('clock 390 dark: tooltip lists all three MAs + BB + RSI (Job 3)', tipS and len(tipS) == 5 and 'SMA 20' in tipS[0]['t'] and 'SMA 50' in tipS[1]['t'] and 'SMA 200' in tipS[2]['t'] and 'BB 20' in tipS[3]['t'] and 'RSI' in tipS[4]['t'], str(tipS)[:200])
             chk('clock 390 dark: pill count badge 5 (BB + 3 MAs + RSI)', '5' in pg.inner_text('#taPill'))
-            # dark theme: SMA 20 pink #f472b6, SMA 50 amber #fbbf24, SMA 200 green #34d399
-            cols = ma_colours_present(pg, [[244, 114, 182], [251, 191, 36], [52, 211, 153]])
+            # dark theme: SMA 20 pink #f472b6, SMA 50 amber #fbbf24, SMA 200 near-white #e8eef7
+            cols = ma_colours_present(pg, [[244, 114, 182], [251, 191, 36], [232, 238, 247]])
             chk('clock 390 dark: all three MA colours drawn', cols == [True, True, True], str(cols))
             pg.screenshot(path=str(shots / 'clock-390-dark-ta-all-on.png'), animations='disabled')
             # EMA stacks alongside SMA: add EMA 50, both still match Python
@@ -321,17 +321,17 @@ def main():
             chk('clock 1440 light: first visible point valid', dbg and dbg['firstValid'] == {'ma': 0, 'bb': 0, 'rsi': 0}, dbg and dbg['firstValid'])
             check_values('clock 1440 light: 1Y values match Python', dbg)
             pg.screenshot(path=str(shots / 'clock-1440-light-ta-all-on-1y.png'), animations='disabled')
-            # comparison on: overlays hide, note shows, strip hides
+            # comparison on: plot overlays hide, note shows, RSI strip still shows
             pg.click('#bcSpx'); pg.wait_for_timeout(900)
             chk('clock 1440 light: compare note shows in panel', pg.evaluate("!document.querySelector('.ta-panel .ta-cmp').hidden"))
-            chk('clock 1440 light: RSI strip hides on compare', pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('clock 1440 light: RSI strip still shows on compare (must-fix 27 Nov 2026)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             pg.click('#bcSpx'); pg.wait_for_timeout(900)
             chk('clock 1440 light: compare note hides again', pg.evaluate("document.querySelector('.ta-panel .ta-cmp').hidden"))
             # must-fix: cmp() must clear when leaving a compare-on range
             # for 1D or a candle view, even though the chip stays on
             pg.click('#bcSpx'); pg.wait_for_timeout(900)
             chk('clock 1440 light: compare note shows at 1Y', pg.evaluate("!document.querySelector('.ta-panel .ta-cmp').hidden"))
-            chk('clock 1440 light: RSI strip hides on compare at 1Y', pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('clock 1440 light: RSI strip still shows on compare at 1Y (must-fix 27 Nov 2026)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             # (a) switch to 1D without turning Spx off
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(900)
             chk('clock 1440 light: 1D warm-up lands', wait_warm(pg, 200))

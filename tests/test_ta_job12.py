@@ -194,7 +194,7 @@ def pick_size(pg, size):
     pg.click('.ta-menu [data-ta-size="%s"]' % size); pg.wait_for_timeout(1200)
 
 BTC = (34, 211, 238); SPX = (196, 181, 253); GLD = (250, 204, 21); MSTR = (249, 115, 22)
-BB = (167, 139, 250); SMA20 = (244, 114, 182); SMA50 = (251, 191, 36); SMA200 = (52, 211, 153)
+BB = (167, 139, 250); SMA20 = (244, 114, 182); SMA50 = (251, 191, 36); SMA200 = (232, 238, 247)
 EMA20 = (56, 189, 248); EMA50 = (251, 146, 60); EMA200 = (163, 230, 53)
 
 def main():
@@ -228,6 +228,17 @@ def main():
         nonempty = [x for x in xl if x]
         chk('5Y: no duplicate year labels', len(set(nonempty)) == len(nonempty), 'xLabels=%s' % xl)
         chk('5Y: every year 2021-2026 still labelled once', sorted(set(nonempty)) == ['2021', '2022', '2023', '2024', '2025', '2026'], 'xLabels=%s' % xl)
+
+        # ---- Item 4b (must-fix 27 Nov 2026): 10Y Line — every year once, floor >= 0 ----
+        print('--- Item 4b: 10Y Line year labels + floor ---')
+        go_range(pg, '10Y')
+        L = layout(pg)
+        xl = (L['layout'] or {}).get('xLabels') or []
+        nonempty = [x for x in xl if x]
+        chk('10Y: no duplicate year labels', len(set(nonempty)) == len(nonempty), 'xLabels=%s' % xl)
+        chk('10Y: every year 2016-2026 labelled once', sorted(set(nonempty)) == ['2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'], 'xLabels=%s' % xl)
+        yt = (L['layout'] or {}).get('yTicks') or []
+        chk('10Y: y-axis floor is not negative', bool(yt) and min(yt) >= 0, 'yTicks=%s' % yt)
 
         # ---- Item 1: Max + S&P comparison auto-logs ----
         print('--- Item 1: Max + S&P 500 comparison ---')

@@ -61,7 +61,18 @@ function getIntraday(){
    draw1DNative; the cmp-intraday job (tools/cmp_intraday.py) builds the
    file they consume. */
 var CmpIntraMath = (function () {
-  var OPEN_MIN = 570, CLOSE_MIN = 960, CLOSE_END_MIN = 975; /* 9:30 AM / 4:00 PM / 4:15 PM ET */
+  var OPEN_MIN = 570, CLOSE_MIN = 960, CLOSE_END_MIN = 975, CLOSE_END_EARLY_MIN = 795; /* 9:30 AM / 4:00 PM / 4:15 PM ET / 1:15 PM ET on an early-close day */
+  /* NYSE holidays and early closes (1:00 PM ET) — the SAME lists as
+     tools/stock_weekly.py HOLIDAYS and tools/desk_intraday.py
+     EARLY_CLOSES (and assets/js/et.js HOL/EARLY), 2026-2028. They
+     live here, inside this block, because the node tests extract this
+     block standalone — it cannot read window.ET. Keep the four copies
+     in sync when the lists are extended (the et.js expiry guard in
+     tests/test_et.js is the reminder). */
+  var HOLIDAYS = {'2026-01-01':1,'2026-01-19':1,'2026-02-16':1,'2026-04-03':1,'2026-05-25':1,'2026-06-19':1,'2026-07-03':1,'2026-09-07':1,'2026-11-26':1,'2026-12-25':1,
+    '2027-01-01':1,'2027-01-18':1,'2027-02-15':1,'2027-03-26':1,'2027-05-31':1,'2027-06-18':1,'2027-07-05':1,'2027-09-06':1,'2027-11-25':1,'2027-12-24':1,
+    '2028-01-17':1,'2028-02-21':1,'2028-04-14':1,'2028-05-29':1,'2028-06-19':1,'2028-07-04':1,'2028-09-04':1,'2028-11-23':1,'2028-12-25':1};
+  var EARLY_CLOSES = {'2026-11-27':1,'2026-12-24':1,'2027-11-26':1,'2028-07-03':1,'2028-11-24':1};
   function etParts(ms){
     /* (ET date ISO, minutes after midnight ET). Intl is available in
        the browser and in Node; on any failure fall back to UTC (never
@@ -91,7 +102,9 @@ var CmpIntraMath = (function () {
     }catch(e){ return -5*3600*1000; }
   }
   function sessionOpenMs(dateISO){ return Date.parse(dateISO + 'T00:00:00Z') - etOffsetMs(dateISO) + OPEN_MIN*60*1000; }
-  function sessionCloseEndMs(dateISO){ return Date.parse(dateISO + 'T00:00:00Z') - etOffsetMs(dateISO) + CLOSE_END_MIN*60*1000; }
+  function sessionCloseEndMs(dateISO){ /* 4:15 PM ET, or 1:15 PM ET on an early-close day (the tick that picks up the 1:00 PM bar) */
+    var endMin = EARLY_CLOSES[dateISO] ? CLOSE_END_EARLY_MIN : CLOSE_END_MIN;
+    return Date.parse(dateISO + 'T00:00:00Z') - etOffsetMs(dateISO) + endMin*60*1000; }
   function sessionDateET(nowMs){ return etParts(nowMs).date; }
   function trimToSession(pts, session){
     /* BTC 15-min points inside the session window (9:30 AM-4 PM ET on
@@ -146,11 +159,12 @@ var CmpIntraMath = (function () {
     /* The stale rule (settled in the build; tools/cmp_intraday.py
        documents it too). Returns {ok, reason}. Session == today:
        fresh while the session is open only if asOf is under 30 min
-       old; after 4:15 PM ET the session is complete and the file is
-       final for the day. Session < today: the last session, usable
-       before today's 9:30 AM open (or all day when today has no
-       session — a weekend) and only while asOf is under 4 days old.
-       Anything else (bad shape, future session, old file) is stale. */
+       old; after the close (4:15 PM ET, or 1:15 PM ET on an
+       early-close day) the session is complete and the file is final
+       for the day. Session < today: the last session, usable before
+       today's 9:30 AM open (or all day when today has no session — a
+       weekend OR an NYSE holiday) and only while asOf is under 4 days
+       old. Anything else (bad shape, future session, old file) is stale. */
     if(!doc || doc.v !== 1 || doc.kind !== 'cmp-intraday') return {ok:false, reason:'bad document'};
     if(typeof doc.session !== 'string' || !/^\d{4}-\d\d-\d\d$/.test(doc.session)) return {ok:false, reason:'bad session'};
     var asOf = Date.parse(doc.asOf);
@@ -163,7 +177,10 @@ var CmpIntraMath = (function () {
     }
     if(doc.session < today){
       var wd = new Date(today + 'T12:00:00Z').getUTCDay();
-      var noSessionToday = (wd === 0 || wd === 6);
+      /* No session today: a weekend, or an NYSE holiday — the last
+         session stays usable all day (before, a holiday after the
+         9:30 AM open read as stale and 1D compare stayed off). */
+      var noSessionToday = (wd === 0 || wd === 6 || !!HOLIDAYS[today]);
       if((noSessionToday || nowMs < sessionOpenMs(today)) && nowMs - asOf < 4*86400*1000) return {ok:true, reason:'last session'};
       return {ok:false, reason:'stale: not today and past the open'};
     }
@@ -324,10 +341,14 @@ function drawCandles1D(candles,label,per){
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   /* Job 12: widen the axis for an overlay that runs outside the candle
      range (1W daily: the 200s sat below the visible range and drew
-     nothing), bounded to one span per side. The 2% margin keeps the
-     line off the plot edge — candles have no nice ticks for the
+     nothing), unbounded — the values come from the data. The 2% margin
+     keeps the line off the plot edge — candles have no nice ticks for the
      headroom rule. */
   try{if(window.__BTTA&&window.__BTTA.ovExpandRange){var _ovC=window.__BTTA.ovExpandRange(window.__BCTA.state(),'candles-1d',candles.map(function(k){return k.c;}),lo,hi);if(_ovC&&isFinite(_ovC.lo)&&isFinite(_ovC.hi)&&_ovC.hi>_ovC.lo){var _spC=_ovC.hi-_ovC.lo;if(_ovC.lo<lo)lo=_ovC.lo-_spC*0.02;if(_ovC.hi>hi)hi=_ovC.hi+_spC*0.02;}}}catch(e){}
+  /* Must-fix (27 Nov 2026): a price axis never goes below $0 — the 8%
+     pad (and an overlay expansion) could push lo negative on long
+     ranges (10Y monthly read $-17,147). */
+  if(lo<0)lo=0;
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
   /* TA Stage 1, candle inset (item 1): half a slot at each end, so the first
      and last candles sit fully inside the plot instead of on its edges.
@@ -350,7 +371,10 @@ function drawCandles1D(candles,label,per){
     var phoneW=W<=640;
     var step=phoneW?Math.max(1,Math.ceil(candles.length/4)):Math.max(1,Math.floor(candles.length/6));
     if(i%step===0&&x>L+32&&x<W-R-32){
-      var _prevX=drawCandles1D._lastTx;if(_prevX==null||x-_prevX>=62){ctx.fillText(etTime(k.t),x,H-8);drawCandles1D._lastTx=x;}
+      /* Must-fix (27 Nov 2026): the time row is a neutral slate, like the
+         date row — it used to inherit the candle's green/red fillStyle
+         set two lines earlier for the body. */
+      var _prevX=drawCandles1D._lastTx;if(_prevX==null||x-_prevX>=62){ctx.fillStyle=psC('#9aa6bc','#475569');ctx.fillText(etTime(k.t),x,H-8);drawCandles1D._lastTx=x;}
     }
     var prev=candles[i-1],dayChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
     if(dayChange){
@@ -373,6 +397,7 @@ function drawCandles1D(candles,label,per){
   taAfterDraw('candles-1d');
   /* interaction listeners, attached once (shared with the range candle view) */
   bindCandListeners(c);
+  FALLBACK_NOTE='';
   return true;
 }
 function bindCandListeners(c){
@@ -554,10 +579,14 @@ function drawCandlesRange(){
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   /* Job 12: widen the axis for an overlay that runs outside the candle
      range (1W daily: the 200s sat below the visible range and drew
-     nothing), bounded to one span per side. The 2% margin keeps the
-     line off the plot edge — candles have no nice ticks for the
+     nothing), unbounded — the values come from the data. The 2% margin
+     keeps the line off the plot edge — candles have no nice ticks for the
      headroom rule. */
   try{if(window.__BTTA&&window.__BTTA.ovExpandRange){var _ovR=window.__BTTA.ovExpandRange(window.__BCTA.state(),'candles-range',candles.map(function(k){return k.c;}),lo,hi);if(_ovR&&isFinite(_ovR.lo)&&isFinite(_ovR.hi)&&_ovR.hi>_ovR.lo){var _spR=_ovR.hi-_ovR.lo;if(_ovR.lo<lo)lo=_ovR.lo-_spR*0.02;if(_ovR.hi>hi)hi=_ovR.hi+_spR*0.02;}}}catch(e){}
+  /* Must-fix (27 Nov 2026): a price axis never goes below $0 — the 8%
+     pad (and an overlay expansion) could push lo negative on long
+     ranges (10Y monthly read $-17,147). */
+  if(lo<0)lo=0;
   var L=62,T=18,B=44;
   /* TA Stage 1, CAD live-tag fix (item 8): the LIVE tag was sized at USD width
      (R=78), so in CAD the wider tag ran off the canvas edge. Measure the tag
@@ -575,7 +604,7 @@ function drawCandlesRange(){
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];
-  var lastTx=null,labIdx=rangeLabelIndices(candles.length,iw);
+  var lastTx=null,lastMd=null,labIdx=rangeLabelIndices(candles.length,iw);
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
@@ -587,11 +616,16 @@ function drawCandlesRange(){
        safety net — it now rarely fires, instead of swallowing every label
        after the first, as the old first-plus-month-change rule did. The old
        separate last-candle label on a second row is gone: the last candle
-       is in this row, so it is no longer skipped by its own x test. */
+       is in this row, so it is no longer skipped by its own x test.
+       Must-fix (27 Nov 2026): multi-year ranges print the year
+       ("Nov 20, 21") so labels never repeat, and a date that already
+       drew is skipped — 1W 4H printed each date twice (two 4-hour
+       buckets land on the same day). */
     if(labIdx.indexOf(i)>=0){
-      var md=new Date(k.t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'});
+      var _long=(rng==='5Y'||rng==='10Y'||rng==='Max');
+      var md=new Date(k.t).toLocaleDateString('en-US',_long?{timeZone:'UTC',month:'short',day:'numeric',year:'2-digit'}:{timeZone:'UTC',month:'short',day:'numeric'});
       var dx=Math.max(24,Math.min(W-24,x));
-      if(lastTx==null||dx-lastTx>=56){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastTx=dx;}
+      if(md!==lastMd&&(lastTx==null||dx-lastTx>=56)){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastTx=dx;lastMd=md;}
     }
   });
   if(typeof RGLIVE!=='undefined'&&RGLIVE&&live.usd!=null&&candles.length){
@@ -622,6 +656,7 @@ function drawCandlesRange(){
   TAGEOM={kind:'candles-range',xs:CANDGEOM.map(function(g){return g.x;}),yFor:Y,log:false,closes:candles.map(function(k){return k.c;}),times:candles.map(function(k){return k.t;}),n:candles.length,W:W,H:H,pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih};
   taAfterDraw('candles-range');
   bindCandListeners(c);
+  FALLBACK_NOTE='';
   return true;
 }
 /* Candle ranges, Day 2: extended daily candles for YTD and 1Y.
@@ -743,6 +778,12 @@ function syncCg(){
   var gl=$('bcCgGranLab');if(gl)gl.style.display=candlesOn&&granAllowed.length?'':'none';
   [].forEach.call(cg.querySelectorAll('[data-cggran]'),function(b){var show=candlesOn&&granAllowed.indexOf(b.dataset.cggran)>=0;b.style.display=show?'':'none';b.classList.toggle('on',b.dataset.cggran===RGGRAN);b.setAttribute('aria-pressed',b.dataset.cggran===RGGRAN);});
 }
+/* Must-fix (27 Nov 2026): the reason for a candle→Line fallback, kept
+   across redraws — drawDaily rewrites bcRr/bcNt on every draw, so a
+   one-off append vanished on the next live tick and the reset looked
+   silent. Set by fallback() (and the 1D intraday catch); cleared when
+   the range changes or a candle draw succeeds. */
+var FALLBACK_NOTE='';
 function drawRange(){
   head();
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
@@ -770,17 +811,22 @@ function drawRange(){
   var fallback=function(msg){/* Job 5: the chart falls back to Line here,
     so the type state must say Line too — before, RGCT stayed 'candles'
     while the chart showed Line, and the menu/pill ticks lied about the
-    current type. The user can re-pick Candles to retry the load. */
-    RGCT='line';drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' '+msg;syncCg();};
+    current type. The user can re-pick Candles to retry the load.
+    Must-fix (27 Nov 2026): the reason is stored (FALLBACK_NOTE) and
+    re-appended by drawDaily on every draw, to the note AND to the header
+    (bcRr), which is always in view — the old one-off append to bcNt
+    vanished on the next live tick, and bcNt sits below the fold in the
+    popover, so the reset looked silent. */
+    FALLBACK_NOTE=msg;RGCT='line';drawDaily();syncCg();};
   if(rng==='1W'&&RGGRAN==='4h'){
     if(!CB4H||Date.now()-CB4H_AT>5*60*1000){
-      if(CB4H_ERR){RGGRAN='daily';clearCandState();fallback('Coinbase 4-hour candles unavailable — showing daily closes.');return;}
+      if(CB4H_ERR){RGGRAN='daily';clearCandState();fallback('Coinbase 4-hour candles unavailable — showing daily closes. Re-pick Candles to retry.');return;}
       $('bcRr').textContent='Loading 4-hour candles…';
       load4h().then(function(){if(dlg&&!dlg.hidden&&rng==='1W'&&RGCT==='candles')draw();}).catch(function(){if(dlg&&!dlg.hidden)draw();});
       return;
     }
     var cand4=CB4H.slice();
-    if(cand4.length<2){RGGRAN='daily';clearCandState();fallback('Not enough 4-hour candles — showing daily closes.');return;}
+    if(cand4.length<2){RGGRAN='daily';clearCandState();fallback('Not enough 4-hour candles — showing daily closes. Re-pick Candles to retry.');return;}
     RGCAND=cand4;RGLBL='1W · 4-hour candles';
     var a04=cand4[0].o,b04=cand4[cand4.length-1].c,pc04=(b04/a04-1)*100;
     $('bcRr').textContent='1W: BTC '+((pc04>=0?'+':'')+pc04.toFixed(2)+'%')+' · '+cand4.length+' 4-hour candles, from '+new Date(cand4[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a04)+')';
@@ -816,14 +862,14 @@ function drawRange(){
     else if(rng==='Max'){var firstDay=(DATA&&DATA.length)?DATA[0][0]:'2010-08-18';need=Math.ceil((Date.now()-Date.parse(firstDay+'T00:00:00Z'))/864e5);}
     else need=DAYS[rng];
     if(!CBEXT||CBEXT_DAYS<need){
-      if(CBEXT_ERR){fallback('Extended Coinbase candles unavailable — showing daily closes.');return;}
+      if(CBEXT_ERR){fallback('Extended Coinbase candles unavailable — showing daily closes. Re-pick Candles to retry.');return;}
       loadExtendedDaily(need).then(function(){if(dlg&&!dlg.hidden&&(rng==='YTD'||rng==='1Y'||rng==='5Y'||rng==='10Y'||rng==='Max')&&RGCT==='candles')draw();}).catch(function(){if(dlg&&!dlg.hidden)draw();});
       $('bcRr').textContent='Loading '+(rng==='YTD'?'year-to-date':rng==='1Y'?'1-year':rng==='5Y'?'5-year':rng==='10Y'?'10-year':'all-time')+' candles…';return;
     }
     cut=rng==='YTD'?Date.UTC(new Date().getUTCFullYear(),0,1):rng==='Max'?0:Date.now()-need*864e5;
     win=CBEXT.filter(function(p){return p.t>=cut;});
   }else{
-    if(!CBDAILY||CBDAILY.length<2){fallback('Coinbase daily candles unavailable — showing daily closes.');return;}
+    if(!CBDAILY||CBDAILY.length<2){fallback('Coinbase daily candles unavailable — showing daily closes. Re-pick Candles to retry.');return;}
     var days=rng==='1W'?7:(rng==='1M'?31:(rng==='3M'?92:183));
     cut=Date.now()-days*864e5;
     win=CBDAILY.filter(function(p){return p.t>=cut;});
@@ -831,7 +877,7 @@ function drawRange(){
   /* Rollover fix: page open past UTC midnight -> fetch the new day(s). */
   if(rollStale((rng==='YTD'||rng==='1Y'||rng==='5Y'||rng==='10Y'||rng==='Max')?CBEXT:CBDAILY))rollRefetch();
   var cand=aggDailyCandles(win,RGGRAN);
-  if(cand.length<2){fallback('Not enough daily candles — showing daily closes.');return;}
+  if(cand.length<2){fallback('Not enough daily candles — showing daily closes. Re-pick Candles to retry.');return;}
   // EXPERIMENTAL LIVE FEEL: when the last bucket IS the current calendar
   // bucket (daily: today's bar; weekly: this calendar week; monthly: this
   // calendar month), its close follows the live CoinGecko price and its
@@ -908,7 +954,7 @@ function draw1D(){
   var cg1=$('bcCg');if(cg1)syncCg();
   if(!INTRA){
     $('bcRr').textContent='Loading intraday…';
-    getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){if(dlg&&!dlg.hidden){/* Job 5: intraday failed, the chart falls back to Line — the type state must say Line too, so the menu/pill ticks match the drawing. */CT='line';drawDaily();var nt=$('bcNt');if(nt)nt.textContent+=' Intraday unavailable — showing daily closes.';}});
+    getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){if(dlg&&!dlg.hidden){/* Job 5: intraday failed, the chart falls back to Line — the type state must say Line too, so the menu/pill ticks match the drawing. Must-fix (27 Nov 2026): the reason is stored (FALLBACK_NOTE) and re-appended by drawDaily, so it survives the next redraw. */CT='line';FALLBACK_NOTE='Intraday unavailable — showing daily closes.';drawDaily();}});
     return;
   }
   if(Date.now()-INTRA_AT>5*60*1000&&!intraP){getIntraday().then(function(){if(dlg&&!dlg.hidden&&rng==='1D')draw1D();}).catch(function(){});}
@@ -1259,7 +1305,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
        line. RGGRAN still resets to the new range's default (1W 4H is the
        sensible size for a 1D 4H carry; 1D 1H has no 1W equivalent). */
     var wasCandles=candViewActive(),wasGran=RGGRAN;
-    rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);
+    rng=b.dataset.r;FALLBACK_NOTE='';if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);
     if(rng==='1D'){if(wasCandles&&CT==='line')CT=(wasGran==='4h')?'4h':last1DCT;else if(!wasCandles)CT='line';}
     else{if(wasCandles)RGCT='candles';else RGCT='line';}
   }else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
@@ -1319,8 +1365,8 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
     if(isFinite(_clo)&&_clo>0&&isFinite(_chi)&&_chi/_clo>50){effLog=true;_autoLog=!LOG;}
   }
   [].forEach.call($('bcSc').children,function(b){var on=(b.dataset.s==='log')===effLog;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);if(b.dataset.s==='lin')b.disabled=_autoLog;});
-  $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · from '+d[0][0]+' ('+pa+')'+cadTag();
-  $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(effLog?' Log scale.':'');
+  $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · from '+d[0][0]+' ('+pa+')'+cadTag()+(FALLBACK_NOTE?' · '+FALLBACK_NOTE:'');
+  $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(effLog?' Log scale.':'')+(FALLBACK_NOTE?' '+FALLBACK_NOTE:'');
   /* Native range line (Chart.js removed 20 Nov 2026; no fallback library). */
   var nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:effLog});lineDrawn=nativeOK;
   if(nativeOK)lineRetry=false;else lineFail();
@@ -1675,8 +1721,8 @@ function draw1DNative(pts,cmp){
     try{if(window.__BTTA&&window.__BTTA.tlExpandRange)_tlR=window.__BTTA.tlExpandRange(window.__BCTA.state(),vals[vals.length-1],pts[pts.length-1].t,lo,hi);}catch(e){}
     if(_tlR&&isFinite(_tlR.lo)&&isFinite(_tlR.hi)&&_tlR.hi>_tlR.lo){lo=_tlR.lo;hi=_tlR.hi;}
     /* Job 12: same for the overlays — a Bollinger band or MA line that
-       runs outside the price range widens the axis (bounded, one span
-       per side) instead of being clipped off the plot. */
+       runs outside the price range widens the axis instead of being
+       clipped off the plot. */
     var _ovR=null;
     try{if(window.__BTTA&&window.__BTTA.ovExpandRange)_ovR=window.__BTTA.ovExpandRange(window.__BCTA.state(),'1d-line',vals,lo,hi);}catch(e){}
     if(_ovR&&isFinite(_ovR.lo)&&isFinite(_ovR.hi)&&_ovR.hi>_ovR.lo){lo=_ovR.lo;hi=_ovR.hi;}
@@ -1689,6 +1735,9 @@ function draw1DNative(pts,cmp){
     var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
     var ticks=nativeNiceTicks(lo,hi,ih);
     var _hr=nativeHeadroomTicks(ticks,lo,hi);if(_hr)ticks=_hr.ticks;
+    /* Must-fix (27 Nov 2026): a price axis never goes below $0. A
+       comparison % axis may go negative — it is not a price. */
+    if(!sx){ticks=ticks.filter(function(t){return t>=0;});if(!ticks.length)ticks=[0];}
     if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
     var n=pts.length;
     var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
@@ -1705,7 +1754,7 @@ function draw1DNative(pts,cmp){
       /* Job 10: % change on the axis in compare mode (yTickDaily with
          sx), dollars otherwise — same as drawDailyNative. */
       if(sx){var s=yTickDaily(v,true,false);if(s!=null)ctx.fillText(s,L-6,y);}
-      else{var vv=curVal(v);ctx.fillText(vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv),L-6,y);}
+      else{var vv=curVal(v);ctx.fillText(Math.abs(vv)>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv).toLocaleString('en-US'),L-6,y);}
     });
     /* X labels: Chart.js autoSkip uses a fixed step (ceil(n/maxTicksLimit))
        and does NOT force-include the last label — so 'Now (live)' never
@@ -1796,7 +1845,10 @@ function yTickDaily(v,sx,log){
     var q=v-100;return (q>0?'+':'')+(Math.abs(q)>=1000?Math.round(q).toLocaleString('en-US'):Math.round(q))+'%';
   }
   if(log){var l=Math.log10(v);if(Math.abs(l-Math.round(l))>1e-6)return null;}
-  var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);
+  /* Must-fix (27 Nov 2026): a negative price formats with its sign and
+     thousands separator ("$-20k"), not "$-20000" — the old vv>=1000 test
+     sent every negative value to the unformatted branch. */
+  var vv=curVal(v);return Math.abs(vv)>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv).toLocaleString('en-US');
 }
 function drawDailyTooltip(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH){
   /* Tooltip content = the Chart.js drawDaily tooltip (title: 'Now (live) · date'
@@ -1909,8 +1961,8 @@ function drawDailyNative(d,cmp){
       }
       /* Job 12: same for the overlays, on every Line range — a Bollinger
          band or MA line that runs outside the price range widens the
-         axis (bounded, one span per side) instead of being clipped off
-         the plot. No-op on compare (TA hides there). */
+         axis instead of being clipped off the plot. No-op on compare
+         (TA hides there). */
       var _ovR2=null;
       try{if(window.__BTTA&&window.__BTTA.ovExpandRange)_ovR2=window.__BTTA.ovExpandRange(window.__BCTA.state(),'daily-line',d.map(function(p){return p[1];}),lo,hi);}catch(e){}
       if(_ovR2&&isFinite(_ovR2.lo)&&isFinite(_ovR2.hi)&&_ovR2.hi>_ovR2.lo){lo=_ovR2.lo;hi=_ovR2.hi;}
@@ -1920,6 +1972,10 @@ function drawDailyNative(d,cmp){
          sits on the plot bottom, and the axis steps out by one nice
          tick when an extreme is within half a step of the edge. */
       var _hr2=nativeHeadroomTicks(ticks,lo,hi);if(_hr2)ticks=_hr2.ticks;
+      /* Must-fix (27 Nov 2026): a price axis never goes below $0 (the
+         10Y Line floor read $-20000, unformatted). A comparison % axis
+         may go negative — it is not a price. */
+      if(!sx){ticks=ticks.filter(function(t){return t>=0;});if(!ticks.length)ticks=[0];}
       if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
       yTicks=ticks;
       Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
@@ -1960,18 +2016,27 @@ function drawDailyNative(d,cmp){
       ctx.fillText(s,L-6,y);
     });
     /* X labels: Chart.js autoSkip step (ceil(n/maxTicksLimit), 7 desktop /
-       5 phone); the callback shows the year for n>400, else month-day. */
-    var maxX=isPhone()?5:7,step=Math.max(1,Math.ceil(n/maxX)),xIdx=[];
-    for(var i=0;i<n;i+=step)xIdx.push(i);
+       5 phone); the callback shows the year for n>400, else month-day.
+       Must-fix (27 Nov 2026): on multi-year views the step landed twice
+       in the same year and skipped others (5Y read 2024 twice with a
+       blank gap; 10Y skipped 2017 and 2020) — so xIdx is the first point
+       of each year instead: one label per year, evenly spaced in time. */
     var lab=d.map(function(p){return p[0];});
+    var maxX=isPhone()?5:7,step=Math.max(1,Math.ceil(n/maxX)),xIdx=[];
+    if(n>400){
+      var _seenY={};
+      for(var _yi=0;_yi<n;_yi++){var _y=lab[_yi].slice(0,4);if(!_seenY[_y]){_seenY[_y]=1;xIdx.push(_yi);}}
+    }else{
+      for(var i=0;i<n;i+=step)xIdx.push(i);
+    }
     xIdx.forEach(function(i){
       var x=X(i);
       ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
     });
     ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle=psC('#9aa6bc','#475569');
-    /* Job 12: dedupe consecutive identical year labels (5Y read 2021,
-       2022, 2023, 2024, 2024, 2025, 2026 — the autoSkip step lands
-       twice in the same year). A duplicate is blanked (its gridline
+    /* Job 12: dedupe consecutive identical year labels — a safety net
+       now that xIdx is the first point of each year (it used to blank
+       the duplicate 2024 on 5Y). A duplicate is blanked (its gridline
        stays, only the label goes), so each year appears once. The
        same array feeds the drawn labels and the layout hook. */
     var xLab=xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);});

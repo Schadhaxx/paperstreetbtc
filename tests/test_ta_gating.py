@@ -128,8 +128,9 @@ def colour_present(pg, rgb, sel='#bcC', tol=20):
     """True if an (R,G,B) appears on the canvas within +/-tol per channel.
     tol is 20 (not the 40 the Stage 2/4 tests use): the cyan price line's
     anti-aliased edges and pink x cyan crossing blends land within 40 of
-    the Bollinger violet and the SMA 200 green, so 40 false-positives
-    here. 20 still catches the solid core pixels of a drawn line."""
+    the Bollinger violet, so 40 false-positives here. 20 still catches the
+    solid core pixels of a drawn line (and pure-white elements sit 23
+    away in R from the near-white SMA 200, just outside tol=20)."""
     return pg.evaluate("""([s, rgb, tol]) => { const c = document.querySelector(s); if (!c) return false;
       const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
       for (let i = 0; i < d.length; i += 4) {
@@ -141,8 +142,7 @@ def colour_count(pg, rgb, sel='#bcC', tol=20):
     line (2px wide across ~300px) is hundreds of pixels; anti-aliased
     edge pixels of another line are a handful. Use this, not
     colour_present, when another overlay's edges can land near the
-    colour — the Job 1 trendlines on 1D Line put 7 edge pixels within
-    tol=10 of the SMA 200 green, with 0 exact."""
+    colour."""
     return pg.evaluate("""([s, rgb, tol]) => { const c = document.querySelector(s); if (!c) return 0;
       const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0;
       for (let i = 0; i < d.length; i += 4) {
@@ -226,8 +226,8 @@ def main():
             chk('A 1D Line: Bollinger violet draws (Job 2)', colour_present(pg, (167, 139, 250)))
             chk('A 1D Line: SMA 20 pink draws', colour_present(pg, (244, 114, 182)))
             chk('A 1D Line: SMA 50 amber draws', colour_present(pg, (251, 191, 36)))
-            n_sma200 = colour_count(pg, (52, 211, 153), tol=10)
-            chk('A 1D Line: SMA 200 green draws (Job 2)', n_sma200 >= 50, 'count=%d' % n_sma200)
+            n_sma200 = colour_count(pg, (232, 238, 247), tol=10)
+            chk('A 1D Line: SMA 200 white draws (Job 2)', n_sma200 >= 50, 'count=%d' % n_sma200)
             chk('A 1D Line: RSI strip shows (Job 3)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             pg.screenshot(path=str(shots / 'clock-390-dark-ta-gating-panel.png'), animations='disabled')
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
@@ -243,7 +243,7 @@ def main():
             pr = tl(pg)
             chk('B 1D 1H: trendlines live, 12 lines draw', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
             chk('B 1D 1H: Bollinger violet draws (Job 2)', colour_present(pg, (167, 139, 250)))
-            chk('B 1D 1H: SMA 20 + 50 + 200 draw (Job 2)', colour_present(pg, (244, 114, 182)) and colour_present(pg, (251, 191, 36)) and colour_present(pg, (52, 211, 153), tol=10))
+            chk('B 1D 1H: SMA 20 + 50 + 200 draw (Job 2)', colour_present(pg, (244, 114, 182)) and colour_present(pg, (251, 191, 36)) and colour_present(pg, (232, 238, 247), tol=10))
             # ---- Phase C: 1M Line (Bollinger ungated everywhere now, Job 2; SMA 200 live) ----
             # Job 5: the range switch carries the type over, so 1D 1H candles
             # would land on 1M candles — pick Line explicitly for this phase.
@@ -261,7 +261,7 @@ def main():
             pr = tl(pg)
             chk('C 1M Line: trendlines live, 3 lines draw (1d only)', pr['tf'] == '1d' and pr['status'] == 'live' and len(pr['last']['lines']) == 3, str(pr))
             chk('C 1M Line: Bollinger violet draws (Job 2)', colour_present(pg, (167, 139, 250)))
-            chk('C 1M Line: SMA 200 green draws', colour_present(pg, (52, 211, 153), tol=10))
+            chk('C 1M Line: SMA 200 white draws', colour_present(pg, (232, 238, 247), tol=10))
             # ---- Phase D: 1W Line then 1W daily candles (Job 1 ungreyed 1W Line) ----
             # Job 5: the range switch carries the type over, so 1M Line
             # lands on 1W Line here (Line carries the same way as candles).

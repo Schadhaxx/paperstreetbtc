@@ -516,6 +516,13 @@ function drawOverlays(g,vals){
   var c=el('bcC');if(!c)return;
   var ctx=c.getContext('2d');if(!ctx)return;
   var st=viewState();
+  /* Must-fix (27 Nov 2026): clip to the plot — the price axis now floors
+     at $0, so a Bollinger band that runs below $0 (a 2-sigma band can go
+     negative on a wild window) must stop at the plot bottom instead of
+     painting over the x labels. The RSI strip is drawn separately by
+     afterDraw, outside this clip. */
+  ctx.save();
+  ctx.beginPath();ctx.rect(g.pad.l,g.pad.t,g.plotW,g.plotH);ctx.clip();
   /* Stage 1 gating: a gated overlay does not draw on this view, even
      though its values are still computed (computeVals stays ungated, so
      the debug probe and the Stage 2 value checks are unaffected). */
@@ -525,6 +532,7 @@ function drawOverlays(g,vals){
     traceLine(ctx,vals.bbMid,g.xs,g.yFor,psC2('#a78bfa','#7c3aed'),1,[4,3]);
   }
   if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k]&&!taMaGated(k,st))traceLine(ctx,vals.mas[k],g.xs,g.yFor,maCol(k),2);});
+  ctx.restore();
 }
 function rsiLastVal(vals){
   /* Last non-null RSI value, for the strip header. */
@@ -673,17 +681,33 @@ function tlDrawLabels(ctx,g,labels,liveClose){
      instead of dropping the label for a line at the edge. */
   var items=labels.filter(function(lb){return lb.y!=null&&isFinite(lb.y)&&lb.y>=T&&lb.y<=B;});
   items.sort(function(a,b){return a.y-b.y;});
-  var placed=[];
+  /* Must-fix (27 Nov 2026): pills are 16px tall, so the old 14px
+     spacing (12px from the live price) still let neighbours touch, and
+     nudging only downward piled ten tags up at the plot bottom on 1D
+     (three 4h tags collided there). Spacing is now 17px from everything,
+     and the search runs both ways from the ideal spot (down, then up,
+     alternating) so a tag keeps its price instead of sliding to the
+     bottom; the last resort is the ideal spot itself (an overlap beats
+     a dropped label). */
+  var SP=17,placed=[];
   items.forEach(function(lb){
-    /* Clamp into the plot first, then de-collide (nudging down, staying
-       inside) — so the clamp can never push a label into its neighbour. */
-    var y=Math.min(Math.max(lb.y,T+8),B-8),guard=0;
+    /* Clamp into the plot first, then de-collide — so the clamp can never
+       push a label into its neighbour. */
+    var y0=Math.min(Math.max(lb.y,T+8),B-8),y=y0;
     var clash=function(yy){
-      if(isFinite(liveY)&&Math.abs(yy-liveY)<12)return true;
-      for(var k=0;k<placed.length;k++)if(Math.abs(yy-placed[k])<14)return true;
+      if(isFinite(liveY)&&Math.abs(yy-liveY)<SP)return true;
+      for(var k=0;k<placed.length;k++)if(Math.abs(yy-placed[k])<SP)return true;
       return false;
     };
-    while(clash(y)&&guard<8){y+=14;if(y>B-8)y=B-8;guard++;}
+    if(clash(y0)){
+      var found=false;
+      for(var s=1;s<=30&&!found;s++){
+        var yd=y0+s*SP,yu=y0-s*SP;
+        if(yd<=B-8&&!clash(yd)){y=yd;found=true;break;}
+        if(yu>=T+8&&!clash(yu)){y=yu;found=true;break;}
+      }
+      if(!found)y=y0;
+    }
     placed.push(y);
     lb.y=y;
   });
@@ -738,8 +762,7 @@ function tlExpandRange(st,livePrice,lastMs,lo,hi){
 function ovExpandRange(st,kind,closes,lo,hi){
   /* Job 12 (22 Nov 2026): the range the chart should use when an
      overlay is on — the Bollinger band and MA line extremes over the
-     visible window, bounded by tlExpandLoHi (one span per side, same
-     as the trendlines). The panel calls this before computing its
+     visible window. The panel calls this before computing its
      y-mapping, so a band or MA that runs outside the price range
      widens the axis instead of being clipped off the plot (1W Line:
      the upper band poked above the plot top; 1W daily candles: the
@@ -748,7 +771,13 @@ function ovExpandRange(st,kind,closes,lo,hi){
      a strip below the chart, not on the plot. Null when overlays are
      off, a comparison is on (TA hides), the data is not ready, or
      nothing needs expanding. The panel falls back to its tight range
-     and the warm-up/file-load redraw picks the expansion up. */
+     and the warm-up/file-load redraw picks the expansion up.
+     Must-fix (27 Nov 2026): the expansion is UNBOUNDED — the old
+     one-span bound (via tlExpandLoHi, same as the trendlines) clipped
+     a plunging lower band on a crash week (1W: the bound stopped at
+     $51,822 while the band reached $51,406). Overlays are computed
+     from the data, so they cannot run away the way a hand-placed
+     trendline can — those keep the one-span bound. */
   if(!S||(!S.bb&&!S.ma))return null;
   if(isCmp())return null;
   if(!st||!Array.isArray(closes)||!closes.length)return null;
@@ -766,7 +795,15 @@ function ovExpandRange(st,kind,closes,lo,hi){
     vals.mas[k].forEach(function(v){if(isFinite(v))prices.push({price:v});});
   });
   if(!prices.length)return null;
-  return tlExpandLoHi(prices,lo,hi);
+  /* Unbounded (see the docstring): the values are computed from the
+     data, so a band that runs far outside the price range still widens
+     the axis to include it. */
+  var mn=Infinity,mx=-Infinity;
+  prices.forEach(function(p){if(isFinite(p.price)){if(p.price<mn)mn=p.price;if(p.price>mx)mx=p.price;}});
+  if(!isFinite(mn)||!isFinite(mx))return null;
+  var nlo=Math.min(lo,mn),nhi=Math.max(hi,mx);
+  if(nlo===lo&&nhi===hi)return null;
+  return {lo:nlo,hi:nhi};
 }
 function tlDrawLines(g){
   /* Draws this chart's timeframe's lines plus the higher ones (rule 5,
@@ -847,19 +884,27 @@ function syncCmpNote(){
 }
 /* Job 6: the same note, OUTSIDE the TA panel — a plain line under the
    pills row, so it reads without opening the panel. It shows only when
-   a comparison is hiding something that WOULD draw (nDrawing(true)>0):
-   with TA off there is nothing to explain, and with everything gated
-   turning the comparison off still would not draw anything, so the note
-   would lie. The panel note above keeps its own rule (shows whenever a
-   comparison is on, panel open). The element is created once by TA init
-   and lives in the dialog flow (popover + clock page share the build). */
+   a comparison is hiding something that WOULD draw (nPlotDrawing()>0 —
+   the plot overlays only; the RSI strip still draws on a comparison,
+   so it alone never triggers the note): with TA off there is nothing
+   to explain, and with everything gated turning the comparison off
+   still would not draw anything, so the note would lie. The panel note
+   above keeps its own rule (shows whenever a comparison is on, panel
+   open). The element is created once by TA init and lives in the dialog
+   flow (popover + clock page share the build). */
+/* Must-fix (27 Nov 2026): the RSI strip is a separate pane below the
+   chart, computed from the BTC closes alone — it keeps drawing while a
+   comparison is on, so the note now says the PLOT overlays hide (the
+   old "TA shows on BTC alone" was no longer true for RSI). One string,
+   shared by the panel note and the outside note. */
+var CMP_NOTE_TEXT='Trendlines, Bollinger and moving averages show on BTC alone. Turn off comparisons to see them — the RSI strip still shows.';
 var cmpNoteOutEl=null;
 function buildCmpNoteOut(){
   if(cmpNoteOutEl||!dlg)return cmpNoteOutEl;
   var row=dlg.querySelector('#bcRow2');
   var n=document.createElement('div');
   n.className='ta-cmp-out';
-  n.textContent='TA shows on BTC alone. Turn off comparisons to see it.';
+  n.textContent=CMP_NOTE_TEXT;
   n.hidden=true;
   if(row&&row.parentNode)row.parentNode.insertBefore(n,row.nextSibling);
   else dlg.appendChild(n);
@@ -868,7 +913,7 @@ function buildCmpNoteOut(){
 }
 function syncCmpNoteOut(){
   if(!cmpNoteOutEl)return;
-  var show=isCmp()&&nDrawing(true)>0;
+  var show=isCmp()&&nPlotDrawing()>0;
   cmpNoteOutEl.hidden=!show;
   /* Job 6: the dialog class inserts the note's grid row on the clock
      page (see the .ta-cmp-out-on rules in btcchart-ta.css); harmless in
@@ -916,9 +961,12 @@ var COL={tl:'#22c55e',bb:'#a78bfa',ma:'#f472b6',rsi:'#a78bfa'};
    (keys 'sma20' … 'ema200'); S.ma is the master on/off for the group.
    The six chips in the TA panel are the legend: each chip carries its
    MA's colour dot + label, and the tooltip lists each enabled MA in its
-   own colour. */
+   own colour.
+   Must-fix (27 Nov 2026): SMA 200 is near-white / slate, not emerald —
+   the old #34d399 was too close to the support-trendline green #22c55e
+   to tell apart on the chart. */
 var MA_KEYS=['sma20','sma50','sma200','ema20','ema50','ema200'];
-var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#34d399','#059669'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
+var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#e8eef7','#334155'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
 var MA_LBL={sma20:'SMA 20',sma50:'SMA 50',sma200:'SMA 200',ema20:'EMA 20',ema50:'EMA 50',ema200:'EMA 200'};
 function maCol(k){var c=MA_COL[k];return c?psC2(c[0],c[1]):psC2('#f472b6','#db2777');}
 function maOn(){if(!S.ma)return [];return MA_KEYS.filter(function(k){return S.maSet&&S.maSet[k];});}
@@ -936,22 +984,33 @@ function stageEl(){try{var st=API.stage();if(st)return st;}catch(e){}return dlg;
 function floatParent(){return API.inline()?stageEl():dlg;}
 function nOn(){return (S.tl?1:0)+(S.bb?1:0)+maCount()+(S.rsi?1:0);}
 /* Job 6: the overlays actually DRAWING on this view — what the badge
-   shows. nOn() counts toggles; a comparison hides everything (0), a
-   gated MA on 1W does not draw, and trendlines with no lines on this
+   shows. nOn() counts toggles; a comparison hides the plot overlays,
+   a gated MA on 1W does not draw, and trendlines with no lines on this
    view (5Y/10Y/Max, file still loading) do not draw. The guards match
    the draw path (drawOverlays / drawRsiStrip / tlDrawLines) so the badge
-   and the drawing stay in lockstep by construction. ignoreCmp answers
-   "what WOULD draw if the comparison were off" (the external note's
-   condition); tlLast is only refreshed by a draw, so a comparison that
-   was on before the overlays were turned on leaves tl unknown — the
-   panel note covers that path. */
-function nDrawing(ignoreCmp){
-  if(!ignoreCmp&&isCmp())return 0;
+   and the drawing stay in lockstep by construction.
+   Must-fix (27 Nov 2026): the RSI strip is a separate pane below the
+   chart, so it keeps drawing on a comparison — nDrawing counts it
+   there (1), while nPlotDrawing counts only the plot overlays (what a
+   comparison hides, and what the outside note's condition uses).
+   ignoreCmp answers "what WOULD draw if the comparison were off" (the
+   external note's condition); tlLast is only refreshed by a draw, so a
+   comparison that was on before the overlays were turned on leaves tl
+   unknown — the panel note covers that path. */
+function nPlotDrawing(){
   var st=viewState(),n=0;
   if(S.tl&&tlStatus==='live'&&tlLast&&tlLast.lines&&tlLast.lines.length)n++;
   if(S.bb&&!taGated('bb',st))n++;
   if(S.ma)maOn().forEach(function(k){if(!taMaGated(k,st))n++;});
-  if(S.rsi&&!taGated('rsi',st))n++;
+  return n;
+}
+function nDrawing(ignoreCmp){
+  if(!ignoreCmp&&isCmp()){
+    /* A comparison hides the plot overlays; the RSI strip still draws. */
+    return (S.rsi&&!taGated('rsi',viewState()))?1:0;
+  }
+  var n=nPlotDrawing();
+  if(S.rsi&&!taGated('rsi',viewState()))n++;
   return n;
 }
 
@@ -991,10 +1050,11 @@ function syncPill(){
 }
 function syncRsi(){
   if(!rsiEl||!dlg)return;
-  /* Stage 2: the strip hides on comparison too (TA is BTC-only).
-     Stage 1 gating: RSI is greyed out on every view for now, so the
-     strip never shows until the strip rework (Stage 3) lifts the gate. */
-  rsiEl.hidden=!S.rsi||isCmp()||taGated('rsi',viewState());
+  /* Must-fix (27 Nov 2026): the strip is a separate pane below the
+     chart, computed from the BTC closes alone — it does NOT hide on a
+     comparison (only the plot overlays do). The old Stage 2 rule hid
+     it with them, so RSI never showed while comparing. */
+  rsiEl.hidden=!S.rsi||taGated('rsi',viewState());
   dlg.classList.toggle('ta-rsi-on',!!S.rsi);
   if(S.rsi){
     rsiEl.classList.toggle('col',!!S.rsiCol);
@@ -1117,7 +1177,7 @@ function renderPanel(){
      label; enabled chips are highlighted in their colour. */
   var chips=MA_KEYS.map(function(k){return '<button type="button" class="ta-ma-chip'+(S.maSet&&S.maSet[k]?' on':'')+'" data-ta-ma="'+k+'" style="--mac:'+maCol(k)+'" aria-pressed="'+(!!(S.maSet&&S.maSet[k]))+'"><i></i>'+MA_LBL[k]+'</button>';}).join('');
   p.innerHTML='<div class="ta-ph"><span class="ta-ph-t"><b>Technical analysis</b><span class="ta-beta">Beta</span></span><button type="button" data-ta-clear>Clear all</button></div>'
-    +'<div class="ta-cmp" hidden>TA shows on BTC alone. Turn off comparisons to see it.</div>'
+    +'<div class="ta-cmp" hidden>'+CMP_NOTE_TEXT+'</div>'
     +swRow('tl','Smart Trendlines','auto support / resistance',COL.tl)
     +'<div class="ta-tl-status" hidden></div>'
     +swRow('bb','Bollinger Bands','20 \u00b7 2\u03c3',COL.bb)
@@ -1159,14 +1219,16 @@ function syncGating(){
      it is open. The writes are idempotent when nothing changed.
      Revision pass (27 Nov 2026): a comparison on greys the toggles too
      (visible but disabled, back on when comparison goes off) — nothing
-     disappears. */
+     disappears. Must-fix (27 Nov 2026): RSI is exempt — its strip keeps
+     drawing on a comparison, so its switch stays usable (the revision
+     pass greyed it with the rest, and RSI never showed while comparing). */
   if(!panelEl)return;
   var st=viewState();
   var cmp=isCmp();
   var sws=panelEl.querySelectorAll('[data-ta-key]');
   for(var i=0;i<sws.length;i++){
     var k=sws[i].getAttribute('data-ta-key');
-    var g=taGated(k,st)||cmp;
+    var g=(k==='rsi')?taGated(k,st):(taGated(k,st)||cmp);
     sws[i].disabled=g;
     sws[i].title=g?(cmp?'Not available while comparing':'Not available on this view'):'';
     var row=sws[i].closest?sws[i].closest('.ta-it'):null;
@@ -1373,13 +1435,29 @@ function init(api){
   /* Stage 2: after every native draw, draw the enabled overlays on #bcC
      (after the price series, same x/y mapping) and the RSI strip; keep the
      comparison note in sync. Live ticks recompute via the normal redraw —
-     no refetch, no flicker. When nothing is on, or comparison is on, draw
-     nothing: the canvas stays pixel-identical to main. */
+     no refetch, no flicker. When nothing is on, draw nothing; when a
+     comparison is on, only the RSI strip draws (the plot overlays hide).
+     Must-fix (27 Nov 2026): the RSI strip is a separate pane below the
+     chart, computed from the BTC closes alone — it keeps drawing on a
+     comparison, where the old early return left it blank. */
   api.afterDraw=function(kind){
     if(menuOpen)closeMenu(false);
     syncRsi();syncCmpNote();syncTlStatus();syncGating();syncPill();syncCmpNoteOut();
     if(!nOn())return;
-    if(isCmp())return;
+    if(isCmp()){
+      if(S.rsi&&!taGated('rsi',viewState())){
+        try{
+          var _g=API.geom?API.geom():null;
+          if(_g&&_g.xs&&_g.closes&&_g.n>=2){
+            var _warm=warmFor(_g);
+            var _vals=computeVals(_g,_warm);
+            drawRsiStrip(_g,_vals);
+          }
+        }catch(e){}
+      }
+      syncPill();
+      return;
+    }
     var g=null;
     try{g=API.geom?API.geom():null;}catch(e){}
     if(!g||!g.xs||!g.closes||g.n<2)return;
