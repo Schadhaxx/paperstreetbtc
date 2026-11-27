@@ -312,8 +312,8 @@ def main():
         chk('compare: all four lines draw (BTC + SPX + Gold + MSTR)',
             c['btc'] > 50 and c['spx'] > 50 and c['gld'] > 50 and c['mstr'] > 50, 'px=%s' % (c,))
         ta = pg.evaluate(TA_STATE_JS)
-        chk('compare: TA badge reads 1 (only the RSI strip draws while comparing)',
-            ta['badge'] == '1', str(ta))
+        chk('compare: TA badge gone while comparing (RSI hides like the other TA lines)',
+            ta['badge'] is None, str(ta))
         chk('compare: Job 6 note visible (plot overlays show on BTC alone)',
             ta['cmpNoteHidden'] is False and ta['cmpNoteText'] and 'Trendlines, Bollinger and moving averages show on BTC alone' in ta['cmpNoteText'], str(ta))
 

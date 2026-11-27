@@ -1005,10 +1005,7 @@ function nPlotDrawing(){
   return n;
 }
 function nDrawing(ignoreCmp){
-  if(!ignoreCmp&&isCmp()){
-    /* A comparison hides the plot overlays; the RSI strip still draws. */
-    return (S.rsi&&!taGated('rsi',viewState()))?1:0;
-  }
+  if(!ignoreCmp&&isCmp())return 0;
   var n=nPlotDrawing();
   if(S.rsi&&!taGated('rsi',viewState()))n++;
   return n;
@@ -1050,11 +1047,10 @@ function syncPill(){
 }
 function syncRsi(){
   if(!rsiEl||!dlg)return;
-  /* Must-fix (27 Nov 2026): the strip is a separate pane below the
-     chart, computed from the BTC closes alone — it does NOT hide on a
-     comparison (only the plot overlays do). The old Stage 2 rule hid
-     it with them, so RSI never showed while comparing. */
-  rsiEl.hidden=!S.rsi||taGated('rsi',viewState());
+  /* Stage 2: the strip hides on comparison too (TA is BTC-only).
+     Stage 1 gating: RSI is greyed out on every view for now, so the
+     strip never shows until the strip rework (Stage 3) lifts the gate. */
+  rsiEl.hidden=!S.rsi||isCmp()||taGated('rsi',viewState());
   dlg.classList.toggle('ta-rsi-on',!!S.rsi);
   if(S.rsi){
     rsiEl.classList.toggle('col',!!S.rsiCol);
@@ -1219,16 +1215,14 @@ function syncGating(){
      it is open. The writes are idempotent when nothing changed.
      Revision pass (27 Nov 2026): a comparison on greys the toggles too
      (visible but disabled, back on when comparison goes off) — nothing
-     disappears. Must-fix (27 Nov 2026): RSI is exempt — its strip keeps
-     drawing on a comparison, so its switch stays usable (the revision
-     pass greyed it with the rest, and RSI never showed while comparing). */
+     disappears. */
   if(!panelEl)return;
   var st=viewState();
   var cmp=isCmp();
   var sws=panelEl.querySelectorAll('[data-ta-key]');
   for(var i=0;i<sws.length;i++){
     var k=sws[i].getAttribute('data-ta-key');
-    var g=(k==='rsi')?taGated(k,st):(taGated(k,st)||cmp);
+    var g=taGated(k,st)||cmp;
     sws[i].disabled=g;
     sws[i].title=g?(cmp?'Not available while comparing':'Not available on this view'):'';
     var row=sws[i].closest?sws[i].closest('.ta-it'):null;
@@ -1436,28 +1430,12 @@ function init(api){
      (after the price series, same x/y mapping) and the RSI strip; keep the
      comparison note in sync. Live ticks recompute via the normal redraw —
      no refetch, no flicker. When nothing is on, draw nothing; when a
-     comparison is on, only the RSI strip draws (the plot overlays hide).
-     Must-fix (27 Nov 2026): the RSI strip is a separate pane below the
-     chart, computed from the BTC closes alone — it keeps drawing on a
-     comparison, where the old early return left it blank. */
+     comparison is on, nothing draws (TA is BTC-only). */
   api.afterDraw=function(kind){
     if(menuOpen)closeMenu(false);
     syncRsi();syncCmpNote();syncTlStatus();syncGating();syncPill();syncCmpNoteOut();
     if(!nOn())return;
-    if(isCmp()){
-      if(S.rsi&&!taGated('rsi',viewState())){
-        try{
-          var _g=API.geom?API.geom():null;
-          if(_g&&_g.xs&&_g.closes&&_g.n>=2){
-            var _warm=warmFor(_g);
-            var _vals=computeVals(_g,_warm);
-            drawRsiStrip(_g,_vals);
-          }
-        }catch(e){}
-      }
-      syncPill();
-      return;
-    }
+    if(isCmp())return;
     var g=null;
     try{g=API.geom?API.geom():null;}catch(e){}
     if(!g||!g.xs||!g.closes||g.n<2)return;

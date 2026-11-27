@@ -33,7 +33,7 @@ chk('panel has drawDailyNative implemented', /function drawDailyNative\(d,cmp\)\
 chk('drawDailyNative returns true on success', /function drawDailyNative\(d,cmp\)\{[\s\S]*?return true;\n  \}catch/.test(panel));
 chk('drawDailyNative has no "not yet implemented" marker', !/function drawDailyNative[\s\S]{0,400}not yet implemented/.test(panel));
 chk('panel has yTickDaily (Chart.js yTick callback replicated)', /function yTickDaily\(v,sx,log\)\{/.test(panel));
-chk('yTickDaily replicates the compare % format', /var q=v-100;return \(q>0\?'\+':'\'\)\+\(Math\.abs\(q\)>=1000\?Math\.round\(q\)\.toLocaleString\('en-US'\):Math\.round\(q\)\)\+'%';/.test(panel));
+chk('yTickDaily replicates the compare % format (one decimal, Must-fix 27 Nov 2026 — neighbouring nice ticks must not round to the same label)', /var q=v-100;return \(q>0\?'\+':'\'\)\+\(Math\.abs\(q\)>=1000\?Math\.round\(q\)\.toLocaleString\('en-US'\):q\.toFixed\(1\)\)\+'%';/.test(panel));
 chk('yTickDaily replicates the log mantissa filter', /\[1,2,5\]\.indexOf\(Math\.round\(m\*1000\)\/1000\)<0/.test(panel));
 chk('yTickDaily replicates the log power-of-10 filter', /Math\.abs\(l-Math\.round\(l\)\)>1e-6/.test(panel));
 chk('panel has drawDailyTooltip', /function drawDailyTooltip\(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH\)/.test(panel));

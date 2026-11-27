@@ -105,6 +105,7 @@ var CmpIntraMath = (function () {
   function sessionCloseEndMs(dateISO){ /* 4:15 PM ET, or 1:15 PM ET on an early-close day (the tick that picks up the 1:00 PM bar) */
     var endMin = EARLY_CLOSES[dateISO] ? CLOSE_END_EARLY_MIN : CLOSE_END_MIN;
     return Date.parse(dateISO + 'T00:00:00Z') - etOffsetMs(dateISO) + endMin*60*1000; }
+  function isEarlyClose(dateISO){ return !!EARLY_CLOSES[dateISO]; }
   function sessionDateET(nowMs){ return etParts(nowMs).date; }
   function trimToSession(pts, session){
     /* BTC 15-min points inside the session window (9:30 AM-4 PM ET on
@@ -142,6 +143,19 @@ var CmpIntraMath = (function () {
     if(!values) return null;
     for(var i = 0; i < values.length; i++){ if(values[i] != null && isFinite(values[i])) return values[i]; }
     return null;
+  }
+  function holdFlat(values){
+    /* Trailing nulls hold the last finite value flat. A compare series
+       ends at the session close, but BTC runs to 4 PM ET — on an
+       early-close day the bars end at 1 PM, so without this the line
+       stops at ~1 PM instead of running flat to the right edge.
+       Interior nulls are untouched (the renderer bridges or gaps them,
+       as before). Returns a new array; the input is not mutated. */
+    var out = (values || []).slice(), last = null, lastIdx = -1;
+    for(var i = 0; i < out.length; i++){ if(out[i] != null && isFinite(out[i])){ last = out[i]; lastIdx = i; } }
+    if(last == null || lastIdx === out.length - 1) return out;
+    for(var j = lastIdx + 1; j < out.length; j++) out[j] = last;
+    return out;
   }
   function rebaseTo100(values, base){
     /* Every value as 100*v/base (the range views' convention: 100 at
@@ -186,7 +200,7 @@ var CmpIntraMath = (function () {
     }
     return {ok:false, reason:'stale: future session'};
   }
-  return {etParts:etParts, sessionDateET:sessionDateET, sessionOpenMs:sessionOpenMs, sessionCloseEndMs:sessionCloseEndMs, trimToSession:trimToSession, alignToPts:alignToPts, firstValue:firstValue, rebaseTo100:rebaseTo100, isFresh:isFresh};
+  return {etParts:etParts, sessionDateET:sessionDateET, sessionOpenMs:sessionOpenMs, sessionCloseEndMs:sessionCloseEndMs, isEarlyClose:isEarlyClose, trimToSession:trimToSession, alignToPts:alignToPts, firstValue:firstValue, holdFlat:holdFlat, rebaseTo100:rebaseTo100, isFresh:isFresh};
 })();
 /* Job 10: the cmp-intraday.json fetch. Same data-branch read as
    history.json (RAW base); cached 5 min (the file ticks every 15 min).
@@ -1016,6 +1030,13 @@ function draw1DCmp(pts){
   var S=SHOWSPX?CmpIntraMath.alignToPts(tpts,(doc.symbols.SPX||{}).bars):null;
   var G=SHOWGLD?CmpIntraMath.alignToPts(tpts,(doc.symbols.GOLD||{}).bars):null;
   var M=SHOWMSTR?CmpIntraMath.alignToPts(tpts,(doc.symbols.MSTR||{}).bars):null;
+  /* Must-fix (27 Nov 2026): the compare bars end at the session close
+     (1 PM on an early-close day) but BTC runs to 4 PM — hold each
+     series flat from its last bar to the right edge, so the line does
+     not stop at ~1 PM. */
+  S=S?CmpIntraMath.holdFlat(S):null;
+  G=G?CmpIntraMath.holdFlat(G):null;
+  M=M?CmpIntraMath.holdFlat(M):null;
   var s0=CmpIntraMath.firstValue(S),g0=CmpIntraMath.firstValue(G),m0=CmpIntraMath.firstValue(M);
   var sx=(S&&s0)||(G&&g0)||(M&&m0);
   if(!sx||!b0)return false;
@@ -1026,7 +1047,7 @@ function draw1DCmp(pts){
   var n=tpts.length,pc=(btcV[n-1]/b0-1)*100;
   var spc=lastPct(S,s0),gpc=lastPct(G,g0),mpc=lastPct(M,m0);
   var lastSession=fresh.reason==='last session';
-  $('bcRr').textContent='1D: BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · 9:30 AM-4 PM ET'+(lastSession?' (last session '+session+')':'')+cadTag();
+  $('bcRr').textContent='1D: BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · '+(CmpIntraMath.isEarlyClose(session)?'9:30 AM-1 PM ET':'9:30 AM-4 PM ET')+(lastSession?' (last session '+session+')':'')+cadTag();
   $('bcNt').textContent='1D compare: % change from the 9:30 AM ET open (BTC Coinbase 15-minute candles; S&P 500 ^GSPC, Gold GC=F, MSTR — Yahoo 15-minute bars, rebased to 100 at the open). All lines are complete 15-minute closes; the live price is not plotted while comparing.'+(lastSession?' Showing the last session ('+session+').':'');
   var nativeOK=draw1DNative(tpts,{sx:true,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:false});lineDrawn=nativeOK;
   if(nativeOK)lineRetry=false;else lineFail();
@@ -1748,12 +1769,13 @@ function draw1DNative(pts,cmp){
     /* Y gridlines + labels (same format as the Chart.js yTick callback). */
     ctx.strokeStyle=psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)');ctx.fillStyle=psC('#9aa6bc','#475569');
     ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
+    var prevLab=null; /* Must-fix (27 Nov 2026): never draw the same %-label twice in a row. */
     ticks.forEach(function(v){
       var y=Y(v);
       ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(L+iw,y);ctx.stroke();
       /* Job 10: % change on the axis in compare mode (yTickDaily with
          sx), dollars otherwise — same as drawDailyNative. */
-      if(sx){var s=yTickDaily(v,true,false);if(s!=null)ctx.fillText(s,L-6,y);}
+      if(sx){var s=yTickDaily(v,true,false);if(s!=null&&s!==prevLab){ctx.fillText(s,L-6,y);prevLab=s;}}
       else{var vv=curVal(v);ctx.fillText(Math.abs(vv)>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv).toLocaleString('en-US'),L-6,y);}
     });
     /* X labels: Chart.js autoSkip uses a fixed step (ceil(n/maxTicksLimit))
@@ -1842,7 +1864,10 @@ function yTickDaily(v,sx,log){
      removes such log ticks entirely). */
   if(sx){
     if(log){var m=v/Math.pow(10,Math.floor(Math.log10(v)+1e-9));if([1,2,5].indexOf(Math.round(m*1000)/1000)<0)return null;}
-    var q=v-100;return (q>0?'+':'')+(Math.abs(q)>=1000?Math.round(q).toLocaleString('en-US'):Math.round(q))+'%';
+    /* Must-fix (27 Nov 2026): one decimal, so neighbouring nice ticks
+       do not round to the same label (+3%, +3%, +1%, +1%, 0%, 0%).
+       Nice steps are >= 0.1, so one decimal keeps every label distinct. */
+    var q=v-100;return (q>0?'+':'')+(Math.abs(q)>=1000?Math.round(q).toLocaleString('en-US'):q.toFixed(1))+'%';
   }
   if(log){var l=Math.log10(v);if(Math.abs(l-Math.round(l))>1e-6)return null;}
   /* Must-fix (27 Nov 2026): a negative price formats with its sign and
@@ -2007,13 +2032,14 @@ function drawDailyNative(d,cmp){
     ctx.strokeStyle=psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)');ctx.fillStyle=psC('#9aa6bc','#475569');
     ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
     var drawnY=[];
+    var prevLab=null; /* Must-fix (27 Nov 2026): never draw the same label twice in a row. */
     yTicks.forEach(function(v){
       var s=yTickDaily(v,sx,LOG);
       if(s==null)return;
       drawnY.push(v);
       var y=Y(v);
       ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(L+iw,y);ctx.stroke();
-      ctx.fillText(s,L-6,y);
+      if(s!==prevLab){ctx.fillText(s,L-6,y);prevLab=s;}
     });
     /* X labels: Chart.js autoSkip step (ceil(n/maxTicksLimit), 7 desktop /
        5 phone); the callback shows the year for n>400, else month-day.

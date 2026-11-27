@@ -14,7 +14,7 @@ const start = src.indexOf('var CmpIntraMath = (function () {');
 const end = src.indexOf('})();', start);
 if (start < 0 || end < 0) { console.log('FAIL CmpIntraMath block missing'); process.exit(1); }
 const CmpIntraMath = eval(src.slice(start + 'var CmpIntraMath = '.length, end + 5));
-const { etParts, sessionDateET, sessionOpenMs, sessionCloseEndMs, trimToSession, alignToPts, firstValue, rebaseTo100, isFresh } = CmpIntraMath;
+const { etParts, sessionDateET, sessionOpenMs, sessionCloseEndMs, isEarlyClose, trimToSession, alignToPts, firstValue, holdFlat, rebaseTo100, isFresh } = CmpIntraMath;
 
 /* --- ET math (EST + EDT) --- */
 /* Fri 20 Nov 2026 9:30 AM EST = 14:30 UTC; 4:15 PM EST = 21:15 UTC. */
@@ -136,6 +136,59 @@ chk('no symbols stale', isFresh(doc('2026-11-20', '2026-11-20T18:50:00Z', false)
 chk('null doc stale', isFresh(null, Date.UTC(2026, 10, 20, 19, 0)).ok === false);
 /* EDT live session: Fri 17 Jul 2 PM EDT (18:00 UTC), asOf 10 min old -> fresh. */
 chk('live session fresh in EDT', isFresh(doc('2026-07-17', '2026-07-17T17:50:00Z'), Date.UTC(2026, 6, 17, 18, 0)).ok === true);
+
+/* --- holdFlat (Must-fix 27 Nov 2026, Market God re-test item 1) --- */
+/* Early-close Fri 27 Nov: bars end 1 PM, BTC runs to 4 PM — the compare
+   line must hold flat from its last bar to the right edge. */
+chk('holdFlat fills trailing nulls with the last value', (function () {
+  const out = holdFlat([100, 101, 102, null, null, null]);
+  return out.length === 6 && out[3] === 102 && out[4] === 102 && out[5] === 102;
+})());
+chk('holdFlat keeps interior nulls (bridged/gapped by the renderer)', (function () {
+  const out = holdFlat([100, null, 102, null, null]);
+  return out[1] === null && out[3] === 102 && out[4] === 102;
+})());
+chk('holdFlat all-null stays all-null', holdFlat([null, null]).every(function (v) { return v === null; }));
+chk('holdFlat no trailing nulls returns an equal copy', (function () {
+  const out = holdFlat([100, 101, 102]);
+  return out.length === 3 && out[0] === 100 && out[2] === 102;
+})());
+chk('holdFlat does not mutate its input', (function () {
+  const inp = [100, 101, null, null]; holdFlat(inp);
+  return inp[2] === null && inp[3] === null;
+})());
+chk('holdFlat on the early-close shape: 15 bars then 12 BTC points flat', (function () {
+  /* 27 BTC session points (9:30 AM-4 PM ET); bars only for the first 15
+     (9:30 AM-1 PM ET), then nulls to the 4 PM edge. */
+  const bars = SPX_BARS.slice(0, 15);
+  const aligned = alignToPts(PTS_NOV, bars);
+  const held = holdFlat(aligned);
+  return aligned.length === 27 && aligned[15] === null && aligned[26] === null
+    && held[15] === aligned[14] && held[26] === aligned[14] && held[14] === aligned[14];
+})());
+
+/* --- yTickDaily compare % labels (Must-fix 27 Nov 2026, item 2) --- */
+/* The reported axis read +3%, +3%, +1%, +1%, 0%, 0% — neighbouring nice
+   ticks rounded to the same integer. One decimal keeps them distinct. */
+const yTickSrc = (function () {
+  const s = src.indexOf('function yTickDaily(v,sx,log){');
+  const e = src.indexOf('\n}\n', s);
+  if (s < 0 || e < 0) return null;
+  return src.slice(s, e + 3);
+})();
+chk('yTickDaily extractable from the panel', yTickSrc !== null);
+if (yTickSrc) {
+  const curVal = function (v) { return v; }, curSym = function () { return '$'; };
+  const yTickDaily = eval('(' + yTickSrc + ')');
+  const labels = [102.6, 102.9, 101.4, 101.1, 100.4, 100.1].map(function (v) { return yTickDaily(v, true, false); });
+  chk('one-decimal % labels are all distinct on the reported ticks', new Set(labels).size === 6, labels);
+  chk('one-decimal % labels read +2.6% / +0.1%', labels[0] === '+2.6%' && labels[5] === '+0.1%', labels);
+  chk('negative % label keeps its sign', yTickDaily(99.5, true, false) === '-0.5%');
+}
+
+/* --- isEarlyClose (Must-fix 27 Nov 2026, item 1 header) --- */
+chk('isEarlyClose: 2026-11-27 true, 2026-11-20 false, 2026-12-24 true',
+    isEarlyClose('2026-11-27') === true && isEarlyClose('2026-11-20') === false && isEarlyClose('2026-12-24') === true);
 
 console.log('test_cmp_intraday.js: ' + (n - f) + '/' + n + ' passed');
 process.exit(f ? 1 : 0);
