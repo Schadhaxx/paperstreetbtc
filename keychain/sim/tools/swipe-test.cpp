@@ -272,6 +272,7 @@ int main(int argc, char **argv) {
     tft.readRect(0, 0, SW, SH, slideBuf);
     setPageState(2);
     drawAll();
+    tft.readRect(0, 0, SW, SH, slideBufIn);
     slideFrame(85, 1);
     dump("swipe-mid-p1-p2");
     // Left half must still be the outgoing page (price-only: big

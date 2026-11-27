@@ -614,49 +614,88 @@ void setPageState(int p) {
     savePrefs();
 }
 
-// Slide animation. The outgoing page is captured once into a PSRAM
-// buffer (170x320x2 = ~109 KB; PSRAM is 8 MB) with one readRect
-// call, then each frame redraws the incoming page and pushes the
-// outgoing page's remaining strip over it, one row per pushImage
-// call (a strip starting mid-row is not contiguous, so it cannot
-// be one pushImage). 0.34 s, ease-out cubic, time-driven — a slow
-// frame just stretches the slide instead of dropping the landing.
-// Chosen over sprites: every draw function in the sketch targets
-// the global `tft`, so drawing a page into a sprite would mean
-// re-plumbing hundreds of call sites; and over redraw-both-per-
-// frame: a full page cannot be drawn shifted without that same
-// re-plumbing, so the captured-image slide is the only true slide
-// available here. If the buffer cannot be allocated, or the screen
-// is landscape, the page change is instant instead.
-uint16_t *slideBuf = nullptr;
+// Slide animation. Both pages are captured once into PSRAM
+// buffers (2 x 170x320x2 = ~218 KB; PSRAM is 8 MB) and each
+// frame composites them as a moving track — the outgoing page
+// and the incoming page slide together, like the prototype's
+// `translateX` on `.track`. 0.34 s, cubic-bezier(.32,.72,.28,1),
+// time-driven: a slow frame stretches the slide instead of
+// dropping the landing. Pages are not redrawn every frame.
+// If either buffer cannot be allocated, or the screen is
+// landscape, the page change is instant instead.
+uint16_t *slideBuf = nullptr;    // outgoing page
+uint16_t *slideBufIn = nullptr;  // incoming page
 
-bool slideBufAlloc() {
-  if (slideBuf) return true;
+static uint16_t *slideAllocOne() {
 #ifdef ARDUINO_ARCH_ESP32
-  slideBuf = (uint16_t *)heap_caps_malloc(
+  uint16_t *p = (uint16_t *)heap_caps_malloc(
       (size_t)SW * SH * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
-  if (!slideBuf)
-    slideBuf = (uint16_t *)malloc((size_t)SW * SH * sizeof(uint16_t));
+  if (!p) p = (uint16_t *)malloc((size_t)SW * SH * sizeof(uint16_t));
+  return p;
 #else
-  slideBuf = (uint16_t *)malloc((size_t)SW * SH * sizeof(uint16_t));
+  return (uint16_t *)malloc((size_t)SW * SH * sizeof(uint16_t));
 #endif
-  return slideBuf != nullptr;
 }
 
-// One slide frame: the incoming page is already drawn (drawAll);
-// push the outgoing page's remaining strip over it. dir +1: the
-// old page slides left (swipe left, next page); dir -1: it slides
-// right (swipe right, previous page).
+bool slideBufAlloc() {
+  if (slideBuf && slideBufIn) return true;
+  if (!slideBuf) slideBuf = slideAllocOne();
+  if (!slideBufIn) slideBufIn = slideAllocOne();
+  return slideBuf && slideBufIn;
+}
+
+// Prototype track easing: cubic-bezier(.32, .72, .28, 1).
+// x(t) is solved with a few Newton steps, then y(t) is the
+// progress. Close to the CSS curve, not a rewrite of it.
+static float slideBezierX(float t) {
+  float u = 1.0f - t;
+  return 3.0f * u * u * t * 0.32f + 3.0f * u * t * t * 0.28f + t * t * t;
+}
+static float slideBezierY(float t) {
+  float u = 1.0f - t;
+  return 3.0f * u * u * t * 0.72f + 3.0f * u * t * t * 1.00f + t * t * t;
+}
+static float slideEase(float e) {
+  if (e <= 0) return 0;
+  if (e >= 1) return 1;
+  float t = e;
+  for (int i = 0; i < 8; i++) {
+    float u = 1.0f - t;
+    float x = slideBezierX(t);
+    // d/dt of the cubic X
+    float dx = 3.0f * u * u * 0.32f + 6.0f * u * t * (0.28f - 0.32f) + 3.0f * t * t * (1.0f - 0.28f);
+    if (dx < 1e-6f && dx > -1e-6f) break;
+    t -= (x - e) / dx;
+    if (t < 0) t = 0;
+    if (t > 1) t = 1;
+  }
+  return slideBezierY(t);
+}
+
+// One slide frame: both captured pages move as a track.
+// dir +1: swipe left (next page) — outgoing exits left,
+// incoming enters from the right. dir -1: the other way.
+// dx is how far the track has travelled, 0..SW.
 void slideFrame(int16_t dx, int dir) {
-  if (dx <= 0) return;
-  int16_t w = SW - dx;
-  if (w <= 0) return;
+  if (!slideBuf || !slideBufIn) return;
+  if (dx < 0) dx = 0;
+  if (dx > SW) dx = SW;
+  int16_t outW = SW - dx;
+  int16_t inW = dx;
   if (dir > 0) {
-    for (int16_t y = 0; y < SH; y++)
-      tft.pushImage(0, y, w, 1, slideBuf + (size_t)y * SW + dx);
+    for (int16_t y = 0; y < SH; y++) {
+      if (outW > 0)
+        tft.pushImage(0, y, outW, 1, slideBuf + (size_t)y * SW + dx);
+      if (inW > 0)
+        tft.pushImage(outW, y, inW, 1, slideBufIn + (size_t)y * SW);
+    }
   } else {
-    for (int16_t y = 0; y < SH; y++)
-      tft.pushImage(dx, y, w, 1, slideBuf + (size_t)y * SW);
+    for (int16_t y = 0; y < SH; y++) {
+      if (inW > 0)
+        tft.pushImage(0, y, inW, 1, slideBufIn + (size_t)y * SW + outW);
+      if (outW > 0)
+        tft.pushImage(inW, y, outW, 1, slideBuf + (size_t)y * SW);
+    }
   }
 }
 
@@ -673,6 +712,12 @@ void goToPage(int p) {
   if (canSlide) tft.readRect(0, 0, SW, SH, slideBuf);
   setPageState(p);
   if (!canSlide) { drawAll(); return; }
+  drawAll();
+  tft.readRect(0, 0, SW, SH, slideBufIn);
+  // The screen now shows the incoming page; paint frame 0 (full
+  // outgoing) before the clock starts so the incoming page does
+  // not flash, then run the 0.34 s track slide.
+  slideFrame(0, dir);
   unsigned long t0 = millis();
   while (true) {
     unsigned long el = millis() - t0;
@@ -683,10 +728,8 @@ void goToPage(int p) {
     // finger is still down (or freshly down) when this returns.
     int16_t tx, ty;
     if (touchRead(tx, ty)) break;
-    float e = (float)el / 340.0f;
-    float f = 1.0f - (1.0f - e) * (1.0f - e) * (1.0f - e);
-    drawAll();
-    slideFrame((int16_t)(f * SW), dir);
+    float f = slideEase((float)el / 340.0f);
+    slideFrame((int16_t)(f * SW + 0.5f), dir);
     delay(17);
   }
   drawAll();  // land clean: no strip left over
