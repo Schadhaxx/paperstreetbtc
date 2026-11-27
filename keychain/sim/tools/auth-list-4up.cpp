@@ -12,7 +12,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static std::string g_dir = "auth-list-4up";
 
@@ -71,10 +71,9 @@ int main(int argc, char **argv) {
   tap(146, 29); runLoopFor(500); dump("dark-auth-4up-hidden");  // HIDE
   tap(146, 29); runLoopFor(500);                                // SHOW
   tap(85, 151); runLoopFor(500); dump("dark-auth-4up-sel3");    // select row 3
-  tap(51, 270); runLoopFor(500);                                // Price -> chart
-  tap(48, 292); runLoopFor(500);                                // Light
-  if (themeDark) { themeDark = false; drawAll(); fprintf(stderr, "[frames] WARNING: Light tap missed, forced light\n"); }
-  tap(108, 292); runLoopFor(1000); dump("light-auth-4up");
+  tap(51, 270); runLoopFor(500);                                // Price -> chart (Auth nav, unchanged)
+  themeDark = false; drawAll();                                 // Light (chart theme pill dropped)
+  goToPage(PAGE_AUTH); runLoopFor(1000); dump("light-auth-4up");
   fprintf(stderr, "[frames] done\n");
   return 0;
 }

@@ -10,7 +10,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static void runLoopFor(unsigned long ms) {
   unsigned long start = (unsigned long)simMillis;
@@ -42,11 +42,11 @@ int main(int argc, char **argv) {
   while (!(priceOk && chartRange == 0 && sN >= 2) && guard++ < 200) runLoopFor(100);
   sample("settled-1D-line");
   for (int i = 0; i < 40; i++) runLoopFor(100);  // hold 4s
-  tap(66, 272);  // Cndl
+  tap(79, 175);  // Cndl (TYPE_Y 168)
   sample("after-Cndl-tap");
   for (int i = 0; i < 40; i++) runLoopFor(100);  // hold 4s
   sample("before-1W-tap");
-  tap(54, 231);  // 1W
+  tap(54, 213);  // 1W (R1_Y 207)
   sample("1W-tap+0.5s");
   tft.dumpPPM("/tmp/before-explicit-draw.ppm");
   drawAll();

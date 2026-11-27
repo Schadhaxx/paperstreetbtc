@@ -13,7 +13,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static void runLoopFor(unsigned long ms) {
   unsigned long start = (unsigned long)simMillis;
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   while (!(priceOk && chartRange == 0 && sN >= 2) && guard++ < 200)
     runLoopFor(100);
   unsigned long okBefore = lastPriceOkMs;
-  tap(20, 7);  // LIVE indicator
+  tap(liveHitX + liveHitW / 2, 7);  // LIVE indicator (right of status bar)
   runLoopFor(2000);
   printf("okBefore=%lu okAfter=%lu priceOk=%d priceUSD=%.0f manualRefresh=%d\n",
          okBefore, lastPriceOkMs, (int)priceOk, priceUSD, (int)manualRefresh);

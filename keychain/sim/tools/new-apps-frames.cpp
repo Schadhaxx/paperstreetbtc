@@ -13,7 +13,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static std::string g_dir = "new-apps-frames";
 
@@ -75,11 +75,11 @@ int main(int argc, char **argv) {
   // 1D: the VS row is hidden (Pass 3 finding 5) — a tap where the
   // SPX chip used to be must be a no-op, and the dump proves the
   // row is gone (no flat lines, no "+0%" chips).
-  tap(41, 310); runLoopFor(1000); dump("dark-1d-comps");
-  tap(65, 251); runLoopFor(3000);                            // 1Y line
+  tap(41, 192); runLoopFor(1000); dump("dark-1d-comps");  // reserved VS row (hidden on 1D)
+  tap(65, 237); runLoopFor(3000);                            // 1Y line (R2_Y 227)
   tapBtn(43); tapBtn(44); tapBtn(45); runLoopFor(3000);     // SPX, GOLD, MSTR
   dump("dark-1y-comps");                                     // 1Y line + comps
-  tap(108, 292); runLoopFor(1500); dump("dark-auth-list"); // Auth list
+  goToPage(PAGE_AUTH); runLoopFor(1500); dump("dark-auth-list"); // Auth (chart shortcut dropped)
   tap(146, 29); runLoopFor(500); dump("dark-auth-hidden"); // HIDE codes
   tap(146, 29); runLoopFor(500);                           // SHOW again
   tap(92, 238); runLoopFor(2000); dump("dark-clock-0");    // Clock nav -> block focus (Auth nav row y 226, Pass 5 finding 11)
@@ -94,12 +94,12 @@ int main(int argc, char **argv) {
 
   // ---- light pass: back to chart, flip theme, walk the same views ----
   tap(53, 302); runLoopFor(1000);                          // Chart nav -> chart (1Y comps)
-  tap(48, 292);                                            // Light half of Dark|Light
+  themeDark = false; drawAll();                            // Light (chart theme pill dropped)
   fprintf(stderr, "[frames] after Light tap: themeDark=%d\n", (int)themeDark);
   if (themeDark) { themeDark = false; drawAll(); fprintf(stderr, "[frames] WARNING: Light tap missed, forced light\n"); }
   runLoopFor(500);
   dump("light-1y-comps");
-  tap(108, 292); runLoopFor(1500); dump("light-auth-list");
+  goToPage(PAGE_AUTH); runLoopFor(1500); dump("light-auth-list");
   tap(146, 29); runLoopFor(500); dump("light-auth-hidden");
   tap(146, 29); runLoopFor(500);
   tap(92, 238); runLoopFor(2000); dump("light-clock-2x"); // entry keeps focus 2 (Auth nav row y 226)

@@ -17,7 +17,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static int g_fail = 0;
 static void check(bool ok, const char *what) {

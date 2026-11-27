@@ -15,7 +15,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static std::string g_dir = "step3-frames";
 static int g_fail = 0;
@@ -96,21 +96,21 @@ int main(int argc, char **argv) {
   // a fresh poll actually happened (lastPriceOkMs advances) — the
   // regular 60 s poll cannot fire inside this 2 s window.
   unsigned long okBefore = lastPriceOkMs;
-  tap(20, 7);
+  tap(liveHitX + liveHitW / 2, 7);  // LIVE, right of status bar
   runLoopFor(2000);
   check(lastPriceOkMs != okBefore && priceOk && priceUSD > 50000,
         "R7: LIVE tap runs a fresh price poll at once");
 
   // ---- R11 disabled pill: candle mode, tap 5Y (must be a no-op) ----
-  tap(66, 272); runLoopFor(1500);  // Cndl
+  tap(79, 175); runLoopFor(1500);  // Cndl (TYPE_Y 168)
   check(chartType == 1, "R11 setup: candle mode on");
   printf("R11: candle label 1D = \"%s\"\\n", CANDLE_LABEL[0]);
   check(strcmp(CANDLE_LABEL[0], "24 x 15m") == 0, "R11: 1D candle label is 24 x 15m");
-  tap(104, 251); runLoopFor(500);  // 5Y, disabled in candle mode
+  tap(104, 237); runLoopFor(500);  // 5Y (R2_Y 227), disabled in candle mode
   check(rangeIdx == 0 && chartType == 1,
         "R11: disabled 5Y tap changes nothing (range still 1D, still candles)");
   dump("dark-1d-candles-disabled5y");
-  tap(45, 272); runLoopFor(1000);  // back to Line
+  tap(47, 175); runLoopFor(1000);  // back to Line
 
   // ---- R9 fetching note, forced (sim fetches return instantly, so the
   // live note cannot be caught mid-fetch — this paints the same code
@@ -119,9 +119,9 @@ int main(int argc, char **argv) {
   fetching = false; drawAll();
 
   // ---- R11 scrub % vs range start: hold a scrub mid-chart and dump ----
-  simSetFinger(true, 60, 180);
+  simSetFinger(true, 60, 125);
   runLoopFor(100);
-  simSetFinger(true, 100, 180);
+  simSetFinger(true, 100, 125);
   runLoopFor(200);
   dump("dark-scrub-mid");
   {
@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
   runLoopFor(500);
 
   // ---- R8 landscape theme pill ----
-  tap(142, 142); runLoopFor(1500);  // Rotate
+  tap(142, 87); runLoopFor(1500);  // Rotate (SCRUB_Y 81)
   check(landscape, "R8 setup: landscape on");
   dump("dark-landscape-theme");
   check(tapBtn(24), "R8: landscape Light pill exists and taps");
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
   tap(285, 158); runLoopFor(500);  // Portrait
 
   // ---- R8 brightness + R10 Updated time, price-only, dark ----
-  tap(75, 292); runLoopFor(1500);  // Price pill -> price-only
+  goToPage(PAGE_PRICE); runLoopFor(1500);  // price-only (shortcut pill dropped)
   check(priceOnly, "R8/R10 setup: price-only page");
   dump("dark-price-only-bright");
   check(brightnessPct == 100, "R8: brightness starts at 100%");
@@ -193,10 +193,10 @@ int main(int argc, char **argv) {
   check(!screenAsleep, "R6: 400ms hold does NOT sleep");
 
   // ---- Light theme: price-only + veil ----
-  tapBtn(24);  // Light (portrait Dark|Light seg)
+  themeDark = false; drawAll();  // Light (portrait theme pill dropped)
   runLoopFor(500);
   check(!themeDark, "light setup: theme is light");
-  tap(75, 292); runLoopFor(1500);  // price-only
+  goToPage(PAGE_PRICE); runLoopFor(1500);  // price-only
   dump("light-price-only-bright");
   holdFinger(85, 25, 1400);
   simSetFinger(false, 0, 0);

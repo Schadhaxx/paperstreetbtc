@@ -17,7 +17,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static void runLoopFor(unsigned long ms) {
   unsigned long start = (unsigned long)simMillis;
@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
   printf("1D tiles: low=%.2f high=%.2f\n", chartMin(), chartMax());
 
   // Tap 1W (range row 1, coords from the video tour) seconds after boot.
-  tap(54, 231);
+  tap(54, 213);  // 1W (R1_Y 207)
   runLoopFor(2000);
   unsigned long tapMs = (unsigned long)simMillis;
   printf("after 1W tap +2s: t=%lums rangeIdx=%d chartRange=%d sN=%d\n",
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
   // Phase 2 — same 1W data in candle mode: the tiles then come from the
   // bucketed 28 x 6h candle lows/highs, so the low should be the true
   // 7d wick low (~$55,106 in this snapshot).
-  tap(66, 272);  // Cndl (type pill)
+  tap(79, 175);  // Cndl (TYPE_Y 168)
   runLoopFor(1000);
   printf("1W candles: type=%d dispCandN=%d low=%.2f high=%.2f\n",
          chartType, dispCandN, chartMin(), chartMax());
@@ -87,20 +87,20 @@ int main(int argc, char **argv) {
   auto tileHash = []() {
     const uint16_t *fb = tft.framebuffer();
     uint64_t h = 1469598103934665603ULL;
-    for (int y = 106; y < 131; y++)
+    for (int y = 277; y < 302; y++)  // 24H HIGH/LOW tiles (TILE_Y2)
       for (int x = 0; x < 170; x++) {
         h ^= (uint64_t)fb[y * 320 + x];
         h *= 1099511628211ULL;
       }
     return h;
   };
-  tap(23, 231);  // 1D
+  tap(23, 213);  // 1D (R1_Y 207)
   guard = 0;
   while (chartRange != 0 && guard++ < 50) runLoopFor(100);
   runLoopFor(1000);
   printf("back on 1D candles: rangeIdx=%d chartRange=%d type=%d low=%.2f high=%.2f\n",
          rangeIdx, chartRange, chartType, chartMin(), chartMax());
-  tap(54, 231);  // 1W again
+  tap(54, 213);  // 1W (R1_Y 207)  // 1W again
   guard = 0;
   while (chartRange != 1 && guard++ < 50) runLoopFor(100);
   uint64_t hash1 = tileHash();

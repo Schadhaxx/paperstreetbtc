@@ -13,7 +13,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static std::string g_dir = "refine-frames";
 
@@ -57,43 +57,43 @@ int main(int argc, char **argv) {
 
   // ---- dark pass ----
   dump("dark-1d-line");
-  tap(66, 272); runLoopFor(1500); dump("dark-1d-candles");   // Cndl
-  tap(54, 231); runLoopFor(2000); dump("dark-1w-candles");   // 1W
-  tap(85, 231); runLoopFor(2000); dump("dark-1m-candles");   // 1M
-  tap(45, 272); tap(65, 251); runLoopFor(2000); dump("dark-1y-line");  // Line, 1Y
-  tap(142, 142); runLoopFor(1500); dump("dark-landscape");   // Rotate (chart overlay)
+  tap(79, 175); runLoopFor(1500); dump("dark-1d-candles");   // Cndl
+  tap(54, 213); runLoopFor(2000); dump("dark-1w-candles");   // 1W
+  tap(85, 213); runLoopFor(2000); dump("dark-1m-candles");   // 1M
+  tap(47, 175); tap(65, 237); runLoopFor(2000); dump("dark-1y-line");  // Line, 1Y
+  tap(142, 87); runLoopFor(1500); dump("dark-landscape");   // Rotate (SCRUB_Y 81)
   tap(285, 158); runLoopFor(500);                            // Portrait
-  tap(75, 292); runLoopFor(1500); dump("dark-price-only");    // Price
+  goToPage(PAGE_PRICE); runLoopFor(1500); dump("dark-price-only");    // price-only
   tap(85, 150); runLoopFor(500);                             // tap chart -> back
-  tap(108, 292); runLoopFor(1500); dump("dark-auth");         // Auth
+  goToPage(PAGE_AUTH); runLoopFor(1500); dump("dark-auth");         // Auth
   tap(51, 238); runLoopFor(500);                             // Price pill (Auth nav row y 226, Pass 5 finding 11) -> back to chart (1Y line)
 
   // ---- stale-state capture (dark): 1D line, then change range with
   // no loop() in between — exactly what onTap's drawAll paints
   // before the fetch lands. ----
-  tap(23, 231); runLoopFor(2000);                            // 1D line
+  tap(23, 213); runLoopFor(2000);                            // 1D line
   rangeIdx = 1; drawAll(); dump("dark-stale-1w");
   runLoopFor(2000); dump("dark-fresh-1w");
 
   // ---- light pass: switch theme via the real Light pill, then walk
   // the same views. Current state: 1W line. ----
-  tap(48, 292);  // Light half of the Dark|Light seg pill
+  themeDark = false; drawAll();  // Light (chart theme pill dropped)
   fprintf(stderr, "[frames] after Light tap: themeDark=%d\n", (int)themeDark);
   if (themeDark) { themeDark = false; drawAll(); fprintf(stderr, "[frames] WARNING: Light tap missed, forced light\n"); }
   runLoopFor(500);
   dump("light-1w-line");
-  tap(23, 231); runLoopFor(2000); dump("light-1d-line");
-  tap(66, 272); runLoopFor(1500); dump("light-1d-candles");
-  tap(54, 231); runLoopFor(2000); dump("light-1w-candles");
-  tap(85, 231); runLoopFor(2000); dump("light-1m-candles");
-  tap(45, 272); tap(65, 251); runLoopFor(2000); dump("light-1y-line");
-  tap(142, 142); runLoopFor(1500); dump("light-landscape");
+  tap(23, 213); runLoopFor(2000); dump("light-1d-line");
+  tap(79, 175); runLoopFor(1500); dump("light-1d-candles");
+  tap(54, 213); runLoopFor(2000); dump("light-1w-candles");
+  tap(85, 213); runLoopFor(2000); dump("light-1m-candles");
+  tap(47, 175); tap(65, 237); runLoopFor(2000); dump("light-1y-line");
+  tap(142, 87); runLoopFor(1500); dump("light-landscape");
   tap(285, 158); runLoopFor(500);
-  tap(75, 292); runLoopFor(1500); dump("light-price-only");
+  goToPage(PAGE_PRICE); runLoopFor(1500); dump("light-price-only");
   tap(85, 150); runLoopFor(500);
-  tap(108, 292); runLoopFor(1500); dump("light-auth");
+  goToPage(PAGE_AUTH); runLoopFor(1500); dump("light-auth");
   tap(51, 238); runLoopFor(500);                             // Price pill (Auth nav row y 226) -> back to chart
-  tap(23, 231); runLoopFor(2000);                            // 1D line
+  tap(23, 213); runLoopFor(2000);                            // 1D line
   rangeIdx = 1; drawAll(); dump("light-stale-1w");
   runLoopFor(2000); dump("light-fresh-1w");
 

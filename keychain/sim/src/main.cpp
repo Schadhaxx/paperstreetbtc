@@ -13,7 +13,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../firmware/paperstreet-keychain.ino"
 
 // ---- video timeline (1s sim time == 1s video) ----
 static std::string g_outDir = "frames";

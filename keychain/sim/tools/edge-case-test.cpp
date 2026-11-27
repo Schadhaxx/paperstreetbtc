@@ -46,7 +46,7 @@ float rangeChange();
 void savePrefs();
 void serialCommand(char *line);
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static int nPass = 0, nFail = 0;
 static void check(const char *name, bool ok) {
@@ -357,14 +357,14 @@ int main(int argc, char **argv) {
     check("scrub: Candles pill present", tapBtn(19));
     runLoopFor(1000);
     check("scrub: candle mode with buckets", chartType == 1 && dispCandN > 0);
-    drag(100, 180, 120, 180, assertScrubSnap);
+    drag(100, 125, 120, 125, assertScrubSnap);  // inside chart (CH_Y 96, CH_H 58)
     check("scrub: drag snaps to a candle centre (dot on candle, readout its close)",
           g_scrubSnapOk);
     check("scrub: lift clears the scrub", scrubIdx == -1 && scrubCand == -1);
 
     // --- Drag starting on a pill must NOT scrub (Pass 5 finding 2:
     // a long drag from a pill is a swipe now, not a tap) ---
-    drag(23, 231, 100, 180, assertNoScrub);
+    drag(23, 213, 100, 213, assertNoScrub);  // start on 1D pill (R1_Y 207)
     check("scrub: drag from a pill does not scrub", g_noScrubOk);
     check("drag-from-pill: long drag swipes instead of firing the pill",
           curPage() == 5 && rangeIdx == 1);  // 1W stays: the 1D pill never fired

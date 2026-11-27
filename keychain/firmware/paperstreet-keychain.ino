@@ -186,7 +186,7 @@ const char *URL_CMP_FILE[3] = {
   "https://paperstreetbtc.com/assets/data/gold-daily.json",
   "https://paperstreetbtc.com/assets/data/mstr-daily.json",
 };
-const char *CMP_NAME[3] = { "SPX", "GOLD", "MSTR" };
+const char *CMP_NAME[3] = { "S&P", "GOLD", "MSTR" };
 // QR receive addresses — the same hardcoded watch-only strings the
 // prototype shows. The keychain holds no keys; these are receive-only.
 const char *QR_JADE_ADDR = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
@@ -348,10 +348,12 @@ void applyBrightnessRaw(int pct) {
 }
 
 // ------------------------------------------------------------------
-// 6. Layout — 170 x 320 portrait, content x 8..162 (154 px wide),
-//    matching the keychain web prototype's rows: status 15, header,
-//    big price, change row, stat tiles, scrub row, chart 154x58,
-//    axis, range pills (2 rows), type row, control row, footer.
+// 6. Layout — 170 x 320 portrait, content x 8..162 (154 px wide).
+//    Phase 1 restack matches the Spaces prototype's row order:
+//    status 15, header, big price, change, scrub, chart 154x58,
+//    axis, type row, VS chips, range pills (2 rows), stat tiles,
+//    page dots. Theme / Price / Auth shortcut pills are gone from
+//    this page (swipe + dots are the navigation, as in the prototype).
 //    Landscape is a full redraw at 320x170, not a scale-up.
 // ------------------------------------------------------------------
 #define SW 170
@@ -359,23 +361,24 @@ void applyBrightnessRaw(int pct) {
 #define CX0 8            // content left edge
 #define CW 154           // content width
 #define CX1 162          // content right edge (exclusive)
-#define HDR_Y 17         // header row (BTC + block + currency pill)
-#define PRICE_Y 33       // big price, top
-#define CHG_Y 64         // change row, top
-#define TILE_Y1 78       // stat tiles row 1
-#define TILE_Y2 106      // stat tiles row 2
-#define TILE_H 25
-#define SCRUB_Y 136      // scrub readout row
+#define HDR_Y 18         // header (BITCOIN · LIVE PRICE + currency)
+#define PRICE_Y 36       // big price, top
+#define CHG_Y 67         // change row, top
+#define SCRUB_Y 81       // scrub readout row
 #define CH_X 35          // chart plot left (27 px gutter for Y labels)
-#define CH_Y 150         // chart top
+#define CH_Y 96          // chart top
 #define CH_W 127         // chart plot width (35..162)
 #define CH_H 58          // chart height
-#define AXIS_Y 210       // axis labels
-#define R1_Y 223         // range pills row 1
-#define R2_Y 243         // range pills row 2
-#define TYPE_Y 265       // Line/Cndl row
-#define CTL_Y 284        // theme / Price / Auth row
-#define FOOT_Y 304       // "CoinGecko · Coinbase"
+#define AXIS_Y 156       // axis labels
+#define TYPE_Y 168       // Line/Candles row
+#define CMP_Y 186        // VS comparison chips
+#define R1_Y 207         // range pills row 1
+#define R2_Y 227         // range pills row 2
+#define TILE_Y1 249      // stat tiles row 1 (below the ranges)
+#define TILE_Y2 277      // stat tiles row 2
+#define TILE_H 25
+#define CTL_Y 284        // unused on the portrait chart (shortcuts dropped)
+#define FOOT_Y 304       // unused on the portrait chart
 
 // Landscape chart view (320 x 170) — setRotation(1). The device has
 // no tilt sensor; rotation is a button tap, and it only ever applies
@@ -440,6 +443,9 @@ unsigned long lastTapMs      = 0;
 int   rangeIdx  = 0;      // 0 = 1D
 int   chartType = 0;      // 0 = line, 1 = candles
 bool  priceOnly = false;
+// Hit box of the LIVE/OFFLINE label, set by drawStatusBar so a tap
+// can force a refresh after the label moved to the right (Phase 1).
+int16_t liveHitX = 0, liveHitW = 0;
 
 // Block height (mempool.space, polled every 10 min while online).
 // 0 = unknown — the stat tiles show "--" until the first fetch.
@@ -1275,45 +1281,69 @@ int16_t drawSinglePill(int16_t x, int16_t y, int16_t h,
 void drawStatusBar(int16_t barH, bool small) {
   // Width from the display, not the SW constant, so the bar spans
   // the full 320 px in landscape too.
+  // Prototype arrangement: clock on the left, battery on the right.
+  // LIVE/OFFLINE is kept as a firmware gain, on the right of the clock
+  // cluster's counterpart — just left of the battery.
   tft.fillRect(0, 0, tft.width(), barH, C_BG);
   int16_t ty = small ? 1 : 3;   // text top (15 px bar / 13 px bar)
-  // live / offline dot + word
-  uint16_t dot = priceOk ? C_GREEN : C_RED;
-  tft.fillCircle(11, barH / 2, 2, dot);
-  setF(small ? F_MONO7 : F_MONO8B, 2);
-  tft.setTextColor(priceOk ? C_GREEN : C_RED, C_BG);
-  tft.setCursor(17, ty);
-  tft.print(priceOk ? "LIVE" : "OFFLINE");
-  // right side: battery + clock
-  char right[24];
-  int bat = batteryPct();
   char clk[8];
   fmtClock(clk, sizeof(clk));
-  if (bat >= 0) snprintf(right, sizeof(right), "%d%%  %s", bat, clk);
-  else          snprintf(right, sizeof(right), "USB  %s", clk);
   setF(small ? F_MONO7 : F_MONO8, 2);
   tft.setTextColor(C_MUTED, C_BG);
-  int16_t w = tft.textWidth(right);
-  tft.setCursor(tft.width() - w - 8, ty);
-  tft.print(right);
-  // battery icon (15x7 outline + fill) when on battery
+  tft.setCursor(8, ty);
+  tft.print(clk);
+  // right side: LIVE/OFFLINE + battery
+  int bat = batteryPct();
+  char batTxt[12];
+  if (bat >= 0) snprintf(batTxt, sizeof(batTxt), "%d%%", bat);
+  else          snprintf(batTxt, sizeof(batTxt), "USB");
+  setF(small ? F_MONO7 : F_MONO8, 2);
+  int16_t bw = tft.textWidth(batTxt);
+  int16_t batX = tft.width() - bw - 8;
+  tft.setTextColor(C_MUTED, C_BG);
+  tft.setCursor(batX, ty);
+  tft.print(batTxt);
+  int16_t iconX = batX;
   if (bat >= 0) {
-    int16_t bx = tft.width() - w - 8 - 19;
-    tft.drawRect(bx, barH / 2 - 3, 15, 7, C_DIM);
-    tft.fillRect(bx + 15, barH / 2 - 1, 2, 3, C_DIM);
+    iconX = batX - 19;
+    tft.drawRect(iconX, barH / 2 - 3, 15, 7, C_DIM);
+    tft.fillRect(iconX + 15, barH / 2 - 1, 2, 3, C_DIM);
     int16_t fw = 13 * bat / 100;
-    if (fw > 0) tft.fillRect(bx + 1, barH / 2 - 2, fw, 5, C_GREEN);
+    if (fw > 0) tft.fillRect(iconX + 1, barH / 2 - 2, fw, 5, C_GREEN);
   }
+  const char *live = priceOk ? "LIVE" : "OFFLINE";
+  setF(small ? F_MONO7 : F_MONO8B, 2);
+  int16_t lw = tft.textWidth(live);
+  int16_t lx = iconX - 6 - lw;
+  uint16_t dot = priceOk ? C_GREEN : C_RED;
+  tft.fillCircle(lx - 6, barH / 2, 2, dot);
+  tft.setTextColor(priceOk ? C_GREEN : C_RED, C_BG);
+  tft.setCursor(lx, ty);
+  tft.print(live);
+  liveHitX = lx - 10;
+  liveHitW = (int16_t)(lw + 14);
 }
 
-// Header: "BTC" + the block height on the left, the USD|CAD
-// segmented pill on the right. Registers the pill zones (ids 16/17).
+// Header: "BITCOIN · LIVE PRICE" + the block height on the left,
+// the USD $|CAD $ segmented pill on the right — the prototype's
+// p-head. The middot is drawn in Mono (it is not in the Inter vlw
+// charset). Registers the pill zones (ids 16/17).
 void drawHeader() {
-  setF(F_PILL8, 2);
+  setF(F_PILL6, 1);
   tft.setTextColor(C_MUTED, C_BG);
   tft.setCursor(CX0, HDR_Y);
-  tft.print("BTC");
-  int16_t bw = tft.textWidth("BTC");
+  tft.print("BITCOIN");
+  int16_t x = CX0 + tft.textWidth("BITCOIN");
+  // Middot is in the Mono vlw charset, not Inter.
+  const char mid[] = " \xC2\xB7 ";
+  setF(F_MONO6, 1);
+  tft.setCursor(x, HDR_Y + 1);
+  tft.print(mid);
+  x += tft.textWidth(mid);
+  setF(F_PILL6, 1);
+  tft.setTextColor(C_MUTED, C_BG);
+  tft.setCursor(x, HDR_Y);
+  tft.print("LIVE PRICE");
   char blk[24];
   if (blockHeight > 0) {
     char hb[16];
@@ -1324,18 +1354,12 @@ void drawHeader() {
   }
   setF(F_MONO7, 2);
   tft.setTextColor(C_PILL2, C_BG);
-  tft.setCursor(CX0 + bw + 5, HDR_Y + 1);
+  tft.setCursor(CX0, HDR_Y + 10);
   tft.print(blk);
-  int16_t pw = segPillWidth("USD", "CAD", F_PILL8);
-  drawSegPill(CX1 - pw, HDR_Y, 14, "USD", "CAD", !curCAD, 16, 17, F_PILL8);
+  int16_t pw = segPillWidth("USD $", "CAD $", F_PILL6);
+  drawSegPill(CX1 - pw, HDR_Y, 14, "USD $", "CAD $", !curCAD, 16, 17, F_PILL6);
 }
 
-// The prototype's price glow (text-shadow 0 0 18px
-// rgba(34,211,238,.25)): the TFT cannot blur, so the closest honest
-// equivalent is a 1 px halo of dim cyan behind the whole price,
-// drawn at four 1 px offsets. Light mode has no glow in the
-// prototype (text-shadow:none), so the halo is skipped there.
-// Call after setF, before the two-colour price draw.
 void drawPriceHalo(int16_t x, int16_t y, const char *buf) {
   if (!themeDark) return;
   tft.setTextColor(C_GLOW, C_BG);
@@ -1360,6 +1384,8 @@ void drawPrice() {
   tft.setTextColor(C_PRICE, C_BG);
   tft.setCursor(CX0 + dw, PRICE_Y);
   tft.print(buf + 1);   // buf starts with '$'
+  // Prototype: tapping the big price toggles USD/CAD (id 27).
+  btns[nBtns++] = {CX0, PRICE_Y, (int16_t)tft.textWidth(buf), 30, 27};
 }
 
 float rangeChange() {
@@ -2105,7 +2131,7 @@ void drawCmpRow() {
   int16_t x = CX0;
   if (showVS) {
     tft.setTextColor(C_PILL2, C_BG);
-    tft.setCursor(x, 304);
+    tft.setCursor(x, CMP_Y + 4);
     tft.print("VS");
     x += vsW + 4;
   }
@@ -2115,13 +2141,13 @@ void drawCmpRow() {
     bool on = cmpOn[c] && !disabled;
     uint16_t bord = disabled ? C_TILEBD : (on ? CMP_COL[c] : C_BORD);
     uint16_t fg = disabled ? C_DIMMED : (on ? CMP_COL[c] : C_BTN_TXT);
-    fillPill(x, 300, chipW[c], 13, 7, C_BTN, bord, C_BG);
-    tft.fillCircle(x + 6, 307, 2, disabled ? C_DIM : CMP_COL[c]);
+    fillPill(x, CMP_Y, chipW[c], 13, 7, C_BTN, bord, C_BG);
+    tft.fillCircle(x + 6, CMP_Y + 7, 2, disabled ? C_DIM : CMP_COL[c]);
     setF(F_MONO6, 1);
     tft.setTextColor(fg, C_BTN);
-    tft.setCursor(x + 10, 304);
+    tft.setCursor(x + 10, CMP_Y + 4);
     tft.print(label);
-    if (!disabled) btns[nBtns++] = {x, 300, chipW[c], 13, (int16_t)(43 + c)};
+    if (!disabled) btns[nBtns++] = {x, CMP_Y, chipW[c], 13, (int16_t)(43 + c)};
     x += chipW[c] + 3;
   }
 }
@@ -2971,13 +2997,12 @@ void drawAll() {
   drawHeader();
   drawPrice();
   drawChangeRow();
-  drawStatGrid();
-  drawChartArea();
   drawScrubRow();
-  drawRangeButtons();
+  drawChartArea();
   drawTypeRow();
-  drawControlRow();
   drawCmpRow();
+  drawRangeButtons();
+  drawStatGrid();
   drawPageDots();
 }
 
@@ -4353,7 +4378,8 @@ void onTap(int16_t x, int16_t y) {
   // cannot register a button id there.
   {
     int16_t barH = landscape ? 13 : 15;
-    if (y >= 0 && y < barH && x >= 0 && x < 58) {
+    if (y >= 0 && y < barH && liveHitW > 0 &&
+        x >= liveHitX && x < liveHitX + liveHitW) {
       if (wifiOk) {
         manualRefresh = true;
         lastPriceMs = millis() - PRICE_POLL_MS;
@@ -4452,6 +4478,8 @@ void onTap(int16_t x, int16_t y) {
     if (curCAD) { curCAD = false; savePrefs(); drawAll(); }
   } else if (id == 17) {        // CAD
     if (!curCAD) { curCAD = true; savePrefs(); drawAll(); }
+  } else if (id == 27) {        // big-price tap: toggle currency (prototype)
+    curCAD = !curCAD; savePrefs(); drawAll();
   } else if (id == 18) {        // Line
     if (chartType != 0) { chartType = 0; savePrefs(); drawAll(); }
   } else if (id == 19) {        // Candles

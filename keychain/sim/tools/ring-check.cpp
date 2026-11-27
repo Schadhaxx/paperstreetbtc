@@ -16,7 +16,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static void runLoopFor(unsigned long ms) {
   unsigned long start = (unsigned long)simMillis;

@@ -14,7 +14,7 @@
 float rangeChange();
 void savePrefs();
 
-#include "/home/hatch/workspace/ps-keychain-firmware/paperstreet-keychain.ino"
+#include "../../firmware/paperstreet-keychain.ino"
 
 static std::string g_dir = "swipe-frames";
 static int g_fail = 0;
@@ -155,14 +155,14 @@ int main(int argc, char **argv) {
   tap(53, 302);  // Chart nav pill on the QR page
   runLoopFor(1000);
   check(curPage() == 0, "Chart pill returns to page 0");
-  swipe(85, 180, 35, 180);  // drag inside the chart = scrub
+  swipe(85, 125, 35, 125);  // drag inside the chart (CH_Y 96, CH_H 58) = scrub
   check(curPage() == 0 && scrubIdx == -1, "chart scrub does not change page");
   check(dotsOk(), "dots intact after scrub");
 
   // 12. (Pass 5 finding 2) A drag starting on a pill DOES swipe now:
   // down on the 1W range pill, drag left 50 px. The old code fired
   // the pill instead; now the page changes and the range does NOT.
-  swipe(54, 231, 4, 231);
+  swipe(54, 213, 4, 213);  // drag from 1W pill
   check(curPage() == 1 && rangeIdx == 0,
         "drag from range pill swipes (page 1, range still 1D)");
 
@@ -170,17 +170,18 @@ int main(int argc, char **argv) {
   // pill still fires it (the <10 px tap gate, finding 2).
   swipe(85, 25, 135, 25);
   check(curPage() == 0, "swipe right back to chart");
-  tap(54, 231);  // 1W pill
+  tap(54, 213);  // 1W pill
   runLoopFor(1000);
   check(rangeIdx == 1, "stationary tap on 1W pill still selects 1W");
-  tap(23, 231);  // 1D pill, back to 1D for the steps below
+  tap(23, 213);  // 1D pill, back to 1D for the steps below
   runLoopFor(1000);
   check(rangeIdx == 0, "stationary tap on 1D pill restores 1D");
 
-  // 12c. (Pass 5 finding 2) A drag starting on the Auth pill also
-  // swipes now — the pill does NOT fire (old behaviour: page 5).
+  // 12c. Chart-page Auth/theme shortcut pills were dropped (Phase 1).
+  // A drag starting on the bottom stat tiles still swipes, and does
+  // not jump to Auth (there is no Auth shortcut to fire).
   swipe(108, 292, 58, 292);
-  check(curPage() == 1, "drag from Auth pill swipes (page 1, not Auth)");
+  check(curPage() == 1, "drag from bottom stat tiles swipes (page 1, not Auth)");
 
   // 13. Landscape forces the chart page: back to chart, rotate,
   // portrait again — still the chart page, not a restored page.
@@ -190,16 +191,15 @@ int main(int argc, char **argv) {
   runLoopFor(1000);
   check(curPage() == 0, "tap returns to chart");
 
-  // 13a. (Pass 5 finding 9) Near-miss tap above the 1W pill (y 219:
-  // dead gap between the axis row and row 1, inside the expanded
-  // hit box) still selects 1W; then restore 1D.
-  tap(54, 219);
+  // 13a. (Pass 5 finding 9) Near-miss tap above the 1W pill (visual
+  // at R1_Y 207; hit box starts at y 203) still selects 1W; then restore 1D.
+  tap(54, 205);
   runLoopFor(1000);
   check(rangeIdx == 1, "near-miss tap above 1W pill selects 1W");
-  tap(23, 231);
+  tap(23, 213);
   runLoopFor(1000);
   check(rangeIdx == 0, "tap on 1D pill restores 1D");
-  tap(142, 142);  // Rotate (scrub row, right end)
+  tap(142, 87);  // Rotate (scrub row at SCRUB_Y 81, right end)
   runLoopFor(500);
   check(landscape && curPage() == 0 && tft.width() == 320,
         "rotate -> landscape chart page");

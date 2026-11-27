@@ -1,0 +1,6 @@
+# Binary fonts — regenerate with sim/tools/genvlw.py from the official
+# TTFs (see keychain/README.md). Do not commit these.
+*.vlw
+
+# Local ArduinoJson checkout used by the native sim; not in the handover.
+sim/third_party/
