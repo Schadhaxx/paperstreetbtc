@@ -619,3 +619,293 @@ test('unknown route is 404, non-GET is 405', async () => {
   assert.equal((await worker.fetch(req('/nope'), ENV)).status, 404);
   assert.equal((await worker.fetch(req('/', { method: 'POST' }), ENV)).status, 405);
 });
+
+// --- Stage 2 analytics: POST /err + GET /err ------------------------------
+//
+// The Worker never runs against a real D1 in tests: FakeD1 below is an
+// in-memory stand-in implementing exactly the statements index.js uses
+// (prepare/bind/run/all/first). The read secret here is a placeholder,
+// the same pattern as FINNHUB_API_KEY above.
+
+class FakeD1 {
+  constructor() {
+    this.rows = [];
+    this.nextId = 1;
+  }
+  prepare(sql) {
+    const self = this;
+    const stmt = {
+      bind(...params) {
+        return {
+          async run() { return self._run(sql, params); },
+          async all() { return { results: self._all(sql, params) }; },
+          async first() { return self._first(sql, params); },
+        };
+      },
+      async run() { return self._run(sql, []); },
+      async all() { return { results: self._all(sql, []) }; },
+      async first() { return self._first(sql, []); },
+    };
+    return stmt;
+  }
+  _run(sql, p) {
+    if (sql.startsWith('INSERT INTO errors')) {
+      const [ts, path, message, file, line, browser, device, pin, kind, src] = p;
+      this.rows.push({ id: this.nextId++, ts, path, message, file, line, browser, device, pin, kind, src });
+      return { success: true };
+    }
+    if (sql.startsWith('DELETE FROM errors WHERE ts <')) {
+      const cutoff = p[0];
+      this.rows = this.rows.filter((r) => !(r.ts < cutoff));
+      return { success: true };
+    }
+    if (sql.startsWith('DELETE FROM errors WHERE id IN')) {
+      const limit = p[0];
+      const sorted = [...this.rows].sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : a.id - b.id));
+      const drop = new Set(sorted.slice(0, limit).map((r) => r.id));
+      this.rows = this.rows.filter((r) => !drop.has(r.id));
+      return { success: true };
+    }
+    throw new Error('fake D1: unhandled run: ' + sql);
+  }
+  _all(sql, p) {
+    if (sql.includes('GROUP BY message')) {
+      const since = p[0];
+      const groups = new Map();
+      for (const r of this.rows) {
+        if (r.ts < since) continue;
+        const g = groups.get(r.message) || { message: r.message, n: 0, last: '', path: '' };
+        g.n += 1;
+        if (r.ts >= g.last) { g.last = r.ts; g.path = r.path; }
+        groups.set(r.message, g);
+      }
+      return [...groups.values()].sort((a, b) => b.n - a.n).slice(0, 10);
+    }
+    if (sql.includes('ORDER BY ts DESC LIMIT 50')) {
+      const since = p[0];
+      return this.rows
+        .filter((r) => r.ts >= since)
+        .sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : b.id - a.id))
+        .slice(0, 50);
+    }
+    if (sql.includes('GROUP BY src')) {
+      const since = p[0];
+      const groups = new Map();
+      for (const r of this.rows) {
+        if (r.ts < since) continue;
+        const k = r.src === null || r.src === undefined ? null : r.src;
+        groups.set(k, (groups.get(k) || 0) + 1);
+      }
+      return [...groups.entries()].map(([src, n]) => ({ src, n })).sort((a, b) => b.n - a.n);
+    }
+    throw new Error('fake D1: unhandled all: ' + sql);
+  }
+  _first(sql, p) {
+    if (sql.startsWith('SELECT COUNT(*) AS n FROM errors')) {
+      if (p.length === 0) return { n: this.rows.length };
+      const since = p[0];
+      return { n: this.rows.filter((r) => r.ts >= since).length };
+    }
+    throw new Error('fake D1: unhandled first: ' + sql);
+  }
+}
+
+function errEnv(db) {
+  return { FINNHUB_API_KEY: 'test-key-placeholder', ERR_READ_SECRET: 'test-read-secret', ERR_DB: db };
+}
+
+function errPayload(over = {}) {
+  return JSON.stringify({
+    path: '/screener.html', message: 'boom', file: 'btcchart.js', line: 12,
+    browser: 'Safari', device: 'phone', pin: 'err1', kind: 'onerror', src: 'x', ...over,
+  });
+}
+
+function errReq({ origin = 'https://paperstreetbtc.com', ip = '1.2.3.4', body = null, contentType = 'text/plain' } = {}) {
+  const headers = new Headers();
+  if (origin) headers.set('Origin', origin);
+  if (ip) headers.set('CF-Connecting-IP', ip);
+  if (contentType) headers.set('Content-Type', contentType);
+  return new Request('https://paperstreet-quotes.workers.dev/err', { method: 'POST', headers, body });
+}
+
+function errReadReq({ secret = 'test-read-secret', origin = undefined, days = undefined } = {}) {
+  const headers = new Headers();
+  if (secret) headers.set('Authorization', `Bearer ${secret}`);
+  if (origin !== undefined) headers.set('Origin', origin);
+  const qs = days === undefined ? '' : `?days=${days}`;
+  return new Request(`https://paperstreet-quotes.workers.dev/err${qs}`, { method: 'GET', headers });
+}
+
+test('POST /err happy path: 204, row stored, read endpoint shows it with src', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  const res = await worker.fetch(errReq({ body: errPayload() }), env);
+  assert.equal(res.status, 204);
+  assert.equal(res.headers.get('Access-Control-Allow-Origin'), 'https://paperstreetbtc.com');
+  assert.equal(res.headers.get('Cache-Control'), null, 'no quotes max-age=15 on /err');
+  assert.equal(db.rows.length, 1);
+  assert.equal(db.rows[0].path, '/screener.html');
+  assert.equal(db.rows[0].message, 'boom');
+  assert.equal(db.rows[0].src, 'x');
+
+  const read = await worker.fetch(errReadReq({}), env);
+  assert.equal(read.status, 200);
+  const p = await body(read);
+  assert.equal(p.ok, true);
+  assert.equal(p.days, 7);
+  assert.equal(p.count, 1);
+  assert.equal(p.top.length, 1);
+  assert.equal(p.top[0].message, 'boom');
+  assert.equal(p.top[0].count, 1);
+  assert.equal(p.top[0].path, '/screener.html');
+  assert.equal(p.recent.length, 1);
+  assert.equal(p.recent[0].kind, 'onerror');
+  assert.equal(p.recent[0].browser, 'Safari');
+  assert.equal(p.recent[0].device, 'phone');
+  assert.equal(p.recent[0].src, 'x');
+  assert.deepEqual(p.bySrc, [{ src: 'x', count: 1 }]);
+  assert.equal(read.headers.get('Cache-Control'), 'no-store');
+});
+
+test('POST /err: bad or missing origin is 403, localhost is allowed', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  assert.equal((await worker.fetch(errReq({ origin: 'https://evil.example.com', body: errPayload() }), env)).status, 403);
+  assert.equal((await worker.fetch(errReq({ origin: '', body: errPayload() }), env)).status, 403);
+  assert.equal(db.rows.length, 0, 'rejected reports must not be stored');
+  const ok = await worker.fetch(errReq({ origin: 'http://localhost:8787', body: errPayload() }), env);
+  assert.equal(ok.status, 204);
+  assert.equal(db.rows.length, 1);
+});
+
+test('POST /err: oversized body is 413, invalid JSON is 400, bad report is 400', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  const big = await worker.fetch(errReq({ body: 'x'.repeat(2049) }), env);
+  assert.equal(big.status, 413);
+  const badJson = await worker.fetch(errReq({ body: '{not json' }), env);
+  assert.equal(badJson.status, 400);
+  const badPath = await worker.fetch(errReq({ body: errPayload({ path: 'https://evil.example.com/x' }) }), env);
+  assert.equal(badPath.status, 400);
+  const badKind = await worker.fetch(errReq({ body: errPayload({ kind: 'explode' }) }), env);
+  assert.equal(badKind.status, 400);
+  const queryPath = await worker.fetch(errReq({ body: errPayload({ path: '/screener.html?x=1' }) }), env);
+  assert.equal(queryPath.status, 400);
+  assert.equal(db.rows.length, 0);
+});
+
+test('POST /err: unknown fields dropped, file is basenamed, enums defaulted', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  const res = await worker.fetch(
+    errReq({ body: errPayload({ file: 'https://paperstreetbtc.com/assets/js/btcchart.js?v=wr14', browser: 'Lynx', device: 'toaster', userAgent: 'secret-ua', ip: '1.2.3.4' }) }),
+    env,
+  );
+  assert.equal(res.status, 204);
+  const row = db.rows[0];
+  assert.equal(row.file, 'btcchart.js', 'file must be a basename with the query stripped');
+  assert.equal(row.browser, 'Other', 'unknown browser defaults to Other');
+  assert.equal(row.device, 'desktop', 'unknown device defaults to desktop');
+  assert.equal(row.userAgent, undefined, 'raw UA must never be stored');
+  assert.equal(row.ip, undefined, 'IP must never be stored');
+});
+
+test('POST /err rate limit: 5/min per IP, 6th is 429, other IP unaffected', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  let last;
+  for (let i = 0; i < 6; i++) {
+    last = await worker.fetch(errReq({ ip: '10.1.1.1', body: errPayload({ message: 'm' + i }) }), env);
+  }
+  assert.equal(last.status, 429);
+  assert.equal(last.headers.get('Retry-After'), '60');
+  assert.equal(db.rows.length, 5, 'only the first 5 posts are stored');
+  const other = await worker.fetch(errReq({ ip: '10.1.1.2', body: errPayload() }), env);
+  assert.equal(other.status, 204, 'a different IP is unaffected');
+});
+
+test('POST /err with D1 down still returns 204', async () => {
+  const env = { FINNHUB_API_KEY: 'test-key-placeholder', ERR_READ_SECRET: 'test-read-secret' };
+  const res = await worker.fetch(errReq({ body: errPayload() }), env);
+  assert.equal(res.status, 204);
+});
+
+test('POST /err: old rows pruned (30 days) and table capped at 5,000', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  const oldTs = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+  db.rows.push({ id: db.nextId++, ts: oldTs, path: '/old', message: 'old', file: '', line: 0, browser: 'Other', device: 'desktop', pin: 'err1', kind: 'onerror', src: null });
+  const res = await worker.fetch(errReq({ body: errPayload() }), env);
+  assert.equal(res.status, 204);
+  assert.equal(db.rows.length, 1, 'the 40-day-old row must be pruned');
+  assert.equal(db.rows[0].message, 'boom');
+
+  // Flood the table past the cap, then post once: it must shrink to 5,000.
+  const now = new Date().toISOString();
+  for (let i = 0; i < 5002; i++) {
+    db.rows.push({ id: db.nextId++, ts: now, path: '/flood', message: 'flood', file: '', line: 0, browser: 'Other', device: 'desktop', pin: 'err1', kind: 'onerror', src: null });
+  }
+  await worker.fetch(errReq({ ip: '9.9.9.9', body: errPayload({ message: 'after-flood' }) }), env);
+  assert.equal(db.rows.length, 5000, 'the table must be capped at 5,000 rows');
+  assert.ok(db.rows.some((r) => r.message === 'after-flood'), 'the new row must survive the cap');
+});
+
+test('GET /err: right secret returns the shape, count 0 is a valid week', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  const res = await worker.fetch(errReadReq({}), env);
+  assert.equal(res.status, 200);
+  const p = await body(res);
+  assert.deepEqual(p, { ok: true, days: 7, count: 0, top: [], recent: [], bySrc: [] });
+});
+
+test('GET /err: no secret is 401, wrong secret is 401, secret not configured is 500', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  assert.equal((await worker.fetch(errReadReq({ secret: '' }), env)).status, 401);
+  assert.equal((await worker.fetch(errReadReq({ secret: 'wrong-secret' }), env)).status, 401);
+  const noSecretEnv = { FINNHUB_API_KEY: 'test-key-placeholder', ERR_DB: db };
+  assert.equal((await worker.fetch(errReadReq({}), noSecretEnv)).status, 500);
+  const noDbEnv = { FINNHUB_API_KEY: 'test-key-placeholder', ERR_READ_SECRET: 'test-read-secret' };
+  assert.equal((await worker.fetch(errReadReq({}), noDbEnv)).status, 500);
+});
+
+test('GET /err: days param clamps to 1..30, no CORS headers even with an Origin', async () => {
+  const db = new FakeD1();
+  const env = errEnv(db);
+  const p30 = await body(await worker.fetch(errReadReq({ days: 99 }), env));
+  assert.equal(p30.days, 30);
+  const p1 = await body(await worker.fetch(errReadReq({ days: 0 }), env));
+  assert.equal(p1.days, 1);
+  const res = await worker.fetch(errReadReq({ origin: 'https://evil.example.com' }), env);
+  assert.equal(res.status, 200, 'the read route is not origin-gated');
+  assert.equal(res.headers.get('Access-Control-Allow-Origin'), null, 'no CORS on the read route');
+});
+
+test('OPTIONS allows POST now, and POST / is still 405', async () => {
+  const { stub } = makeFetchStub();
+  globalThis.fetch = stub;
+  const env = errEnv(new FakeD1());
+  const pre = await worker.fetch(req('/', { origin: 'https://paperstreetbtc.com', method: 'OPTIONS' }), env);
+  assert.equal(pre.status, 204);
+  assert.ok((pre.headers.get('Access-Control-Allow-Methods') || '').includes('POST'), 'OPTIONS must list POST for /err');
+  assert.equal((await worker.fetch(req('/', { method: 'POST' }), env)).status, 405);
+  assert.equal((await worker.fetch(req('/err', { method: 'POST' }), env)).status, 403, 'POST /err without an origin is 403, not 405');
+});
+
+test('/err does not change the quote routes or their CORS', async () => {
+  const { stub } = makeFetchStub();
+  globalThis.fetch = stub;
+  const env = errEnv(new FakeD1());
+  const post = await worker.fetch(errReq({ body: errPayload() }), env);
+  assert.equal(post.status, 204);
+  const q = await worker.fetch(req('/', { origin: 'https://paperstreetbtc.com' }), env);
+  assert.equal(q.status, 200);
+  const p = await body(q);
+  assert.equal(p.btc.usd, 67280);
+  assert.equal(q.headers.get('Access-Control-Allow-Origin'), 'https://paperstreetbtc.com');
+  const h = await worker.fetch(req('/health'), env);
+  assert.equal(h.status, 200);
+  assert.equal((await body(h)).ok, true);
+});
