@@ -948,6 +948,10 @@ function syncTypePill(){
   var s=b.querySelector('span');if(s)s.textContent=lab;
   b.disabled=dis;b.setAttribute('aria-disabled',dis?'true':'false');
   b.setAttribute('aria-label','Chart type: '+lab);
+  /* Must-fix (27 Nov 2026): long ranges are Line-only, so the disabled
+     pill says why instead of greying out unexplained (6M Candles -> 5Y
+     used to flip to Line with no explanation). */
+  b.title=dis?'Line only on 5Y, 10Y and Max — candles are not available on these ranges':'';
 }
 var taLoaded=false;
 function loadTA(){
@@ -996,7 +1000,13 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
     rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);
     if(rng==='1D'){if(wasCandles&&CT==='line')CT=(wasGran==='4h')?'4h':last1DCT;else if(!wasCandles)CT='line';}
     else{if(wasCandles)RGCT='candles';else RGCT='line';}
-  }else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
+    /* Must-fix (27 Nov 2026): long ranges are Line-only (no candles past
+       1Y). Coming from a candles view, the type state must say Line too —
+       and the note must say why — instead of silently flipping the pill
+       to Line and greying it out. */
+    var longFromCandles=/^(5Y|10Y|Max)$/.test(rng)&&wasCandles;
+    if(longFromCandles)RGCT='line';
+  }else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();if(longFromCandles){var nt=$('bcNt');if(nt)nt.textContent+=' Candles are not available on '+rng+' — showing Line.';}});
   document.addEventListener('keydown',function(e){if(INLINE||dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
@@ -1576,7 +1586,14 @@ function drawDailyNative(d,cmp){
       ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
     });
     ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle=psC('#9aa6bc','#475569');
-    nativeXLabels(ctx,xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);}),xIdx.map(function(i){return X(i);}),L,R,W,T+ih+6);
+    var xLab=xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);});
+    /* Must-fix (27 Nov 2026): 5Y/10Y/Max (n>400) label by year, and the
+       autoSkip step (~8.6 months on 5Y) can land two ticks in the same
+       calendar year, printing it twice ('2024' twice on 5Y). Blank a
+       repeat — the gridline still draws, and the first tick of each year
+       keeps the label. */
+    if(n>400){for(var li=1;li<xLab.length;li++)if(xLab[li]===xLab[li-1])xLab[li]='';}
+    nativeXLabels(ctx,xLab,xIdx.map(function(i){return X(i);}),L,R,W,T+ih+6);
     /* Trace a dataset's line. spanGaps bridges nulls into one path
        (S&P, MSTR); without it the line breaks at nulls (Gold). */
     function traceDS(ys,spanGaps){
@@ -1628,7 +1645,7 @@ function drawDailyNative(d,cmp){
     }
     linePts={d:d,cmp:cmp};
     lineGeom={kind:'daily',pad:{l:L,r:R,t:T,b:B},plotW:iw,plotH:ih,n:n,xs:xs,ys:btcYs,ysSPX:spxYs,ysGLD:gldYs,ysMSTR:mstrYs,hasLive:hasLive,sx:sx,log:LOG};
-    window.__BTC_LINE_LAYOUT={kind:'daily',w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:drawnY,xLabels:xIdx.map(function(i){return n>400?lab[i].slice(0,4):lab[i].slice(5);}),hasLive:hasLive,livePrice:hasLive?d[n-1][1]:null,sx:sx,log:LOG};
+    window.__BTC_LINE_LAYOUT={kind:'daily',w:W,h:H,padL:L,padR:R,padT:T,padB:B,plotW:iw,plotH:ih,n:n,yTicks:drawnY,xLabels:xLab,hasLive:hasLive,livePrice:hasLive?d[n-1][1]:null,sx:sx,log:LOG};
     window.__BTC_LINE_HOVER=lineHover;
     nativeTooltipBind(c);
     /* Redraw once Inter loads, so canvas text sharpens (YTD backup pattern). */
