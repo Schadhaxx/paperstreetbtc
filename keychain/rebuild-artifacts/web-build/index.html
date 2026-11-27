@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PaperStreet Keychain — live C++ sim</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 18px 12px 40px;
+    background: #0B1120; color: #E2E8F0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    text-align: center;
+  }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .sub { color: #94A3B8; font-size: 14px; margin: 0 0 14px; line-height: 1.45; }
+  #stage { display: flex; justify-content: center; }
+  canvas {
+    image-rendering: auto;
+    border: 2px solid #1E293B; border-radius: 18px;
+    background: #000; touch-action: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #status { font-size: 17px; font-weight: 600; margin: 14px 0 4px; }
+  #datanote { color: #94A3B8; font-size: 13px; margin: 0 0 14px; line-height: 1.45; max-width: 520px; margin-left: auto; margin-right: auto; }
+  .hint { color: #CBD5E1; font-size: 14px; line-height: 1.5; max-width: 520px; margin: 0 auto 14px; }
+  button {
+    background: #1E293B; color: #E2E8F0; border: 1px solid #334155;
+    border-radius: 10px; padding: 10px 18px; font-size: 15px; cursor: pointer;
+  }
+  button:active { background: #334155; }
+  .fine { color: #64748B; font-size: 12px; line-height: 1.5; max-width: 520px; margin: 18px auto 0; }
+  a { color: #22D3EE; }
+</style>
+</head>
+<body>
+  <h1>PaperStreet keychain — live C++ sim</h1>
+  <p class="sub">The real ESP32 firmware, compiled to WebAssembly.<br>Tap the device&rsquo;s own buttons — ranges, Line/Cndl, USD/CAD, Dark/Light, Price, Auth, Rotate.</p>
+  <div id="stage"><canvas id="screen" width="170" height="320"></canvas></div>
+  <p id="status">Loading the device&hellip;</p>
+  <p id="datanote"></p>
+  <p class="hint">Try: <b>Cndl</b> for candles, <b>1W</b> / <b>1M</b> / <b>1Y</b> for ranges, <b>Rotate</b> for the landscape chart, <b>Auth</b> for the authenticator, <b>Price</b> for the big-price view. Prefer a guided tour? <a href="keychain-sim.mp4">Watch the 90-second video</a>.</p>
+  <button id="reset" type="button">Restart device</button>
+  <p class="fine">This is the actual C++ sketch from paperstreet-keychain.ino running in your browser — same code, same chart math, same colours, same smooth anti-aliased fonts as the real device. Touch and network are simulated. Data comes from the same public sources as the real device (CoinGecko, Coinbase, paperstreetbtc.com, mempool.space); if the live fetch fails it falls back to a snapshot from 24&nbsp;Nov&nbsp;2026 ~11:03&nbsp;EST. The clock and Authenticator code run off your device&rsquo;s real clock.</p>
+
+  <script>
+  // Define Module BEFORE keychain.js loads: the glue picks this object up
+  // and augments it (FS, HEAPU16, _sim_*). Defining it after the glue
+  // would replace the object the glue already augmented.
+  var Module = {
+    onRuntimeInitialized: function () {
+      refreshData(DATA_URLS).then(function (n) {
+        dataNoteEl.textContent = (n > 0)
+          ? 'Live data: ' + n + ' of 13 feeds refreshed just now from the same sources as the real device.'
+          : 'Offline snapshot: price data from 24 Nov 2026 ~11:03 EST (BTC $59,647). The clock and Authenticator code still run live.';
+        Module._sim_init();
+        setInterval(updateStatus, 1000);
+        updateStatus();
+        requestAnimationFrame(frame);
+        // Re-fetch the two price feeds every minute; the sketch picks
+        // them up on its next refresh.
+        setInterval(function () { refreshData(DATA_URLS.slice(0, 2)); }, 60000);
+      });
+    }
+  };
+  </script>
+  <script src="keychain.js"></script>
+  <script>
+  var canvas = document.getElementById('screen');
+  var ctx = canvas.getContext('2d');
+  var statusEl = document.getElementById('status');
+  var dataNoteEl = document.getElementById('datanote');
+  var img = null;
+
+  // Same public endpoints the firmware itself uses. The last six
+  // feed the Pass-1 apps (comparison overlays + block clock); the
+  // /api/blocks feed is synthesised by the sim stub with a fresh
+  // timestamp, so it needs no fetch.
+  var DATA_URLS = [
+    ['https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,cad&include_24hr_change=true', 'coingecko.json'],
+    ['https://api.coinbase.com/v2/prices/BTC-USD/spot', 'coinbase-spot.json'],
+    ['https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900', 'candles-900.json'],
+    ['https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=3600', 'candles-3600.json'],
+    ['https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=21600', 'candles-21600.json'],
+    ['https://paperstreetbtc.com/assets/data/btc-daily.json', 'btc-daily.json'],
+    ['https://mempool.space/api/blocks/tip/height', 'block-height.txt'],
+    ['https://paperstreetbtc.com/assets/data/spx-daily.json', 'spx-daily.json'],
+    ['https://paperstreetbtc.com/assets/data/gold-daily.json', 'gold-daily.json'],
+    ['https://paperstreetbtc.com/assets/data/mstr-daily.json', 'mstr-daily.json'],
+    ['https://mempool.space/api/v1/difficulty-adjustment', 'difficulty-adjustment.json'],
+    ['https://mempool.space/api/v1/fees/recommended', 'fees-recommended.json'],
+    ['https://mempool.space/api/mempool', 'mempool.json']
+  ];
+
+  function fetchWithTimeout(url, ms) {
+    var c = new AbortController();
+    var t = setTimeout(function () { c.abort(); }, ms);
+    return fetch(url, { signal: c.signal }).then(function (r) {
+      if (!r.ok) return null;
+      return r.text();
+    }).catch(function () { return null; })
+    .finally(function () { clearTimeout(t); });
+  }
+
+  // Refresh the sim's data files in the virtual FS. The sketch re-reads
+  // them on its own refresh schedule, so fresh price data flows in.
+  // Returns how many feeds succeeded. Failures are silent: the embedded
+  // snapshot stays in place.
+  function refreshData(files) {
+    var jobs = files.map(function (pair) {
+      return fetchWithTimeout(pair[0], 6000).then(function (text) {
+        if (!text) return 0;
+        try { Module.FS.writeFile('/data/' + pair[1], text); return 1; }
+        catch (e) { return 0; }
+      });
+    });
+    return Promise.all(jobs).then(function (rs) {
+      return rs.reduce(function (a, b) { return a + b; }, 0);
+    });
+  }
+
+  // Size the canvas to the largest box that fits the viewport while
+  // keeping the device's exact aspect ratio. (A CSS max-height on the
+  // canvas used to squash it on phones: the width stayed put while
+  // the height was clamped, so the device looked distorted.)
+  function fitCanvas() {
+    try {
+      if (!Module._sim_fb_width) return;
+      var w = Module._sim_fb_width(), h = Module._sim_fb_height();
+      var availW = Math.min(w === 170 ? 510 : 920, window.innerWidth * 0.92);
+      var availH = window.innerHeight * 0.62;
+      var s = Math.min(availW / w, availH / h);
+      canvas.style.width = Math.round(w * s) + 'px';
+      canvas.style.height = Math.round(h * s) + 'px';
+    } catch (e) { /* not initialised yet */ }
+  }
+  window.addEventListener('resize', fitCanvas);
+  window.addEventListener('orientationchange', fitCanvas);
+
+  function render() {
+    var w = Module._sim_fb_width(), h = Module._sim_fb_height();
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w; canvas.height = h;
+      fitCanvas();
+    }
+    if (!img || img.width !== w || img.height !== h) {
+      img = ctx.createImageData(w, h);
+    }
+    var ptr = Module._sim_fb_ptr();
+    var stride = Module._sim_fb_stride();
+    var fb = Module.HEAPU16;
+    var base = ptr >> 1;
+    var d = img.data;
+    var o = 0;
+    for (var y = 0; y < h; y++) {
+      var row = base + y * stride;
+      for (var x = 0; x < w; x++) {
+        var v = fb[row + x];
+        d[o++] = ((v >> 11) & 31) * 255 / 31;
+        d[o++] = ((v >> 5) & 63) * 255 / 63;
+        d[o++] = (v & 31) * 255 / 31;
+        d[o++] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  var lastT = 0;
+  function frame(t) {
+    var dt = lastT ? Math.min(50, t - lastT) : 16;
+    lastT = t;
+    Module._sim_step(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  function updateStatus() {
+    try {
+      if (Module._sim_price_ok()) {
+        var cents = Module._sim_price_cents();
+        statusEl.textContent = 'BTC $' + (cents / 100).toLocaleString('en-US');
+      } else {
+        statusEl.textContent = 'Fetching price\u2026';
+      }
+    } catch (e) { /* not initialised yet */ }
+  }
+
+  // ---- touch: pointer coords -> device (drawing) coords ----
+  var liftTimer = null;
+  var pointerDown = false;   // true between pointerdown and lift
+  var lastPos = [0, 0];      // last known device coords (down/move/lift)
+  function toDevice(e) {
+    var r = canvas.getBoundingClientRect();
+    var w = Module._sim_fb_width(), h = Module._sim_fb_height();
+    var dx = Math.floor((e.clientX - r.left) / r.width * w);
+    var dy = Math.floor((e.clientY - r.top) / r.height * h);
+    return [Math.max(0, Math.min(w - 1, dx)), Math.max(0, Math.min(h - 1, dy))];
+  }
+  canvas.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    // Flush a pending lift first, and make it poll-visible (Pass 5
+    // finding 4): a re-press within ~100 ms of a lift used to call
+    // _sim_touch_up then _sim_touch_down synchronously — if no 50 ms
+    // poll landed between them, the firmware never saw the lift and
+    // downAtMs survived, merging two taps into one. Stepping 60 ms
+    // between the up and the down forces a touch poll in between, so
+    // the lift registers and the second tap starts fresh.
+    if (liftTimer) {
+      clearTimeout(liftTimer); liftTimer = null;
+      Module._sim_touch_up(lastPos[0], lastPos[1]);
+      try { Module._sim_step(60); } catch (err) {}
+    }
+    pointerDown = true;
+    lastPos = toDevice(e);
+    Module._sim_touch_down(lastPos[0], lastPos[1]);
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    // Only while the pointer is down: hover moves must not inject
+    // phantom touches. Drags reach the firmware via _sim_touch_move,
+    // so the swipe recogniser sees the finger move (dx accumulates).
+    if (!pointerDown) return;
+    lastPos = toDevice(e);
+    Module._sim_touch_move(lastPos[0], lastPos[1]);
+  });
+  function lift(e) {
+    // Hold the finger ~100ms so the sketch's touch poll always sees it.
+    if (liftTimer) return;
+    if (e) lastPos = toDevice(e);
+    liftTimer = setTimeout(function () {
+      Module._sim_touch_up(lastPos[0], lastPos[1]);
+      liftTimer = null;
+    }, 100);
+  }
+  canvas.addEventListener('pointerup', function (e) {
+    e.preventDefault();
+    pointerDown = false;
+    lift(e);
+  });
+  canvas.addEventListener('pointercancel', function (e) {
+    pointerDown = false;
+    lift(e);
+  });
+
+  document.getElementById('reset').addEventListener('click', function () {
+    location.reload();
+  });
+
+  // ---- boot (Module is defined before keychain.js loads; see above) ----
+  </script>
+</body>
+</html>
