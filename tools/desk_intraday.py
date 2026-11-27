@@ -312,7 +312,19 @@ def tz_healthy(zone=_DEFAULT_ZONE):
         return False
 
 def in_window(now_et):
-    """(inside, reason). `now_et` is an aware datetime in America/New_York."""
+    """(inside, reason). `now_et` is an aware datetime in America/New_York.
+
+    The gate is deliberately NYSE-only: the weekly files are stocks plus
+    the eight indicators, and the stocks set the schedule. Consequence,
+    documented rather than silently fixed: on an NYSE holiday when CME
+    is open (MLK Day, Presidents Day, Juneteenth, Labor Day — CME runs
+    a full or shortened session), the WTI/GOLD weekly candles lag one
+    day and catch up on the next run. The live prices are unaffected —
+    the prices.yml pipeline has no market-hours gate. A CME-aware
+    gate (indicators-only runs on NYSE holidays) was considered and
+    not built: it would need a third run type through the workflow and
+    the final-run logic, for a one-day lag on two weekly candles.
+    """
     if not tz_healthy():
         return False, 'America/New_York time zone data unavailable or stale — skipping run'
     now_et = now_et.astimezone(NY)
@@ -549,6 +561,13 @@ def validate_candle(candle):
 
 _STOCK_TAIL = re.compile(r" Latest week (?:is in progress as of|is a final close through)[^.]*\.")
 _IND_TAIL = re.compile(r" Latest week \([^)]*\) (?:refreshed in progress|is in progress) as of [^;]*; its close is not a final close\.")
+# A gap sentence names weeks that could not be backfilled (below). It is
+# stripped and re-added on each run, so it never accumulates — and it is
+# cleared once the gap is healed.
+_GAP_RE = re.compile(r" Week\(s\) [^ ]+(?:, [^ ]+)* missing from this file[^.]*\.")
+def _set_gap(note, sentence):
+    note = _GAP_RE.sub('', note or '').rstrip()
+    return (note + ' ' + sentence) if sentence else note
 
 def refresh_note(note, tail, pattern):
     """Swap the existing latest-week sentence for `tail`, in place if one
@@ -589,7 +608,18 @@ def refresh_stock(sym, out_dir, now, fixture_bars, check_only):
     # week was stuck at Thursday's close). Fetch from its Monday so its
     # bars are in the payload too.
     finalize_last = last_mon < cur_mon and bool(old.get('inProgress'))
-    fetch_since = last_mon if finalize_last else cur_mon
+    # A missed week (or weeks) between the last shipped week and the
+    # current week: backfill them from the same Yahoo payload instead
+    # of leaving a permanent gap in the file. The chart plots
+    # consecutive weeks with no visual gap indicator, so a missing week
+    # silently distorts the series. Fetch from the last shipped Monday
+    # so the missing weeks' bars are in the payload too.
+    gap_mondays = []
+    _m = last_mon + dt.timedelta(days=7)
+    while _m < cur_mon:
+        gap_mondays.append(_m)
+        _m += dt.timedelta(days=7)
+    fetch_since = last_mon if (finalize_last or gap_mondays) else cur_mon
     if fixture_bars is not None:
         bars, vols = fixture_bars
     else:
@@ -630,6 +660,22 @@ def refresh_stock(sym, out_dir, now, fixture_bars, check_only):
             return 'failed', False
         weeks = weeks[:-1] + [prev]
         print(f'{sym}: finalised previous week {last_mon} (close {prev["close"]}, {prev["days"]} days) before appending')
+    # Backfill any missed weeks from the same payload. A week that cannot
+    # be built (no bars, or an invalid candle) does NOT block the current
+    # week — the file still appends it and the gap is named in the note
+    # (below), so the hole is visible instead of silent. A stale gap
+    # sentence is cleared once the gap is healed.
+    gap_candles, gap_missing = [], []
+    for gm in gap_mondays:
+        gc = candle_for_week(bars, gm, vols, None)
+        gbad = validate_candle(gc) if gc is not None else ['no bars']
+        if gc is None or gbad:
+            print(f'{sym}: WARNING cannot backfill missing week {gm} ({ "; ".join(gbad) }) — appending current week only, gap named in the note')
+            gap_missing.append(gm)
+            continue
+        gap_candles.append(gc)
+    if gap_candles:
+        print(f'{sym}: backfilled {len(gap_candles)} missed week(s) {[c["monday"] for c in gap_candles]}')
     last_bar = max(d for d in bars if SW.week_monday(d) == cur_mon)
     # Week finished only on the weekend, or Friday after the close has
     # settled (4:15 PM, or 1:15 PM on an early-close Friday).
@@ -649,9 +695,7 @@ def refresh_stock(sym, out_dir, now, fixture_bars, check_only):
         doc['weeks'] = weeks[:-1] + [candle]
         action = 'refreshed'
     else:
-        if last_mon + dt.timedelta(days=7) != cur_mon:
-            print(f'{sym}: WARNING gap — last shipped week {last_mon}, current week {cur_mon}; appending current week only, past weeks untouched')
-        doc['weeks'] = weeks + [candle]
+        doc['weeks'] = weeks + gap_candles + [candle]
         action = 'appended'
     doc['asOf'] = last_bar.isoformat()
     doc['asOfLabel'] = SW.dlabel(last_bar)
@@ -667,7 +711,12 @@ def refresh_stock(sym, out_dir, now, fixture_bars, check_only):
     else:
         doc['inProgress'] = f'in progress, through last completed session {SW.dlabel(last_bar)} — week not finished'
         tail = f'Latest week is in progress as of {SW.dlabel(last_bar)}, {now_et.strftime("%-I:%M %p ET")}; its close is not a final close.'
-    doc['note'] = refresh_note(old.get('note', ''), tail, _STOCK_TAIL)
+    note = refresh_note(old.get('note', ''), tail, _STOCK_TAIL)
+    if gap_missing:
+        note = _set_gap(note, f'Week(s) {", ".join(m.isoformat() for m in gap_missing)} missing from this file — no Yahoo bars to backfill; the chart jumps over them.')
+    else:
+        note = _set_gap(note, None)
+    doc['note'] = note
     if check_only:
         print(f'{sym}: would {action} current week to {candle}')
         return action, True
@@ -698,7 +747,14 @@ def refresh_indicator(key, out_dir, now, fixture_bars, check_only):
     # values would freeze as a final week. Fetch from its Monday so its
     # bars are in the payload too.
     finalize_last = last_mon < cur_mon and bool(old.get('inProgress'))
-    fetch_since = last_mon if finalize_last else cur_mon
+    # Missed week(s) between the last shipped week and the current week:
+    # backfill them from the same Yahoo payload (see refresh_stock).
+    gap_mondays = []
+    _m = last_mon + dt.timedelta(days=7)
+    while _m < cur_mon:
+        gap_mondays.append(_m)
+        _m += dt.timedelta(days=7)
+    fetch_since = last_mon if (finalize_last or gap_mondays) else cur_mon
     if fixture_bars is not None:
         bars, vols = fixture_bars
     else:
@@ -738,6 +794,20 @@ def refresh_indicator(key, out_dir, now, fixture_bars, check_only):
             return 'failed', False
         weeks = weeks[:-1] + [prev]
         print(f'{key}: finalised previous week {last_mon} (close {prev["close"]}, {prev["days"]} days) before appending')
+    # Backfill any missed weeks (same rule as refresh_stock: a week that
+    # cannot be built does not block the current week; the gap is named
+    # in the note instead of left silent).
+    gap_candles, gap_missing = [], []
+    for gm in gap_mondays:
+        gc = candle_for_week(bars, gm, vols, None)
+        gbad = validate_candle(gc) if gc is not None else ['no bars']
+        if gc is None or gbad:
+            print(f'{key}: WARNING cannot backfill missing week {gm} ({ "; ".join(gbad) }) — appending current week only, gap named in the note')
+            gap_missing.append(gm)
+            continue
+        gap_candles.append(gc)
+    if gap_candles:
+        print(f'{key}: backfilled {len(gap_candles)} missed week(s) {[c["monday"] for c in gap_candles]}')
     asof_label = et_label(now_et)
     finished = today_utc >= cur_mon + dt.timedelta(days=6)
     LIVE[('indicator', key)] = _live_entry('indicator', key, candle, not finished)
@@ -752,9 +822,7 @@ def refresh_indicator(key, out_dir, now, fixture_bars, check_only):
         doc['weeks'] = weeks[:-1] + [candle]
         action = 'refreshed'
     else:
-        if last_mon + dt.timedelta(days=7) != cur_mon:
-            print(f'{key}: WARNING gap — last shipped week {last_mon}, current week {cur_mon}; appending current week only, past weeks untouched')
-        doc['weeks'] = weeks + [candle]
+        doc['weeks'] = weeks + gap_candles + [candle]
         action = 'appended'
     doc['asOf'] = asof_label
     if finished:
@@ -763,7 +831,12 @@ def refresh_indicator(key, out_dir, now, fixture_bars, check_only):
     else:
         doc['inProgress'] = f'in progress, as of {asof_label}'
         tail = f'Latest week ({candle["label"]}) refreshed in progress as of {asof_label}; its close is not a final close.'
-    doc['note'] = refresh_note(old.get('note', ''), tail, _IND_TAIL)
+    note = refresh_note(old.get('note', ''), tail, _IND_TAIL)
+    if gap_missing:
+        note = _set_gap(note, f'Week(s) {", ".join(m.isoformat() for m in gap_missing)} missing from this file — no Yahoo bars to backfill; the chart jumps over them.')
+    else:
+        note = _set_gap(note, None)
+    doc['note'] = note
     if check_only:
         print(f'{key}: would {action} current week to {candle}')
         return action, True

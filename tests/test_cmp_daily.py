@@ -77,6 +77,39 @@ try:
 finally:
     shutil.rmtree(td)
 
+# BTC guard: last date must equal the UTC cutoff, not the NYSE asOf.
+# now Sat Jan 10 18:00 ET (23:00 UTC) -> UTC cutoff Jan 9, NYSE asOf Jan 9.
+chk('BTC guard passes when last == UTC cutoff',
+    cd.check_btc_cutoff({'BTC': {'dates': ['2026-01-09']}}, '2026-01-10T18:00:00-05:00') is None)
+chk('BTC guard fails when last is a day short',
+    cd.check_btc_cutoff({'BTC': {'dates': ['2026-01-08']}}, '2026-01-10T18:00:00-05:00') is not None)
+chk('BTC guard skips when BTC not built',
+    cd.check_btc_cutoff({}, '2026-01-10T18:00:00-05:00') is None)
+# A run before 00:15 UTC ends BTC a day behind asOf — correct by design.
+chk('BTC guard uses the pre-midnight UTC cutoff',
+    cd.check_btc_cutoff({'BTC': {'dates': ['2026-01-08']}}, '2026-01-10T00:05:00Z') is None)
+
+# BTC fixture end-to-end: baseline Dec 31 plus bars Jan 1-9 2026 (every
+# day), now Sat Jan 10 18:00 ET. The file writes with BTC ending Jan 9
+# (UTC cutoff) and the NYSE asOf Jan 9 (Friday).
+td2 = tempfile.mkdtemp(prefix='cmpbtc-')
+try:
+    btc_bars = [{'date': '2025-12-31', 'close': 90000}] + [
+        {'date': f'2026-01-0{d}', 'close': 90000 + d} for d in range(1, 10)]
+    btc_fx = {'now': '2026-01-10T18:00:00-05:00', 'symbols': {'BTC': btc_bars}}
+    btc_fx_path = os.path.join(td2, 'btc.json')
+    btc_pack = os.path.join(td2, 'pack.json')
+    btc_out = os.path.join(td2, 'cmp-daily.json')
+    json.dump(btc_fx, open(btc_fx_path, 'w'))
+    json.dump(pack, open(btc_pack, 'w'))
+    code_b, _, err_b = run(['--fixture', btc_fx_path, '--pack', btc_pack, '--out', btc_out, '--weekly-dir', td2])
+    chk('BTC fixture writes', code_b == 0, err_b)
+    btc_doc = json.load(open(btc_out))
+    chk('BTC fixture ends on UTC cutoff Jan 9', btc_doc['symbols']['BTC']['dates'][-1] == '2026-01-09')
+    chk('BTC fixture asOf is the Friday NYSE close', btc_doc['asOf'] == '2026-01-09')
+finally:
+    shutil.rmtree(td2)
+
 shipped = os.path.join(ROOT, 'assets/data/cmp-daily.json')
 code5, out5, err5 = run(['--check-only', '--out', shipped, '--pack', os.path.join(ROOT, 'assets/data/screener-pack.json'), '--weekly-dir', os.path.join(ROOT, 'assets/data')])
 chk('shipped file passes check-only', code5 == 0, err5 or out5)

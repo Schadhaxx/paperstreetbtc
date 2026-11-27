@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Daily closes for the Maple Leaf comparison chart.
 
-Writes one combined file, assets/data/cmp-daily.json: the seven screener
-stocks plus three optional benchmarks (SPY, QQQ, BTC-USD).
+Writes one combined file, assets/data/cmp-daily.json: the sixteen screener
+stocks plus three benchmarks (SPY, QQQ, BTC-USD).
 
 Source: Yahoo chart API, unadjusted close (quote.close, never adjclose).
 Equity and ETF dates are the America/New_York session date. BTC-USD dates
@@ -34,11 +34,23 @@ SPECS = {
     'MU':   {'kind': 'stock', 'yahoo': 'MU',   'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'META': {'kind': 'stock', 'yahoo': 'META', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'SPCX': {'kind': 'stock', 'yahoo': 'SPCX', 'calendar': 'nyse', 'basis': 'listing', 'base': '2026-06-12', 'first': '2026-06-12'},
+    # New Desk stocks added 9 Nov 2026 (same YTD baseline as the original
+    # seven). BRK.B's Yahoo symbol is BRK-B (hyphen) — a raw 'BRK.B'
+    # fetch would 404, same as tools/stock_weekly.py YAHOO_MAP.
+    'BRK.B': {'kind': 'stock', 'yahoo': 'BRK-B', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'AAPL': {'kind': 'stock', 'yahoo': 'AAPL', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'AMZN': {'kind': 'stock', 'yahoo': 'AMZN', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'MSFT': {'kind': 'stock', 'yahoo': 'MSFT', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'NFLX': {'kind': 'stock', 'yahoo': 'NFLX', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'SPOT': {'kind': 'stock', 'yahoo': 'SPOT', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'XYZ':  {'kind': 'stock', 'yahoo': 'XYZ', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'GOOGL': {'kind': 'stock', 'yahoo': 'GOOGL', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
+    'NVDA': {'kind': 'stock', 'yahoo': 'NVDA', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'SPY':  {'kind': 'benchmark', 'yahoo': 'SPY', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'QQQ':  {'kind': 'benchmark', 'yahoo': 'QQQ', 'calendar': 'nyse', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-02'},
     'BTC':  {'kind': 'benchmark', 'yahoo': 'BTC-USD', 'calendar': 'utc', 'basis': 'ytd', 'base': '2025-12-31', 'first': '2026-01-01'},
 }
-ORDER = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX', 'SPY', 'QQQ', 'BTC']
+ORDER = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX', 'BRK.B', 'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA', 'SPY', 'QQQ', 'BTC']
 
 
 def closes_from_pairs(sym, pairs, calendar):
@@ -168,6 +180,21 @@ def _utc_cutoff(now):
         day -= dt.timedelta(days=1)
     day -= dt.timedelta(days=1)
     return day
+
+
+def check_btc_cutoff(built, now):
+    """BTC is UTC-calendar: its last date must equal the UTC cutoff, not
+    the NYSE asOf. A run before 00:15 UTC ends BTC a day behind asOf —
+    correct by design (the still-forming UTC bar is dropped, never
+    written). Returns an error string, or None when the invariant
+    holds (or BTC was not built, e.g. a fixture run without it)."""
+    if 'BTC' not in built:
+        return None
+    utc_cut = _utc_cutoff(now).isoformat()
+    last = built['BTC']['dates'][-1]
+    if last != utc_cut:
+        return f'BTC: last {last} != UTC cutoff {utc_cut}'
+    return None
 
 
 def build_doc(symbols, now):
@@ -330,6 +357,11 @@ def main(argv):
             print(f'FAILED {sym}: last {s["dates"][-1]} != asOf {doc["asOf"]}', file=sys.stderr)
             print('cmp-daily: no file written', file=sys.stderr)
             return 1
+    btc_err = check_btc_cutoff(built, now)
+    if btc_err:
+        print(f'FAILED {btc_err}', file=sys.stderr)
+        print('cmp-daily: no file written', file=sys.stderr)
+        return 1
     bad = validate_doc(doc, rows, None if fx is not None else weekly_dir)
     if bad:
         print('FAILED validation: ' + '; '.join(bad), file=sys.stderr)
