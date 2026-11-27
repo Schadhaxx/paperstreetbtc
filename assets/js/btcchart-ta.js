@@ -393,7 +393,7 @@ function tlSelectLinesForChart(file,chartTf,livePrice,nowMs,lastMs){
   });
   return out;
 }
-if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView,tlExpandLoHi:tlExpandLoHi,tlExpandRange:tlExpandRange};return;}
+if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView,tlExpandLoHi:tlExpandLoHi,tlExpandRange:tlExpandRange,ovExpandRange:ovExpandRange};return;}
 /* ---------- Stage 2: overlay drawing (browser only) ---------- */
 function fmtP(v){try{return (window.__BTCP&&window.__BTCP.fmt)?window.__BTCP.fmt(v):('$'+Math.round(v).toLocaleString('en-US'));}catch(e){return '$'+Math.round(v);}}
 function psC2(d,l){try{return window.psC?window.psC(d,l):d;}catch(e){return d;}}
@@ -709,6 +709,39 @@ function tlExpandRange(st,livePrice,lastMs,lo,hi){
   if(!sel.drawn||!sel.drawn.length)return null;
   return tlExpandLoHi(sel.drawn,lo,hi);
 }
+function ovExpandRange(st,kind,closes,lo,hi){
+  /* Job 12 (22 Nov 2026): the range the chart should use when an
+     overlay is on — the Bollinger band and MA line extremes over the
+     visible window, bounded by tlExpandLoHi (one span per side, same
+     as the trendlines). The panel calls this before computing its
+     y-mapping, so a band or MA that runs outside the price range
+     widens the axis instead of being clipped off the plot (1W Line:
+     the upper band poked above the plot top; 1W daily candles: the
+     200s sat below the visible range and drew nothing). Only the
+     overlays that will actually draw count (on + not gated); RSI is
+     a strip below the chart, not on the plot. Null when overlays are
+     off, a comparison is on (TA hides), the data is not ready, or
+     nothing needs expanding. The panel falls back to its tight range
+     and the warm-up/file-load redraw picks the expansion up. */
+  if(!S||(!S.bb&&!S.ma))return null;
+  if(isCmp())return null;
+  if(!st||!Array.isArray(closes)||!closes.length)return null;
+  if(!isFinite(lo)||!isFinite(hi)||!(hi>lo))return null;
+  var g={kind:kind,n:closes.length,closes:closes};
+  var warm=warmFor(g);
+  var vals=computeVals(g,warm);
+  var prices=[];
+  if(S.bb&&vals.bbUp&&vals.bbLo&&!taGated('bb',st)){
+    vals.bbUp.forEach(function(v){if(isFinite(v))prices.push({price:v});});
+    vals.bbLo.forEach(function(v){if(isFinite(v))prices.push({price:v});});
+  }
+  if(S.ma&&vals.mas)maOn().forEach(function(k){
+    if(!vals.mas[k]||taMaGated(k,st))return;
+    vals.mas[k].forEach(function(v){if(isFinite(v))prices.push({price:v});});
+  });
+  if(!prices.length)return null;
+  return tlExpandLoHi(prices,lo,hi);
+}
 function tlDrawLines(g){
   /* Draws this chart's timeframe's lines plus the higher ones (rule 5,
      same-or-higher). Returns the draw result for the debug probe. Draws
@@ -859,7 +892,7 @@ var COL={tl:'#22c55e',bb:'#a78bfa',ma:'#f472b6',rsi:'#a78bfa'};
    MA's colour dot + label, and the tooltip lists each enabled MA in its
    own colour. */
 var MA_KEYS=['sma20','sma50','sma200','ema20','ema50','ema200'];
-var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#34d399','#059669'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
+var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#14b8a6','#0f766e'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
 var MA_LBL={sma20:'SMA 20',sma50:'SMA 50',sma200:'SMA 200',ema20:'EMA 20',ema50:'EMA 50',ema200:'EMA 200'};
 function maCol(k){var c=MA_COL[k];return c?psC2(c[0],c[1]):psC2('#f472b6','#db2777');}
 function maOn(){if(!S.ma)return [];return MA_KEYS.filter(function(k){return S.maSet&&S.maSet[k];});}
@@ -1384,6 +1417,6 @@ window.__TA_TL_DEBUG=function(){
   }catch(e){return null;}
 };
 
-window.__BTTA={init:init,typeLabel:typeLabel,tlExpandRange:tlExpandRange};
+window.__BTTA={init:init,typeLabel:typeLabel,tlExpandRange:tlExpandRange,ovExpandRange:ovExpandRange};
 if(API&&API.dlg)init(API);
 })();

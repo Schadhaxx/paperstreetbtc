@@ -157,9 +157,9 @@ def main():
         chk('1D Line: SMA 200 chip enabled (ungated, Job 2)', not disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
         chk('1D Line: EMA 200 chip enabled (ungated, Job 2)', not disabled(pg, '.ta-panel [data-ta-ma="ema200"]'))
         chk('1D Line: Bollinger violet draws', colour_present(pg, (167, 139, 250)))
-        chk('1D Line: SMA 200 green draws (a real line, not edge pixels)',
-            colour_count(pg, (52, 211, 153), tol=10) >= 50,
-            'count=%d' % colour_count(pg, (52, 211, 153), tol=10))
+        chk('1D Line: SMA 200 teal draws (a real line, not edge pixels)',
+            colour_count(pg, (20, 184, 166), tol=10) >= 50,
+            'count=%d' % colour_count(pg, (20, 184, 166), tol=10))
         # ---- 1D 1H candles ----
         print('--- 1D 1H candles ---')
         pick_size(pg, '1h'); res['1D 1H'] = measure(pg, '1D 1H')
@@ -182,9 +182,9 @@ def main():
         print('--- 1W 4H candles ---')
         pick_size(pg, '4h'); res['1W 4H'] = measure(pg, '1W 4H')
         chk('1W 4H: Bollinger violet draws', colour_present(pg, (167, 139, 250)))
-        chk('1W 4H: SMA 200 green draws (a real line, not edge pixels)',
-            colour_count(pg, (52, 211, 153), tol=10) >= 50,
-            'count=%d' % colour_count(pg, (52, 211, 153), tol=10))
+        chk('1W 4H: SMA 200 teal draws (a real line, not edge pixels)',
+            colour_count(pg, (20, 184, 166), tol=10) >= 50,
+            'count=%d' % colour_count(pg, (20, 184, 166), tol=10))
         # ---- 1M Line ----
         print('--- 1M Line ---')
         go_range(pg, '1M'); pick_line(pg); res['1M Line'] = measure(pg, '1M Line')
@@ -196,9 +196,9 @@ def main():
         print('--- YTD Line ---')
         go_range(pg, 'YTD'); pick_line(pg); res['YTD Line'] = measure(pg, 'YTD Line')
         chk('YTD Line: Bollinger violet draws', colour_present(pg, (167, 139, 250)))
-        chk('YTD Line: SMA 200 green draws (a real line, not edge pixels)',
-            colour_count(pg, (52, 211, 153), tol=10) >= 50,
-            'count=%d' % colour_count(pg, (52, 211, 153), tol=10))
+        chk('YTD Line: SMA 200 teal draws (a real line, not edge pixels)',
+            colour_count(pg, (20, 184, 166), tol=10) >= 50,
+            'count=%d' % colour_count(pg, (20, 184, 166), tol=10))
         # ---- 1Y Line ----
         print('--- 1Y Line ---')
         go_range(pg, '1Y'); pick_line(pg); res['1Y Line'] = measure(pg, '1Y Line')
