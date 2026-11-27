@@ -566,6 +566,7 @@ int curRot = 0;  // rotation actually programmed into the display
 void fillPillSolid(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r,
                    uint16_t fill, uint16_t behind);
 void drawAll();
+void endPressFeedback(bool restore);
 bool fetchClockData();
 bool authRefresh();
 void savePrefs();
@@ -3010,6 +3011,8 @@ void setRotationIf(int r) {
 // gets the right orientation: Auth and the price screen are always
 // portrait, the chart goes landscape only while `landscape` is set.
 void drawAll() {
+  // A full redraw replaces any in-flight press highlight.
+  endPressFeedback(false);
   // Asleep: the veil is the whole screen — nothing else draws.
   if (screenAsleep) { nBtns = 0; drawSleepVeil(); return; }
   // Rebuild the display candles FIRST: in candle mode the stat tiles
@@ -4420,6 +4423,67 @@ bool touchRead(int16_t &x, int16_t &y) {
 // 13. Tap handling + main loop
 // ==================================================================
 
+// Immediate press feedback: paint the hit button's pressed look
+// without waiting for a full drawAll. Saved pixels are pushed back
+// if the press is cancelled (a drag or a no-op tap). drawAll
+// discards the save, because the new frame replaces the screen.
+#define PRESS_MAX_W 100
+#define PRESS_MAX_H 24
+uint16_t pressBuf[PRESS_MAX_W * PRESS_MAX_H];
+bool pressSaved = false;
+bool pressBorderOnly = false;
+int16_t pressX, pressY, pressW, pressH;
+
+void endPressFeedback(bool restore) {
+  if (!pressSaved) return;
+  if (restore && !pressBorderOnly)
+    tft.pushImage(pressX, pressY, pressW, pressH, pressBuf);
+  pressSaved = false;
+  pressBorderOnly = false;
+}
+
+void beginPressFeedback(int16_t x, int16_t y) {
+  endPressFeedback(true);
+  int id = hitTest(x, y);
+  if (id < 0) return;
+  const Btn *b = nullptr;
+  for (int i = 0; i < nBtns; i++) if (btns[i].id == id) { b = &btns[i]; break; }
+  if (!b || b->w <= 0 || b->h <= 0) return;
+  pressX = b->x; pressY = b->y; pressW = b->w; pressH = b->h;
+  if (pressW > PRESS_MAX_W || pressH > PRESS_MAX_H) {
+    // Large targets (QR card, auth rows): a cyan inset ring, no save.
+    tft.drawRoundRect(pressX + 1, pressY + 1, pressW - 2, pressH - 2, 6, C_CYAN);
+    pressBorderOnly = true;
+    pressSaved = true;
+    return;
+  }
+  tft.readRect(pressX, pressY, pressW, pressH, pressBuf);
+  pressSaved = true;
+  // Recolour a copy so the label stays visible: dim background
+  // becomes the on-fill, brighter ink becomes on-text. A solid
+  // fill would have wiped the letters until drawAll. pressBuf
+  // itself is kept so a cancelled press can be restored.
+  // Clean on-fill, then stamp original letter pixels (and their
+  // antialias) as on-text. The border is darker than the label
+  // so a luma cut leaves it as fill, not a dark inner frame.
+  fillPillSolid(pressX, pressY, pressW, pressH, pressH / 2, C_BTN_ON, C_BG);
+  int16_t n = pressW * pressH;
+  for (int16_t i = 0; i < n; i++) {
+    uint16_t c = pressBuf[i];
+    unsigned r = (c >> 11) & 31, g = (c >> 5) & 63, b = c & 31;
+    unsigned lum = r * 2 + g + b;          // ~0..125
+    if (lum <= 28) continue;
+    unsigned a = lum > 80 ? 255 : (lum * 255) / 80;
+    uint16_t onR = (C_BTN_ON >> 11) & 31, onG = (C_BTN_ON >> 5) & 63, onB = C_BTN_ON & 31;
+    uint16_t txR = (C_ONTXT >> 11) & 31, txG = (C_ONTXT >> 5) & 63, txB = C_ONTXT & 31;
+    uint16_t oR = (uint16_t)((onR * (255 - a) + txR * a + 127) / 255);
+    uint16_t oG = (uint16_t)((onG * (255 - a) + txG * a + 127) / 255);
+    uint16_t oB = (uint16_t)((onB * (255 - a) + txB * a + 127) / 255);
+    tft.drawPixel(pressX + (i % pressW), pressY + (i / pressW),
+                  (uint16_t)((oR << 11) | (oG << 5) | oB));
+  }
+}
+
 // A tap is a finger-down followed by a lift; the tap point is
 // where the finger went down.
 bool touchDown = false;
@@ -4609,6 +4673,7 @@ void handleTouch() {
     // downOnPill no longer gates the swipe (see above) — it only
     // keeps a pill hold from arming long-press sleep.
     downOnPill = (hitTest(x, y) >= 0);
+    if (downOnPill) beginPressFeedback(x, y);
   } else if (t && touchDown) {
     lastTX = x; lastTY = y;
     // Long-press sleep (R6, Pass 5 finding 5): ARMED after a 1200 ms
@@ -4622,6 +4687,7 @@ void handleTouch() {
       longPressArmed = true;
     } else if (abs(x - downX) >= 8 || abs(y - downY) >= 8) {
       longPressArmed = false;
+      endPressFeedback(true);
     }
     // Finger still down: if it moves inside the chart area, that
     // is a drag-scrub, not a tap. A tap without movement keeps the
@@ -4682,6 +4748,7 @@ void handleTouch() {
       int16_t dx = lastTX - downX, dy = lastTY - downY;
       int16_t adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
       if (adx >= 34 && adx * 10 >= ady * 14) {
+        endPressFeedback(true);
         goToPage(dx < 0 ? (curPage() + 1) % NPAGES
                         : (curPage() + NPAGES - 1) % NPAGES);
         return;
@@ -4696,6 +4763,7 @@ void handleTouch() {
       int16_t madx = mdx < 0 ? -mdx : mdx, mady = mdy < 0 ? -mdy : mdy;
       if (longPressArmed && madx < 10 && mady < 10) {
         longPressArmed = false;
+        endPressFeedback(true);
         enterSleep();
         sleepIgnoreLift = true;
         touchDown = false;
@@ -4716,6 +4784,8 @@ void handleTouch() {
     if (millis() - lastTapMs < 30) return;  // debounce (was 150 ms — Pass 5 finding 4: fast taps were eaten)
     lastTapMs = millis();
     onTap(downX, downY);
+    // Restore if onTap did not redraw (no-op / already-on).
+    endPressFeedback(true);
   }
 }
 
