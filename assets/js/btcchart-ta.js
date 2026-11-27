@@ -666,27 +666,42 @@ function tlDrawSloped(ctx,g,ln,tf){
 function tlDrawLabels(ctx,g,labels,liveClose){
   /* Right-edge labels, one per drawn line, de-collided so they never
      overlap each other or the live price. Skipped when the line's y is
-     off the plot. */
+     off the plot. Returns the placed positions ({text,y}) for tests. */
   var T=g.pad.t,B=g.pad.t+g.plotH,liveY=g.yFor(liveClose);
   /* Keep a label when its line is on the plot at all (even just inside
      the edge); clamp the drawn position so the pill stays fully inside
      instead of dropping the label for a line at the edge. */
   var items=labels.filter(function(lb){return lb.y!=null&&isFinite(lb.y)&&lb.y>=T&&lb.y<=B;});
   items.sort(function(a,b){return a.y-b.y;});
-  var placed=[];
-  items.forEach(function(lb){
-    /* Clamp into the plot first, then de-collide (nudging down, staying
-       inside) — so the clamp can never push a label into its neighbour. */
-    var y=Math.min(Math.max(lb.y,T+8),B-8),guard=0;
-    var clash=function(yy){
-      if(isFinite(liveY)&&Math.abs(yy-liveY)<12)return true;
-      for(var k=0;k<placed.length;k++)if(Math.abs(yy-placed[k])<14)return true;
-      return false;
-    };
-    while(clash(y)&&guard<8){y+=14;if(y>B-8)y=B-8;guard++;}
-    placed.push(y);
-    lb.y=y;
-  });
+  /* Two-pass spread (must-fix, 27 Nov 2026): the old push-down-only
+     pass piled labels at the plot bottom when several lines clustered
+     there — the 1D 4h tags collided and one hid behind the next. Pass
+     1 pushes down from the top; pass 2 pulls up from the bottom, so a
+     cluster spreads both ways instead of stacking at B-8. The live
+     price is a fixed obstacle in both passes. When the labels still
+     don't fit even spread, they are spaced evenly over the plot. */
+  var GAP=16,MINY=T+8,MAXY=B-8; /* pills are 16px tall: 16px centres never overlap */
+  var placed=items.map(function(lb){return Math.min(Math.max(lb.y,MINY),MAXY);});
+  var i,j;
+  for(i=0;i<placed.length;i++){
+    var prev=i>0?placed[i-1]+GAP:MINY;
+    if(placed[i]<prev)placed[i]=prev;
+    if(isFinite(liveY)&&Math.abs(placed[i]-liveY)<12)placed[i]=liveY+12;
+    if(placed[i]>MAXY)placed[i]=MAXY;
+  }
+  for(j=placed.length-1;j>=0;j--){
+    var nxt=j<placed.length-1?placed[j+1]-GAP:MAXY;
+    if(placed[j]>nxt)placed[j]=nxt;
+    if(isFinite(liveY)&&Math.abs(placed[j]-liveY)<12)placed[j]=liveY-12;
+    if(placed[j]<MINY)placed[j]=MINY;
+  }
+  var ok=true;
+  for(var k=1;k<placed.length;k++)if(placed[k]-placed[k-1]<GAP){ok=false;break;}
+  if(!ok&&placed.length>1){
+    var span=MAXY-MINY,step2=Math.min(GAP,span/(placed.length-1));
+    for(var m=0;m<placed.length;m++)placed[m]=MINY+m*step2;
+  }
+  items.forEach(function(lb,idx){lb.y=placed[idx];});
   ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
   items.forEach(function(lb){
     var x=g.pad.l+g.plotW-4;
@@ -696,6 +711,7 @@ function tlDrawLabels(ctx,g,labels,liveClose){
     ctx.fillStyle=lb.col;
     ctx.fillText(lb.text,x-2,lb.y);
   });
+  return items.map(function(lb){return {text:lb.text,y:lb.y};});
 }
 function tlExpandLoHi(drawn,lo,hi){
   /* Job 1 (Line-view trendlines): pure helper — the expanded y-range
@@ -815,7 +831,7 @@ function tlDrawLines(g){
     if(y!=null&&ln.label)labels.push({y:y,text:ln.label,col:tlCol(ln.kind)});
   });
   ctx.restore();
-  tlDrawLabels(ctx,g,labels,liveClose);
+  res.labelPlacements=tlDrawLabels(ctx,g,labels,liveClose);
   return res;
 }
 function syncTlStatus(){
@@ -918,7 +934,7 @@ var COL={tl:'#22c55e',bb:'#a78bfa',ma:'#f472b6',rsi:'#a78bfa'};
    MA's colour dot + label, and the tooltip lists each enabled MA in its
    own colour. */
 var MA_KEYS=['sma20','sma50','sma200','ema20','ema50','ema200'];
-var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#34d399','#059669'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
+var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#14b8a6','#0f766e'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
 var MA_LBL={sma20:'SMA 20',sma50:'SMA 50',sma200:'SMA 200',ema20:'EMA 20',ema50:'EMA 50',ema200:'EMA 200'};
 function maCol(k){var c=MA_COL[k];return c?psC2(c[0],c[1]):psC2('#f472b6','#db2777');}
 function maOn(){if(!S.ma)return [];return MA_KEYS.filter(function(k){return S.maSet&&S.maSet[k];});}
