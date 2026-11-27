@@ -114,9 +114,6 @@ BADGE_JS = """() => {
     rng: st ? st.rng : null,
     tlStatus: tl ? tl.status : null,
     tlLines: tl && tl.last && tl.last.lines ? tl.last.lines.length : null,
-    /* Must-fix (27 Nov 2026): the RSI strip keeps drawing on a comparison,
-       so the probe reports it (hidden + header value) alongside the badge. */
-    rsi: (() => { const el = document.getElementById('taRsi'); if (!el) return null; const h = el.querySelector('.ta-rsi-t b'); return {hidden: el.hidden, header: h ? h.textContent : null}; })(),
     noteOut: out ? {hidden: out.hidden, text: out.textContent.trim()} : null,
     noteBox,
     noteInPanel: inPanel ? {hidden: inPanel.hidden, text: inPanel.textContent.trim()} : null,
@@ -124,7 +121,7 @@ BADGE_JS = """() => {
   };
 }"""
 
-NOTE_TEXT = 'Trendlines, Bollinger and moving averages show on BTC alone. Turn off comparisons to see them — the RSI strip still shows.'
+NOTE_TEXT = 'TA shows on BTC alone. Turn off comparisons to see it.'
 
 def open_panel(pg):
     pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
@@ -197,29 +194,19 @@ def main():
         chk('Note: still hidden on 1W with no comparison',
             s['noteOut'] and s['noteOut']['hidden'] is True, s['noteOut'])
 
-        # ---- Comparison on: badge 1 (RSI strip only), note visible ----
-        print('--- Comparison on: badge 1 (RSI only), note visible ---')
+        # ---- Comparison on: badge 0, note visible outside the panel ----
+        print('--- Comparison on: badge 0, note visible ---')
         pg.click('#bcSpx'); pg.wait_for_timeout(1500)
         s = pg.evaluate(BADGE_JS)
         print('  cmp on: %s' % s)
-        chk('Badge: comparison on reads 1 (only the RSI strip draws; the plot overlays hide)',
-            s['badge'] == '1' and s['pillText'] == 'TA1' and s['cmp'] is True, s)
-        chk('RSI: strip visible with a comparison on, with a live value',
-            s['rsi'] and s['rsi']['hidden'] is False and s['rsi']['header'] not in (None, '', '—'), s['rsi'])
-        chk('Note: external note visible while the comparison hides the plot overlays',
+        chk('Badge: comparison on reads no badge (0 drawing) though 9 toggles are on',
+            s['badge'] is None and s['pillText'] == 'TA' and s['cmp'] is True, s)
+        chk('Note: external note visible while the comparison hides TA',
             s['noteOut'] and s['noteOut']['hidden'] is False and s['noteOut']['text'] == NOTE_TEXT, s['noteOut'])
         chk('Note: external note sits under the pills row, inside the viewport',
             s['noteBox'] and s['noteBox']['right'] <= 1440 and s['noteBox']['h'] > 0, s['noteBox'])
         chk('Note: panel note still shows too (unchanged behaviour)',
             s['noteInPanel'] and s['noteInPanel']['hidden'] is False, s['noteInPanel'])
-        # Must-fix (27 Nov 2026): the RSI switch stays usable on a comparison
-        # (its strip still shows); the plot-overlay switches stay greyed.
-        open_panel(pg)
-        chk('Panel: RSI switch stays enabled with a comparison on (its strip still shows)',
-            not pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
-        chk('Panel: trendlines / Bollinger / MA switches greyed with a comparison on',
-            pg.is_disabled('.ta-panel [data-ta-key="tl"]') and pg.is_disabled('.ta-panel [data-ta-key="bb"]') and pg.is_disabled('.ta-panel [data-ta-key="ma"]'))
-        close_panel(pg)
 
         # ---- Comparison off: badge and note return ----
         print('--- Comparison off: badge and note return ---')

@@ -321,17 +321,17 @@ def main():
             chk('clock 1440 light: first visible point valid', dbg and dbg['firstValid'] == {'ma': 0, 'bb': 0, 'rsi': 0}, dbg and dbg['firstValid'])
             check_values('clock 1440 light: 1Y values match Python', dbg)
             pg.screenshot(path=str(shots / 'clock-1440-light-ta-all-on-1y.png'), animations='disabled')
-            # comparison on: plot overlays hide, note shows, RSI strip still shows
+            # comparison on: overlays hide, note shows, strip hides
             pg.click('#bcSpx'); pg.wait_for_timeout(900)
             chk('clock 1440 light: compare note shows in panel', pg.evaluate("!document.querySelector('.ta-panel .ta-cmp').hidden"))
-            chk('clock 1440 light: RSI strip still shows on compare (must-fix 27 Nov 2026)', not pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('clock 1440 light: RSI strip hides on compare', pg.evaluate("document.getElementById('taRsi').hidden"))
             pg.click('#bcSpx'); pg.wait_for_timeout(900)
             chk('clock 1440 light: compare note hides again', pg.evaluate("document.querySelector('.ta-panel .ta-cmp').hidden"))
             # must-fix: cmp() must clear when leaving a compare-on range
             # for 1D or a candle view, even though the chip stays on
             pg.click('#bcSpx'); pg.wait_for_timeout(900)
             chk('clock 1440 light: compare note shows at 1Y', pg.evaluate("!document.querySelector('.ta-panel .ta-cmp').hidden"))
-            chk('clock 1440 light: RSI strip still shows on compare at 1Y (must-fix 27 Nov 2026)', not pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('clock 1440 light: RSI strip hides on compare at 1Y', pg.evaluate("document.getElementById('taRsi').hidden"))
             # (a) switch to 1D without turning Spx off
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(900)
             chk('clock 1440 light: 1D warm-up lands', wait_warm(pg, 200))

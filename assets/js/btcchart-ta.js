@@ -885,19 +885,15 @@ function syncCmpNote(){
 /* Job 6: the same note, OUTSIDE the TA panel — a plain line under the
    pills row, so it reads without opening the panel. It shows only when
    a comparison is hiding something that WOULD draw (nPlotDrawing()>0 —
-   the plot overlays only; the RSI strip still draws on a comparison,
-   so it alone never triggers the note): with TA off there is nothing
+   the plot overlays only; RSI is not a plot overlay, so it alone never
+   triggers the note): with TA off there is nothing
    to explain, and with everything gated turning the comparison off
    still would not draw anything, so the note would lie. The panel note
    above keeps its own rule (shows whenever a comparison is on, panel
    open). The element is created once by TA init and lives in the dialog
    flow (popover + clock page share the build). */
-/* Must-fix (27 Nov 2026): the RSI strip is a separate pane below the
-   chart, computed from the BTC closes alone — it keeps drawing while a
-   comparison is on, so the note now says the PLOT overlays hide (the
-   old "TA shows on BTC alone" was no longer true for RSI). One string,
-   shared by the panel note and the outside note. */
-var CMP_NOTE_TEXT='Trendlines, Bollinger and moving averages show on BTC alone. Turn off comparisons to see them — the RSI strip still shows.';
+/* One string, shared by the panel note and the outside note. */
+var CMP_NOTE_TEXT='TA shows on BTC alone. Turn off comparisons to see it.';
 var cmpNoteOutEl=null;
 function buildCmpNoteOut(){
   if(cmpNoteOutEl||!dlg)return cmpNoteOutEl;
