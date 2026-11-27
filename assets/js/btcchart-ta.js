@@ -975,7 +975,7 @@ function allowedSizes(rng){
   if(rng==='1M')return ['weekly','daily'];
   if(rng==='3M'||rng==='6M'||rng==='YTD')return ['monthly','weekly','daily'];
   if(rng==='1Y')return ['monthly','weekly'];
-  if(rng==='5Y')return ['monthly','weekly','daily'];
+  if(rng==='5Y')return ['yearly','monthly','weekly','daily'];
   if(rng==='10Y')return ['yearly','monthly','daily'];
   return [];
 }
@@ -1115,24 +1115,28 @@ function syncPanel(){
 function syncGating(){
   /* No hidden check: renderPanel syncs before the panel is shown, so the
      toggles are already gated when it appears; afterDraw re-gates while
-     it is open. The writes are idempotent when nothing changed. */
+     it is open. The writes are idempotent when nothing changed.
+     Revision pass (27 Nov 2026): a comparison on greys the toggles too
+     (visible but disabled, back on when comparison goes off) — nothing
+     disappears. */
   if(!panelEl)return;
   var st=viewState();
+  var cmp=isCmp();
   var sws=panelEl.querySelectorAll('[data-ta-key]');
   for(var i=0;i<sws.length;i++){
     var k=sws[i].getAttribute('data-ta-key');
-    var g=taGated(k,st);
+    var g=taGated(k,st)||cmp;
     sws[i].disabled=g;
-    sws[i].title=g?'Not available on this view':'';
+    sws[i].title=g?(cmp?'Not available while comparing':'Not available on this view'):'';
     var row=sws[i].closest?sws[i].closest('.ta-it'):null;
     if(row)row.classList.toggle('gated',g);
   }
   var chips=panelEl.querySelectorAll('[data-ta-ma]');
   for(var j=0;j<chips.length;j++){
     var mk=chips[j].getAttribute('data-ta-ma');
-    var gm=taMaGated(mk,st);
+    var gm=taMaGated(mk,st)||cmp;
     chips[j].disabled=gm;
-    chips[j].title=gm?'Not available on this view':'';
+    chips[j].title=gm?(cmp?'Not available while comparing':'Not available on this view'):'';
   }
 }
 function openPanel(){

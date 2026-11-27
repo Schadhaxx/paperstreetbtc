@@ -155,7 +155,7 @@ chk('sizes 1W', eq(M.allowedSizes('1W'), ['daily', '4h']));
 chk('sizes 1M', eq(M.allowedSizes('1M'), ['weekly', 'daily']));
 chk('sizes 3M/6M/YTD gain Daily', eq(M.allowedSizes('3M'), ['monthly', 'weekly', 'daily']) && eq(M.allowedSizes('6M'), ['monthly', 'weekly', 'daily']) && eq(M.allowedSizes('YTD'), ['monthly', 'weekly', 'daily']));
 chk('sizes 1Y keeps Monthly/Weekly', eq(M.allowedSizes('1Y'), ['monthly', 'weekly']));
-chk('sizes 5Y Daily/Weekly/Monthly', eq(M.allowedSizes('5Y'), ['monthly', 'weekly', 'daily']));
+chk('sizes 5Y Daily/Weekly/Monthly/Yearly', eq(M.allowedSizes('5Y'), ['yearly', 'monthly', 'weekly', 'daily']));
 chk('sizes 10Y Daily/Monthly/Yearly', eq(M.allowedSizes('10Y'), ['yearly', 'monthly', 'daily']));
 chk('sizes Max none (Line-only)', eq(M.allowedSizes('Max'), []));
 chk('sizeLabel Yearly', M.sizeLabel('yearly') === 'Yearly' && M.sizeLabel('daily') === 'Daily' && M.sizeLabel('weekly') === 'Weekly' && M.sizeLabel('monthly') === 'Monthly' && M.sizeLabel('4h') === '4H candles');
