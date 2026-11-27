@@ -87,6 +87,12 @@ var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='',RGLIVE=false;
    2026 — the intraday size; Daily is the fallback if 4H is unavailable). */
 function defaultGran(r){return (r==='1W')?'4h':(r==='3M'||r==='6M'||r==='YTD'||r==='1Y')?'weekly':'daily';}
 var RGCT='line',RGGRAN=defaultGran('1M'),RGSEEN={};
+/* Must-fix (27 Nov 2026, Market God re-test item 3): the reason a long
+   range fell back to Line, stored so drawDaily re-appends it on every
+   draw — to the note AND to the header (bcRr), which is always in view.
+   The old one-off append to bcNt vanished on the next live tick, and
+   bcNt sits below the fold in the popover, so the reset looked silent. */
+var FALLBACK_NOTE='';
 /* Candle ranges, Day 2: 3M/6M/YTD/1Y join 1W/1M. Granularity choices:
    1W daily|4h (default 4h); 1M weekly|daily (default daily); 3M/6M/YTD/1Y monthly|weekly
    (default weekly). */
@@ -978,7 +984,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
      Canvas taps, buttons and links are excluded: the canvas has its own handler,
      buttons/links do their own thing, and the pill ✕ stops propagation. */
   dlg.addEventListener('click',function(e){if(!candViewActive())return;if(e.target.closest('canvas,button,a'))return;dismissCandInfo();});
-  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var longFromCandles=false;if(b.dataset.r){longFromCandles=/^(5Y|10Y|Max)$/.test(b.dataset.r)&&candViewActive();rng=b.dataset.r;if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);if(longFromCandles)RGCT='line';}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();if(longFromCandles){var nt=$('bcNt');if(nt)nt.textContent+=' Candles are not available on '+rng+' — showing Line.';}});
+  $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var longFromCandles=false;if(b.dataset.r){longFromCandles=/^(5Y|10Y|Max)$/.test(b.dataset.r)&&candViewActive();rng=b.dataset.r;FALLBACK_NOTE='';if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);if(longFromCandles){RGCT='line';FALLBACK_NOTE='Candles are not available on '+rng+' — showing Line.';}}else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(INLINE||dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
   var y0=null;dlg.addEventListener('touchstart',function(e){y0=(dlg.classList.contains('sheet')&&dlg.scrollTop<=0&&!e.target.closest('canvas'))?e.touches[0].clientY:null;},{passive:true});
@@ -1014,8 +1020,8 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   var gpc=G&&g0?(G[n-1]/g0-1)*100:null,gLate=G&&g0&&gk0>0?d[gk0][0]:null;
   var M=mxo?d.map(function(p){return mstrOn(p[0]);}):null,m0=M&&M[0];if(M&&!m0){var mk0=M.findIndex(function(v){return v!=null;});m0=mk0>=0?M[mk0]:null;}
   var mpc=M&&m0?(M[n-1]/m0-1)*100:null;
-  $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · from '+d[0][0]+' ('+pa+')'+cadTag();
-  $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(LOG?' Log scale.':'');
+  $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · from '+d[0][0]+' ('+pa+')'+cadTag()+(FALLBACK_NOTE?' · '+FALLBACK_NOTE:'');
+  $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(LOG?' Log scale.':'')+(FALLBACK_NOTE?' '+FALLBACK_NOTE:'');
   /* Native range line (Chart.js removed 20 Nov 2026; no fallback library). */
   var nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:LOG});lineDrawn=nativeOK;
   if(nativeOK)lineRetry=false;else lineFail();
