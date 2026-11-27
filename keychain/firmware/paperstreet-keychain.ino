@@ -247,9 +247,8 @@ void applyTheme() {
     C_BTN      = 0x0884; // #0b1120 button bg
     C_BTN_ON   = 0x269D; // active button bg (cyan)
     C_BTN_TXT  = 0x9D37; // inactive pill text (#9aa6bc)
-    C_PILL2    = 0x9538; // #93a5c4 secondary pill text (brightened
-                         // from #67748e — the old grey-blue read
-                         // low-contrast and fuzzy at 6-7 px)
+    C_PILL2    = 0x6BB1; // #67748e secondary text — the prototype's
+                         // muted grey. Rounded to RGB565 (#687488).
     C_ONTXT    = 0x0126; // #052530 text on a cyan pill
     C_BORD     = 0x1948; // #1d2942 pill border
     C_TILEBD   = 0x1107; // #16203a stat-tile border
@@ -1933,27 +1932,38 @@ void drawAxisLabels() {
   tft.setTextColor(C_DIM, C_BG);
   // 5 labels across the plot: 0%, 25%, 50%, 75%, and "Now" at the
   // live edge. Intraday ranges show the hour ("12a"/"6p"), daily
-  // ranges show the date ("Nov 19").
+  // ranges show the date ("Nov 19"). Positions are computed first,
+  // then packed right-to-left so a long "Nov 24" cannot run into
+  // "Now" or off the right edge (the old 1Y clip).
+  char lab[5][16];
+  int16_t lx[5], lw[5];
   for (int k = 0; k < 5; k++) {
     int idx = (k == 4) ? sN - 1 : (int)((long)k * (sN - 1) / 4);
-    char a[16];
-    if (k == 4) snprintf(a, sizeof(a), "Now");
-    else if (sIsDaily) fmtMD(sDate[idx], a, sizeof(a));
-    else if (axisUseDates()) fmtMDEpoch(sTime[idx], a, sizeof(a));
-    else fmt12h(sTime[idx], a, sizeof(a));
+    if (k == 4) snprintf(lab[k], sizeof(lab[k]), "Now");
+    else if (sIsDaily) fmtMD(sDate[idx], lab[k], sizeof(lab[k]));
+    else if (axisUseDates()) fmtMDEpoch(sTime[idx], lab[k], sizeof(lab[k]));
+    else fmt12h(sTime[idx], lab[k], sizeof(lab[k]));
+    lw[k] = tft.textWidth(lab[k]);
     int16_t x = chartX(idx, sN);
-    int16_t w = tft.textWidth(a);
-    int16_t lx;
-    // Every label is centred on its data point — including the
-    // first: left-aligning it ran "Nov 23" into "Feb 19" on the
-    // narrow portrait chart (27 px labels on 32 px spacing). The
-    // axis row is empty left of the plot, so centring the first
-    // label costs nothing. The last stays right-aligned so it
-    // never runs past the screen edge.
-    if (k == 4) lx = gCH_X + gCH_W - w;
-    else lx = x - w / 2;
-    tft.setCursor(lx, gAX_Y);
-    tft.print(a);
+    // Centre on the data point, including the first — the axis row
+    // is empty left of the plot. "Now" stays right-aligned to the
+    // live edge of the plot.
+    if (k == 4) lx[k] = gCH_X + gCH_W - lw[k];
+    else lx[k] = x - lw[k] / 2;
+  }
+  if (lx[4] + lw[4] > SW - 1) lx[4] = SW - 1 - lw[4];
+  if (lx[4] < 0) lx[4] = 0;
+  for (int k = 3; k >= 0; k--) {
+    int16_t right = lx[k + 1] - 3;
+    if (lx[k] + lw[k] > right) lx[k] = right - lw[k];
+    if (lx[k] < 1) lx[k] = 1;
+  }
+  for (int k = 0; k < 5; k++) {
+    if (lw[k] <= 0) continue;
+    if (lx[k] < 0 || lx[k] + lw[k] > SW) continue;
+    if (k < 4 && lx[k] + lw[k] > lx[k + 1] - 1) continue;
+    tft.setCursor(lx[k], gAX_Y);
+    tft.print(lab[k]);
   }
 }
 
@@ -3284,7 +3294,9 @@ void drawHiddenDots(int16_t x, int16_t y, int16_t r, int16_t step,
 void drawAuthCodeText() {
   for (int i = 0; i < nAuth; i++) {
     int16_t ry = authListY() + i * (AU_ROW_H + AU_ROW_GAP);
-    tft.fillRect(90, ry + 8, 66, AU_ROW_H - 16, C_SURFACE);
+    // Start at 100 so a full "PaperStreet" drawn from x 42 is not
+    // erased by this clear before the code is painted.
+    tft.fillRect(100, ry + 8, 56, AU_ROW_H - 16, C_SURFACE);
     if (authHideCodes) {
       drawHiddenDots(112, ry + AU_ROW_H / 2, 2, 7, 11);
     } else {
@@ -3418,7 +3430,9 @@ void drawAuthAll() {
       char lab[21];
       snprintf(lab, sizeof(lab), "%s", label);
       setF(F_LABEL9, 4);
-      while (tft.textWidth(lab) > 58 && strlen(lab) > 1)
+      // 56 px from x 42 ends at 98, just left of the code clear.
+      // "PaperStreet" in OutfitB9 is ~52 px and now fits in full.
+      while (tft.textWidth(lab) > 56 && strlen(lab) > 1)
         lab[strlen(lab) - 1] = 0;
       tft.setTextColor(C_TEXT, C_SURFACE);
       // Issuer only: firmware accounts store a label, not a separate
