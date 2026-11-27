@@ -65,19 +65,24 @@ static void check(bool ok, const char *what) {
   if (!ok) g_fail++;
 }
 
-// The dots: active dot is a cyan 10 px capsule centred on its dot
-// position, inactive dots are dim r=2 circles. Read straight off
-// the framebuffer the sketch just drew.
+// The dots: prototype sizes — inactive 5x5, active 13x5 capsule,
+// 5 px gaps, top at y 310. Read straight off the framebuffer.
 static bool dotsOk() {
   int cur = curPage();
+  const int16_t inW = 5, onW = 13, gap = 5;
+  int16_t total = 5 * inW + onW + 5 * gap;
+  int16_t x = (170 - total) / 2;
+  uint16_t off = themeDark ? (uint16_t)0x29CA : (uint16_t)0xCEBC;
   for (int i = 0; i < 6; i++) {
-    int16_t cx = 58 + i * 11;
-    uint16_t px = tft.readPixel(cx, 317);
+    int16_t w = (i == cur) ? onW : inW;
+    int16_t cx = x + w / 2;
+    uint16_t px = tft.readPixel(cx, 312);
     if (i == cur) {
       if (px != C_CYAN) return false;
     } else {
-      if (px != C_DIM) return false;
+      if (px != off) return false;
     }
+    x += w + gap;
   }
   return true;
 }

@@ -573,7 +573,11 @@ bool touchRead(int16_t &x, int16_t &y);  // defined in the touch section below; 
 const int PAGE_CHART = 0, PAGE_PRICE = 1, PAGE_CLOCK = 2;
 const int PAGE_QR_JADE = 3, PAGE_QR_LN = 4, PAGE_AUTH = 5;
 const int NPAGES = 6;
-#define DOTS_CY 317   // page-dot centre row (bottom strip, y 315-319)
+#define DOTS_Y    310  // top of the page dots (prototype: bottom: 5px, h 5)
+#define DOTS_H    5
+#define DOTS_IN_W 5    // inactive circle
+#define DOTS_ON_W 13   // active capsule
+#define DOTS_GAP  5
 
 // Which track page the current state is.
 int curPage() {
@@ -735,20 +739,25 @@ void goToPage(int p) {
   drawAll();  // land clean: no strip left over
 }
 
-// Six page dots, bottom strip (y 315-319), on every portrait page.
-// The active dot widens to a 10 px capsule and turns cyan. The
-// strip was reclaimed by slimming the chart control row (16 -> 14
-// px) and moving the VS chip row up (y 303 -> 300, h 14 -> 13);
-// every other page already had the strip free below its nav row /
-// hint. Landscape shows no dots: it is a rotated chart view, not a
-// track page, and its control row already runs to y 166 of 170.
+// Six page dots, matching the prototype: 5x5 inactive circles,
+// a 13x5 cyan capsule for the active page, 5 px gaps, sitting
+// 5 px above the bottom edge and centred. Landscape shows no
+// dots: it is a rotated chart view, not a track page.
 void drawPageDots() {
   if (landscape) return;
   int cur = curPage();
+  int16_t total = (NPAGES - 1) * DOTS_IN_W + DOTS_ON_W + (NPAGES - 1) * DOTS_GAP;
+  int16_t x = (SW - total) / 2;
+  tft.fillRect(x - 2, DOTS_Y, total + 4, DOTS_H, C_BG);
+  // Prototype: dark #2b3852, light #cbd5e1. C_DIM is a different grey.
+  uint16_t off = themeDark ? (uint16_t)0x29CA : (uint16_t)0xCEBC;
   for (int i = 0; i < NPAGES; i++) {
-    int16_t cx = 58 + i * 11;  // 58..113, centred on 85
-    if (i == cur) fillPillSolid(cx - 5, DOTS_CY - 2, 10, 4, 2, C_CYAN, C_BG);
-    else tft.fillCircle(cx, DOTS_CY, 2, C_DIM);
+    int16_t w = (i == cur) ? DOTS_ON_W : DOTS_IN_W;
+    if (i == cur)
+      fillPillSolid(x, DOTS_Y, w, DOTS_H, 3, C_CYAN, C_BG);
+    else
+      tft.fillCircle(x + w / 2, DOTS_Y + DOTS_H / 2, 2, off);
+    x += w + DOTS_GAP;
   }
 }
 
