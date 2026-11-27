@@ -91,20 +91,20 @@ chk('panel keeps drawCandles1D + drawCandlesRange', /function drawCandles1D\(/.t
 chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(panel));
 chk('needChart removed with Chart.js', !/needChart/.test(panel));
 
-/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026) -> wr2 (TA Beta label, 21 Nov 2026) -> wr3 (drawing fixes Stage 1, 21 Nov 2026) -> wr4 (drawing fixes Job 1, 21 Nov 2026) -> wr5 (drawing fixes Job 2, 21 Nov 2026) */
-chk('stub loads the panel with wr5', /btcchart-panel\.js\?v=wr5/.test(stub));
+/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026) -> wr2 (TA Beta label, 21 Nov 2026) -> wr3 (drawing fixes Stage 1, 21 Nov 2026) -> wr4 (drawing fixes Job 1, 21 Nov 2026) -> wr5 (drawing fixes Job 2, 21 Nov 2026) -> ta11/wr6 (must-fix 27 Nov 2026) */
+chk('stub loads the panel with wr6', /btcchart-panel\.js\?v=wr6/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
   'recap/2026-05/index.html', 'recap/2026-06/index.html', 'recap/2026-07/index.html', 'recap/2026-08/index.html',
   'recap/2026-09/index.html', 'recap/2026-10/index.html', 'recap/2026-11/index.html'];
-let wr5 = 0, other = [];
+let wr6 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=wr5') wr5++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=wr6') wr6++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin wr5', wr5 === 16 && other.length === 0, 'wr5=' + wr5 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin wr6', wr6 === 16 && other.length === 0, 'wr6=' + wr6 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart out of scope: still Chart.js */
 chk('s2.js has no Chart.js fallback (removed 20 Nov 2026)', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));

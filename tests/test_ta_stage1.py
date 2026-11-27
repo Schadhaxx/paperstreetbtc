@@ -119,18 +119,20 @@ def main():
             chk('clock 390 dark: pill back to Line', pg.inner_text('#taTyp').strip().startswith('Line'))
             pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
             chk('clock 390 dark: TA panel opens with 4 toggles', pg.locator('.ta-panel .ta-sw').count() == 4)
-            # Gating on 1D Line: RSI is greyed out (still visible) and
-            # the RSI strip stays hidden. Bollinger and SMA 200 are
-            # ENABLED on 1D Line (Job 2 ungreyed them — the pre-warm
-            # makes them valid from index 0 there now), and SMA 20
-            # stays live. Trends is ENABLED on 1D Line (Job 1 ungreyed
-            # it — the lines draw there now).
+            # Gating on 1D Line: RSI is ENABLED (must-fix 27 Nov 2026
+            # ungreyed it — the strip renders from the pre-warmed closes,
+            # with a live header value), and the RSI strip stays hidden
+            # here only because RSI is off by default in this test (no
+            # seed). Bollinger and SMA 200 are ENABLED on 1D Line (Job 2
+            # ungreyed them — the pre-warm makes them valid from index 0
+            # there now), and SMA 20 stays live. Trends is ENABLED on 1D
+            # Line (Job 1 ungreyed it — the lines draw there now).
             chk('clock 390 dark: Trends toggle enabled on 1D (Job 1)', not pg.is_disabled('.ta-panel [data-ta-key="tl"]'))
             chk('clock 390 dark: Bollinger toggle enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
-            chk('clock 390 dark: RSI toggle disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
+            chk('clock 390 dark: RSI toggle enabled on 1D (must-fix)', not pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
             chk('clock 390 dark: SMA 200 chip enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
             chk('clock 390 dark: SMA 20 chip enabled on 1D', not pg.is_disabled('.ta-panel [data-ta-ma="sma20"]'))
-            chk('clock 390 dark: RSI strip stays hidden (gated on 1D)', pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('clock 390 dark: RSI strip stays hidden (RSI off)', pg.evaluate("document.getElementById('taRsi').hidden"))
             # The MA group switch is live on 1D: on -> badge 1 (SMA 50 is
             # the default chip when nothing is selected), off -> cleared.
             pg.click('.ta-panel [data-ta-key="ma"]'); pg.wait_for_timeout(600)

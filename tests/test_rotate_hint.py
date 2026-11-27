@@ -110,8 +110,9 @@ def open_page(p, width, height, light=False):
     ctx = p.new_context(viewport={'width': width, 'height': height}, reduced_motion='reduce',
                         color_scheme='light' if light else 'dark')
     ctx.route('**/*', handler)
-    # Stage 1: seed RSI on, so the strip-hidden check in Phase A is
-    # meaningful (hidden despite RSI on, not merely because it is off).
+    # Must-fix (27 Nov 2026): seed RSI on, so the strip-shows check in
+    # Phase A is meaningful (shows because RSI is on, not merely because
+    # the gate is gone — the gate is gone, so on means visible).
     ctx.add_init_script("localStorage.setItem('ps-ta-v1', JSON.stringify({rsi:true}));")
     pg = ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
@@ -159,9 +160,12 @@ def main():
             chk('A hint does not cover Keep screen on', not ov(q['hint'], q['keep']), str(q['keep']))
             chk('A hint does not cover the Light pill', not ov(q['hint'], q['light']), str(q['light']))
             chk('A hint does not cover Exit (hidden in normal mode)', not ov(q['hint'], q['exit']), str(q['exit']))
-            # Stage 1: RSI is gated everywhere, so the strip stays hidden
-            # even with RSI seeded on — the hint has no strip to cover.
-            chk('A RSI strip stays hidden (gated) with RSI on', pg.evaluate("document.getElementById('taRsi').hidden"))
+            # Must-fix (27 Nov 2026): RSI is ungated now, so the strip
+            # shows with RSI seeded on — the hint must not cover it
+            # (it sits inside the chart box; the strip is the grid row
+            # below the box).
+            chk('A RSI strip shows with RSI on (must-fix)', q['rsi'] is not None)
+            chk('A hint does not cover the RSI strip', not ov(q['hint'], q['rsi']), str(q['rsi']))
             pg.screenshot(path=str(shots / 'rotate-hint-390-dark-portrait.png'), animations='disabled')
             # ---- Phase B: tap the hint ----
             pg.click('#rotateHint'); pg.wait_for_timeout(800)

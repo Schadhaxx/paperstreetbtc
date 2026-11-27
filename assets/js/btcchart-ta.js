@@ -194,7 +194,7 @@ function taGated(key,st){
   if(!st||typeof st.rng!=='string')return false;
   if(key==='tl')return false; /* Job 1 (21 Nov 2026): trendlines are no longer gated on Line 1D/1W — the Line y-range now expands to include the drawn lines (tlExpandRange), so they draw there. */
   if(key==='bb')return TA_GATE_BB_RANGES.indexOf(st.rng)>=0;
-  if(key==='rsi')return true;
+  if(key==='rsi')return false; /* Must-fix (27 Nov 2026): RSI is no longer gated anywhere — the strip renders from Job 2's pre-warmed closes on every view. */
   return false;
 }
 function taMaGated(maKey,st){
@@ -470,8 +470,19 @@ function drawOverlays(g,vals){
   }
   if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k]&&!taMaGated(k,st))traceLine(ctx,vals.mas[k],g.xs,g.yFor,maCol(k),2);});
 }
+function rsiLastVal(vals){
+  /* Last non-null RSI value, for the strip header. */
+  if(!vals||!vals.rsi)return null;
+  for(var i=vals.rsi.length-1;i>=0;i--)if(vals.rsi[i]!=null)return vals.rsi[i];
+  return null;
+}
 function drawRsiStrip(g,vals){
   if(!rsiEl)return;
+  /* Must-fix (27 Nov 2026): live value in the header — it used to read
+     "RSI 14 —" because nothing ever wrote into its <b>. */
+  var lv=rsiLastVal(vals);
+  var hb=rsiEl.querySelector('.ta-rsi-t b');
+  if(hb)hb.textContent=lv==null?'—':lv.toFixed(1);
   var cv=rsiEl.querySelector('canvas');if(!cv)return;
   var ctx=cv.getContext('2d');if(!ctx)return;
   /* The strip canvas is the same CSS width as the chart box, so the main
@@ -809,8 +820,8 @@ function syncPill(){
 function syncRsi(){
   if(!rsiEl||!dlg)return;
   /* Stage 2: the strip hides on comparison too (TA is BTC-only).
-     Stage 1 gating: RSI is greyed out on every view for now, so the
-     strip never shows until the strip rework (Stage 3) lifts the gate. */
+     Must-fix (27 Nov 2026): the Stage 1 gate that greyed RSI out on every
+     view is lifted (taGated('rsi') is now false), so the strip shows. */
   rsiEl.hidden=!S.rsi||isCmp()||taGated('rsi',viewState());
   dlg.classList.toggle('ta-rsi-on',!!S.rsi);
   if(S.rsi){

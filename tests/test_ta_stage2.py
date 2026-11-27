@@ -239,13 +239,13 @@ def main():
             chk('clock 390 dark: chart paints', inked(pg))
             chk('clock 390 dark: TA module loaded', pg.evaluate("!!window.__BTTA && !!window.__BCTA && !!window.__TA_DEBUG"))
             open_panel(pg)
-            # Gating on 1D Line: RSI is greyed out (seeded on, so the
-            # toggle state itself is what is checked); Bollinger and
-            # SMA 200 are ENABLED (Job 2 ungreyed them — the pre-warm
-            # makes them valid from index 0 there now). SMA 20/50 and
-            # EMA 20 stay live.
+            # Gating on 1D Line: RSI is ENABLED (must-fix 27 Nov 2026
+            # ungreyed it — seeded on, so the strip shows here);
+            # Bollinger and SMA 200 are ENABLED (Job 2 ungreyed them —
+            # the pre-warm makes them valid from index 0 there now).
+            # SMA 20/50 and EMA 20 stay live.
             chk('clock 390 dark: Bollinger toggle enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
-            chk('clock 390 dark: RSI toggle disabled (gated on 1D)', pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
+            chk('clock 390 dark: RSI toggle enabled on 1D (must-fix)', not pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
             chk('clock 390 dark: SMA 200 chip enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
             chk('clock 390 dark: SMA 20/50 + EMA 20 chips enabled on 1D', not pg.is_disabled('.ta-panel [data-ta-ma="sma20"]') and not pg.is_disabled('.ta-panel [data-ta-ma="sma50"]') and not pg.is_disabled('.ta-panel [data-ta-ma="ema20"]'))
             chk('clock 390 dark: warm-up fetch lands (>=200 closes)', wait_warm(pg, 200))
@@ -253,9 +253,9 @@ def main():
             chk('clock 390 dark: 1D line geometry', dbg and dbg['kind'] == '1d-line', dbg and dbg['kind'])
             chk('clock 390 dark: first visible point valid (MA/BB/RSI)', dbg and dbg['firstValid'] == {'ma': 0, 'bb': 0, 'rsi': 0}, dbg and dbg['firstValid'])
             check_values('clock 390 dark: indicator values match Python', dbg)
-            chk('clock 390 dark: RSI strip hidden (gated on 1D)', pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('clock 390 dark: RSI strip shows (seeded on, must-fix)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             tip = pg.evaluate("window.__BCTA.taTip('1d-line', 50)")
-            chk('clock 390 dark: tooltip shows SMA 50 + BB (RSI gated)', tip and len(tip) == 2 and 'SMA 50' in tip[0]['t'] and 'BB 20' in tip[1]['t'], str(tip)[:160])
+            chk('clock 390 dark: tooltip shows SMA 50 + BB + RSI (must-fix)', tip and len(tip) == 3 and 'SMA 50' in tip[0]['t'] and 'BB 20' in tip[1]['t'] and 'RSI' in tip[2]['t'], str(tip)[:160])
             # Stage 3 fix (item 6): stacking MAs — SMA 20 on here; SMA 200
             # is live on 1D now (Job 2), but it is added on 1M Line, where
             # the stacking values are checked against Python for the
@@ -271,7 +271,7 @@ def main():
             chk('clock 390 dark: stacking first valid 0 for all three', dbgS and dbgS['firstValid'] == {'ma': 0, 'bb': 0, 'rsi': 0} and dbgS['firstValidMas'] == {'sma20': 0, 'sma50': 0, 'sma200': 0}, dbgS and (dbgS['firstValid'], dbgS['firstValidMas']))
             check_values('clock 390 dark: stacked SMA 20/50/200 match Python', dbgS, ma_keys=('sma20', 'sma50', 'sma200'))
             tipS = pg.evaluate("window.__BCTA.taTip('daily-line', 20)")
-            chk('clock 390 dark: tooltip lists all three MAs + BB (RSI gated)', tipS and len(tipS) == 4 and 'SMA 20' in tipS[0]['t'] and 'SMA 50' in tipS[1]['t'] and 'SMA 200' in tipS[2]['t'] and 'BB 20' in tipS[3]['t'], str(tipS)[:200])
+            chk('clock 390 dark: tooltip lists all three MAs + BB + RSI (must-fix)', tipS and len(tipS) == 5 and 'SMA 20' in tipS[0]['t'] and 'SMA 50' in tipS[1]['t'] and 'SMA 200' in tipS[2]['t'] and 'BB 20' in tipS[3]['t'] and 'RSI' in tipS[4]['t'], str(tipS)[:200])
             chk('clock 390 dark: pill count badge 5 (BB + 3 MAs + RSI)', '5' in pg.inner_text('#taPill'))
             # dark theme: SMA 20 pink #f472b6, SMA 50 amber #fbbf24, SMA 200 green #34d399
             cols = ma_colours_present(pg, [[244, 114, 182], [251, 191, 36], [52, 211, 153]])
@@ -311,10 +311,11 @@ def main():
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
             pg.click('#bcRgs button[data-r="1Y"]'); pg.wait_for_timeout(1200)
             open_panel(pg)
-            # Gating on 1Y Line: RSI is greyed out; Bollinger and SMA 200
-            # are live (Job 2 ungreyed Bollinger everywhere).
+            # Gating on 1Y Line: RSI is ENABLED (must-fix 27 Nov 2026);
+            # Bollinger and SMA 200 are live (Job 2 ungreyed Bollinger
+            # everywhere).
             chk('clock 1440 light: Bollinger toggle enabled on 1Y (Job 2)', not pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
-            chk('clock 1440 light: RSI toggle disabled (gated on 1Y)', pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
+            chk('clock 1440 light: RSI toggle enabled on 1Y (must-fix)', not pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
             chk('clock 1440 light: SMA 200 chip enabled (kept on 1Y)', not pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
             dbg = pg.evaluate("window.__TA_DEBUG()")
             chk('clock 1440 light: 1Y line geometry', dbg and dbg['kind'] == 'daily-line', dbg and dbg['kind'])
@@ -337,7 +338,7 @@ def main():
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(900)
             chk('clock 1440 light: 1D warm-up lands', wait_warm(pg, 200))
             chk('clock 1440 light: 1D cmp() false with Spx still on', pg.evaluate("window.__BCTA.cmp()===false"))
-            chk('clock 1440 light: 1D RSI strip hidden (gated) with Spx still on', pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('clock 1440 light: 1D RSI strip shows with Spx still on (cmp false on 1D, must-fix)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             chk('clock 1440 light: 1D compare note hidden with Spx still on', pg.evaluate("document.querySelector('.ta-panel .ta-cmp').hidden"))
             chk('clock 1440 light: 1D overlays drawn with Spx still on', has_overlay(pg))
             # (b) back to 1Y (compare still on), then 1W + daily candles
@@ -347,7 +348,7 @@ def main():
             pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
             pg.click('.ta-menu [data-ta-size="daily"]'); pg.wait_for_timeout(1200)
             chk('clock 1440 light: 1W candles cmp() false with Spx still on', pg.evaluate("window.__BCTA.cmp()===false"))
-            chk('clock 1440 light: 1W candles RSI strip hidden (gated) with Spx still on', pg.evaluate("document.getElementById('taRsi').hidden"))
+            chk('clock 1440 light: 1W candles RSI strip shows with Spx still on (cmp false on candles, must-fix)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             chk('clock 1440 light: 1W candles compare note hidden with Spx still on', pg.evaluate("document.querySelector('.ta-panel .ta-cmp').hidden"))
             chk('clock 1440 light: 1W candles overlays draw (BB + SMA 200 ungated, Job 2) with Spx still on', has_overlay(pg))
             # restore: compare off, so the rest of the section runs as before

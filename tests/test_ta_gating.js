@@ -14,7 +14,8 @@
      (Job 2 — same pre-warm; it was already live on the longer ranges).
      EMA 50 gated on 1W, EMA 200 NO LONGER gated anywhere (Job 2 —
      SMA 200's twin); EMA 20 never gated.
-   - RSI gated on every view for now. The MA group switch is never gated.
+   - RSI NO LONGER gated anywhere (must-fix 27 Nov 2026 — the strip renders
+     from Job 2's pre-warmed closes on every view). The MA group switch is never gated.
    Text output, no chart, no network. Run: node tests/test_ta_gating.js */
 var M = require('../assets/js/btcchart-ta.js');
 var fails = 0, n = 0;
@@ -71,12 +72,12 @@ RANGES.forEach(function (rng) {
   }
 });
 
-/* --- RSI: gated everywhere --- */
+/* --- RSI: NOT gated anywhere (must-fix 27 Nov 2026) --- */
 RANGES.forEach(function (rng) {
   var line = rng === '1D' ? st1D('line') : stRange(rng, 'line');
-  chk('rsi gated on ' + rng, M.taGated('rsi', line) === true);
+  chk('rsi NOT gated on ' + rng, M.taGated('rsi', line) === false);
 });
-chk('rsi gated on 1D 1H candles too', M.taGated('rsi', st1D('1h')) === true);
+chk('rsi NOT gated on 1D 1H candles too', M.taGated('rsi', st1D('1h')) === false);
 
 /* --- MA group switch: never gated --- */
 RANGES.forEach(function (rng) {

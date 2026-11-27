@@ -12,8 +12,9 @@ warm-up fetches return their own windows), turns Bollinger + all six MAs
 on, and verifies per view: warm-up present, Bollinger and SMA 200 valid
 from index 0, the toggles enabled (Bollinger everywhere, SMA/EMA 200 on
 1D/1W), and the lines actually drawn (pixel counts). SMA 20/50 and EMA 50
-stay gated on 1W, and RSI stays gated everywhere — per the settled lists,
-not this job.
+stay gated on 1W — per the settled lists, not this job. RSI was gated
+everywhere at Job 2 time; the must-fix of 27 Nov 2026 un-gated it, so the
+RSI toggle is enabled on every view here now.
 """
 import json, math, os, sys, threading, functools, http.server, socketserver, urllib.parse, datetime as dt
 from pathlib import Path
@@ -176,8 +177,8 @@ def main():
             disabled(pg, '.ta-panel [data-ta-ma="sma20"]') and disabled(pg, '.ta-panel [data-ta-ma="sma50"]'))
         chk('1W Line: EMA 50 chip still disabled (left gated, settled lists)',
             disabled(pg, '.ta-panel [data-ta-ma="ema50"]'))
-        chk('1W Line: RSI toggle still disabled (not this job)',
-            disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
+        chk('1W Line: RSI toggle enabled (must-fix 27 Nov 2026 un-gated it)',
+            not disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
         # ---- 1W 4H candles ----
         print('--- 1W 4H candles ---')
         pick_size(pg, '4h'); res['1W 4H'] = measure(pg, '1W 4H')
