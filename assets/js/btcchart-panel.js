@@ -739,7 +739,7 @@ function syncCg(){
   var cg=$('bcCg');if(!cg)return;
   var candlesOn=CANDLE_RANGES.indexOf(rng)>=0&&RGCT==='candles';
   [].forEach.call(cg.querySelectorAll('[data-cg]'),function(b){b.classList.toggle('on',b.dataset.cg===RGCT);b.setAttribute('aria-pressed',b.dataset.cg===RGCT);});
-  var granAllowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD')?['monthly','weekly','daily']:(rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily','4h']:(rng==='5Y'?['monthly','weekly','daily']:(rng==='10Y'?['yearly','monthly','daily']:(rng==='Max'?['yearly','monthly','weekly','daily']:[]))));
+  var granAllowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD')?['monthly','weekly','daily']:(rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily','4h']:(rng==='5Y'?['yearly','monthly','weekly','daily']:(rng==='10Y'?['yearly','monthly','daily']:(rng==='Max'?['yearly','monthly','weekly','daily']:[]))));
   var gl=$('bcCgGranLab');if(gl)gl.style.display=candlesOn&&granAllowed.length?'':'none';
   [].forEach.call(cg.querySelectorAll('[data-cggran]'),function(b){var show=candlesOn&&granAllowed.indexOf(b.dataset.cggran)>=0;b.style.display=show?'':'none';b.classList.toggle('on',b.dataset.cggran===RGGRAN);b.setAttribute('aria-pressed',b.dataset.cggran===RGGRAN);});
 }
@@ -763,7 +763,7 @@ function drawRange(){
      was before. After that first draw RGSEEN[rng] is set, so a
      user-picked valid size is preserved across Line<->Candles switches;
      range-tab clicks reset to the default independently. */
-  var allowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD')?['monthly','weekly','daily']:(rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily','4h']:(rng==='5Y'?['monthly','weekly','daily']:(rng==='10Y'?['yearly','monthly','daily']:(rng==='Max'?['yearly','monthly','weekly','daily']:[]))));
+  var allowed=rng==='1M'?['weekly','daily']:(rng==='3M'||rng==='6M'||rng==='YTD')?['monthly','weekly','daily']:(rng==='1Y')?['monthly','weekly']:(rng==='1W'?['daily','4h']:(rng==='5Y'?['yearly','monthly','weekly','daily']:(rng==='10Y'?['yearly','monthly','daily']:(rng==='Max'?['yearly','monthly','weekly','daily']:[]))));
   if(!RGSEEN[rng]){RGGRAN=defaultGran(rng);RGSEEN[rng]=true;}
   if(allowed.length&&allowed.indexOf(RGGRAN)<0)RGGRAN=defaultGran(rng);
   syncCg();
