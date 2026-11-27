@@ -84,36 +84,36 @@
    }
   ]
  },
- "generated": "2026-11-27T22:00:34Z",
+ "generated": "2026-11-27T22:30:34Z",
  "history_first": "2025-12-31",
  "history_last": "2026-11-27",
  "history_sessions": 229,
- "history_sha256": "6b9c4312d1fc59e42dc8740ea44cb72f4def85e220d88118169f53d3ee59aa81",
+ "history_sha256": "ed00e2076b735188386f0d005dd730e17f61d3cb1a9acb73e04315cc23a2c8e8",
  "note": "Pre-computed by Python; the site displays these numbers, it does not re-derive them. Spot mode only.",
  "pulse": {
   "berkshire": {
-   "above_start": -14513.98,
-   "above_start_pct": -14.51,
-   "below_peak": 18408.92,
+   "above_start": -14520.02,
+   "above_start_pct": -14.52,
+   "below_peak": 18414.96,
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 85486.02
+   "value": 85479.98
   },
   "hf": {
-   "above_start": -32862.08,
-   "above_start_pct": -32.86,
-   "below_peak": 45216.65,
+   "above_start": -32869.97,
+   "above_start_pct": -32.87,
+   "below_peak": 45224.54,
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 67137.92
+   "value": 67130.03
   },
   "hodlr": {
-   "above_start": -30592.78,
-   "above_start_pct": -30.59,
-   "below_peak": 41859.27,
+   "above_start": -30602.89,
+   "above_start_pct": -30.6,
+   "below_peak": 41869.38,
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 69407.22
+   "value": 69397.11
   },
   "saylor": {
    "above_start": -19510.46,
@@ -145,20 +145,20 @@
     "2026-08": 21.91,
     "2026-09": 2.41,
     "2026-10": -0.19,
-    "2026-11": -9.55
+    "2026-11": -9.56
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -9.55,
+   "mtd_pct": -9.56,
    "name": "Berkshire Killer",
    "peak_date": "2026-01-14",
    "peak_value": 103894.94,
-   "value": 85486.02,
+   "value": 85479.98,
    "vol_ann_pct": 32.18,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -7.63
    },
-   "ytd_pct": -14.51
+   "ytd_pct": -14.52
   },
   "brk": {
    "best_day": {
@@ -200,7 +200,7 @@
     "date": "2026-02-06",
     "pct": 12.52
    },
-   "drawdown_pct": -38.42,
+   "drawdown_pct": -38.43,
    "kind": "benchmark",
    "max_drawdown_date": "2026-06-30",
    "max_drawdown_pct": -39.59,
@@ -215,20 +215,20 @@
     "2026-08": 25.05,
     "2026-09": 6.37,
     "2026-10": -7.61,
-    "2026-11": -22.68
+    "2026-11": -22.69
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -22.68,
+   "mtd_pct": -22.69,
    "name": "Spot BTC",
    "peak_date": "2026-01-14",
    "peak_value": 110.77,
-   "value": 68.21,
+   "value": 68.2,
    "vol_ann_pct": 44.17,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.13
    },
-   "ytd_pct": -31.79
+   "ytd_pct": -31.8
   },
   "gold": {
    "best_day": {
@@ -270,7 +270,7 @@
     "date": "2026-02-06",
     "pct": 16.17
    },
-   "drawdown_pct": -40.24,
+   "drawdown_pct": -40.25,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -42.45,
@@ -285,27 +285,27 @@
     "2026-08": 28.46,
     "2026-09": 9.05,
     "2026-10": -9.39,
-    "2026-11": -25.12
+    "2026-11": -25.13
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -25.12,
+   "mtd_pct": -25.13,
    "name": "Hedge Fund Killer",
    "peak_date": "2026-01-14",
    "peak_value": 112354.57,
-   "value": 67137.92,
+   "value": 67130.03,
    "vol_ann_pct": 52.33,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -14.04
    },
-   "ytd_pct": -32.86
+   "ytd_pct": -32.87
   },
   "hodlr": {
    "best_day": {
     "date": "2026-02-06",
     "pct": 14.21
    },
-   "drawdown_pct": -37.62,
+   "drawdown_pct": -37.63,
    "kind": "sleeve",
    "max_drawdown_date": "2026-06-26",
    "max_drawdown_pct": -39.89,
@@ -320,20 +320,20 @@
     "2026-08": 26.09,
     "2026-09": 7.74,
     "2026-10": -8.26,
-    "2026-11": -22.91
+    "2026-11": -22.92
    },
    "mtd_month": "2026-11",
-   "mtd_pct": -22.91,
+   "mtd_pct": -22.92,
    "name": "Hodler Jam Sandwich",
    "peak_date": "2026-01-14",
    "peak_value": 111266.49,
-   "value": 69407.22,
+   "value": 69397.11,
    "vol_ann_pct": 46.52,
    "worst_day": {
     "date": "2026-02-05",
     "pct": -13.6
    },
-   "ytd_pct": -30.59
+   "ytd_pct": -30.6
   },
   "mstr": {
    "best_day": {
