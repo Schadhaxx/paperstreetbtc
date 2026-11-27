@@ -187,9 +187,9 @@ int main(int argc, char **argv) {
   // portrait again — still the chart page, not a restored page.
   // (Auth nav row is at y 226 with 1 account — the centred Auth
   // block, Pass 5 finding 11 — not 258 as in the 4-account layout.)
-  tap(50, 219);  // empty area on price-only -> back to chart
+  swipe(50, 160, 120, 160);  // swipe right back to the chart (tap no longer exits)
   runLoopFor(1000);
-  check(curPage() == 0, "tap returns to chart");
+  check(curPage() == 0, "swipe right from price-only returns to chart");
 
   // 13a. (Pass 5 finding 9) Near-miss tap above the 1W pill (visual
   // at R1_Y 207; hit box starts at y 203) still selects 1W; then restore 1D.

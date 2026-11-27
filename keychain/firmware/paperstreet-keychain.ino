@@ -1585,7 +1585,7 @@ void drawFetchingNote() {
     tft.setTextColor(C_MUTED, C_BG);
     const char *s = "Fetching...";  // ASCII "...", see drawScrubRow
     int16_t w = tft.textWidth(s);
-    tft.setCursor((SW - w) / 2, 296);
+    tft.setCursor((SW - w) / 2, 298);
     tft.print(s);
     return;
   }
@@ -2152,50 +2152,82 @@ void drawCmpRow() {
   }
 }
 
-// Price-only screen: the clean centred view (no range/control
-// rows). Any tap outside the currency pill goes back to the chart.
+// Price-only screen: the prototype's calm centred view — label,
+// block, big price, always-24h change, two stats, currency pill,
+// and a swipe hint. No HIGH/LOW, no Updated, no brightness stepper.
+// Swipe (not tap) goes back to the chart, as the hint says.
+// Tapping the big price toggles USD/CAD, same as the chart page.
+#define PO_LABEL_Y 22
+#define PO_BLOCK_Y 32
+#define PO_PRICE_Y 52
+#define PO_CHG_Y   90
+#define PO_RULE_Y  112
+#define PO_STAT_Y  130
+#define PO_CUR_Y   214
+#define PO_HINT_Y  298
+
 void drawPriceOnlyStats(int16_t y) {
-  char sats[16], blk[16], hi[20], lo[20], labHi[16], labLo[16], spanUp[8];
-  fmtComma(satsPerDollar(), sats, sizeof(sats));
-  if (blockHeight > 0) fmtComma(blockHeight, blk, sizeof(blk));
-  else snprintf(blk, sizeof(blk), "--");
-  fmtMoney(chartMax(), hi, sizeof(hi));
-  fmtMoney(chartMin(), lo, sizeof(lo));
-  int i = 0;
-  for (const char *p = RANGES[rangeIdx].span; *p && i < 6; p++, i++)
-    spanUp[i] = (*p >= 'a' && *p <= 'z') ? *p - 32 : *p;
-  spanUp[i] = 0;
-  snprintf(labHi, sizeof(labHi), "%s HIGH", spanUp);
-  snprintf(labLo, sizeof(labLo), "%s LOW", spanUp);
-  const char *labels[4] = {"SATS PER DOLLAR", "BLOCK HEIGHT", labHi, labLo};
-  const char *values[4] = {sats, blk, hi, lo};
-  for (int k = 0; k < 4; k++) {
+  char satsVal[16], blkVal[16];
+  long s = satsPerDollar();
+  if (s > 0) fmtComma(s, satsVal, sizeof(satsVal));
+  else snprintf(satsVal, sizeof(satsVal), "--");
+  if (blockHeight > 0) fmtComma(blockHeight, blkVal, sizeof(blkVal));
+  else snprintf(blkVal, sizeof(blkVal), "--");
+  const char *labels[2] = {"SATS PER DOLLAR", "BLOCK HEIGHT"};
+  for (int k = 0; k < 2; k++) {
     setF(F_MONO6, 1);
     tft.setTextColor(C_PILL2, C_BG);
     int16_t w = tft.textWidth(labels[k]);
     tft.setCursor((SW - w) / 2, y);
     tft.print(labels[k]);
-    setF(F_STAT15, 4);
-    // HIGH/LOW (k=2,3) belong to the cached chart — dim them while
-    // the selected range's fetch is still in flight (see
-    // chartStale()). SATS and BLOCK are live and stay bright.
-    tft.setTextColor((k >= 2 && chartStale()) ? C_DIMMED : C_TEXT, C_BG);
-    w = tft.textWidth(values[k]);
-    tft.setCursor((SW - w) / 2, y + 8);
-    tft.print(values[k]);
-    y += 32;
+    tft.setTextColor(C_TEXT, C_BG);
+    if (k == 0) {
+      // "1,677" + a muted "sats", as in the prototype.
+      setF(F_STAT15, 4);
+      int16_t nw = tft.textWidth(satsVal);
+      setF(F_MONO7, 2);
+      int16_t sw = tft.textWidth(" sats");
+      int16_t x = (SW - (nw + sw)) / 2;
+      setF(F_STAT15, 4);
+      tft.setCursor(x, y + 8);
+      tft.print(satsVal);
+      setF(F_MONO7, 2);
+      tft.setTextColor(C_MUTED, C_BG);
+      tft.setCursor(x + nw, y + 13);
+      tft.print(" sats");
+    } else {
+      // OutfitB15 now includes '#', so "#977,390" matches the prototype.
+      setF(F_STAT15, 4);
+      char shown[20];
+      snprintf(shown, sizeof(shown), "#%s", blkVal);
+      int16_t nw = tft.textWidth(shown);
+      tft.setCursor((SW - nw) / 2, y + 8);
+      tft.print(shown);
+    }
+    y += 36;
   }
 }
 
 void drawPriceOnly() {
   nBtns = 0;
-  // label + block
-  setF(F_MONO7, 2);
-  tft.setTextColor(C_PILL2, C_BG);
-  const char *lab = "BITCOIN";
-  int16_t w = tft.textWidth(lab);
-  tft.setCursor((SW - w) / 2, 31);
-  tft.print(lab);
+  // "BITCOIN · LIVE PRICE" — middot is in the Mono vlw charset, not Inter.
+  const char mid[] = " \xC2\xB7 ";
+  setF(F_PILL6, 1);
+  int16_t wBitcoin = tft.textWidth("BITCOIN");
+  int16_t wLive = tft.textWidth("LIVE PRICE");
+  setF(F_MONO6, 1);
+  int16_t wMid = tft.textWidth(mid);
+  int16_t x = (SW - (wBitcoin + wMid + wLive)) / 2;
+  setF(F_PILL6, 1);
+  tft.setTextColor(C_MUTED, C_BG);
+  tft.setCursor(x, PO_LABEL_Y);
+  tft.print("BITCOIN");
+  setF(F_MONO6, 1);
+  tft.setCursor(x + wBitcoin, PO_LABEL_Y + 1);
+  tft.print(mid);
+  setF(F_PILL6, 1);
+  tft.setCursor(x + wBitcoin + wMid, PO_LABEL_Y);
+  tft.print("LIVE PRICE");
   char blk[24];
   if (blockHeight > 0) {
     char hb[16];
@@ -2204,104 +2236,60 @@ void drawPriceOnly() {
   } else {
     snprintf(blk, sizeof(blk), "BLOCK --");
   }
-  w = tft.textWidth(blk);
-  tft.setTextColor(C_MUTED, C_BG);
-  tft.setCursor((SW - w) / 2, 41);
+  setF(F_MONO6, 1);
+  tft.setTextColor(C_PILL2, C_BG);
+  int16_t w = tft.textWidth(blk);
+  tft.setCursor((SW - w) / 2, PO_BLOCK_Y);
   tft.print(blk);
-  // big price, centred, "$" cyan, digits pure white, glow halo
+  // big price, centred, "$" cyan, digits white, glow halo
   char buf[20];
   fmtMoney(priceUSD, buf, sizeof(buf));
   setF(F_PRICE_PO, 6);
   int16_t pw = tft.textWidth(buf);
   int16_t px = (SW - pw) / 2;
-  drawPriceHalo(px, 60, buf);
+  drawPriceHalo(px, PO_PRICE_Y, buf);
   tft.setTextColor(C_CYAN, C_BG);
-  tft.setCursor(px, 60);
+  tft.setCursor(px, PO_PRICE_Y);
   tft.print("$");
   tft.setTextColor(C_PRICE, C_BG);
-  tft.setCursor(px + tft.textWidth("$"), 60);
+  tft.setCursor(px + tft.textWidth("$"), PO_PRICE_Y);
   tft.print(buf + 1);
-  // change row, centred: triangle + % + " · span" (measured, so the
-  // % can never be cut off — the old code truncated it to "-2")
-  float chg = rangeChange();
+  btns[nBtns++] = {px, PO_PRICE_Y, pw, 32, 27};  // tap price: toggle currency
+  // change row, always the 24h move (Sunil: "Yes, show the 24h change")
+  float chg = chg24h;
   char cb[16];
   fmtPctAbs(chg, cb, sizeof(cb));
-  char per[16];
-  snprintf(per, sizeof(per), "· %s", RANGES[rangeIdx].span);
+  const char *per = "\xC2\xB7 24h";
   setF(F_MONO9B, 4);
   int16_t cw = tft.textWidth(cb);
   setF(F_MONO7, 2);
   int16_t pw2 = tft.textWidth(per);
   int16_t total = 5 + 3 + cw + 4 + pw2;
-  int16_t x = (SW - total) / 2;
-  // Dimmed while stale: the % belongs to the previous range until
-  // the fetch lands (see chartStale()).
-  uint16_t col = chartStale() ? C_DIMMED : (chg >= 0 ? C_GREEN : C_RED);
-  if (chg >= 0) tft.fillTriangle(x, 99, x + 5, 99, x + 2, 95, col);
-  else          tft.fillTriangle(x, 95, x + 5, 95, x + 2, 99, col);
+  x = (SW - total) / 2;
+  uint16_t col = (!priceOk) ? C_DIMMED : (chg >= 0 ? C_GREEN : C_RED);
+  if (chg >= 0) tft.fillTriangle(x, PO_CHG_Y + 4, x + 5, PO_CHG_Y + 4, x + 2, PO_CHG_Y, col);
+  else          tft.fillTriangle(x, PO_CHG_Y, x + 5, PO_CHG_Y, x + 2, PO_CHG_Y + 4, col);
   setF(F_MONO9B, 4);
   tft.setTextColor(col, C_BG);
-  tft.setCursor(x + 8, 95);
+  tft.setCursor(x + 8, PO_CHG_Y);
   tft.print(cb);
   setF(F_MONO7, 2);
   tft.setTextColor(C_MUTED, C_BG);
-  tft.setCursor(x + 8 + cw + 4, 96);
+  tft.setCursor(x + 8 + cw + 4, PO_CHG_Y + 1);
   tft.print(per);
-  // rule: 36x2 cyan, centred — with the prototype's glow
-  // (box-shadow 0 0 8px rgba(34,211,238,.55)): a 1 px dim-cyan halo
-  // above and below the bright bar. In light mode C_GLOW is the
-  // background colour, so the halo vanishes like the prototype's.
-  fillPillSolid((SW - 36) / 2, 118, 36, 4, 2, C_GLOW, C_BG);
-  tft.fillRect((SW - 36) / 2, 119, 36, 2, C_CYAN);
-  // stats column (starts at 128: the brightness row below needs the
-  // 6 px the old 134 start left unused at the top)
-  drawPriceOnlyStats(128);
-  // Brightness stepper (R8): "-" / "+" pills around the current
-  // level, 45..100% in 5% steps (the prototype's slider range).
-  // LAYOUT DECISION: it lives here on the price-only page — the
-  // chart page has no free row (control row, type row and VS row are
-  // all full), and the level persists in NVS so it only needs
-  // setting once. Not reachable in landscape; the level set here
-  // applies there too.
-  {
-    setF(F_PILL8, 2);
-    int16_t mw = tft.textWidth("-") + 12;
-    int16_t pw = tft.textWidth("+") + 12;
-    setF(F_MONO8B, 4);
-    char btxt[8];
-    snprintf(btxt, sizeof(btxt), "%d%%", brightnessPct);
-    int16_t bw = tft.textWidth(btxt);
-    int16_t total = mw + 6 + bw + 6 + pw;
-    int16_t bx = (SW - total) / 2;
-    drawSinglePill(bx, 250, 13, "-", false, 25, F_PILL8);
-    setF(F_MONO8B, 4);
-    tft.setTextColor(C_TEXT, C_BG);
-    tft.setCursor(bx + mw + 6, 251);
-    tft.print(btxt);
-    drawSinglePill(bx + mw + 6 + bw + 6, 250, 13, "+", false, 26, F_PILL8);
-  }
-  // currency pill, centred
-  int16_t cyw = segPillWidth("USD", "CAD", F_PILL8);
-  drawSegPill((SW - cyw) / 2, 267, 14, "USD", "CAD", !curCAD, 16, 17, F_PILL8);
-  // "Updated" time (R10): when the shown price was fetched — the
-  // portrait chart page already had it; price-only did not.
-  {
-    char upd[16];
-    fmtUpdated(upd, sizeof(upd));
-    char ubuf[32];
-    snprintf(ubuf, sizeof(ubuf), "Updated %s", upd);
-    setF(F_MONO6, 1);
-    tft.setTextColor(C_MUTED, C_BG);
-    int16_t w = tft.textWidth(ubuf);
-    tft.setCursor((SW - w) / 2, 286);
-    tft.print(ubuf);
-  }
-  // hint — names both exits: tap for the chart, hold to sleep (R6)
+  // rule: 36x2 cyan, centred, with a 1 px dim-cyan halo
+  fillPillSolid((SW - 36) / 2, PO_RULE_Y, 36, 4, 2, C_GLOW, C_BG);
+  tft.fillRect((SW - 36) / 2, PO_RULE_Y + 1, 36, 2, C_CYAN);
+  drawPriceOnlyStats(PO_STAT_Y);
+  // currency pill, centred — "USD $" / "CAD $", same as the chart page
+  int16_t cyw = segPillWidth("USD $", "CAD $", F_PILL6);
+  drawSegPill((SW - cyw) / 2, PO_CUR_Y, 14, "USD $", "CAD $", !curCAD, 16, 17, F_PILL6);
   setF(F_MONO6, 1);
   tft.setTextColor(C_DIM, C_BG);
-  const char *hint = "TAP FOR CHART · HOLD TO SLEEP";
+  const char *hint = "NOTHING BUT THE PRICE \xC2\xB7 SWIPE FOR THE CHART";
+  // The prototype uses an em dash; Inter/Mono vlw is ASCII + middot only.
   w = tft.textWidth(hint);
-  tft.setCursor((SW - w) / 2, 296);
+  tft.setCursor((SW - w) / 2, PO_HINT_Y);
   tft.print(hint);
   drawPageDots();
 }
@@ -3017,14 +3005,10 @@ int hitTest(int16_t x, int16_t y) {
       return btns[i].id;
   }
   if (appMode != MODE_PRICE) return -1;
-  // Chart-area tap (exits price-only). Uses the current chart
-  // geometry, so it matches the landscape chart too — though in
-  // landscape priceOnly is never on, so the tap does nothing there.
+  // Chart-area tap (scrub / no-op). Price-only no longer exits on
+  // a tap — the prototype's way back is a swipe (see the hint).
   if (!priceOnly && x >= gCH_X && x < gCH_X + gCH_W &&
       y >= gCH_Y && y < gCH_Y + gCH_H) return -2;
-  // Price-only: any tap outside the currency pill goes back to
-  // the chart (the pill buttons are checked first, above).
-  if (priceOnly) return -2;
   return -1;
 }
 
@@ -4444,8 +4428,7 @@ void onTap(int16_t x, int16_t y) {
     return;  // taps elsewhere on the Auth screen do nothing
   }
   // --- Price screen ---
-  if (id == -2) {  // tap on the chart / price area
-    if (priceOnly) goToPage(PAGE_CHART);
+  if (id == -2) {  // tap on the chart area (price-only is swipe-back)
     return;
   }
   if (id < 0) return;

@@ -148,23 +148,27 @@ int main(int argc, char **argv) {
   check(themeDark, "R8: landscape theme pill switches back to dark");
   tap(285, 158); runLoopFor(500);  // Portrait
 
-  // ---- R8 brightness + R10 Updated time, price-only, dark ----
-  goToPage(PAGE_PRICE); runLoopFor(1500);  // price-only (shortcut pill dropped)
-  check(priceOnly, "R8/R10 setup: price-only page");
-  dump("dark-price-only-bright");
-  check(brightnessPct == 100, "R8: brightness starts at 100%");
-  check(tapBtn(25), "R8: DIM pill exists and taps");
+  // ---- Price-only (Phase 2): prototype layout, no brightness stepper ----
+  goToPage(PAGE_PRICE); runLoopFor(1500);
+  check(priceOnly, "price-only page");
+  dump("dark-price-only");
+  {
+    bool hasDim = false, hasBright = false;
+    for (int i = 0; i < nBtns; i++) {
+      if (btns[i].id == 25) hasDim = true;
+      if (btns[i].id == 26) hasBright = true;
+    }
+    check(!hasDim && !hasBright, "price-only: brightness stepper is not on this screen");
+  }
+  int cad0 = curCAD;
+  check(tapBtn(27), "price-only: big-price tap is registered");
+  runLoopFor(200);
+  check(curCAD != cad0, "price-only: big-price tap toggles USD/CAD");
+  tapBtn(27); runLoopFor(200);  // restore
+  // A stationary tap on empty space does not leave the page (swipe does).
+  tap(85, 180);
   runLoopFor(300);
-  check(tapBtn(25), "R8: DIM pill taps again");
-  runLoopFor(300);
-  check(brightnessPct == 90, "R8: two DIM taps -> 90%");
-  dump("dark-price-only-bright90");
-  check(tapBtn(26), "R8: BRIGHT pill exists and taps");
-  runLoopFor(300);
-  check(brightnessPct == 95, "R8: one BRIGHT tap -> 95%");
-  // Back to 100% for the remaining frames.
-  for (int i = 0; i < 2 && brightnessPct < 100; i++) { tapBtn(26); runLoopFor(300); }
-  check(brightnessPct == 100, "R8: back to 100%");
+  check(curPage() == 1 && priceOnly, "price-only: tap on empty space stays on the page");
 
   // ---- R6 sleep/wake, dark ----
   // Long-press on empty background (header strip, y 25: not a pill,
@@ -184,8 +188,7 @@ int main(int argc, char **argv) {
   check(!screenAsleep, "R6: tap wakes the screen");
   // Sleep started on price-only, so wake returns to price-only.
   check(curPage() == 1 && priceOnly, "R6: wake returns to the page it slept from (price-only)");
-  tap(85, 150);  // back to the chart (price-only exits on any tap)
-  runLoopFor(500);
+  goToPage(PAGE_CHART); runLoopFor(500);  // swipe is the way back; tests jump
   check(curPage() == 0 && !priceOnly, "R6 setup: back on the chart page");
   holdFinger(85, 25, 400);
   simSetFinger(false, 0, 0);
@@ -197,7 +200,7 @@ int main(int argc, char **argv) {
   runLoopFor(500);
   check(!themeDark, "light setup: theme is light");
   goToPage(PAGE_PRICE); runLoopFor(1500);  // price-only
-  dump("light-price-only-bright");
+  dump("light-price-only");
   holdFinger(85, 25, 1400);
   simSetFinger(false, 0, 0);
   runLoopFor(500);

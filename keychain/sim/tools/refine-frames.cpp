@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
   tap(142, 87); runLoopFor(1500); dump("dark-landscape");   // Rotate (SCRUB_Y 81)
   tap(285, 158); runLoopFor(500);                            // Portrait
   goToPage(PAGE_PRICE); runLoopFor(1500); dump("dark-price-only");    // price-only
-  tap(85, 150); runLoopFor(500);                             // tap chart -> back
+  goToPage(PAGE_CHART); runLoopFor(500);                    // swipe back; tests jump
   goToPage(PAGE_AUTH); runLoopFor(1500); dump("dark-auth");         // Auth
   tap(51, 238); runLoopFor(500);                             // Price pill (Auth nav row y 226, Pass 5 finding 11) -> back to chart (1Y line)
 
@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
   tap(142, 87); runLoopFor(1500); dump("light-landscape");
   tap(285, 158); runLoopFor(500);
   goToPage(PAGE_PRICE); runLoopFor(1500); dump("light-price-only");
-  tap(85, 150); runLoopFor(500);
+  goToPage(PAGE_CHART); runLoopFor(500);
   goToPage(PAGE_AUTH); runLoopFor(1500); dump("light-auth");
   tap(51, 238); runLoopFor(500);                             // Price pill (Auth nav row y 226) -> back to chart
   tap(23, 213); runLoopFor(2000);                            // 1D line

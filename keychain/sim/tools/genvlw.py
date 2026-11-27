@@ -60,7 +60,7 @@ ASCII_PRINTABLE = "".join(chr(c) for c in range(0x21, 0x7F))  # '!'..'~', no spa
 # candle note, so the Mono fonts carry it alongside ASCII printable.
 ASCII_MIDDOT = ASCII_PRINTABLE + "·"
 DIGITS = "0123456789"
-PRICE = "$0123456789,."
+PRICE = "$0123456789,.#"
 
 # (output name, source font path, pixel size, charset)
 FONTS = [
