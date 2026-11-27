@@ -318,7 +318,7 @@ def main():
         go_range(pg, '5Y'); wait_not_loading(pg)
         chk('5Y: pill is enabled (no longer Line-only)', not pill_disabled(pg))
         chk('5Y: range switch lands on the Daily default', pill_label(pg) == 'Candles · Daily', repr(pill_label(pg)))
-        chk('5Y: menu offers Monthly, Weekly, Daily', menu_sizes(pg) == ['monthly', 'weekly', 'daily'])
+        chk('5Y: menu offers Yearly, Monthly, Weekly, Daily', menu_sizes(pg) == ['yearly', 'monthly', 'weekly', 'daily'])
         m = measure(pg, '5Y daily')
         chk('5Y daily: candle view with %d daily candles' % n_daily(1827), m['kind'] == 'candles-range' and m['n'] == n_daily(1827), 'kind=%s n=%s' % (m['kind'], m['n']))
         chk('5Y daily: Bollinger + SMA 200 valid from index 0', m['fvBB'] == 0 and (m['fv'] or {}).get('sma200') == 0)
@@ -338,6 +338,8 @@ def main():
             disabled(pg, '.ta-panel [data-ta-ma="sma200"]') and disabled(pg, '.ta-panel [data-ta-ma="ema200"]'))
         chk('5Y monthly: SMA 20 / EMA 20 chips enabled (only the 200s are gated)',
             not disabled(pg, '.ta-panel [data-ta-ma="sma20"]') and not disabled(pg, '.ta-panel [data-ta-ma="ema20"]'))
+        pick_size(pg, 'yearly')
+        chk('5Y: Yearly pick shows the Yearly pill', pill_label(pg) == 'Candles \u00b7 Yearly', repr(pill_label(pg)))
 
         # ---- 10Y: candles arrive (Daily default, Monthly + Yearly new) ----
         print('--- 10Y ---')
