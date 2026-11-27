@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head><script>(function(){var q=null,s=null;try{q=new URLSearchParams(location.search).get("theme")}catch(e){}try{s=localStorage.getItem("ps-theme")}catch(e){}var on=q==="light"||(q!=="dark"&&s==="light");if(on)document.documentElement.setAttribute("data-theme","light");try{if(q==="light")localStorage.setItem("ps-theme","light");else if(q==="dark"||(s!==null&&s!=="light"))localStorage.removeItem("ps-theme")}catch(e){}})();window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script>
+<script>/* CLS fix: mark Wake Lock support before first paint, so the wake-row space is reserved (see .wake-capable .wake-row). */try{if(navigator.wakeLock&&typeof navigator.wakeLock.request==='function')document.documentElement.classList.add('wake-capable')}catch(e){}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Desk — Paperstreet BTC</title>
@@ -66,6 +67,7 @@
      like the Desk's .btn.active, so it is obvious when the screen is
      being kept on. */
   .wake-row{display:flex;margin:12px 0 0;}
+  .wake-capable .wake-row{min-height:37px;} /* CLS fix: reserve the wake button's height when Wake Lock is supported, so unhiding it cannot grow the header and shift the page */
   .wl-btn{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;position:relative}.wl-btn::after{content:"";position:absolute;inset:-12px -6px}.wl-btn[aria-pressed="true"]{background:var(--cyan);color:#05070f;border-color:var(--cyan)}.wl-btn.wl-wait{border-style:dashed}.wl-btn[hidden]{display:none}.wl-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .pills { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 4px; }
   .pill { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:8px 16px; font-size:14px; }
@@ -74,6 +76,7 @@
   h2 { font-size:22px; margin:26px 2px 4px; letter-spacing:-.01em; }
   .secsub, .box-note { color:var(--mut); font-size:14px; margin:0 2px 14px; line-height:1.5; }
   .kpis { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 4px; }
+  #indicators-body.is-loading { min-height:553px; }
   .tile { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:20px; padding:16px; min-height:118px; position:relative; }
   .tile[data-symbol="GOLD"], .tile[data-symbol="WTI"], .tile[data-symbol="US10Y"], .tile[data-symbol="VIX"] { cursor:pointer; }
   .tile[data-symbol="GOLD"]:hover, .tile[data-symbol="WTI"]:hover, .tile[data-symbol="US10Y"]:hover, .tile[data-symbol="VIX"]:hover { border-color:#3b82f6; }
@@ -131,6 +134,7 @@
   .btn { height:48px; padding:0 16px; border-radius:999px; border:1px solid var(--line); background:#0b1226; color:var(--txt); font-size:14px; font-weight:700; cursor:pointer; }
   .btn.active { background:var(--cyan); color:#05070f; border-color:var(--cyan); }
   .cards { display:grid; gap:12px; }
+  #screener-body.is-loading { min-height:2582px; }
   .card { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:22px; padding:16px; position:relative; cursor:pointer; }
   .card:hover { border-color:#3b82f6; }
   .card:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
@@ -216,8 +220,10 @@
     .wrap { padding:26px 22px 56px; } h1 { font-size:42px; }
     .kpis { grid-template-columns:repeat(4,1fr); }
     .cards { grid-template-columns:1fr 1fr; } .tile .v { font-size:30px; } .btc-pill-row .hdr-tick { font-size:30px; }
+    #indicators-body.is-loading { min-height:284px; }
+    #screener-body.is-loading { min-height:1312px; }
   }
-  @media (min-width:1000px) { .cards { grid-template-columns:1fr 1fr 1fr; } }
+  @media (min-width:1000px) { .cards { grid-template-columns:1fr 1fr 1fr; } #indicators-body.is-loading { min-height:270px; } #screener-body.is-loading { min-height:990px; } }
   /* Collapsible explanatory text (30 Oct 2026): default closed behind a
      "+" pill styled like .ind-info-btn; native <details>, no JS. */
   details.more { margin:0 2px 12px; }
@@ -253,7 +259,7 @@
   <section aria-label="Market Indicators">
   <h2>Market Indicators</h2>
   <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About the indicators</summary><p class="box-note">WTI $/barrel · Gold (COMEX futures) $/troy oz · 10-Year % (day change in percentage points) · VIX points · DIA USD (SPDR Dow Jones Industrial Average ETF) · QQQ USD · CAD/USD (USD per CAD) · DXY points. Tap a tile for its YTD weekly candle chart.</p></details>
-  <div class="kpis" id="indicators-body"><p>Loading…</p></div>
+  <div class="kpis is-loading" id="indicators-body"><p>Loading…</p></div>
   <p class="status-line" id="indicators-status">Loading status…</p>
   </section>
 
@@ -272,7 +278,7 @@
     <button class="btn" data-sort="dayChangePct">Day ↕</button>
     <button class="btn" data-sort="ytdPct">YTD ↕</button>
   </div>
-  <div class="cards" id="screener-body"><p>Loading…</p></div>
+  <div class="cards is-loading" id="screener-body"><p>Loading…</p></div>
   <p class="count" id="screener-count"></p>
   <p class="status-line" id="stocks-status">Loading status…</p>
   </section>
@@ -359,7 +365,7 @@
     <button type="button" class="btn" id="ind-retry">Retry</button>
   </div>
 </div>
-<script src="assets/js/screener.js?v=scr12"></script>
+<script src="assets/js/screener.js?v=scr13"></script>
 <script src="assets/js/screener-indicator-chart.js?v=stocks26"></script>
 <script src="assets/js/screener-chart.js?v=cmp14"></script>
 <script src="assets/js/et.js?v=et2"></script>
