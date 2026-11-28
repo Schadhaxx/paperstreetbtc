@@ -21,6 +21,19 @@ LOG_NULL = (
     'screener-daily: skipped TSLA, DIA (2 failed, 19 written)\n'
 )
 LOG_CLEAN = 'screener-daily wrote 21 file(s) -> /tmp/screener-daily\n'
+LOG_FETCH_FAIL = (
+    'FAILED TSLA: Yahoo fetch failed (URLError: timeout)\n'
+    'FAILED DIA: Yahoo fetch failed (URLError: timeout)\n'
+    'FAILED AAPL: Yahoo fetch failed (URLError: timeout)\n'
+    'screener-daily: skipped TSLA, DIA, AAPL (3 failed, 18 written)\n'
+)
+LOG_MISSING_SESSIONS = (
+    'screener-daily: missing 1 completed session(s)\n'
+    'FAILED TSLA: TSLA: missing 1 completed session(s)\n'
+)
+# Fixed "now" for the no-null-close path: Fri 27 Nov 2026 21:09 ET, so
+# cutoff_date is 2026-11-27.
+NOW = dt.datetime(2026, 11, 27, 21, 9, tzinfo=sd.ET)
 
 
 def write_daily(tmp, key, asof, close=100.0):
@@ -293,6 +306,53 @@ class TestDecide(unittest.TestCase):
             log = write_log(tmp, LOG_NULL)
             code, _ = sa.decide('TSLA, DIA', '', log, tmp)
             self.assertEqual(code, 1)
+
+    def test_red_when_all_fail_fetch_error_files_at_prior_session(self):
+        # Grok Bot must-fix (1): every symbol fails with a non-null-close
+        # error while the files sit at the prior session. The old code
+        # fell back to newest_asof (the files' own date) and called them
+        # "already published" -- exit 0, a real outage going silent.
+        # Must go red.
+        with tempfile.TemporaryDirectory() as tmp:
+            write_daily(tmp, 'TSLA', '2026-11-25')
+            write_daily(tmp, 'DIA', '2026-11-25')
+            write_daily(tmp, 'AAPL', '2026-11-25')
+            log = write_log(tmp, LOG_FETCH_FAIL)
+            code, msg = sa.decide('TSLA, DIA, AAPL', '', log, tmp, now=NOW)
+            self.assertEqual(code, 1)
+            self.assertIn('::error::', msg)
+
+    def test_red_when_missing_sessions_files_unchanged(self):
+        # Grok Bot must-fix (2): a "missing N completed session(s)"
+        # failure with the files unchanged at the current session. The
+        # old code fell back to newest_asof and went quiet because every
+        # asOf equalled it. Must go red.
+        with tempfile.TemporaryDirectory() as tmp:
+            write_daily(tmp, 'TSLA', '2026-11-27')
+            log = write_log(tmp, LOG_MISSING_SESSIONS)
+            code, msg = sa.decide('TSLA', '', log, tmp, now=NOW)
+            self.assertEqual(code, 1)
+            self.assertIn('::error::', msg)
+
+    def test_quiet_on_identical_repeat_without_null_close(self):
+        # The dedupe still limits noise on the no-null-close path: the
+        # previous run alerted on the identical signature (same symbols,
+        # session from cutoff_date) -- a repeat, stay quiet.
+        with tempfile.TemporaryDirectory() as tmp:
+            write_daily(tmp, 'TSLA', '2026-11-27')
+            write_daily(tmp, 'DIA', '2026-11-27')
+            write_daily(tmp, 'AAPL', '2026-11-27')
+            log = write_log(tmp, LOG_FETCH_FAIL)
+            fake = stub_gh_api_factory(
+                [{'id': 99, 'status': 'completed'}],
+                {99: ([{'id': 7, 'name': 'recap'}],
+                      alert_ann(failed='AAPL, DIA, TSLA',
+                                session='2026-11-27'))})
+            code, msg = sa.decide('TSLA, DIA, AAPL', '', log, tmp,
+                                  repo='o/r', run_id=100, token='t',
+                                  _gh_api=fake, now=NOW)
+            self.assertEqual(code, 0)
+            self.assertIn('repeat', msg)
 
 
 if __name__ == '__main__':

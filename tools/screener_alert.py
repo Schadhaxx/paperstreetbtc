@@ -15,9 +15,14 @@ repeats until Yahoo heals). Two guards, both from Grok Bot's plan
     the same way is a NEW alert, not a repeat.
 (b) Stay quiet when the published files already hold that session's close.
     For each failed symbol, check its published daily file's asOf against
-    the session date (the null-close date from the screener log, else the
-    newest asOf across the daily files). A symbol whose file already holds
-    the session's close is not a miss.
+    the session date (the null-close date from the screener log). A symbol
+    whose file already holds the session's close is not a miss. When the
+    log has NO null-close date the session cannot be derived from the
+    published files (their newest asOf is their own date, so the check
+    would always say "already published" and a real outage would go
+    silent) -- check (b) is skipped and the run is a real miss; the
+    session date for the alert/dedupe is then derived independently
+    (screener_daily.cutoff_date, now ET).
 
 A real miss still goes red (exit 1). Quiet exits 0. When the repeat check
 cannot run (no GitHub API credentials, or the lookup fails) the tool fails
@@ -86,6 +91,28 @@ def session_date_from_log(log_path):
     if not dates:
         return None
     return dt.date.fromisoformat(max(dates))
+
+
+def cutoff_session(now=None):
+    """Last completed session date, derived independently of the
+    published files (screener_daily.cutoff_date, now ET).
+
+    Used only as the dedupe label and the alert's session date when the
+    screener log has no null-close date -- never as the coverage
+    criterion for check (b). Returns None when the derivation is
+    unavailable; the caller then alerts with no session date (fail
+    open, no dedupe).
+    """
+    try:
+        import screener_daily as sd
+    except Exception:
+        return None
+    if now is None:
+        now = dt.datetime.now(sd.ET)
+    try:
+        return sd.cutoff_date(now)
+    except Exception:
+        return None
 
 
 def file_asof(data_dir, key):
@@ -213,15 +240,29 @@ def prev_alert_signature(repo, run_id, token, _gh_api=None, max_runs=20):
 
 
 def decide(failed, stale, log_path, data_dir, repo=None, run_id=None,
-           token=None, _gh_api=None):
+           token=None, _gh_api=None, now=None):
     """Return (exit_code, message). 0 = stay quiet, 1 = go red."""
     failed = parse_list(failed) if isinstance(failed, str) else sorted(failed)
     stale = parse_list(stale) if isinstance(stale, str) else sorted(stale)
     session = session_date_from_log(log_path)
     if session is None:
-        session = newest_asof(data_dir)
-    # (b) Stay quiet when the published files already hold the session.
-    missing = uncovered(failed, stale, session, data_dir) if session else list(failed) + list(stale)
+        # No null-close date in the log: the run failed for another
+        # reason (Yahoo fetch error/outage, "missing N completed
+        # session(s)", bad close). The session cannot be derived from
+        # the published files -- newest_asof(data_dir) is the files'
+        # own date, so check (b) would compare the files against
+        # themselves and call every failed symbol "already published",
+        # and a real outage would go silent (Grok Bot must-fix, Fri
+        # 27 Nov). Skip check (b) entirely: every failed/stale key is
+        # a real miss. The session date is derived independently
+        # (cutoff_date, now ET) and is used ONLY as the dedupe label
+        # and the alert's session date, never as the coverage
+        # criterion.
+        missing = list(failed) + list(stale)
+        session = cutoff_session(now)
+    else:
+        # (b) Stay quiet when the published files already hold the session.
+        missing = uncovered(failed, stale, session, data_dir)
     if not missing:
         return (0, 'quiet: published files already hold session %s '
                    '(failed: %s; stale: %s)'
