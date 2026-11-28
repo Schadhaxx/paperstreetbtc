@@ -127,6 +127,10 @@ jobs:
           try: old = json.load(open('prices.json'))
           except Exception: old = {}
           out = {'updated': now, 'btc': old.get('btc'), 'stocks': dict(old.get('stocks') or {})}
+          # DJIA is an orphan: DIA replaced the DJIA tile on 13 Nov 2026 and
+          # nothing on the site reads DJIA (it is only carried forward from
+          # the previous prices.json). Drop it so it stops shipping.
+          out['stocks'].pop('DJIA', None)
           key = os.environ.get('FINNHUB_API_KEY', '')
           ok = 0
           finnhub_failed = []
@@ -158,13 +162,38 @@ jobs:
                   r_ = get(f'https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d')['chart']['result'][0]
                   m = r_['meta']
                   c_ = m.get('regularMarketPrice')
-                  # prior session close = 2nd-to-last daily bar's close (NOT chartPreviousClose = close before the 5d window)
+                  # prior session close = last valid daily close before the latest bar
+                  # (NOT chartPreviousClose = close before the 5d window). Skip None
+                  # bars (weekends/holidays have no close) so a None in the
+                  # 2nd-to-last slot does not stall the update (DXY, Nov 2026).
                   cl_ = ((r_.get('indicators') or {}).get('quote') or [{}])[0].get('close') or []
-                  pc_ = cl_[-2] if len(cl_) >= 2 else None
+                  valid_ = [c for c in cl_[:-1] if isinstance(c, (int, float)) and not isinstance(c, bool) and math.isfinite(c)]
+                  pc_ = valid_[-1] if valid_ else None
                   if not (isinstance(pc_, (int, float)) and not isinstance(pc_, bool) and math.isfinite(pc_)): pc_ = None
                   if not (isinstance(c_, (int, float)) and not isinstance(c_, bool) and math.isfinite(c_)): c_ = None
+                  # t: Yahoo's regularMarketTime, but if it lags the fetch by >30 min
+                  # (Yahoo's ^TNX timestamp stalls while the price is current), stamp
+                  # the fetch time instead so a just-fetched price reads Live. Only
+                  # when the fetch succeeded and c_ is valid; a fresh Yahoo timestamp
+                  # is used as-is.
+                  t_ = m.get('regularMarketTime')
                   if isinstance(c_, (int, float)) and c_ > 0 and isinstance(pc_, (int, float)) and pc_ > 0:
-                      out['stocks'][key] = {'c': c_, 'pc': pc_, 't': m.get('regularMarketTime')}; ok += 1
+                      now_ep = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+                      if isinstance(t_, (int, float)) and (now_ep - t_) > 30 * 60:
+                          # Only stamp the fetch time when the price actually
+                          # moved since the previous write. On a holiday (or
+                          # a frozen Yahoo feed) the price is the last
+                          # session's close, unchanged — stamping it fresh
+                          # would make a stale quote read Live on the Desk.
+                          # When the price is unchanged the stale Yahoo
+                          # timestamp stands, so the Desk's 30-min gate
+                          # correctly marks it dated. (A flat price on a
+                          # normal day may read dated for one tick; the
+                          # next move re-stamps it.)
+                          old_c = ((old.get('stocks') or {}).get(key) or {}).get('c')
+                          if old_c is None or c_ != old_c:
+                              t_ = now_ep
+                      out['stocks'][key] = {'c': c_, 'pc': pc_, 't': t_}; ok += 1
                   else: print(key, 'bad Yahoo meta, keeping previous')
               except Exception as e: print(key, 'Yahoo failed, keeping previous:', type(e).__name__)
           try:
@@ -803,7 +832,7 @@ jobs:
         run: |
           mkdir -p /tmp/screener-daily
           set +e
-          python3 tools/screener_daily.py --out-dir /tmp/screener-daily --weekly-dir assets/data 2>&1 | tee /tmp/screener-daily.log
+          python3 tools/screener_daily.py --out-dir /tmp/screener-daily --weekly-dir assets/data --history /tmp/history.json 2>&1 | tee /tmp/screener-daily.log
           gen_rc=${PIPESTATUS[0]}
           chk_rc=0
           if [ "$gen_rc" -eq 0 ]; then
@@ -823,22 +852,68 @@ jobs:
           if [ "$gen_rc" -ne 0 ]; then
             failed=$(sed -n 's/^FAILED \([^:]*\):.*/\1/p' /tmp/screener-daily.log | paste -sd ',' - | sed 's/,/, /g')
             echo "::warning::screener-daily skipped ${failed:-unknown}; copying files that were written"
+          else
+            failed=""
           fi
+          # Record the failure for the trailing fail-loud step: the run
+          # turns red AFTER the recap was published (same pattern as the
+          # btc-daily stall step below). The publish itself is not blocked.
+          echo "failed=$failed" >> $GITHUB_OUTPUT
           changed=0
           for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json ind-daily-dia.json; do
             if [ -f "/tmp/screener-daily/$f" ] && ! cmp -s "/tmp/screener-daily/$f" "assets/data/$f"; then cp "/tmp/screener-daily/$f" "assets/data/$f.tmp" && mv "assets/data/$f.tmp" "assets/data/$f"; echo "updated $f"; changed=1; fi
           done
+          # Staleness check: all five ind-daily files must share the
+          # newest asOf. A file that lags (e.g. VIX stuck at Nov 20
+          # while the rest moved to Nov 23) is recorded for the
+          # trailing fail-loud step instead of lagging silently.
+          stale=""
+          if ! stale_out=$(python3 tools/screener_daily.py --stale-check --out-dir assets/data 2>&1); then
+            stale=$(echo "$stale_out" | sed -n 's/^ind-daily stale: //p')
+            [ -z "$stale" ] && stale="check failed (see log)"
+            echo "::warning::ind-daily staleness: $stale"
+          fi
+          echo "stale=$stale" >> $GITHUB_OUTPUT
           echo "changed=$changed" >> $GITHUB_OUTPUT
+      - name: Comparison daily closes (validated; never blocks the recap or prices)
+        id: cmp_daily
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          # Regenerates assets/data/cmp-daily.json (19 symbols) from final
+          # closes. The recap job runs on the first fetch after a new final
+          # close appears — for BTC that is the first run after 00:15 UTC,
+          # when the UTC day is final — so the BTC bar is final here. The
+          # tool itself guards that BTC's last date equals the UTC cutoff
+          # (tools/cmp_daily.py check_btc_cutoff) and drops the
+          # still-forming bar; a run before the cutoff would end BTC a day
+          # behind the NYSE asOf, which is correct by design.
+          set +e
+          python3 tools/cmp_daily.py --out /tmp/cmp-daily.json --pack assets/data/screener-pack.json --weekly-dir assets/data --history /tmp/history.json --shipped assets/data/cmp-daily.json 2>&1 | tee /tmp/cmp-daily.log
+          gen_rc=${PIPESTATUS[0]}
+          chk_rc=0
+          if [ "$gen_rc" -eq 0 ]; then
+            python3 tools/cmp_daily.py --check-only --out /tmp/cmp-daily.json --pack assets/data/screener-pack.json --weekly-dir assets/data
+            chk_rc=$?
+          fi
+          set -e
+          if [ "$gen_rc" -ne 0 ] || [ "$chk_rc" -ne 0 ]; then
+            echo "::warning::cmp-daily update skipped; the comparison chart keeps yesterday's file"
+            echo "changed=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if ! cmp -s /tmp/cmp-daily.json assets/data/cmp-daily.json; then cp /tmp/cmp-daily.json assets/data/cmp-daily.json.tmp && mv assets/data/cmp-daily.json.tmp assets/data/cmp-daily.json; echo "updated cmp-daily.json"; echo "changed=1" >> $GITHUB_OUTPUT; else echo "changed=0" >> $GITHUB_OUTPUT; fi
       - name: Commit and push (fast-forward only, retries)
         id: push
-        if: steps.gen.outputs.changed == '1' || steps.opens.outputs.changed == '1' || steps.vehicle.outputs.changed == '1' || steps.screener_daily.outputs.changed == '1'
+        if: steps.gen.outputs.changed == '1' || steps.opens.outputs.changed == '1' || steps.vehicle.outputs.changed == '1' || steps.screener_daily.outputs.changed == '1' || steps.cmp_daily.outputs.changed == '1'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- recap/ sitemap.xml assets/data/btc-daily.json assets/data/opens.json assets/data/vehicle-daily.json assets/data/stock-daily-*.json assets/data/ind-daily-*.json
+          git add -- recap/ sitemap.xml assets/data/btc-daily.json assets/data/opens.json assets/data/vehicle-daily.json assets/data/stock-daily-*.json assets/data/ind-daily-*.json assets/data/cmp-daily.json
           msg=""; [ "${{ steps.gen.outputs.changed }}" = 1 ] && msg="recap/btc-daily"; [ "${{ steps.opens.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }opens"
           [ "${{ steps.vehicle.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }vehicle"
           [ "${{ steps.screener_daily.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }screener-daily"
+          [ "${{ steps.cmp_daily.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }cmp-daily"
           git commit -q -m "$msg: refresh from final closes $(date -u +%FT%TZ)"
           for wait in 0 5 15 30; do
             sleep $wait
@@ -861,6 +936,28 @@ jobs:
           if [ "${{ steps.gen.outputs.btcd_stalled }}" = 4 ]; then echo "::error::btc-daily heal REFUSED (R-s): btc-daily.json left unchanged. See the btc_daily log and BP ROLLOUT (rollback trigger)."; exit 1; fi
           echo "::error::btc-daily is paused at a BTC day still on a fallback source > 48 h. See tools/btc_daily.py header (BP ROLLOUT: stall)."
           exit 1
+      - name: screener-daily failed or stale (run turns red AFTER the recap was published)
+        if: always() && (steps.screener_daily.outputs.failed != '' || steps.screener_daily.outputs.stale != '')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # tools/screener_alert.py decides whether this step goes red.
+          # It stays quiet in two cases (Grok Bot's follow-up #1):
+          #   (b) the published files already hold that session's close
+          #       (the gen failed but the data is already published, so
+          #       there is nothing missing);
+          #   (a) the failure is identical to the most recent alert the
+          #       recap job already raised (same symbols, same stale
+          #       keys, same session) -- alert once per incident, not
+          #       every 5-minute run. The walk-back skips quiet runs, so
+          #       a repeat stays quiet until the signature changes.
+          # A real miss still exits 1 and turns the run red. If the
+          # repeat lookup fails (no token, API error) the tool fails
+          # open and alerts.
+          python3 tools/screener_alert.py \
+            --failed "${{ steps.screener_daily.outputs.failed }}" \
+            --stale "${{ steps.screener_daily.outputs.stale }}" \
+            --log /tmp/screener-daily.log --data-dir assets/data
       - name: Summary
         if: always()
         run: |
