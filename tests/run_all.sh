@@ -66,6 +66,8 @@ run cmp_daily_py python3 tests/test_cmp_daily.py                             # c
 run cmp_intraday_js node tests/test_cmp_intraday.js                          # Job 10: 1D intraday comparison — CmpIntraMath pure-block unit tests (trim / align / rebase / stale rule, incl. holiday + early-close freshness)
 run cmp_intraday_py python3 tests/test_cmp_intraday.py                       # Job 10: tools/cmp_intraday.py — ET gate, expected session, Yahoo payload filter, document build + validator, CLI (offline fixtures, no network)
 run cmp_js node tests/test_cmp.js                                            # comparison chart: rebase math, ranges, SPCX rule, shipped closes
+run ps_ev node tests/test_ps_ev.js                                             # Stage 3: event analytics client (ps-ev.js) — hooks, ?src=, opt-out, dedupe
+run worker_test node --test worker/test/worker.test.mjs                       # Worker (quotes + Stage 3 /ev) — node:test, upstream fetches stubbed
 TD=${TG_PATCHES:-$REPO/../fix-proposals/tiingo}; ls "$TD"/00[0-9][0-9]-*.patch >/dev/null 2>&1 && echo "TG unit ID tg-$(cat "$TD"/00[0-9][0-9]-*.patch | sha256sum | cut -c1-12)"
 run test_freeze_liveURL python3 tests/test_freeze.py                       # F8: against the live data-branch URL (read-only)
 run et_expiry_guard_2028-11-15 bash -c 'if ET_TEST_NOW=2028-11-15 node tests/test_et.js; then echo "guard did NOT fire"; exit 1; else echo "guard fired as expected"; fi'   # F9 (moved with the 2028 list extension)

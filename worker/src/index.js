@@ -93,6 +93,48 @@ function isErrRateLimited(ip) {
   return false;
 }
 
+// ---------------------------------------------------------------------------
+// Stage 3 event analytics (27 Nov 2026): POST /ev
+// ---------------------------------------------------------------------------
+//
+// The site counts seven key actions (client: assets/js/ps-ev.js) and sends
+// each as one fire-and-forget POST to /ev. The Worker writes one data
+// point per event to Workers Analytics Engine (dataset paperstreet-events,
+// binding EVENTS in wrangler.toml). Counts only: event name + page +
+// the ?src= tag. No cookies, no personal data, no IP stored.
+//
+// Analytics Engine free tier (100,000 data points written/day) is far
+// above this site's volume (a handful of events per day). The weekly
+// count is a SQL query against the dataset (see worker/README.md).
+
+// The only event names the Worker accepts. Anything else is a 400, so a
+// stray or abusive POST cannot pollute the counts.
+const EV_EVENTS = ['desk_open', 'lab_model', 'range_switch', 'btc_chart_open', 'xfollow', 'screener_use', 'compare_use'];
+const EV_MAX_BODY_BYTES = 2000;
+// Separate per-IP bucket from the quotes 30/min limiter, so an event
+// flood cannot starve quotes and quote traffic cannot block events.
+// Events are user actions, so 30/min per IP is generous.
+const EV_RATE_LIMIT_PER_MINUTE = 30;
+const evRateLimitStore = new Map(); // ip -> array of request timestamps (ms)
+
+function isEvRateLimited(ip) {
+  const now = Date.now();
+  const windowStart = now - 60_000;
+  let hits = evRateLimitStore.get(ip);
+  if (!hits) {
+    hits = [];
+    evRateLimitStore.set(ip, hits);
+    if (evRateLimitStore.size > RATE_LIMIT_MAX_IPS) {
+      const oldest = evRateLimitStore.keys().next().value;
+      evRateLimitStore.delete(oldest);
+    }
+  }
+  while (hits.length && hits[0] < windowStart) hits.shift();
+  if (hits.length >= EV_RATE_LIMIT_PER_MINUTE) return true;
+  hits.push(now);
+  return false;
+}
+
 // Allowed CORS origins. localhost (any port) is for local testing only.
 const ALLOWED_ORIGINS = ['https://paperstreetbtc.com'];
 function isAllowedOrigin(origin) {
@@ -685,6 +727,74 @@ async function handleErrRead(request, env) {
 }
 
 // ---------------------------------------------------------------------------
+// Stage 3: POST /ev — record one counted event in Analytics Engine.
+// ---------------------------------------------------------------------------
+
+async function handleEvPost(request, env, cors) {
+  // The main abuse check (same as /err): an event POST must carry an
+  // allowed Origin. A missing Origin (curl / server-to-server) is 403 —
+  // real browsers always send one on a cross-origin sendBeacon/fetch.
+  const origin = request.headers.get('Origin');
+  if (!origin || !isAllowedOrigin(origin)) {
+    return jsonResponse({ error: 'origin not allowed' }, 403, cors);
+  }
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  if (isEvRateLimited(ip)) {
+    return jsonResponse({ error: 'rate limited' }, 429, { ...cors, 'Retry-After': '60' });
+  }
+  let text;
+  try {
+    text = await request.text();
+  } catch {
+    return jsonResponse({ error: 'bad body' }, 400, cors);
+  }
+  if (text.length > EV_MAX_BODY_BYTES) {
+    return jsonResponse({ error: 'body too large' }, 413, cors);
+  }
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return jsonResponse({ error: 'bad json' }, 400, cors);
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return jsonResponse({ error: 'bad body' }, 400, cors);
+  }
+  const event = data.event;
+  if (typeof event !== 'string' || EV_EVENTS.indexOf(event) < 0) {
+    return jsonResponse({ error: 'bad event' }, 400, cors);
+  }
+  const page = data.page;
+  if (
+    typeof page !== 'string' ||
+    page.length === 0 ||
+    page.length > 100 ||
+    page[0] !== '/' ||
+    page.indexOf('?') >= 0 ||
+    page.indexOf('#') >= 0 ||
+    page.indexOf('\\') >= 0
+  ) {
+    return jsonResponse({ error: 'bad page' }, 400, cors);
+  }
+  // The ?src= tag rides along so the weekly totals split by source.
+  // Only a short safe token is kept; anything else is dropped to ''.
+  let src = '';
+  if (typeof data.src === 'string' && /^[A-Za-z0-9._-]{1,40}$/.test(data.src)) src = data.src;
+  // Write the data point. writeDataPoint is non-blocking (fire-and-
+  // forget on the Worker side too). If the Analytics Engine binding is
+  // missing (a local test without it), skip the write but still answer
+  // 204 — the page must never see an error for an analytics send.
+  try {
+    if (env && env.EVENTS && typeof env.EVENTS.writeDataPoint === 'function') {
+      env.EVENTS.writeDataPoint({ blobs: [event, page, src], doubles: [1], indexes: [event] });
+    }
+  } catch {
+    // Never fail the send.
+  }
+  return new Response(null, { status: 204, headers: { ...cors } });
+}
+
+// ---------------------------------------------------------------------------
 // HTTP handler
 // ---------------------------------------------------------------------------
 
@@ -716,8 +826,9 @@ async function handleFetch(request, env) {
     return jsonResponse({ error: 'origin not allowed' }, 403);
   }
 
-  // Preflight. POST is allowed for /err (sendBeacon posts text/plain and
-  // must not hit a preflight it cannot complete); POST / stays 405.
+  // Preflight. POST is allowed for /err and /ev (sendBeacon posts
+  // text/plain and must not hit a preflight it cannot complete);
+  // POST / stays 405.
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -735,14 +846,24 @@ async function handleFetch(request, env) {
     return handleErrPost(request, env, cors);
   }
 
+  // Stage 3: POST /ev records one counted event (Analytics Engine).
+  // Origin + rate limit inside.
+  if (url.pathname === '/ev') {
+    if (request.method !== 'POST') {
+      return jsonResponse({ error: 'method not allowed' }, 405, cors);
+    }
+    return handleEvPost(request, env, cors);
+  }
+
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'method not allowed' }, 405, cors);
   }
 
-  // Only three route families: / (or /quotes) serves the quotes payload;
+  // Only four route families: / (or /quotes) serves the quotes payload;
   // /health is a cheap liveness check that never touches an upstream
   // provider; /err is the Stage 2 page-error report (POST) and its
-  // secret-protected read (GET, handled before the CORS gate above).
+  // secret-protected read (GET, handled before the CORS gate above);
+  // /ev is the Stage 3 counted-event POST.
   if (url.pathname === '/health') {
     return jsonResponse({ ok: true, asOf: new Date().toISOString() }, 200, cors);
   }
@@ -778,6 +899,7 @@ export const __test = {
     memoryCache.clear();
     rateLimitStore.clear();
     errRateLimitStore.clear();
+    evRateLimitStore.clear();
     lastGoodBtcChg = null;
   },
   // Clear only the in-memory last-good 24h change (simulates a cold
