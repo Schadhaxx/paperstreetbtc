@@ -174,8 +174,14 @@
   .cmp-stat { background:rgba(5,7,15,.38); border:1px solid var(--line); border-radius:14px; padding:8px 10px; min-height:54px; }
   .cmp-stat span { display:block; color:var(--mut); font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
   .cmp-stat b { display:block; margin-top:3px; font-size:15px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
-  .cmp-chips { display:flex; gap:8px; overflow-x:auto; max-width:100%; padding:2px 0 8px; scrollbar-width:none; }
+  .cmp-chips { display:flex; gap:8px; overflow-x:auto; max-width:100%; padding:2px 0 8px; scrollbar-width:none; -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%); mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%); }
   .cmp-chips::-webkit-scrollbar { display:none; }
+  /* Right-edge fade cue (21 Nov 2026): the row is a hidden-scrollbar
+     scroller, so a partially-visible chip at the edge is the only sign
+     more chips exist. The trailing spacer sits in the fade zone at max
+     scroll, so the last chip itself is never faded — the fade only ever
+     covers chips still hidden past the edge (or this invisible spacer). */
+  .cmp-chips::after { content:""; flex:0 0 28px; }
   .cmp-chip { display:inline-flex; align-items:center; gap:6px; padding:0 12px; }
   .cmp-chip.is-on { border-color:var(--cyan); box-shadow:inset 0 0 0 1px var(--cyan); color:var(--txt); }
   .cmp-chip[aria-pressed="false"] { color:var(--mut); }
