@@ -364,13 +364,22 @@ function drawCandles1D(candles,label,per){
      ranges (10Y monthly read $-17,147). */
   if(lo<0)lo=0;
   var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
+  /* Follow-ups (28 Nov 2026): nice y-ticks like the line views
+     (nativeNiceTicks) instead of the 0/33/66/100% fractions, which
+     printed odd steps ($84,033 / $73,469 / $63,216 / $52,963). Same
+     headroom rule and no-below-$0 filter as draw1DNative; the axis
+     extends to the outer ticks before Y is defined. */
+  var ticks=nativeNiceTicks(lo,hi,ih);
+  var _hr=nativeHeadroomTicks(ticks,lo,hi);if(_hr)ticks=_hr.ticks;
+  ticks=ticks.filter(function(t){return t>=0;});if(!ticks.length)ticks=[0];
+  if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
   /* TA Stage 1, candle inset (item 1): half a slot at each end, so the first
      and last candles sit fully inside the plot instead of on its edges.
      CANDGEOM carries these x positions, so later stages reuse the same inset. */
   var X=function(i){return L+iw*(i+0.5)/candles.length;};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
-  [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
+  ticks.forEach(function(v){var y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();var s=yTickDaily(v,false,false);if(s!=null)ctx.fillText(s,L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];drawCandles1D._lastTx=null;
   candles.forEach(function(k,i){
     var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
@@ -602,21 +611,25 @@ function drawCandlesRange(){
      ranges (10Y monthly read $-17,147). */
   if(lo<0)lo=0;
   var L=62,T=18,B=44;
-  /* TA Stage 1, CAD live-tag fix (item 8): the LIVE tag was sized at USD width
-     (R=78), so in CAD the wider tag ran off the canvas edge. Measure the tag
-     in the displayed currency first and size the right margin to fit it.
-     When the tag will not be drawn (no live price) keep today's R=78. */
+  /* Follow-ups (28 Nov 2026): R is 12 like every other view — the
+     LIVE tag no longer lives in the right margin (it was sized to the
+     tag, ~84-110px on a phone, so the plot filled only ~2/3 of the
+     width). The tag is now a pill inside the plot, right-aligned at
+     the plot edge, like the trendline pills. This supersedes the TA
+     Stage 1 CAD live-tag fix (item 8), which sized R to the tag. */
   var R=12;
-  if(typeof RGLIVE!=='undefined'&&RGLIVE){
-    if(live.usd!=null){ctx.font='bold 11px Inter, sans-serif';R=Math.ceil(ctx.measureText('LIVE '+fmt(live.usd)).width)+16;}
-    else{R=78;}
-  }
   var iw=W-L-R,ih=H-T-B;
+  /* Follow-ups (28 Nov 2026): nice y-ticks like the line views — see
+     drawCandles1D. */
+  var ticks=nativeNiceTicks(lo,hi,ih);
+  var _hr=nativeHeadroomTicks(ticks,lo,hi);if(_hr)ticks=_hr.ticks;
+  ticks=ticks.filter(function(t){return t>=0;});if(!ticks.length)ticks=[0];
+  if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
   /* TA Stage 1, candle inset (item 1): half a slot at each end — see drawCandles1D. */
   var X=function(i){return L+iw*(i+0.5)/candles.length;};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
   ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
-  [0,0.33,0.66,1].forEach(function(f){var v=lo+(hi-lo)*f,y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();ctx.fillText(curSym()+Math.round(curVal(v)).toLocaleString('en-US'),L-6,y+4);});
+  ticks.forEach(function(v){var y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();var s=yTickDaily(v,false,false);if(s!=null)ctx.fillText(s,L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];
   var lastTx=null,lastMd=null,labIdx=rangeLabelIndices(candles.length,iw);
   candles.forEach(function(k,i){
@@ -651,11 +664,20 @@ function drawCandlesRange(){
     ctx.beginPath();ctx.moveTo(L,ly2);ctx.lineTo(W-R,ly2);ctx.stroke();ctx.setLineDash([]);
     ctx.strokeStyle=psC('#22d3ee','#0891b2');ctx.setLineDash([4,4]);
     ctx.strokeRect(lg.x-lg.bw/2-4,lg.wickTop-8,lg.bw+8,lg.wickBot-lg.wickTop+16);ctx.setLineDash([]);
-    ctx.font='bold 11px Inter, sans-serif';ctx.textAlign='left';
-    ctx.fillStyle=psC('#22c55e','#15803d');ctx.fillText('LIVE',lg.x-13,lg.wickTop-14);
+    /* Follow-ups (28 Nov 2026): the tag is a pill inside the plot,
+       right-aligned at the plot edge (W-R), so it never overlaps the
+       plot edge and R stays 12. The LIVE text is centred on the last
+       candle, clamped inside the plot. The tag sits at liveY, so the
+       existing 17px live-price de-collision keeps trendline pills
+       clear of it. */
+    ctx.font='bold 11px Inter, sans-serif';ctx.textAlign='center';
+    ctx.fillStyle=psC('#22c55e','#15803d');
+    var lx=Math.max(L+16,Math.min(W-R-16,lg.x));
+    ctx.fillText('LIVE',lx,lg.wickTop-14);
     var tag='LIVE '+fmt(live.usd), tw2=ctx.measureText(tag).width;
-    ctx.fillStyle=psC('#22d3ee','#0891b2');ctx.fillRect(W-R+4,ly2-8,tw2+8,16);
-    ctx.fillStyle=psC('#0b1226','#ffffff');ctx.fillText(tag,W-R+8,ly2+4);
+    ctx.textAlign='left';
+    ctx.fillStyle=psC('#22d3ee','#0891b2');ctx.fillRect(W-R-tw2-12,ly2-8,tw2+8,16);
+    ctx.fillStyle=psC('#0b1226','#ffffff');ctx.fillText(tag,W-R-tw2-8,ly2+4);
     ctx.restore();
   }
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
@@ -1286,8 +1308,8 @@ var taLoaded=false;
 function loadTA(){
   if(taLoaded)return;taLoaded=true;
   try{
-    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta18');document.head.appendChild(l);
-    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta18');
+    var l=document.createElement('link');l.rel='stylesheet';l.href=U('../css/btcchart-ta.css?v=ta19');document.head.appendChild(l);
+    var s=document.createElement('script');s.src=U('btcchart-ta.js?v=ta19');
     s.onload=function(){try{if(window.__BTTA&&window.__BTTA.init)window.__BTTA.init(window.__BCTA);}catch(e){}};
     s.onerror=function(){taLoaded=false;};
     document.head.appendChild(s);
@@ -1603,10 +1625,10 @@ function nativeXLabels(ctx,texts,xs,L,R,W,y){
      (or last) label would run into its neighbour, it moves back toward its
      tick as Chart.js places it (staying on the canvas); any label that
      still overlaps the previous one is skipped. */
-  var m=texts.length,pos=[],w=[],GAP=1,k; /* skip only labels that would touch or overlap */
+  var m=texts.length,pos=[],w=[],GAP=1,CLEAR=10,k; /* skip only labels that would touch or overlap; the first/last move-back fires when the clamped edge label would come within CLEAR px of its neighbour (it used to fire only on overlap, so a 1M '10-26' sat 1.7px from '11-02') */
   for(k=0;k<m;k++){w[k]=ctx.measureText(texts[k]).width;pos[k]=Math.max(L+30,Math.min(W-R-30,xs[k]));}
-  if(m>1&&pos[0]+w[0]/2+GAP>pos[1]-w[1]/2)pos[0]=Math.max(w[0]/2+2,Math.min(pos[0],xs[0]));
-  if(m>1&&pos[m-1]-w[m-1]/2-GAP<pos[m-2]+w[m-2]/2)pos[m-1]=Math.min(W-w[m-1]/2-2,Math.max(pos[m-1],xs[m-1]));
+  if(m>1&&pos[0]+w[0]/2+CLEAR>pos[1]-w[1]/2)pos[0]=Math.max(w[0]/2+2,Math.min(pos[0],xs[0]));
+  if(m>1&&pos[m-1]-w[m-1]/2-CLEAR<pos[m-2]+w[m-2]/2)pos[m-1]=Math.min(W-w[m-1]/2-2,Math.max(pos[m-1],xs[m-1]));
   var lastR=-1e9;
   for(k=0;k<m;k++){
     if(pos[k]-w[k]/2<lastR+GAP)continue;
@@ -2059,6 +2081,17 @@ function drawDailyNative(d,cmp){
     }else{
       for(var i=0;i<n;i+=step)xIdx.push(i);
     }
+    /* Follow-ups (28 Nov 2026): drop a stub first year — 5Y starts
+       25 Nov 2021, 10Y 25 Nov 2016, Max 18 Aug 2010, so the first
+       year's label piles onto the second's (5Y '2021' ~4px from
+       '2022'; 10Y lost '2018' to the collision guard). A first year
+       under 180 days in-window is a stub; the header already states
+       the start date, so nothing is lost. The same array feeds the
+       gridlines, the labels and the layout hook. */
+    if(n>400&&xIdx.length>1){
+      var _d0=Date.parse(lab[xIdx[0]]+'T00:00:00Z'),_d1=Date.parse(lab[xIdx[1]]+'T00:00:00Z');
+      if(isFinite(_d0)&&isFinite(_d1)&&_d1-_d0<180*86400000)xIdx.shift();
+    }
     xIdx.forEach(function(i){
       var x=X(i);
       ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ih);ctx.stroke();
@@ -2156,6 +2189,13 @@ function morphToPill(el){
   return {dx:pr.left-fr.left,dy:pr.top-fr.top,sx:pr.width/fr.width,sy:pr.height/fr.height};}
 function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&!menu.hidden){var mb=$('mnavBtn');if(mb)mb.click();}
   rng='1D';CT='line';RGCT='line';RGGRAN=defaultGran(rng);LOG=false;clearCandState();dim.hidden=false;dlg.hidden=false;
+  /* Follow-ups (28 Nov 2026): lock the page behind the open popup
+     (html.bc-lock, next to the prd-lock rule in nav.css) so the mouse
+     wheel cannot scroll it; the sheet itself still scrolls, and
+     overscroll-behavior:contain on .bc-w stops scroll chaining at
+     its edges. Removed in close()'s finish(), which runs on every
+     close path. Inline mode returns above and never locks. */
+  document.documentElement.classList.add('bc-lock');
   var morph=null;
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
     dlg.style.visibility='hidden';place();morph=morphToPill(opener);
@@ -2175,7 +2215,7 @@ function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&
   $('bcRr').textContent='Loading…';$('bcX').focus();
   getData().then(draw).catch(function(){$('bcRr').textContent='Chart data unavailable right now.';});}
 function close(){if(INLINE)return;if(!dlg||dlg.hidden)return;
-  var finish=function(){cancelNativeResize();dlg.hidden=true;dim.hidden=true;dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
+  var finish=function(){cancelNativeResize();dlg.hidden=true;dim.hidden=true;document.documentElement.classList.remove('bc-lock');dlg.classList.remove('bc-morph');dlg.style.transform='';dlg.style.borderRadius='';
     [pill,mp,document.getElementById('btcLive')].forEach(function(e){e&&e.setAttribute('aria-expanded','false');}); /* Batch B bug 2: open() sets btcLive true; close() must reset it */
     var o=opener&&opener.offsetParent?opener:pill;if(o&&o.offsetParent)o.focus();};
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
