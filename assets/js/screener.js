@@ -419,6 +419,7 @@
       }).join('');
       var count = document.getElementById('screener-count');
       if (count) count.textContent = list.length + ' of ' + rows.length + ' shown';
+      body.classList.remove('is-loading'); /* CLS fix: data rendered, reserved space no longer needed */
     }
     var itbody = document.getElementById('indicators-body');
     if (itbody) {
@@ -431,6 +432,7 @@
           + '<div class="u">' + noteBtn + '</div>'
           + '<span class="tile-chart" aria-hidden="true">' + CHART_ICON + '</span></div>';
       }).join('');
+      itbody.classList.remove('is-loading'); /* CLS fix: data rendered, reserved space no longer needed */
     }
     updatePills();
     renderStatus();
@@ -561,9 +563,9 @@
       })
       .catch(function () {
         var b = document.getElementById('screener-body');
-        if (b) b.innerHTML = '<p>Screener data could not be loaded.</p>'; /* Batch B finding 7: <tr> in a <div> is dropped by the browser */
+        if (b) { b.innerHTML = '<p>Screener data could not be loaded.</p>'; b.classList.remove('is-loading'); /* CLS fix: failed load must not leave a tall empty box */ } /* Batch B finding 7: <tr> in a <div> is dropped by the browser */
         var ib = document.getElementById('indicators-body');
-        if (ib) ib.innerHTML = '<p>Screener data could not be loaded.</p>';
+        if (ib) { ib.innerHTML = '<p>Screener data could not be loaded.</p>'; ib.classList.remove('is-loading'); }
       });
     document.addEventListener('click', function (e) {
       var btn = e.target.closest ? e.target.closest('.note-btn') : null;
