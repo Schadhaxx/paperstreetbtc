@@ -3,22 +3,28 @@
 On a gated view the toggle stays visible but disabled (greyed out) and its
 overlay does not draw; the same toggle works normally on other views. The
 agreed lists are in ~/workspace/your_files/ta-gating-pass-sheet-2026-11-22.md:
-Trendlines gated on Line 1D/1W; Bollinger on EVERY range (Sunil,
-21 Nov ~19:16); SMA 20/50 on 1W; SMA 200 on 1D, 1W only — YTD/1Y kept
-(Sunil, 21 Nov ~19:16), 6M undecided, left as is; EMA 50 on 1W,
-EMA 200 on 1D, 1W, EMA 20 never; RSI everywhere; 5Y/10Y/Max
+Trendlines NO LONGER gated anywhere (Job 1, 21 Nov 2026 — the Line y-range
+expands to include the drawn lines, so they draw on Line 1D/1W);
+Bollinger NO LONGER gated anywhere (Job 2, 21 Nov 2026 — the pre-warm
+fetches history before the visible window, so a 20-period is valid from
+index 0); SMA 20/50 + EMA 50 NO LONGER gated on 1W (Job 12, 22 Nov 2026 —
+the values already computed correctly there after Job 2's pre-warm, so
+only the gate was hiding them); SMA 200 NO LONGER gated on 1D/1W (Job 2 —
+same pre-warm; it was already live on the longer ranges);
+EMA 200 NO LONGER gated on 1D/1W (Job 2 — SMA 200's twin),
+EMA 20 never; RSI NO LONGER gated anywhere (Job 3, 22 Nov 2026 — the
+strip now has a scale, shaded 30/70 bands and a live value); 5Y/10Y/Max
 trendlines untouched.
 Serves this checkout on localhost (or takes a base URL argv[1] and a shots
 dir argv[2], as run_all.sh does), stubs the live-price and candle feeds
 with deterministic data, serves a synthetic ta-lines.json fixture, and
 verifies at phone 390 dark + desktop 1440 light: each greyed-out toggle
 is disabled on its gated view and enabled elsewhere; the overlay stays
-off on gated views (no trendlines, no Bollinger, no SMA 200, no RSI
-strip) while the non-gated overlays still draw; the toggle comes back to
-life on a view where it works. The saved state is seeded with every
-overlay on (localStorage ps-ta-v1) so the gating, not the toggle, is what
-is under test. Comparison-on behaviour is unchanged and not re-tested
-here (covered by test_ta_stage2.py).
+off on gated views while the non-gated overlays still draw; the toggle
+comes back to life on a view where it works. The saved state is seeded
+with every overlay on (localStorage ps-ta-v1) so the gating, not the
+toggle, is what is under test. Comparison-on behaviour is unchanged and
+not re-tested here (covered by test_ta_stage2.py).
 """
 import json, math, os, sys, threading, functools, http.server, socketserver, urllib.parse, datetime as dt
 from pathlib import Path
@@ -122,13 +128,26 @@ def colour_present(pg, rgb, sel='#bcC', tol=20):
     """True if an (R,G,B) appears on the canvas within +/-tol per channel.
     tol is 20 (not the 40 the Stage 2/4 tests use): the cyan price line's
     anti-aliased edges and pink x cyan crossing blends land within 40 of
-    the Bollinger violet and the SMA 200 green, so 40 false-positives
-    here. 20 still catches the solid core pixels of a drawn line."""
+    the Bollinger violet, so 40 false-positives here. 20 still catches the
+    solid core pixels of a drawn line (and pure-white elements sit 23
+    away in R from the near-white SMA 200, just outside tol=20)."""
     return pg.evaluate("""([s, rgb, tol]) => { const c = document.querySelector(s); if (!c) return false;
       const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
       for (let i = 0; i < d.length; i += 4) {
         if (Math.abs(d[i] - rgb[0]) <= tol && Math.abs(d[i+1] - rgb[1]) <= tol && Math.abs(d[i+2] - rgb[2]) <= tol) return true; }
       return false; }""", [sel, rgb, tol])
+
+def colour_count(pg, rgb, sel='#bcC', tol=20):
+    """Count of pixels on the canvas within +/-tol of rgb. A real drawn
+    line (2px wide across ~300px) is hundreds of pixels; anti-aliased
+    edge pixels of another line are a handful. Use this, not
+    colour_present, when another overlay's edges can land near the
+    colour."""
+    return pg.evaluate("""([s, rgb, tol]) => { const c = document.querySelector(s); if (!c) return 0;
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (Math.abs(d[i] - rgb[0]) <= tol && Math.abs(d[i+1] - rgb[1]) <= tol && Math.abs(d[i+2] - rgb[2]) <= tol) n++; }
+      return n; }""", [sel, rgb, tol])
 
 def tl(pg):
     return pg.evaluate("window.__TA_TL_DEBUG ? window.__TA_TL_DEBUG() : null")
@@ -150,6 +169,14 @@ def panel_status(pg):
 def pick_size(pg, size):
     pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
     pg.click('.ta-menu [data-ta-size="%s"]' % size); pg.wait_for_timeout(1200)
+
+def pick_type(pg, typ):
+    """Pick a chart type (line/candles) from the type menu. Job 5: a range
+    switch now carries the chart type over (1D candles stay candles on
+    1W), so a phase that wants Line must pick it explicitly instead of
+    relying on the old reset-to-Line side effect."""
+    pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
+    pg.click('.ta-menu [data-ta-pick="%s"]' % typ); pg.wait_for_timeout(1200)
 
 def main():
     global U
@@ -179,49 +206,53 @@ def main():
         try:
             pg.goto(U + 'clock/index.html', wait_until='networkidle')
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
-            # ---- Phase A: 1D Line (default view) ----
+            # ---- Phase A: 1D Line (default view; Job 1 ungreyed trendlines) ----
             open_panel(pg)
-            chk('A 1D Line: trendlines toggle disabled', disabled(pg, '.ta-panel [data-ta-key="tl"]'))
-            chk('A 1D Line: Bollinger toggle disabled', disabled(pg, '.ta-panel [data-ta-key="bb"]'))
-            chk('A 1D Line: RSI toggle disabled', disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
+            chk('A 1D Line: trendlines toggle enabled (Job 1)', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
+            chk('A 1D Line: Bollinger toggle enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-key="bb"]'))
+            chk('A 1D Line: RSI toggle enabled (Job 3)', not disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
             chk('A 1D Line: MA group switch enabled', not disabled(pg, '.ta-panel [data-ta-key="ma"]'))
             chk('A 1D Line: SMA 20 chip enabled', not disabled(pg, '.ta-panel [data-ta-ma="sma20"]'))
             chk('A 1D Line: SMA 50 chip enabled', not disabled(pg, '.ta-panel [data-ta-ma="sma50"]'))
-            chk('A 1D Line: SMA 200 chip disabled', disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
+            chk('A 1D Line: SMA 200 chip enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
             chk('A 1D Line: EMA 20 chip enabled', not disabled(pg, '.ta-panel [data-ta-ma="ema20"]'))
             chk('A 1D Line: EMA 50 chip enabled', not disabled(pg, '.ta-panel [data-ta-ma="ema50"]'))
-            chk('A 1D Line: EMA 200 chip disabled', disabled(pg, '.ta-panel [data-ta-ma="ema200"]'))
+            chk('A 1D Line: EMA 200 chip enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-ma="ema200"]'))
             chk('A 1D Line: pill badge still counts saved state (7)', '7' in pg.inner_text('#taPill'), pg.inner_text('#taPill'))
-            wait_status(pg, 'gated')
+            wait_status(pg, 'live')
             pr = tl(pg)
-            chk('A 1D Line: trendlines gated, 0 lines draw', pr['status'] == 'gated' and pr['last']['lines'] == [], str(pr))
-            chk('A 1D Line: panel says Not available on this view', panel_status(pg) == 'Not available on this view', panel_status(pg))
-            chk('A 1D Line: no Bollinger violet on canvas', not colour_present(pg, (167, 139, 250)))
+            chk('A 1D Line: trendlines live, 12 lines draw (Job 1)', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
+            chk('A 1D Line: panel says Live', panel_status(pg).startswith('Live'), panel_status(pg))
+            chk('A 1D Line: Bollinger violet draws (Job 2)', colour_present(pg, (167, 139, 250)))
             chk('A 1D Line: SMA 20 pink draws', colour_present(pg, (244, 114, 182)))
             chk('A 1D Line: SMA 50 amber draws', colour_present(pg, (251, 191, 36)))
-            chk('A 1D Line: SMA 200 green absent (gated)', not colour_present(pg, (52, 211, 153), tol=10))
-            chk('A 1D Line: RSI strip hidden despite RSI on', pg.evaluate("document.getElementById('taRsi').hidden"))
+            n_sma200 = colour_count(pg, (232, 238, 247), tol=10)
+            chk('A 1D Line: SMA 200 white draws (Job 2)', n_sma200 >= 50, 'count=%d' % n_sma200)
+            chk('A 1D Line: RSI strip shows (Job 3)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             pg.screenshot(path=str(shots / 'clock-390-dark-ta-gating-panel.png'), animations='disabled')
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             # ---- Phase B: 1D 1H candles (trendlines live again) ----
             pick_size(pg, '1h'); pg.wait_for_timeout(600)
             open_panel(pg)
-            chk('B 1D 1H: trendlines toggle enabled again', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
-            chk('B 1D 1H: Bollinger still disabled (1D)', disabled(pg, '.ta-panel [data-ta-key="bb"]'))
-            chk('B 1D 1H: RSI still disabled', disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
-            chk('B 1D 1H: SMA 200 chip still disabled (1D)', disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
+            chk('B 1D 1H: trendlines toggle enabled', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
+            chk('B 1D 1H: Bollinger enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-key="bb"]'))
+            chk('B 1D 1H: RSI enabled (Job 3)', not disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
+            chk('B 1D 1H: SMA 200 chip enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             wait_status(pg, 'live')
             pr = tl(pg)
             chk('B 1D 1H: trendlines live, 12 lines draw', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
-            chk('B 1D 1H: still no Bollinger violet', not colour_present(pg, (167, 139, 250)))
-            chk('B 1D 1H: SMA 20 + 50 draw, SMA 200 absent', colour_present(pg, (244, 114, 182)) and colour_present(pg, (251, 191, 36)) and not colour_present(pg, (52, 211, 153), tol=10))
-            # ---- Phase C: 1M Line (Bollinger gated everywhere now; SMA 200 live) ----
+            chk('B 1D 1H: Bollinger violet draws (Job 2)', colour_present(pg, (167, 139, 250)))
+            chk('B 1D 1H: SMA 20 + 50 + 200 draw (Job 2)', colour_present(pg, (244, 114, 182)) and colour_present(pg, (251, 191, 36)) and colour_present(pg, (232, 238, 247), tol=10))
+            # ---- Phase C: 1M Line (Bollinger ungated everywhere now, Job 2; SMA 200 live) ----
+            # Job 5: the range switch carries the type over, so 1D 1H candles
+            # would land on 1M candles — pick Line explicitly for this phase.
             pg.click('#bcRgs button[data-r="1M"]'); pg.wait_for_timeout(1200)
+            pick_type(pg, 'line')
             open_panel(pg)
             chk('C 1M Line: trendlines toggle enabled', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
-            chk('C 1M Line: Bollinger toggle disabled (gated everywhere)', disabled(pg, '.ta-panel [data-ta-key="bb"]'))
-            chk('C 1M Line: RSI still disabled (everywhere)', disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
+            chk('C 1M Line: Bollinger toggle enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-key="bb"]'))
+            chk('C 1M Line: RSI enabled (Job 3)', not disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
             chk('C 1M Line: SMA 200 chip enabled', not disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
             chk('C 1M Line: SMA 20/50 chips enabled', not disabled(pg, '.ta-panel [data-ta-ma="sma20"]') and not disabled(pg, '.ta-panel [data-ta-ma="sma50"]'))
             chk('C 1M Line: EMA 50/200 chips enabled', not disabled(pg, '.ta-panel [data-ta-ma="ema50"]') and not disabled(pg, '.ta-panel [data-ta-ma="ema200"]'))
@@ -229,26 +260,31 @@ def main():
             wait_status(pg, 'live')
             pr = tl(pg)
             chk('C 1M Line: trendlines live, 3 lines draw (1d only)', pr['tf'] == '1d' and pr['status'] == 'live' and len(pr['last']['lines']) == 3, str(pr))
-            chk('C 1M Line: no Bollinger violet (gated)', not colour_present(pg, (167, 139, 250)))
-            chk('C 1M Line: SMA 200 green draws', colour_present(pg, (52, 211, 153), tol=10))
-            # ---- Phase D: 1W Line then 1W daily candles ----
+            chk('C 1M Line: Bollinger violet draws (Job 2)', colour_present(pg, (167, 139, 250)))
+            chk('C 1M Line: SMA 200 white draws', colour_present(pg, (232, 238, 247), tol=10))
+            # ---- Phase D: 1W Line then 1W daily candles (Job 1 ungreyed 1W Line) ----
+            # Job 5: the range switch carries the type over, so 1M Line
+            # lands on 1W Line here (Line carries the same way as candles).
             pg.click('#bcRgs button[data-r="1W"]'); pg.wait_for_timeout(1200)
+            pick_type(pg, 'line')
             open_panel(pg)
-            chk('D 1W Line: trendlines toggle disabled', disabled(pg, '.ta-panel [data-ta-key="tl"]'))
-            chk('D 1W Line: SMA 20 chip disabled', disabled(pg, '.ta-panel [data-ta-ma="sma20"]'))
-            chk('D 1W Line: SMA 50 chip disabled', disabled(pg, '.ta-panel [data-ta-ma="sma50"]'))
-            chk('D 1W Line: SMA 200 chip disabled', disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
+            chk('D 1W Line: trendlines toggle enabled (Job 1)', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
+            chk('D 1W Line: SMA 20 chip enabled (Job 12 ungated 1W)', not disabled(pg, '.ta-panel [data-ta-ma="sma20"]'))
+            chk('D 1W Line: SMA 50 chip enabled (Job 12 ungated 1W)', not disabled(pg, '.ta-panel [data-ta-ma="sma50"]'))
+            chk('D 1W Line: SMA 200 chip enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
             chk('D 1W Line: EMA 20 chip enabled', not disabled(pg, '.ta-panel [data-ta-ma="ema20"]'))
-            chk('D 1W Line: EMA 50/200 chips disabled', disabled(pg, '.ta-panel [data-ta-ma="ema50"]') and disabled(pg, '.ta-panel [data-ta-ma="ema200"]'))
+            chk('D 1W Line: EMA 50 chip enabled (Job 12 ungated 1W)', not disabled(pg, '.ta-panel [data-ta-ma="ema50"]'))
+            chk('D 1W Line: EMA 200 chip enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-ma="ema200"]'))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
-            wait_status(pg, 'gated')
+            wait_status(pg, 'live')
             pr = tl(pg)
-            chk('D 1W Line: trendlines gated, 0 lines', pr['status'] == 'gated' and pr['last']['lines'] == [], str(pr))
+            chk('D 1W Line: trendlines live, 3 lines draw (Job 1)', pr['tf'] == '1d' and pr['status'] == 'live' and len(pr['last']['lines']) == 3, str(pr))
             pick_size(pg, 'daily'); pg.wait_for_timeout(600)
             open_panel(pg)
-            chk('D 1W candles: trendlines toggle enabled again', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
-            chk('D 1W candles: SMA 20/50/200 chips still disabled (1W)', disabled(pg, '.ta-panel [data-ta-ma="sma20"]') and disabled(pg, '.ta-panel [data-ta-ma="sma50"]') and disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
-            chk('D 1W candles: Bollinger still disabled (1W)', disabled(pg, '.ta-panel [data-ta-key="bb"]'))
+            chk('D 1W candles: trendlines toggle enabled', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
+            chk('D 1W candles: SMA 20/50 chips enabled (Job 12 ungated 1W)', not disabled(pg, '.ta-panel [data-ta-ma="sma20"]') and not disabled(pg, '.ta-panel [data-ta-ma="sma50"]'))
+            chk('D 1W candles: SMA 200 chip enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-ma="sma200"]'))
+            chk('D 1W candles: Bollinger enabled (Job 2)', not disabled(pg, '.ta-panel [data-ta-key="bb"]'))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             wait_status(pg, 'live')
             pr = tl(pg)
@@ -266,7 +302,7 @@ def main():
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(1200)
             pick_size(pg, '1h'); pg.wait_for_timeout(600)
             open_panel(pg)
-            chk('F back to 1D 1H: trendlines toggle enabled again', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
+            chk('F back to 1D 1H: trendlines toggle enabled', not disabled(pg, '.ta-panel [data-ta-key="tl"]'))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             wait_status(pg, 'live')
             pr = tl(pg)
@@ -287,15 +323,15 @@ def main():
             pg.evaluate("document.documentElement.setAttribute('data-theme','light')")
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
             open_panel(pg)
-            chk('G 1440 light 1D Line: tl + bb + rsi disabled', disabled(pg, '.ta-panel [data-ta-key="tl"]') and disabled(pg, '.ta-panel [data-ta-key="bb"]') and disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
-            chk('G 1440 light 1D Line: panel says Not available on this view', panel_status(pg) == 'Not available on this view', panel_status(pg))
+            chk('G 1440 light 1D Line: tl + bb + rsi enabled (Job 3)', not disabled(pg, '.ta-panel [data-ta-key="tl"]') and not disabled(pg, '.ta-panel [data-ta-key="bb"]') and not disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
+            chk('G 1440 light 1D Line: panel says Live (Job 1)', panel_status(pg).startswith('Live'), panel_status(pg))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             pg.click('#bcRgs button[data-r="1M"]'); pg.wait_for_timeout(1200)
             open_panel(pg)
-            chk('G 1440 light 1M Line: tl + sma200 enabled, bb + rsi disabled', not disabled(pg, '.ta-panel [data-ta-key="tl"]') and not disabled(pg, '.ta-panel [data-ta-ma="sma200"]') and disabled(pg, '.ta-panel [data-ta-key="bb"]') and disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
+            chk('G 1440 light 1M Line: tl + sma200 + bb + rsi enabled (Job 3)', not disabled(pg, '.ta-panel [data-ta-key="tl"]') and not disabled(pg, '.ta-panel [data-ta-ma="sma200"]') and not disabled(pg, '.ta-panel [data-ta-key="bb"]') and not disabled(pg, '.ta-panel [data-ta-key="rsi"]'))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             wait_status(pg, 'live')
-            chk('G 1440 light 1M Line: no Bollinger violet (gated)', not colour_present(pg, (124, 58, 237)))
+            chk('G 1440 light 1M Line: Bollinger violet draws (Job 2)', colour_present(pg, (124, 58, 237)))
             chk('G 1440 light: no console errors', not errs, '; '.join(errs[:3]))
         except Exception as e:
             chk('G 1440 light', False, str(e)[:200])

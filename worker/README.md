@@ -42,6 +42,23 @@ changes portfolio math, recaps, DCA, or official-close data.
   is more than ~10 minutes old, so the pages fetch the price directly
   instead of showing a stale one.
 - `GET /health` returns `{ ok: true }` and never touches an upstream provider.
+- `POST /err` accepts page-error reports from `ps-err.js` on the site
+  (text/plain body, JSON inside). Origin must be
+  `https://paperstreetbtc.com` (or localhost); missing or disallowed
+  origin is 403. Body cap 2 KB. Only `path`, `message`, `file`, `line`,
+  `browser`, `device`, `pin`, `kind`, `src` are kept — no IP, no raw
+  User-Agent, no cookies, no query strings. Own rate limit: 5 posts/min
+  per IP (separate from the 30/min quote bucket). Response is 204, even
+  when D1 is down. Rows live in D1 `paperstreet-errors` for 30 days,
+  capped at ~5,000 rows (oldest deleted past the cap).
+- `GET /err` is the secret-protected read for the weekday health check:
+  `Authorization: Bearer <ERR_READ_SECRET>` (header only, never a query
+  string). No CORS on this route. `?days=` defaults to 7, max 30.
+  Returns `{ ok, days, count, top, recent, bySrc }` with
+  `Cache-Control: no-store`. Without the secret it is 401; if the secret
+  is not configured on the Worker it is 500, never open. `ERR_READ_SECRET`
+  is set in the Cloudflare dashboard and is NEVER in this repo, this
+  file, a handback, or a chat.
 
 ## Upstream sources
 
@@ -105,5 +122,15 @@ on `desk-live.json`; the Worker only patches the close.
 
 `node --test worker/test/worker.test.mjs` (node:test, no dependencies).
 Covers caching, rate limiting, CORS, fallback (last-good + omission),
-USDCAD inversion, and the `prices.json` response shape. All upstream fetches
-are stubbed — no real network calls, no real key.
+USDCAD inversion, the `prices.json` response shape, and the Stage 2
+`/err` report + read routes (fake in-memory D1 binding, placeholder
+`ERR_READ_SECRET`). All upstream fetches are stubbed — no real network
+calls, no real key.
+
+## D1 migration (Stage 2)
+
+`worker/migrations/0001_errors.sql` creates the `errors` table. Apply it
+once the branch is deployed (`wrangler d1 migrations apply
+paperstreet-errors` from `worker/`, or the dashboard equivalent). The
+database `paperstreet-errors` already exists (created by Site Launch,
+26 Nov 2026); its id is in `wrangler.toml` (an id is not a secret).

@@ -191,6 +191,15 @@ chk('label: EXT resistance is "range high"', M.tlLabel({kind: 'resistance', pric
 chk('label: foreign timeframe is prefixed', M.tlLabel({kind: 'resistance', price: 65286, extreme: false, tf: '1d'}, '1h') === '1d $65,286');
 chk('label: foreign EXT is prefixed and labelled', M.tlLabel({kind: 'support', price: 57655, extreme: true, tf: '1d'}, '1h') === '1d range low $57,655');
 
+/* --- tlLabel: anchored to the level's own USD price (Job 4, 22 Nov 2026) ---
+   The old fmtP path converted USD->CAD at the LIVE rate, so the same fixed
+   level drifted C$83,548 -> 83,637 -> 83,646 as the FX rate ticked. tlLabel
+   no longer takes a formatter: the label is always the level's own USD
+   price, so it changes only when the file changes. */
+chk('label: a level ignores a live-rate CAD formatter (Job 4 anchor)', M.tlLabel({kind: 'support', price: 60000, extreme: false, tf: '1d'}, '1d', function (v) { return 'C$' + Math.round(v * 1.39247).toLocaleString('en-US'); }) === '$60,000');
+chk('label: the same level labels identically at another FX rate (Job 4 anchor)', M.tlLabel({kind: 'support', price: 60000, extreme: false, tf: '1d'}, '1d', function (v) { return 'C$' + Math.round(v * 1.39410).toLocaleString('en-US'); }) === '$60,000');
+chk('label: a sloped line ignores a live-rate CAD formatter (Job 4 anchor)', M.tlLabel({type: 'sloped', kind: 'resistance', edgePrice: 75860, extreme: false, tf: '1h'}, '1h', function (v) { return 'C$' + Math.round(v * 1.39410).toLocaleString('en-US'); }) === '$75,860');
+
 /* --- tlLabel: sloped lines use edgePrice ($NaN fix, 21 Nov 2026) --- */
 chk('label: every sloped line in the fixture labels its drawn right-edge value (within $1)', (function () {
   var s = B.drawn.filter(function (l) { return l.type === 'sloped'; });

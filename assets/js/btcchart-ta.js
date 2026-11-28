@@ -165,13 +165,47 @@ function tlChartTf(st){
    on, the note shows). Pure functions, unit-tested in
    tests/test_ta_gating.js. Corrected lists (Sunil, 21 Nov ~19:16):
    Bollinger gated on EVERY range; SMA 200 kept on YTD/1Y, gated only
-   on 1D/1W; EMA 50 gated on 1W, EMA 200 on 1D/1W (same as the SMAs). */
-var TA_GATE_BB_RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'];
-var TA_GATE_MA={sma20:['1W'],sma50:['1W'],sma200:['1D','1W'],ema50:['1W'],ema200:['1D','1W']};
+   on 1D/1W; EMA 50 gated on 1W, EMA 200 on 1D/1W (same as the SMAs).
+   Job 1 (21 Nov 2026): trendlines are NO LONGER gated on Line 1D/1W —
+   the Line y-range expands to include the drawn lines (tlExpandRange),
+   so the toggle is back on there.
+   Job 2 (21 Nov 2026): Bollinger is NO LONGER gated anywhere, and the
+   200s (SMA 200, EMA 200) are NO LONGER gated on 1D/1W — the warm-up
+   is now pre-fetched at TA init (preWarm) and retried on failure, so
+   the indicators are computed from history before the visible window
+   instead of from the window alone. SMA 20/50 and EMA 50 stay gated
+   on 1W, per the settled lists.
+   Job 3 (22 Nov 2026): RSI is NO LONGER gated anywhere — the strip now
+   has a scale, shaded 30/70 bands and a live value, and Job 2's
+   pre-warm gives it its 14 closes on every view.
+   Job 8 (22 Nov 2026): SMA 200 on 6M is DECIDED — it reads right on
+   6M Line (200-day MA) and 6M weekly candles (200-week MA): valid from
+   index 0, matches an independent recomputation, smooth, draws a full
+   line. It stays ungated there. But the 200s (SMA 200, EMA 200) are
+   NOW gated on monthly-granularity candle views: a 200-month average
+   needs 200 months of BTC history and only ~195 exist (Aug 2010–
+   Nov 2026), so the lines can never compute there — the toggle used
+   to promise a line that never appears. Line views are unaffected
+   (daily closes) and so are daily/weekly/4h candles.
+   Job 9 (22 Nov 2026): Bollinger + ALL six MAs are gated on yearly-
+   granularity candle views (10Y yearly): the shortest, SMA/EMA 20,
+   needs 20 yearly closes and only 17 exist (2010–2026), so none of
+   them can ever compute there. RSI is NOT gated — its 14 closes are
+   covered by the warm-up (6 yearly closes before the window) + the
+   11 visible ones, so it draws from visible index 7. */
+var TA_GATE_BB_RANGES=[];
+var TA_GATE_MA={sma20:[],sma50:[],sma200:[],ema50:[],ema200:[]};
+/* Job 12 (22 Nov 2026): SMA 20/50 + EMA 50 are no longer gated on 1W —
+   the values already computed correctly there (Job 8 measured SMA 20
+   $81,325 vs EMA 20 $80,964, 0.4% apart; the 1W probe shows all six MAs
+   valid from index 0 after Job 2's pre-warm), so only the gate was
+   hiding them. The 200s were ungated on 1D/1W by Job 2 the same way. */
 function taIsLineView(st){
-  /* Line view: 1D uses CT, every other range uses RGCT. 5Y/10Y/Max are
-     Line-only (no menu) but trendlines there are already off by design,
-     so gating never applies to them (taGated checks the range too). */
+  /* Line view: 1D uses CT, every other range uses RGCT. Max gained
+     candles in Job 11 (22 Nov 2026), so it is a line view only while
+     RGCT is not candles — the generic check below already says that.
+     Trendlines on Max stay off by design (tlChartTf returns null),
+     so gating never applies to them. */
   if(!st||typeof st.rng!=='string')return false;
   return st.rng==='1D'?st.CT==='line':st.RGCT!=='candles';
 }
@@ -179,19 +213,44 @@ function taGated(key,st){
   /* The four panel switches. 'ma' (the group switch) is never gated —
      the per-chip gating below covers the MAs that don't. Unknown keys
      and unknown views are not gated (fail open: the draw path already
-     guards on geometry/state). Bollinger is gated on every range
-     (Sunil, 21 Nov ~19:16) until the indicator-window rework. */
+     guards on geometry/state). Bollinger is no longer gated anywhere
+     (Job 2, 21 Nov 2026 — the warm-up is pre-fetched, so it is computed
+     from history before the visible window on every range). */
   if(!st||typeof st.rng!=='string')return false;
-  if(key==='tl')return taIsLineView(st)&&(st.rng==='1D'||st.rng==='1W');
-  if(key==='bb')return TA_GATE_BB_RANGES.indexOf(st.rng)>=0;
-  if(key==='rsi')return true;
+  if(key==='tl')return false; /* Job 1 (21 Nov 2026): trendlines are no longer gated on Line 1D/1W — the Line y-range now expands to include the drawn lines (tlExpandRange), so they draw there. */
+  if(key==='bb'){
+    /* Job 9 (22 Nov 2026): Bollinger is gated on yearly-granularity
+       candle views — a 20-period band needs 20 yearly closes and only
+       17 exist (2010–2026), so it can never compute there. */
+    if(st.RGCT==='candles'&&st.RGGRAN==='yearly')return true;
+    return TA_GATE_BB_RANGES.indexOf(st.rng)>=0;
+  }
+  if(key==='rsi')return false; /* Job 3 (22 Nov 2026): RSI is no longer gated anywhere — the strip now has a scale, shaded 30/70 bands and a live value, and Job 2's pre-warm gives it its 14 closes on every view. */
   return false;
 }
 function taMaGated(maKey,st){
-  /* Per-MA-chip gating. SMA 200 on 6M is UNDECIDED (not scanned) — left
-     as is, not gated; SMA 200 on YTD/1Y is KEPT (Sunil, 21 Nov ~19:16).
-     EMA 20 is never gated; EMA 50/200 follow their SMA twins. */
+  /* Per-MA-chip gating. SMA 200 on 6M is DECIDED (Job 8, 22 Nov 2026) —
+     it reads right on 6M Line and 6M weekly candles, so it stays ungated
+     there; SMA 200 on YTD/1Y is KEPT (Sunil, 21 Nov ~19:16).
+     EMA 20 is never gated; EMA 50 follows its SMA twin. Job 2
+     (21 Nov 2026): the 200s (SMA 200, EMA 200) are no longer gated on
+     1D/1W — the warm-up is pre-fetched, so they are computed from
+     history before the visible window there too. Job 8 (22 Nov 2026):
+     the 200s ARE gated on monthly-granularity candle views — a
+     200-month average needs 200 months of BTC history and only ~195
+     exist (Aug 2010–Nov 2026), so the lines can never compute there.
+     Line views are unaffected (daily closes, 200-day MA) and the gate
+     keys on RGCT==='candles', so a stale RGGRAN on a Line view cannot
+     gate anything. */
   if(!st||typeof st.rng!=='string')return false;
+  if((maKey==='sma200'||maKey==='ema200')&&st.RGCT==='candles'&&st.RGGRAN==='monthly')return true;
+  /* Job 9 (22 Nov 2026): ALL MAs are gated on yearly-granularity
+     candle views — the shortest (SMA/EMA 20) needs 20 yearly closes
+     and only 17 exist (2010–2026), so none of them can ever compute
+     there. (The monthly gate above covers only the 200s; on yearly
+     even the 20s fail.) Job 12 (22 Nov 2026): the 1W gate is gone —
+     SMA 20/50 + EMA 50 ungated there (see TA_GATE_MA above). */
+  if(st.RGCT==='candles'&&st.RGGRAN==='yearly')return true;
   var g=TA_GATE_MA[maKey];
   return !!g&&g.indexOf(st.rng)>=0;
 }
@@ -208,11 +267,21 @@ function tlSlopedPriceAt(sl,tMs,tf){
   var aMs=Date.parse(sl.anchor.t);
   return sl.anchor.price+sl.slope*((tMs-aMs)/iv);
 }
-function tlLabel(line,chartTf,fmt){
+function tlLabel(line,chartTf){
   /* EXT is labelled "range low" / "range high", never like a ranked line.
      A line from another timeframe than the chart's carries its tf label
-     (defensive: the chart only ever draws its own tf's lines). */
-  fmt=fmt||tlPlainFmt;
+     (defensive: the chart only ever draws its own tf's lines).
+     Job 4 (22 Nov 2026): the label is ALWAYS the level's own USD price
+     (tlPlainFmt), never the display-currency formatter. The old fmtP
+     path converted USD->CAD at the LIVE rate (curVal = v * CUR.rate,
+     rate = lastCad/lastPrice, recomputed on every live tick), so the
+     same fixed level drifted while you watched — C$83,548 -> 83,637 ->
+     83,646 as the FX rate ticked, though the level never moved. A
+     level's price is fixed in the file, so its label is anchored to it;
+     it changes only when the file changes. Sloped lines still use
+     edgePrice (which legitimately moves one slope-step per new candle);
+     only the FX drift on top of it is gone. */
+  var fmt=tlPlainFmt;
   var s='';
   if(line.tf&&chartTf&&line.tf!==chartTf)s=line.tf+' ';
   if(line.extreme)s+=(line.kind==='support'?'range low ':'range high ');
@@ -350,7 +419,7 @@ function tlSelectLinesForChart(file,chartTf,livePrice,nowMs,lastMs){
   });
   return out;
 }
-if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView};return;}
+if(typeof module!=='undefined'&&module.exports){module.exports={sma:taSMA,ema:taEMA,bollinger:taBB,rsi:taRSI,tlValidate:tlValidate,tlTfOk:tlTfOk,tlIsStale:tlIsStale,tlChartTf:tlChartTf,tlSlopedPriceAt:tlSlopedPriceAt,tlSelectLines:tlSelectLines,tlSelectLinesForChart:tlSelectLinesForChart,tlLabel:tlLabel,tlStaleAfterMs:TL_STALE_MS,tlTimeMs:tlTimeMs,taGated:taGated,taMaGated:taMaGated,taIsLineView:taIsLineView,tlExpandLoHi:tlExpandLoHi,tlExpandRange:tlExpandRange,ovExpandRange:ovExpandRange,allowedSizes:allowedSizes,sizeLabel:sizeLabel};return;}
 /* ---------- Stage 2: overlay drawing (browser only) ---------- */
 function fmtP(v){try{return (window.__BTCP&&window.__BTCP.fmt)?window.__BTCP.fmt(v):('$'+Math.round(v).toLocaleString('en-US'));}catch(e){return '$'+Math.round(v);}}
 function psC2(d,l){try{return window.psC?window.psC(d,l):d;}catch(e){return d;}}
@@ -363,9 +432,22 @@ function warmAsync(g){
   var key=g.kind;
   if(g.kind==='candles-1d')key=API.state().CT==='4h'?'candles-1d-4h':'candles-1d-1h';
   else if(g.kind==='candles-range')key='candles-range-4h';
-  if(!warmAsked[key]){
+  /* Re-ask while the cache is empty: a failed fetch must not leave
+     warmCache stuck at []. The panel-side retry (10s after a failure)
+     heals its own cache, but warmAsked used to block this module from
+     ever re-reading it — so a kind asked before the retry stayed empty
+     for the session. warmFetch starts only one fetch per kind, so
+     re-asking is cheap. The callback redraws only when the data arrived
+     asynchronously (async flag): when it was already cached, the
+     callback fires synchronously inside the current draw, and a redraw
+     there would nest a full render inside it (and inflate the measured
+     frame time) — the current draw already has the data, so no redraw
+     is needed. */
+  if(!warmAsked[key]||!warmCache[key]||!warmCache[key].length){
     warmAsked[key]=true;
-    try{API.warmFetch(key,function(c){warmCache[key]=c||[];if(API.draw)API.draw();});}catch(e){}
+    var async=false;
+    try{API.warmFetch(key,function(c){warmCache[key]=c||[];if(c&&c.length&&API.draw&&async)API.draw();});}catch(e){}
+    async=true;
   }
   return warmCache[key]||[];
 }
@@ -378,6 +460,27 @@ function warmFor(g){
     }
     return warmAsync(g);
   }catch(e){return [];}
+}
+function preWarm(){
+  /* Job 2 (Indicator windows, 21 Nov 2026): the intraday warm-up used to
+     start only when an overlay was turned on (afterDraw calls warmFor
+     only if something is on), so the user saw the indicators computed
+     from the visible window alone — Bollinger starting 19 points late,
+     SMA 200 missing entirely — until the fetch landed seconds later,
+     and forever if it failed. Kick the four intraday fetches off here,
+     at TA init, while the user is still browsing the panel, so the
+     history is usually cached before anything is turned on. No-op
+     callbacks: nothing is drawn yet, and the normal warmFor path picks
+     the cached data up (and redraws when it lands, if an overlay is on
+     by then). The range views need no pre-warm: their warm-up is
+     synchronous from DATA (taWarmSync). One fetch per kind per session;
+     the three hourly/4h kinds share one 50-day fetch (panel-side). */
+  try{
+    if(!API||!API.warmFetch)return;
+    ['1d-line','candles-1d-1h','candles-1d-4h','candles-range-4h'].forEach(function(k){
+      try{API.warmFetch(k,function(){});}catch(e){}
+    });
+  }catch(e){}
 }
 var valsCache={key:null,vals:null};
 function computeVals(g,warm){
@@ -413,6 +516,13 @@ function drawOverlays(g,vals){
   var c=el('bcC');if(!c)return;
   var ctx=c.getContext('2d');if(!ctx)return;
   var st=viewState();
+  /* Must-fix (27 Nov 2026): clip to the plot — the price axis now floors
+     at $0, so a Bollinger band that runs below $0 (a 2-sigma band can go
+     negative on a wild window) must stop at the plot bottom instead of
+     painting over the x labels. The RSI strip is drawn separately by
+     afterDraw, outside this clip. */
+  ctx.save();
+  ctx.beginPath();ctx.rect(g.pad.l,g.pad.t,g.plotW,g.plotH);ctx.clip();
   /* Stage 1 gating: a gated overlay does not draw on this view, even
      though its values are still computed (computeVals stays ungated, so
      the debug probe and the Stage 2 value checks are unaffected). */
@@ -422,28 +532,64 @@ function drawOverlays(g,vals){
     traceLine(ctx,vals.bbMid,g.xs,g.yFor,psC2('#a78bfa','#7c3aed'),1,[4,3]);
   }
   if(S.ma&&vals.mas)maOn().forEach(function(k){if(vals.mas[k]&&!taMaGated(k,st))traceLine(ctx,vals.mas[k],g.xs,g.yFor,maCol(k),2);});
+  ctx.restore();
+}
+function rsiLastVal(vals){
+  /* Last non-null RSI value, for the strip header. */
+  if(!vals||!vals.rsi)return null;
+  for(var i=vals.rsi.length-1;i>=0;i--)if(vals.rsi[i]!=null)return vals.rsi[i];
+  return null;
 }
 function drawRsiStrip(g,vals){
   if(!rsiEl)return;
+  /* Live value in the header (Job 3): the header used to read "RSI 14 —"
+     because nothing ever wrote into its <b>. Update it on every draw —
+     including when collapsed (the canvas is hidden then, but this
+     function still runs) — so the current value is always visible. */
+  var lv=rsiLastVal(vals);
+  var hb=rsiEl.querySelector('.ta-rsi-t b');
+  if(hb)hb.textContent=lv==null?'—':lv.toFixed(1);
   var cv=rsiEl.querySelector('canvas');if(!cv)return;
   var ctx=cv.getContext('2d');if(!ctx)return;
   /* The strip canvas is the same CSS width as the chart box, so the main
-     plot xs map 1:1 (scaled defensively if they ever differ). */
-  var W=cv.parentNode.clientWidth||g.W,H=cv.parentNode.clientHeight||50;
+     plot xs map 1:1 (scaled defensively if they ever differ). A 30px left
+     gutter holds the scale labels; the trace is shifted right by the
+     gutter and compressed to fit, so the labels never sit under the line. */
+  var W=cv.parentNode.clientWidth||g.W,H=cv.parentNode.clientHeight||76;
   if(!W||!H)return;
   var dpr=window.devicePixelRatio||1;
   cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
   cv.style.width=W+'px';cv.style.height=H+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
-  var T=4,B=4,ih=H-T-B;
+  var GUT=30,T=6,B=6,ih=H-T-B;
   var Y=function(v){return T+ih*(1-v/100);};
-  ctx.strokeStyle=psC2('rgba(255,255,255,.18)','rgba(15,23,42,.20)');ctx.lineWidth=1;ctx.setLineDash([4,3]);
-  [30,70].forEach(function(v){var y=Y(v);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();});
+  var X=function(x){return GUT+x*(W-GUT)/g.W;};
+  /* Shaded overbought/oversold bands (Job 3, Sunil 21 Nov ~22:23: shaded
+     bands, the most visually available option on iPhone — not just
+     stronger lines). Very light tints so the purple line stays readable;
+     30 and 70 are the band edges. */
+  ctx.fillStyle=psC2('rgba(239,68,68,0.09)','rgba(185,28,28,0.07)');
+  ctx.fillRect(GUT,Y(100),W-GUT,Y(70)-Y(100));
+  ctx.fillStyle=psC2('rgba(34,197,94,0.09)','rgba(21,128,61,0.07)');
+  ctx.fillRect(GUT,Y(30),W-GUT,Y(0)-Y(30));
+  /* Band edges, solid and readable (the old 18%-opacity dashes were
+     effectively invisible), plus a faint 50 midline. */
+  ctx.lineWidth=1;ctx.setLineDash([]);
+  ctx.strokeStyle=psC2('rgba(255,255,255,0.32)','rgba(15,23,42,0.32)');
+  [30,70].forEach(function(v){var y=Y(v);ctx.beginPath();ctx.moveTo(GUT,y);ctx.lineTo(W,y);ctx.stroke();});
+  ctx.strokeStyle=psC2('rgba(255,255,255,0.16)','rgba(15,23,42,0.16)');
+  ctx.setLineDash([2,3]);
+  var y50=Y(50);ctx.beginPath();ctx.moveTo(GUT,y50);ctx.lineTo(W,y50);ctx.stroke();
   ctx.setLineDash([]);
+  /* Scale labels in the gutter (Job 3). Solid slate so they read on
+     either theme; 10px, 9px on the short strip. */
+  ctx.fillStyle=psC2('#94a3b8','#64748b');
+  ctx.font=(H>=70?'10px':'9px')+' Inter, sans-serif';
+  ctx.textAlign='right';ctx.textBaseline='middle';
+  [0,30,50,70,100].forEach(function(v){ctx.fillText(String(v),GUT-4,Y(v));});
   if(!vals.rsi)return;
-  var sx=W/g.W;
-  traceLine(ctx,vals.rsi,g.xs.map(function(x){return x*sx;}),Y,psC2('#a78bfa','#7c3aed'),1.5);
+  traceLine(ctx,vals.rsi,g.xs.map(X),Y,psC2('#a78bfa','#7c3aed'),1.5);
 }
 /* ---------- Stage 4: Smart Trendlines drawing (browser only) ----------
    Fetches ta-lines.json only when Trends is on, draws the chart's own
@@ -535,17 +681,33 @@ function tlDrawLabels(ctx,g,labels,liveClose){
      instead of dropping the label for a line at the edge. */
   var items=labels.filter(function(lb){return lb.y!=null&&isFinite(lb.y)&&lb.y>=T&&lb.y<=B;});
   items.sort(function(a,b){return a.y-b.y;});
-  var placed=[];
+  /* Must-fix (27 Nov 2026): pills are 16px tall, so the old 14px
+     spacing (12px from the live price) still let neighbours touch, and
+     nudging only downward piled ten tags up at the plot bottom on 1D
+     (three 4h tags collided there). Spacing is now 17px from everything,
+     and the search runs both ways from the ideal spot (down, then up,
+     alternating) so a tag keeps its price instead of sliding to the
+     bottom; the last resort is the ideal spot itself (an overlap beats
+     a dropped label). */
+  var SP=17,placed=[];
   items.forEach(function(lb){
-    /* Clamp into the plot first, then de-collide (nudging down, staying
-       inside) — so the clamp can never push a label into its neighbour. */
-    var y=Math.min(Math.max(lb.y,T+8),B-8),guard=0;
+    /* Clamp into the plot first, then de-collide — so the clamp can never
+       push a label into its neighbour. */
+    var y0=Math.min(Math.max(lb.y,T+8),B-8),y=y0;
     var clash=function(yy){
-      if(isFinite(liveY)&&Math.abs(yy-liveY)<12)return true;
-      for(var k=0;k<placed.length;k++)if(Math.abs(yy-placed[k])<14)return true;
+      if(isFinite(liveY)&&Math.abs(yy-liveY)<SP)return true;
+      for(var k=0;k<placed.length;k++)if(Math.abs(yy-placed[k])<SP)return true;
       return false;
     };
-    while(clash(y)&&guard<8){y+=14;if(y>B-8)y=B-8;guard++;}
+    if(clash(y0)){
+      var found=false;
+      for(var s=1;s<=30&&!found;s++){
+        var yd=y0+s*SP,yu=y0-s*SP;
+        if(yd<=B-8&&!clash(yd)){y=yd;found=true;break;}
+        if(yu>=T+8&&!clash(yu)){y=yu;found=true;break;}
+      }
+      if(!found)y=y0;
+    }
     placed.push(y);
     lb.y=y;
   });
@@ -558,6 +720,90 @@ function tlDrawLabels(ctx,g,labels,liveClose){
     ctx.fillStyle=lb.col;
     ctx.fillText(lb.text,x-2,lb.y);
   });
+}
+function tlExpandLoHi(drawn,lo,hi){
+  /* Job 1 (Line-view trendlines): pure helper — the expanded y-range
+     covering the drawn lines' prices, bounded to one span per side
+     (total at most 3x the original span) so the price action is never
+     squashed into a thin band. Lines beyond the bound stay clipped —
+     they belong on wider views. Returns {lo,hi} or null if no change. */
+  if(!Array.isArray(drawn)||!drawn.length)return null;
+  if(!isFinite(lo)||!isFinite(hi)||!(hi>lo))return null;
+  var mn=Infinity,mx=-Infinity;
+  drawn.forEach(function(ln){
+    var p=ln&&ln.type==='sloped'?ln.edgePrice:ln&&ln.price;
+    if(isFinite(p)){if(p<mn)mn=p;if(p>mx)mx=p;}
+  });
+  if(!isFinite(mn)||!isFinite(mx))return null;
+  var span=hi-lo;
+  var nlo=Math.min(lo,Math.max(mn,lo-span));
+  var nhi=Math.max(hi,Math.min(mx,hi+span));
+  if(nlo===lo&&nhi===hi)return null;
+  return {lo:nlo,hi:nhi};
+}
+function tlExpandRange(st,livePrice,lastMs,lo,hi){
+  /* Job 1: the range the Line view should use when trendlines are on —
+     the drawn lines' prices (same selection as the drawer), bounded by
+     tlExpandLoHi. Null when trendlines are off, the file is not cached,
+     a comparison is on (TA hides), or nothing needs expanding. The panel
+     calls this before computing its y-mapping; when the TA module or the
+     file is not ready yet it returns null and the panel keeps the tight
+     range, and the file-load redraw picks the expansion up. */
+  if(!S.tl)return null;
+  if(isCmp())return null;
+  if(!tlCache.data||!tlCache.ok)return null;
+  var tf=tlChartTf(st);
+  if(!tf)return null;
+  if(!isFinite(livePrice)||!isFinite(lastMs))return null;
+  var sel=tlSelectLinesForChart(tlCache.data,tf,livePrice,Date.now(),lastMs);
+  if(!sel.drawn||!sel.drawn.length)return null;
+  return tlExpandLoHi(sel.drawn,lo,hi);
+}
+function ovExpandRange(st,kind,closes,lo,hi){
+  /* Job 12 (22 Nov 2026): the range the chart should use when an
+     overlay is on — the Bollinger band and MA line extremes over the
+     visible window. The panel calls this before computing its
+     y-mapping, so a band or MA that runs outside the price range
+     widens the axis instead of being clipped off the plot (1W Line:
+     the upper band poked above the plot top; 1W daily candles: the
+     200s sat below the visible range and drew nothing). Only the
+     overlays that will actually draw count (on + not gated); RSI is
+     a strip below the chart, not on the plot. Null when overlays are
+     off, a comparison is on (TA hides), the data is not ready, or
+     nothing needs expanding. The panel falls back to its tight range
+     and the warm-up/file-load redraw picks the expansion up.
+     Must-fix (27 Nov 2026): the expansion is UNBOUNDED — the old
+     one-span bound (via tlExpandLoHi, same as the trendlines) clipped
+     a plunging lower band on a crash week (1W: the bound stopped at
+     $51,822 while the band reached $51,406). Overlays are computed
+     from the data, so they cannot run away the way a hand-placed
+     trendline can — those keep the one-span bound. */
+  if(!S||(!S.bb&&!S.ma))return null;
+  if(isCmp())return null;
+  if(!st||!Array.isArray(closes)||!closes.length)return null;
+  if(!isFinite(lo)||!isFinite(hi)||!(hi>lo))return null;
+  var g={kind:kind,n:closes.length,closes:closes};
+  var warm=warmFor(g);
+  var vals=computeVals(g,warm);
+  var prices=[];
+  if(S.bb&&vals.bbUp&&vals.bbLo&&!taGated('bb',st)){
+    vals.bbUp.forEach(function(v){if(isFinite(v))prices.push({price:v});});
+    vals.bbLo.forEach(function(v){if(isFinite(v))prices.push({price:v});});
+  }
+  if(S.ma&&vals.mas)maOn().forEach(function(k){
+    if(!vals.mas[k]||taMaGated(k,st))return;
+    vals.mas[k].forEach(function(v){if(isFinite(v))prices.push({price:v});});
+  });
+  if(!prices.length)return null;
+  /* Unbounded (see the docstring): the values are computed from the
+     data, so a band that runs far outside the price range still widens
+     the axis to include it. */
+  var mn=Infinity,mx=-Infinity;
+  prices.forEach(function(p){if(isFinite(p.price)){if(p.price<mn)mn=p.price;if(p.price>mx)mx=p.price;}});
+  if(!isFinite(mn)||!isFinite(mx))return null;
+  var nlo=Math.min(lo,mn),nhi=Math.max(hi,mx);
+  if(nlo===lo&&nhi===hi)return null;
+  return {lo:nlo,hi:nhi};
 }
 function tlDrawLines(g){
   /* Draws this chart's timeframe's lines plus the higher ones (rule 5,
@@ -573,10 +819,6 @@ function tlDrawLines(g){
   var tf=tlChartTf(st);
   res.tf=tf;
   if(!tf){res.status='unavailable';tlSetStatus('unavailable');return res;}
-  /* Stage 1 gating: trendlines do not draw on Line 1D/1W, even though the
-     file is fresh — the toggle is greyed out there and comes back to life
-     on views where the lines work. */
-  if(taGated('tl',st)){res.status='gated';tlSetStatus('gated');return res;}
   tlFetch();
   var liveClose=g.closes[g.n-1];
   res.liveClose=liveClose;
@@ -590,8 +832,8 @@ function tlDrawLines(g){
      showing its full set); missing/bad timeframes do not set this. */
   res.stale=['1h','4h','1d'].some(function(t2){return TL_RANK[t2]>=TL_RANK[tf]&&sel.perTf[t2]==='stale';});
   if(!sel.freshTfs.length){res.status='updating';tlSetStatus('updating');return res;}
-  sel.drawn.forEach(function(ln){ln.label=tlLabel(ln,tf,fmtP);});
-  sel.omitted.forEach(function(ln){if(ln.type==='level'||ln.type==='sloped')ln.label=tlLabel(ln,tf,fmtP);});
+  sel.drawn.forEach(function(ln){ln.label=tlLabel(ln,tf);});
+  sel.omitted.forEach(function(ln){if(ln.type==='level'||ln.type==='sloped')ln.label=tlLabel(ln,tf);});
   res.status='live';
   tlSetStatus('live');
   var c=el('bcC');if(!c)return res;
@@ -640,6 +882,40 @@ function syncCmpNote(){
   var n=panelEl.querySelector('.ta-cmp');
   if(n)n.hidden=!isCmp();
 }
+/* Job 6: the same note, OUTSIDE the TA panel — a plain line under the
+   pills row, so it reads without opening the panel. It shows only when
+   a comparison is hiding something that WOULD draw (nPlotDrawing()>0 —
+   the plot overlays only; RSI is not a plot overlay, so it alone never
+   triggers the note): with TA off there is nothing
+   to explain, and with everything gated turning the comparison off
+   still would not draw anything, so the note would lie. The panel note
+   above keeps its own rule (shows whenever a comparison is on, panel
+   open). The element is created once by TA init and lives in the dialog
+   flow (popover + clock page share the build). */
+/* One string, shared by the panel note and the outside note. */
+var CMP_NOTE_TEXT='TA shows on BTC alone. Turn off comparisons to see it.';
+var cmpNoteOutEl=null;
+function buildCmpNoteOut(){
+  if(cmpNoteOutEl||!dlg)return cmpNoteOutEl;
+  var row=dlg.querySelector('#bcRow2');
+  var n=document.createElement('div');
+  n.className='ta-cmp-out';
+  n.textContent=CMP_NOTE_TEXT;
+  n.hidden=true;
+  if(row&&row.parentNode)row.parentNode.insertBefore(n,row.nextSibling);
+  else dlg.appendChild(n);
+  cmpNoteOutEl=n;
+  return n;
+}
+function syncCmpNoteOut(){
+  if(!cmpNoteOutEl)return;
+  var show=isCmp()&&nPlotDrawing()>0;
+  cmpNoteOutEl.hidden=!show;
+  /* Job 6: the dialog class inserts the note's grid row on the clock
+     page (see the .ta-cmp-out-on rules in btcchart-ta.css); harmless in
+     the popover, which is not a grid. */
+  if(dlg)dlg.classList.toggle('ta-cmp-out-on',show);
+}
 function taTipLines(kind,i){
   try{
     if(!nOn())return null;
@@ -681,9 +957,12 @@ var COL={tl:'#22c55e',bb:'#a78bfa',ma:'#f472b6',rsi:'#a78bfa'};
    (keys 'sma20' … 'ema200'); S.ma is the master on/off for the group.
    The six chips in the TA panel are the legend: each chip carries its
    MA's colour dot + label, and the tooltip lists each enabled MA in its
-   own colour. */
+   own colour.
+   Must-fix (27 Nov 2026): SMA 200 is near-white / slate, not emerald —
+   the old #34d399 was too close to the support-trendline green #22c55e
+   to tell apart on the chart. */
 var MA_KEYS=['sma20','sma50','sma200','ema20','ema50','ema200'];
-var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#34d399','#059669'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
+var MA_COL={sma20:['#f472b6','#db2777'],sma50:['#fbbf24','#d97706'],sma200:['#e8eef7','#334155'],ema20:['#38bdf8','#0284c7'],ema50:['#fb923c','#ea580c'],ema200:['#a3e635','#65a30d']};
 var MA_LBL={sma20:'SMA 20',sma50:'SMA 50',sma200:'SMA 200',ema20:'EMA 20',ema50:'EMA 50',ema200:'EMA 200'};
 function maCol(k){var c=MA_COL[k];return c?psC2(c[0],c[1]):psC2('#f472b6','#db2777');}
 function maOn(){if(!S.ma)return [];return MA_KEYS.filter(function(k){return S.maSet&&S.maSet[k];});}
@@ -700,6 +979,33 @@ function stageEl(){try{var st=API.stage();if(st)return st;}catch(e){}return dlg;
    element in both full-screen modes. Never body. */
 function floatParent(){return API.inline()?stageEl():dlg;}
 function nOn(){return (S.tl?1:0)+(S.bb?1:0)+maCount()+(S.rsi?1:0);}
+/* Job 6: the overlays actually DRAWING on this view — what the badge
+   shows. nOn() counts toggles; a comparison hides the plot overlays,
+   a gated MA on 1W does not draw, and trendlines with no lines on this
+   view (5Y/10Y/Max, file still loading) do not draw. The guards match
+   the draw path (drawOverlays / drawRsiStrip / tlDrawLines) so the badge
+   and the drawing stay in lockstep by construction.
+   Must-fix (27 Nov 2026): the RSI strip is a separate pane below the
+   chart, so it keeps drawing on a comparison — nDrawing counts it
+   there (1), while nPlotDrawing counts only the plot overlays (what a
+   comparison hides, and what the outside note's condition uses).
+   ignoreCmp answers "what WOULD draw if the comparison were off" (the
+   external note's condition); tlLast is only refreshed by a draw, so a
+   comparison that was on before the overlays were turned on leaves tl
+   unknown — the panel note covers that path. */
+function nPlotDrawing(){
+  var st=viewState(),n=0;
+  if(S.tl&&tlStatus==='live'&&tlLast&&tlLast.lines&&tlLast.lines.length)n++;
+  if(S.bb&&!taGated('bb',st))n++;
+  if(S.ma)maOn().forEach(function(k){if(!taMaGated(k,st))n++;});
+  return n;
+}
+function nDrawing(ignoreCmp){
+  if(!ignoreCmp&&isCmp())return 0;
+  var n=nPlotDrawing();
+  if(S.rsi&&!taGated('rsi',viewState()))n++;
+  return n;
+}
 
 /* ---------- positioning: place a float under an anchor, clamped inside its
    offsetParent (the stage or the dialog), with a capped height ---------- */
@@ -718,9 +1024,19 @@ function placeFloat(anchor,fl){
 }
 
 /* ---------- TA pill (count badge) + RSI strip ---------- */
+/* Job 6: the pill badge shows the drawing count (nDrawing), not the
+   toggle count (nOn) — it was stuck on the toggle count because syncPill
+   only ran on TA toggle clicks, never on a draw. It now also runs in
+   afterDraw, so a comparison toggle or a range change re-counts at once.
+   The write is idempotent (pillN cache): afterDraw runs on every live
+   tick, and rewriting the pill's innerHTML each time would churn the DOM
+   for a count that has not changed. */
+var pillN=null;
 function syncPill(){
   if(!taBtn)return;
-  var n=nOn();
+  var n=nDrawing(false);
+  if(n===pillN)return;
+  pillN=n;
   taBtn.classList.toggle('act',n>0);
   taBtn.innerHTML='<span>TA</span>'+(n?'<i class="ta-n">'+n+'</i>':CHEV);
   taBtn.setAttribute('aria-label','Technical analysis'+(n?', '+n+' on':''));
@@ -740,15 +1056,25 @@ function syncRsi(){
 }
 
 /* ---------- chart-type menu ---------- */
+/* Job 11 (22 Nov 2026): Max offers Daily/Weekly/Monthly/Yearly
+   (default Daily, the finest size offered). 3M/6M/YTD gain Daily;
+   5Y offers Daily/Weekly/Monthly and 10Y Daily/Monthly/Yearly (both
+   default Daily, the finest size offered). 1Y keeps Monthly/Weekly
+   (default Weekly). Sizes list coarsest first, matching the old
+   order (1M Weekly then Daily, 1W Daily then 4H). */
 function allowedSizes(rng){
   if(rng==='1D')return ['1h','4h'];
   if(rng==='1W')return ['daily','4h'];
   if(rng==='1M')return ['weekly','daily'];
-  if(rng==='3M'||rng==='6M'||rng==='YTD'||rng==='1Y')return ['monthly','weekly'];
+  if(rng==='3M'||rng==='6M'||rng==='YTD')return ['monthly','weekly','daily'];
+  if(rng==='1Y')return ['monthly','weekly'];
+  if(rng==='5Y')return ['yearly','monthly','weekly','daily'];
+  if(rng==='10Y')return ['yearly','monthly','daily'];
+  if(rng==='Max')return ['yearly','monthly','weekly','daily'];
   return [];
 }
 function sizeLabel(sz){
-  return sz==='1h'?'1H candles':sz==='4h'?'4H candles':sz==='daily'?'Daily':sz==='weekly'?'Weekly':'Monthly';
+  return sz==='1h'?'1H candles':sz==='4h'?'4H candles':sz==='daily'?'Daily':sz==='weekly'?'Weekly':sz==='yearly'?'Yearly':'Monthly';
 }
 function typeLabel(st){
   if(st.rng==='1D')return st.CT==='line'?'Line':(st.CT==='1h'?'1H candles':'4H candles');
@@ -795,7 +1121,6 @@ function buildMenu(){
 function openMenu(){
   if(isPriceMode())return;
   var st=API.state();
-  if(/^(5Y|10Y|Max)$/.test(st.rng))return; /* no menu on long ranges: Line only */
   var m=buildMenu();
   var sizes=allowedSizes(st.rng);
   var isCandles=st.rng==='1D'?st.CT!=='line':st.RGCT==='candles';
@@ -844,7 +1169,7 @@ function renderPanel(){
      label; enabled chips are highlighted in their colour. */
   var chips=MA_KEYS.map(function(k){return '<button type="button" class="ta-ma-chip'+(S.maSet&&S.maSet[k]?' on':'')+'" data-ta-ma="'+k+'" style="--mac:'+maCol(k)+'" aria-pressed="'+(!!(S.maSet&&S.maSet[k]))+'"><i></i>'+MA_LBL[k]+'</button>';}).join('');
   p.innerHTML='<div class="ta-ph"><span class="ta-ph-t"><b>Technical analysis</b><span class="ta-beta">Beta</span></span><button type="button" data-ta-clear>Clear all</button></div>'
-    +'<div class="ta-cmp" hidden>TA shows on BTC alone. Turn off comparisons to see it.</div>'
+    +'<div class="ta-cmp" hidden>'+CMP_NOTE_TEXT+'</div>'
     +swRow('tl','Smart Trendlines','auto support / resistance',COL.tl)
     +'<div class="ta-tl-status" hidden></div>'
     +swRow('bb','Bollinger Bands','20 \u00b7 2\u03c3',COL.bb)
@@ -863,7 +1188,12 @@ function syncPanel(){
   var ma=panelEl.querySelector('.ta-ma');
   if(ma)ma.classList.toggle('off',!S.ma);
   var chips=panelEl.querySelectorAll('[data-ta-ma]');
-  for(var j=0;j<chips.length;j++){var k=chips[j].getAttribute('data-ta-ma');var on=!!(S.maSet&&S.maSet[k]);chips[j].classList.toggle('on',on);chips[j].setAttribute('aria-pressed',on?'true':'false');}
+  /* Job 5: a chip shows on only when its MA is actually drawing — that
+     needs the group on AND the chip selected. Before, the chips read
+     S.maSet alone, so master-off / Clear all left them looking selected
+     while nothing drew. The set itself is preserved across a master
+     toggle (turning the group back on restores it); Clear all empties it. */
+  for(var j=0;j<chips.length;j++){var k=chips[j].getAttribute('data-ta-ma');var on=!!(S.ma&&S.maSet&&S.maSet[k]);chips[j].classList.toggle('on',on);chips[j].setAttribute('aria-pressed',on?'true':'false');}
   syncTlStatus();
   syncGating();
 }
@@ -878,24 +1208,28 @@ function syncPanel(){
 function syncGating(){
   /* No hidden check: renderPanel syncs before the panel is shown, so the
      toggles are already gated when it appears; afterDraw re-gates while
-     it is open. The writes are idempotent when nothing changed. */
+     it is open. The writes are idempotent when nothing changed.
+     Revision pass (27 Nov 2026): a comparison on greys the toggles too
+     (visible but disabled, back on when comparison goes off) — nothing
+     disappears. */
   if(!panelEl)return;
   var st=viewState();
+  var cmp=isCmp();
   var sws=panelEl.querySelectorAll('[data-ta-key]');
   for(var i=0;i<sws.length;i++){
     var k=sws[i].getAttribute('data-ta-key');
-    var g=taGated(k,st);
+    var g=taGated(k,st)||cmp;
     sws[i].disabled=g;
-    sws[i].title=g?'Not available on this view':'';
+    sws[i].title=g?(cmp?'Not available while comparing':'Not available on this view'):'';
     var row=sws[i].closest?sws[i].closest('.ta-it'):null;
     if(row)row.classList.toggle('gated',g);
   }
   var chips=panelEl.querySelectorAll('[data-ta-ma]');
   for(var j=0;j<chips.length;j++){
     var mk=chips[j].getAttribute('data-ta-ma');
-    var gm=taMaGated(mk,st);
+    var gm=taMaGated(mk,st)||cmp;
     chips[j].disabled=gm;
-    chips[j].title=gm?'Not available on this view':'';
+    chips[j].title=gm?(cmp?'Not available while comparing':'Not available on this view'):'';
   }
 }
 function openPanel(){
@@ -919,9 +1253,10 @@ function setToggle(key,val){
      Turning it off is always allowed (and Clear all bypasses this). */
   if(val&&taGated(key,viewState()))return;
   S[key]=!!val;
-  /* Turning the MA group on with nothing selected shows SMA 50 (the old
-     single-MA default) so the toggle always draws something. */
-  if(key==='ma'&&S.ma&&!maCount())S.maSet={sma50:true};
+  /* Job 5: no auto-selected MA. Turning the group on used to pre-select
+     SMA 50, so a user batch-clicking the chips then toggled SMA 50 OFF
+     (it was already on) and ended with it unselected. The set is now
+     exactly what the user picked; an empty set draws nothing. */
   saveS();
   syncPanel();
   syncPill();syncRsi();
@@ -1057,17 +1392,25 @@ function init(api){
       /* Stage 1 gating: a gated chip cannot turn on for this view. */
       if(taMaGated(mk,viewState())&&!(S.maSet&&S.maSet[mk]))return;
       if(!S.maSet||typeof S.maSet!=='object')S.maSet={};
-      if(S.maSet[mk])delete S.maSet[mk];else S.maSet[mk]=true;
+      /* Job 5: clicking a chip while the group is off selects it and
+         turns the group on. (Before, the click toggled membership in the
+         preserved set, so a chip that looked off could silently lose its
+         selection and take a second click to come back.) With the group
+         on, a click toggles the chip as before. */
+      if(!S.ma){S.maSet[mk]=true;S.ma=true;}
+      else{if(S.maSet[mk])delete S.maSet[mk];else S.maSet[mk]=true;}
       /* Enabling a chip turns the group on; disabling the last one turns
          it off, so the row switch always matches the set. */
-      if(S.maSet[mk]&&!S.ma)S.ma=true;
       if(!maCount())S.ma=false;
       saveS();syncPanel();syncPill();syncRsi();
       if(API.draw)API.draw();
       return;
     }
     if(e.target.closest('[data-ta-clear]')){
-      S.tl=false;S.bb=false;S.ma=false;S.rsi=false;saveS();syncPanel();syncPill();syncRsi();
+      /* Job 5: Clear all empties the MA set too. Before, it left maSet
+         populated, so the chips still showed on after everything was
+         turned off. */
+      S.tl=false;S.bb=false;S.ma=false;S.rsi=false;S.maSet={};saveS();syncPanel();syncPill();syncRsi();
       if(API.draw)API.draw();
       return;
     }
@@ -1082,11 +1425,11 @@ function init(api){
   /* Stage 2: after every native draw, draw the enabled overlays on #bcC
      (after the price series, same x/y mapping) and the RSI strip; keep the
      comparison note in sync. Live ticks recompute via the normal redraw —
-     no refetch, no flicker. When nothing is on, or comparison is on, draw
-     nothing: the canvas stays pixel-identical to main. */
+     no refetch, no flicker. When nothing is on, draw nothing; when a
+     comparison is on, nothing draws (TA is BTC-only). */
   api.afterDraw=function(kind){
     if(menuOpen)closeMenu(false);
-    syncRsi();syncCmpNote();syncTlStatus();syncGating();
+    syncRsi();syncCmpNote();syncTlStatus();syncGating();syncPill();syncCmpNoteOut();
     if(!nOn())return;
     if(isCmp())return;
     var g=null;
@@ -1101,6 +1444,7 @@ function init(api){
       if(S.rsi&&!taGated('rsi',viewState()))drawRsiStrip(g,vals);
       if(S.tl)tlDrawLines(g);
     }catch(e){}
+    syncPill(); /* Job 6: re-sync after the draw — tlLast is fresh now, so the badge counts the lines actually drawn on this view. */
     try{
       if(t0){
         var dt=performance.now()-t0;
@@ -1140,7 +1484,9 @@ function init(api){
     }catch(e){return null;}
   };
   syncPill();syncRsi();
+  buildCmpNoteOut();syncCmpNoteOut(); /* Job 6: the comparison note outside the panel. */
   if(api.syncTypePill)api.syncTypePill();
+  preWarm(); /* Job 2: fetch the intraday indicator history now, so it is cached before the user turns an overlay on. */
 }
 /* Stage 4 debug probe (tests / handback): the trendline file status, the
    chart's timeframe, the live close, and the lines the drawer computed
@@ -1158,6 +1504,6 @@ window.__TA_TL_DEBUG=function(){
   }catch(e){return null;}
 };
 
-window.__BTTA={init:init,typeLabel:typeLabel};
+window.__BTTA={init:init,typeLabel:typeLabel,tlExpandRange:tlExpandRange,ovExpandRange:ovExpandRange};
 if(API&&API.dlg)init(API);
 })();
