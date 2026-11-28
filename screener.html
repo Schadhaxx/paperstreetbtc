@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head><script>(function(){var q=null,s=null;try{q=new URLSearchParams(location.search).get("theme")}catch(e){}try{s=localStorage.getItem("ps-theme")}catch(e){}var on=q==="light"||(q!=="dark"&&s==="light");if(on)document.documentElement.setAttribute("data-theme","light");try{if(q==="light")localStorage.setItem("ps-theme","light");else if(q==="dark"||(s!==null&&s!=="light"))localStorage.removeItem("ps-theme")}catch(e){}})();window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script>
+<script>/* CLS fix: mark Wake Lock support before first paint, so the wake-row space is reserved (see .wake-capable .wake-row). */try{if(navigator.wakeLock&&typeof navigator.wakeLock.request==='function')document.documentElement.classList.add('wake-capable')}catch(e){}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Desk — Paperstreet BTC</title>
@@ -17,7 +18,7 @@
 <meta name="twitter:image" content="https://paperstreetbtc.com/assets/og-card.png">
 <meta name="twitter:image:alt" content="Paperstreet BTC owl logo">
 <link rel="canonical" href="https://paperstreetbtc.com/screener.html">
-<link rel="stylesheet" href="assets/css/nav.css?v=cr028">
+<link rel="stylesheet" href="assets/css/nav.css?v=cr030">
 <!-- REMOVABLE BY DESIGN: This page is part of the additive The Desk pack.
      To shut it off and delete it, delete screener.html, assets/data/screener-pack.json,
      assets/js/screener.js, assets/js/screener-chart.js, assets/js/screener-indicator-chart.js, assets/data/gold-weekly.json, assets/data/wti-weekly.json, assets/js/maple-screener.js, and remove the one maple-screener.js
@@ -66,14 +67,16 @@
      like the Desk's .btn.active, so it is obvious when the screen is
      being kept on. */
   .wake-row{display:flex;margin:12px 0 0;}
+  .wake-capable .wake-row{min-height:37px;} /* CLS fix: reserve the wake button's height when Wake Lock is supported, so unhiding it cannot grow the header and shift the page */
   .wl-btn{background:var(--card);color:var(--txt);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;position:relative}.wl-btn::after{content:"";position:absolute;inset:-12px -6px}.wl-btn[aria-pressed="true"]{background:var(--cyan);color:#05070f;border-color:var(--cyan)}.wl-btn.wl-wait{border-style:dashed}.wl-btn[hidden]{display:none}.wl-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
   .pills { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 4px; }
   .pill { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:8px 16px; font-size:14px; }
   .pill b { color:var(--orange); }
-  .pill b.up { color:var(--green); } .pill b.down { color:var(--red); } .pill b.flat { color:#000000; }
+  .pill b.up { color:var(--green); } .pill b.down { color:var(--red); } .pill b.flat { color:var(--mut); }
   h2 { font-size:22px; margin:26px 2px 4px; letter-spacing:-.01em; }
   .secsub, .box-note { color:var(--mut); font-size:14px; margin:0 2px 14px; line-height:1.5; }
   .kpis { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0 4px; }
+  #indicators-body.is-loading { min-height:553px; }
   .tile { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:20px; padding:16px; min-height:118px; position:relative; }
   .tile[data-symbol="GOLD"], .tile[data-symbol="WTI"], .tile[data-symbol="US10Y"], .tile[data-symbol="VIX"] { cursor:pointer; }
   .tile[data-symbol="GOLD"]:hover, .tile[data-symbol="WTI"]:hover, .tile[data-symbol="US10Y"]:hover, .tile[data-symbol="VIX"]:hover { border-color:#3b82f6; }
@@ -81,7 +84,7 @@
      column, dismiss by close button, tap outside, or Escape. */
   .ind-modal { display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.72); align-items:flex-end; justify-content:center; padding:16px; }
   .ind-modal.open { display:flex; }
-  .ind-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .ind-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; overscroll-behavior:contain; box-shadow:0 20px 60px rgba(0,0,0,.6); }
   @media (orientation:landscape) and (min-width:700px){ .ind-dialog{ max-width:920px; } }
   /* Short landscape (iPhone landscape 844x390, 8 Nov 2026, round 3):
      the dialog is bottom-anchored and only ~227px of the 280px canvas
@@ -115,10 +118,11 @@
   .tile .v { font-size:27px; font-weight:850; letter-spacing:-.02em; margin:7px 0 3px; line-height:1.1; }
   .tile .d { font-weight:800; font-size:14px; }
   .up { color:var(--green); } .down { color:var(--red); }
-  /* Signed zero = pure black, per Sunil's rule. NOTE: on this dark page
-     pure black is near-invisible — flagged in the delivery report; applied
-     literally, not substituted. */
-  .flat { color:#000000; }
+  /* Signed zero = the muted text colour in dark mode (Sunil's rule was
+     pure black, but pure black is invisible on this dark page, so the
+     closest visible neutral is used here; light.css still overrides it
+     to near-black #0f172a in light mode). */
+  .flat { color:var(--mut); }
   .tile .u { color:var(--mut); font-size:12px; margin-top:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-right:28px; }
   .tile .spark-row { margin-top:10px; line-height:0; }
   .tile-chart { position:absolute; right:16px; bottom:16px; color:#22d3ee; pointer-events:none; display:inline-flex; line-height:0; }
@@ -131,6 +135,7 @@
   .btn { height:48px; padding:0 16px; border-radius:999px; border:1px solid var(--line); background:#0b1226; color:var(--txt); font-size:14px; font-weight:700; cursor:pointer; }
   .btn.active { background:var(--cyan); color:#05070f; border-color:var(--cyan); }
   .cards { display:grid; gap:12px; }
+  #screener-body.is-loading { min-height:2582px; }
   .card { background:linear-gradient(180deg,var(--card2),var(--card)); border:1px solid var(--line); border-radius:22px; padding:16px; position:relative; cursor:pointer; }
   .card:hover { border-color:#3b82f6; }
   .card:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
@@ -143,7 +148,7 @@
   .day-pill { display:inline-block; margin-top:7px; padding:7px 12px; border-radius:999px; font-weight:850; font-size:14px; }
   .day-pill.up { background:rgba(34,197,94,.16); color:var(--green); }
   .day-pill.down { background:rgba(239,68,68,.16); color:var(--red); }
-  .day-pill.flat { background:rgba(255,255,255,.08); color:#000000; }
+  .day-pill.flat { background:rgba(255,255,255,.08); color:var(--mut); }
   .meta { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.07); }
   .ytd { font-size:15px; } .ytd b { font-size:16px; }
   .ytd .row-note { color:var(--mut); font-size:13px; margin-top:4px; }
@@ -170,8 +175,14 @@
   .cmp-stat { background:rgba(5,7,15,.38); border:1px solid var(--line); border-radius:14px; padding:8px 10px; min-height:54px; }
   .cmp-stat span { display:block; color:var(--mut); font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
   .cmp-stat b { display:block; margin-top:3px; font-size:15px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
-  .cmp-chips { display:flex; gap:8px; overflow-x:auto; max-width:100%; padding:2px 0 8px; scrollbar-width:none; }
+  .cmp-chips { display:flex; gap:8px; overflow-x:auto; max-width:100%; padding:2px 0 8px; scrollbar-width:none; -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%); mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%); }
   .cmp-chips::-webkit-scrollbar { display:none; }
+  /* Right-edge fade cue (21 Nov 2026): the row is a hidden-scrollbar
+     scroller, so a partially-visible chip at the edge is the only sign
+     more chips exist. The trailing spacer sits in the fade zone at max
+     scroll, so the last chip itself is never faded — the fade only ever
+     covers chips still hidden past the edge (or this invisible spacer). */
+  .cmp-chips::after { content:""; flex:0 0 28px; }
   .cmp-chip { display:inline-flex; align-items:center; gap:6px; padding:0 12px; }
   .cmp-chip.is-on { border-color:var(--cyan); box-shadow:inset 0 0 0 1px var(--cyan); color:var(--txt); }
   .cmp-chip[aria-pressed="false"] { color:var(--mut); }
@@ -188,7 +199,7 @@
   .cmp-tile .cmp-px { color:var(--mut); font-size:12px; display:block; }
   .cmp-tile .cmp-ret { display:block; font-weight:850; font-size:18px; margin-top:4px; font-variant-numeric:tabular-nums; letter-spacing:-.02em; color:var(--txt); }
   .cmp-tile .cmp-ret.up, .cmp-tile .cmp-ret.down { color:#eef2fb; }
-  .cmp-tile .cmp-ret.flat { color:#000000; }
+  .cmp-tile .cmp-ret.flat { color:var(--mut); }
   .cmp-tile.is-hi { box-shadow:0 0 0 2px var(--cyan); }
   .cmp-fail { color:var(--mut); font-size:14px; line-height:1.5; }
   .cmp-board { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; }
@@ -216,8 +227,10 @@
     .wrap { padding:26px 22px 56px; } h1 { font-size:42px; }
     .kpis { grid-template-columns:repeat(4,1fr); }
     .cards { grid-template-columns:1fr 1fr; } .tile .v { font-size:30px; } .btc-pill-row .hdr-tick { font-size:30px; }
+    #indicators-body.is-loading { min-height:284px; }
+    #screener-body.is-loading { min-height:1312px; }
   }
-  @media (min-width:1000px) { .cards { grid-template-columns:1fr 1fr 1fr; } }
+  @media (min-width:1000px) { .cards { grid-template-columns:1fr 1fr 1fr; } #indicators-body.is-loading { min-height:270px; } #screener-body.is-loading { min-height:990px; } }
   /* Collapsible explanatory text (30 Oct 2026): default closed behind a
      "+" pill styled like .ind-info-btn; native <details>, no JS. */
   details.more { margin:0 2px 12px; }
@@ -239,7 +252,9 @@
   .brand-btc{color:#22d3ee}
 </style>
 <link rel="stylesheet" href="light.css?v=lm5">
+<script src="assets/js/ps-err.js?v=err1"></script>
 <script src="chart-theme.js?v=ct1"></script>
+<script src="assets/js/ps-ev.js?v=ev1" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -253,7 +268,7 @@
   <section aria-label="Market Indicators">
   <h2>Market Indicators</h2>
   <details class="more"><summary><span class="more-btn" aria-hidden="true"></span>About the indicators</summary><p class="box-note">WTI $/barrel · Gold (COMEX futures) $/troy oz · 10-Year % (day change in percentage points) · VIX points · DIA USD (SPDR Dow Jones Industrial Average ETF) · QQQ USD · CAD/USD (USD per CAD) · DXY points. Tap a tile for its YTD weekly candle chart.</p></details>
-  <div class="kpis" id="indicators-body"><p>Loading…</p></div>
+  <div class="kpis is-loading" id="indicators-body"><p>Loading…</p></div>
   <p class="status-line" id="indicators-status">Loading status…</p>
   </section>
 
@@ -272,7 +287,7 @@
     <button class="btn" data-sort="dayChangePct">Day ↕</button>
     <button class="btn" data-sort="ytdPct">YTD ↕</button>
   </div>
-  <div class="cards" id="screener-body"><p>Loading…</p></div>
+  <div class="cards is-loading" id="screener-body"><p>Loading…</p></div>
   <p class="count" id="screener-count"></p>
   <p class="status-line" id="stocks-status">Loading status…</p>
   </section>
@@ -359,11 +374,11 @@
     <button type="button" class="btn" id="ind-retry">Retry</button>
   </div>
 </div>
-<script src="assets/js/screener.js?v=scr10"></script>
-<script src="assets/js/screener-indicator-chart.js?v=stocks23"></script>
-<script src="assets/js/screener-chart.js?v=cmp13"></script>
+<script src="assets/js/screener.js?v=scr15"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks27"></script>
+<script src="assets/js/screener-chart.js?v=cmp14"></script>
 <script src="assets/js/et.js?v=et2"></script>
-<script src="assets/js/btcchart.js?v=wr1"></script>
+<script src="assets/js/btcchart.js?v=wr18"></script>
 <script src="assets/js/theme-pill.js?v=lm3" defer></script>
 
 <a class="clock-float" href="clock/index.html"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.8V8l2.4 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Live BTC Chart</a>
@@ -389,6 +404,6 @@ document.addEventListener('visibilitychange',function(){if(document.visibilitySt
 b.hidden=false;ui('off');
 window.__PS_WAKE={state:function(){return {want:want,locked:!!lock,label:b.textContent,pressed:b.getAttribute('aria-pressed')};}};
 })();</script>
-<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fe85a8ffb309453da6b9f3518d2dd97e"}'></script><!-- End Cloudflare Web Analytics -->
+<!-- Cloudflare Web Analytics --><script>try{if(localStorage.getItem('ps-no-count')!=='1'){var s=document.createElement('script');s.type='module';s.src='https://static.cloudflareinsights.com/beacon.min.js';s.setAttribute('data-cf-beacon','{"token": "fe85a8ffb309453da6b9f3518d2dd97e"}');(document.body||document.documentElement).appendChild(s);}}catch(e){}</script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>

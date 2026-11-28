@@ -218,6 +218,21 @@ class TestIndicatorBuild(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             sd.closes_from_payload('GOLD', bad, False)
 
+    def test_indicator_payload_skips_null_before_first_session(self):
+        # PR #15 dropped 2025-12-25 from IND_HOLIDAYS; ^VIX has a null
+        # bar on Christmas, and the Yahoo fetch starts 2025-12-20, so
+        # the null bar reached the parser and failed every run. A null
+        # bar dated before firstSession (2026-01-02) is outside the
+        # shipped series and must be skipped, not fail the symbol.
+        # Timestamps are UTC midnights: Dec 25 2025 (Thu, null),
+        # Jan 1 2026 (Thu, holiday, null), Jan 2 (Fri), Jan 5 (Mon).
+        payload = {
+            'timestamp': [1766620800, 1767225600, 1767312000, 1767571200],
+            'indicators': {'quote': [{'close': [None, None, 100.0, 101.0]}]},
+        }
+        out = sd.closes_from_payload('VIX', payload, False)
+        self.assertEqual(sorted(out), [dt.date(2026, 1, 2), dt.date(2026, 1, 5)])
+
     def test_stock_payload_null_close_is_hard_error(self):
         payload = {
             'timestamp': [1767312000, 1767398400],
@@ -242,6 +257,39 @@ class TestCheckOnly(unittest.TestCase):
             self.assertEqual(rc, 0)
 
 
+class TestIndStaleCheck(unittest.TestCase):
+    def _write(self, td, key, asof):
+        with open(os.path.join(td, f'ind-daily-{key}.json'), 'w') as f:
+            json.dump({'asOf': asof, 'days': []}, f)
+
+    def test_stale_check_flags_lagging_file(self):
+        # VIX at Nov 20 while the other four are at Nov 23: exactly the
+        # silent lag the recap job committed without noticing.
+        with tempfile.TemporaryDirectory() as td:
+            for k in ('wti', 'gold', 'us10y', 'dia'):
+                self._write(td, k, '2026-11-23')
+            self._write(td, 'vix', '2026-11-20')
+            self.assertEqual(sd.check_ind_stale(td), ['VIX'])
+
+    def test_stale_check_ok_when_all_agree(self):
+        with tempfile.TemporaryDirectory() as td:
+            for k in ('wti', 'gold', 'us10y', 'vix', 'dia'):
+                self._write(td, k, '2026-11-23')
+            self.assertEqual(sd.check_ind_stale(td), [])
+
+    def test_stale_check_missing_file_counts_as_lagging(self):
+        with tempfile.TemporaryDirectory() as td:
+            for k in ('wti', 'gold', 'us10y', 'dia'):
+                self._write(td, k, '2026-11-23')
+            self.assertEqual(sd.check_ind_stale(td), ['VIX'])
+
+    def test_stale_check_cli_exit_codes(self):
+        with tempfile.TemporaryDirectory() as td:
+            for k in ('wti', 'gold', 'us10y', 'vix', 'dia'):
+                self._write(td, k, '2026-11-23')
+            self.assertEqual(sd.main(['--stale-check', '--out-dir', td]), 0)
+            self._write(td, 'vix', '2026-11-20')
+            self.assertEqual(sd.main(['--stale-check', '--out-dir', td]), 1)
 
 
 class TestPartialWrite(unittest.TestCase):
@@ -339,6 +387,119 @@ class TestNewDeskStockCoverage(unittest.TestCase):
         self.assertIn('BRK-B', brk['source'])
 
 
+class TestHistoryFallback(unittest.TestCase):
+    """Null-close fallback: when Yahoo's close for a trading day is
+    null, the parser uses the site's own records (history.json first,
+    the already shipped daily file second) and logs the use. A value
+    in neither source still fails loud. Nothing is ever invented."""
+
+    # UTC midnights: Jan 6 (Tue) and Jan 7 (Wed) 2026. Stocks read
+    # them as ET Jan 5 (Mon) and Jan 6 (Tue); indicators as UTC Jan 6
+    # and Jan 7. The null is on a trading day in both readings.
+    TS = [1767657600, 1767744000]
+
+    def test_stock_null_close_falls_back_to_history(self):
+        payload = {
+            'timestamp': self.TS,
+            'indicators': {'quote': [{'close': [100.0, None]}]},
+        }
+        history = {'2026-01-06': {'TSLA': 102.25}}
+        fb = []
+        out = sd.closes_from_payload('TSLA', payload, True, history, {}, fb)
+        self.assertEqual(out, {dt.date(2026, 1, 5): 100.0, dt.date(2026, 1, 6): 102.25})
+        self.assertEqual(fb, [('TSLA', dt.date(2026, 1, 6), 102.25, 'site history')])
+
+    def test_stock_null_close_falls_back_to_shipped(self):
+        # No history entry: the already shipped daily file fills it.
+        payload = {
+            'timestamp': self.TS,
+            'indicators': {'quote': [{'close': [100.0, None]}]},
+        }
+        shipped = {dt.date(2026, 1, 6): 103.75}
+        fb = []
+        out = sd.closes_from_payload('TSLA', payload, True, {}, shipped, fb)
+        self.assertEqual(out[dt.date(2026, 1, 6)], 103.75)
+        self.assertEqual(fb, [('TSLA', dt.date(2026, 1, 6), 103.75, 'shipped daily file')])
+
+    def test_stock_null_close_fails_loud_with_no_source(self):
+        payload = {
+            'timestamp': self.TS,
+            'indicators': {'quote': [{'close': [100.0, None]}]},
+        }
+        fb = []
+        with self.assertRaises(RuntimeError):
+            sd.closes_from_payload('TSLA', payload, True, {}, {}, fb)
+        self.assertEqual(fb, [])
+
+    def test_history_preferred_over_shipped(self):
+        # Both sources hold the date with different values: history
+        # (the ledger) wins, and the source is recorded.
+        payload = {
+            'timestamp': self.TS,
+            'indicators': {'quote': [{'close': [100.0, None]}]},
+        }
+        history = {'2026-01-06': {'TSLA': 102.25}}
+        shipped = {dt.date(2026, 1, 6): 103.75}
+        fb = []
+        out = sd.closes_from_payload('TSLA', payload, True, history, shipped, fb)
+        self.assertEqual(out[dt.date(2026, 1, 6)], 102.25)
+        self.assertEqual(fb[0][3], 'site history')
+
+    def test_fallback_bad_value_is_rejected(self):
+        # A history value of 0 (or negative, or non-numeric) is not a
+        # value: the parser fails loud instead of writing it.
+        payload = {
+            'timestamp': self.TS,
+            'indicators': {'quote': [{'close': [100.0, None]}]},
+        }
+        for bad in (0, -5.0, 'x', None):
+            history = {'2026-01-06': {'TSLA': bad}}
+            with self.assertRaises(RuntimeError):
+                sd.closes_from_payload('TSLA', payload, True, history, {}, [])
+        shipped = {dt.date(2026, 1, 6): 0}
+        with self.assertRaises(RuntimeError):
+            sd.closes_from_payload('TSLA', payload, True, {}, shipped, [])
+
+    def test_indicator_null_close_falls_back_to_shipped(self):
+        # Indicators have no history entry (history.json holds no
+        # indicator), so only the shipped file can fill a null bar.
+        payload = {
+            'timestamp': self.TS,
+            'indicators': {'quote': [{'close': [100.0, None]}]},
+        }
+        shipped = {dt.date(2026, 1, 7): 19.5}
+        fb = []
+        out = sd.closes_from_payload('VIX', payload, False, {}, shipped, fb)
+        self.assertEqual(out, {dt.date(2026, 1, 6): 100.0, dt.date(2026, 1, 7): 19.5})
+        self.assertEqual(fb, [('VIX', dt.date(2026, 1, 7), 19.5, 'shipped daily file')])
+
+    def test_indicator_null_close_fails_loud_with_no_source(self):
+        payload = {
+            'timestamp': self.TS,
+            'indicators': {'quote': [{'close': [100.0, None]}]},
+        }
+        with self.assertRaises(RuntimeError):
+            sd.closes_from_payload('VIX', payload, False, {}, {}, [])
+
+    def test_load_history_reads_closes_by_date(self):
+        hist = {'v': 1, 'closes': {'2026-01-06': {'TSLA': 102.25, 'MSTR': 77.55}}}
+        with tempfile.TemporaryDirectory() as td:
+            path = os.path.join(td, 'history.json')
+            with open(path, 'w') as f:
+                json.dump(hist, f)
+            loaded = sd.load_history(path)
+        self.assertEqual(loaded['2026-01-06']['TSLA'], 102.25)
+        self.assertIsNone(sd.load_history(os.path.join(td, 'missing.json')))
+
+    def test_load_shipped_daily_reads_days(self):
+        doc = {'days': [{'date': '2026-01-05', 'close': 100.0},
+                         {'date': '2026-01-06', 'close': 102.25}]}
+        with tempfile.TemporaryDirectory() as td:
+            with open(os.path.join(td, 'stock-daily-TSLA.json'), 'w') as f:
+                json.dump(doc, f)
+            out = sd.load_shipped_daily(td, 'TSLA')
+        self.assertEqual(out, {dt.date(2026, 1, 5): 100.0, dt.date(2026, 1, 6): 102.25})
+        self.assertEqual(sd.load_shipped_daily(td, 'AAPL'), {})
 class TestSparkPack(unittest.TestCase):
     """Sparkline pack (enhancements 6, 21 Nov 2026): last 12 weekly
     closes per Desk symbol, from the shipped weekly files."""

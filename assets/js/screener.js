@@ -23,24 +23,76 @@
 // labelled Live. Each table still has ONE status line below it, and the
 // indicators line names which rows are Live and which are dated, so it
 // never claims the whole indicators table is Live when it is not.
+// HOLIDAY / EARLY-CLOSE (23 Nov 2026): marketOpenNow() is holiday- and
+// early-close-aware via et.js (ET.session / ET.closeMin) — on a NYSE
+// holiday there is no session, and on an early-close day the session
+// ends at 1:00 PM ET, so a stale holiday quote stamped fresh by the
+// pipeline cannot read Live. futuresOpenNow() likewise closes on the
+// CME Globex full closures (New Year's Day, Good Friday, Thanksgiving,
+// Christmas) — on other NYSE holidays Globex energy/metals still trade.
+// A quote with a missing, zero, or implausible timestamp can never
+// read Live (see mergeList).
 // Signed-number colours (Sunil's rule): positive green #22c55e,
-// negative red #ef4444, signed zero black #000000 (.flat). NOTE: pure
-// black on this page's dark background (#070b18 / #121a2e) is
-// near-invisible — that conflict is flagged in the delivery report; the
-// rule is applied literally here, not silently replaced. 'n/a' is not a
-// signed number, so it keeps the default light text, not black.
+// negative red #ef4444, signed zero the muted text colour (.flat) —
+// pure black was the original rule, but it is invisible on this page's
+// dark background (#070b18 / #121a2e), so dark mode uses the visible
+// muted grey; light mode uses near-black #0f172a (light.css). 'n/a' is
+// not a signed number, so it keeps the default light text, not black.
 // No buy/sell action.
 (function () {
+  // Scroll restoration (25 Nov 2026, Sunil): own the scroll position
+  // across tab eviction instead of relying on the browser's default
+  // restore, which saved whatever drifted spot the page had reached
+  // (chart / heat map) and put Sunil there on return. 'manual' so the
+  // browser does not fight the restore below; if nothing is saved the
+  // page simply stays at the top — never the bottom.
+  if ('scrollRestoration' in history) { try { history.scrollRestoration = 'manual'; } catch (e) {} }
+  var SCROLL_KEY = 'ps-desk-scroll-y';
+  var userMoved = false, restoreAt = 0;
+  // Read the saved offset ONCE at load. Every restore in this page
+  // uses this value: re-reading sessionStorage would pick up a clamped
+  // restore position the saver wrote in the meantime. (First version
+  // re-read on every restore and the load-time restore clobbered the
+  // good value with its own clamped one — see the load listener note
+  // below, removed for the same reason.)
+  var savedScrollY = null;
+  try {
+    var _raw = sessionStorage.getItem(SCROLL_KEY);
+    var _y = (_raw === null || _raw === '') ? NaN : parseInt(_raw, 10);
+    if (!isNaN(_y) && _y > 0) savedScrollY = _y;
+  } catch (e) {}
+  function modalOpen() {
+    var m = document.getElementById('ind-modal');
+    return !!(m && m.classList.contains('open'));
+  }
+  function saveScrollY() {
+    // Never save while the chart modal is open: the body is locked
+    // then, so scrollY reads 0 and would clobber the real position
+    // (the modal saves the pre-modal position itself on open).
+    // Also never save within 500ms of a restore: the restore's own
+    // scroll event would otherwise write the restored (possibly
+    // clamped) position over the user's real one.
+    if (modalOpen() || (restoreAt && Date.now() - restoreAt < 500)) return;
+    try { sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || window.pageYOffset || 0)); } catch (e) {}
+  }
+  function restoreScrollY() {
+    if (savedScrollY === null) return false;
+    var max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    if (max <= 0) return false;
+    restoreAt = Date.now();
+    window.scrollTo(0, Math.min(savedScrollY, max));
+    return true;
+  }
   var PRICES_URL = 'https://raw.githubusercontent.com/Schadhaxx/paperstreetbtc/data/prices.json';
   // CF-3 (Cloudflare Worker, Nov 2026): the Desk pills/tiles take
   // their live quotes from the Cloudflare live-quote Worker first
   // (near-1-min Finnhub quotes, cached ~55s server-side), falling
-  // back silently to prices.json per symbol. The Worker covers 19 of
-  // the 24 Desk symbols; WTI, GOLD, US10Y, VIX, DXY are not on
-  // Finnhub's free /quote endpoint and always come from prices.json.
+  // back silently to prices.json per symbol. The Worker covers 18 of
+  // the 24 Desk symbols; WTI, GOLD, US10Y, VIX, DXY, USDCAD are not
+  // on Finnhub's free /quote endpoint and always come from prices.json.
   // The Worker URL is a single configurable constant.
   var WORKER_URL = 'https://paperstreet-quotes.schadha08.workers.dev/';
-  var PACK_ASOF = '2026-11-13';
+  var PACK_ASOF = '2026-11-23';
   var state = { q: '', filter: 'all', sortKey: 'symbol', sortDir: 1 };
   var packRows = [];
   var packIndicators = [];
@@ -184,8 +236,33 @@
     var weekday = p.weekday;
     if (weekday === 'Sat' || weekday === 'Sun') return false;
     var mins = (+p.hour % 24) * 60 + (+p.minute);
+    // Holiday / early-close aware (et.js, loaded on this page): on a
+    // NYSE holiday there is no session at all, and on an early-close day
+    // (e.g. Fri 27 Nov 2026, 1:00 PM ET) the session ends at 780 min.
+    // Without this, a stale holiday quote stamped fresh by the pipeline
+    // reads Live. Falls back to the plain 9:30-4:00 window if ET is
+    // unavailable (script load failure), so the page never breaks.
+    if (window.ET && window.ET.today && window.ET.closeMin) {
+      var close = window.ET.closeMin(window.ET.today());
+      if (!close) return false;
+      return mins >= 570 && mins < close;
+    }
     return mins >= 570 && mins < 960;
   }
+  // CME Globex full closures for energy/metals (WTI/GOLD): the Globex
+  // session is closed all day on New Year's Day, Good Friday,
+  // Thanksgiving and Christmas Day. On other NYSE holidays (e.g. MLK
+  // Day, Presidents Day) Globex energy/metals DO trade, so only these
+  // four dates per year close the futures window. Same dates as the
+  // NYSE list in et.js (HOL); keep in sync when that list extends.
+  // (2027-12-25 and 2028-01-01 are Saturdays, covered by the weekend
+  // check; 2027-12-24 is a CME early close, not a full closure — the
+  // 30-min freshness gate marks it dated after the last quote ages.)
+  var CME_CLOSED = {
+    '2026-01-01': 1, '2026-04-03': 1, '2026-11-26': 1, '2026-12-25': 1,
+    '2027-01-01': 1, '2027-03-26': 1, '2027-11-25': 1, '2027-12-25': 1,
+    '2028-04-14': 1, '2028-11-23': 1, '2028-12-25': 1
+  };
   // CME Globex futures hours (ET): Sun 6:00 p.m. through Fri 5:00 p.m.,
   // excluding the daily 5:00-6:00 p.m. maintenance break. Saturday is
   // fully closed; Sunday daytime (before 6:00 p.m.) is closed.
@@ -194,6 +271,9 @@
     var weekday = p.weekday;
     var mins = (+p.hour % 24) * 60 + (+p.minute);
     if (weekday === 'Sat') return false;
+    // Globex is closed all day on the CME full closures (above) — a
+    // holiday quote stamped fresh by the pipeline must not read Live.
+    if (window.ET && window.ET.today && CME_CLOSED[window.ET.today()]) return false;
     if (weekday === 'Sun') return mins >= 1080;
     if (weekday === 'Fri') return mins < 1020;
     return !(mins >= 1020 && mins < 1080);
@@ -212,7 +292,8 @@
     });
     if (!prices || !prices.stocks) return out;
     var updated = Date.parse(prices.updated);
-    var fileFresh = !isNaN(updated) && (Date.now() - updated) < 30 * 60 * 1000;
+    // (No fileFresh fallback for Live: a fresh file stamp says nothing
+    // about this symbol's quote — see the qtValid note below.)
     out.forEach(function (r) {
       var q = prices.stocks[r.symbol];
       if (!q || typeof q.c !== 'number' || !(q.c > 0) ||
@@ -227,8 +308,17 @@
       // Freshness by the symbol's own pipeline timestamp where present
       // (Finnhub quote time / Yahoo regularMarketTime); otherwise the
       // file stamp. A stale quote never reads Live, even in hours.
+      // A quote with a missing, zero, or implausible timestamp can
+      // never read Live: the file stamp is NOT a fallback for Live
+      // (prices.yml refreshes `updated` on every run, even one where
+      // every fetch failed, so a fresh file says nothing about this
+      // symbol's quote). A millisecond timestamp is rejected too — a
+      // seconds value times 1000 would land far in the future and read
+      // Live forever. An invalid timestamp falls through to 'close'
+      // with the file's date, never to Live.
       var qt = Number(q.t);
-      var fresh = (qt > 0) ? (Date.now() - qt * 1000) < 30 * 60 * 1000 : fileFresh;
+      var qtValid = (qt > 0 && qt < 1e11);
+      var fresh = qtValid ? (Date.now() - qt * 1000) < 30 * 60 * 1000 : false;
       var inHours = isLiveFn ? isLiveFn(r) : marketOpenNow();
       if (fresh && inHours) {
         r._src = 'live';
@@ -236,7 +326,7 @@
         r._src = 'close';
         // Date the quote itself belongs to, not the file-write date:
         // a morning file carrying yesterday's closes must say yesterday.
-        r._closeDate = (qt > 0) ? etDateLabel(new Date(qt * 1000))
+        r._closeDate = qtValid ? etDateLabel(new Date(qt * 1000))
           : (!isNaN(updated) ? etDateLabel(new Date(updated)) : fmtIso(packAsOf));
       }
     });
@@ -266,7 +356,7 @@
     var live = list.filter(function (r) { return r._src === 'live'; }).map(function (r) { return r.symbol; });
     var close = list.filter(function (r) { return r._src === 'close'; });
     var snap = list.filter(function (r) { return r._src === 'snapshot'; }).map(function (r) { return r.symbol; });
-    if (live.length === list.length) return 'Live — site pipeline, market hours.';
+    if (list.length && live.length === list.length) return 'Live — site pipeline, market hours.';
     if (close.length === list.length) {
       // Dated rows may belong to different dates now (e.g. futures break
       // today vs stock close yesterday): group by close date instead of
@@ -324,7 +414,7 @@
       }
       var av = a[key], bv = b[key];
       if (av === null || av === undefined) return 1;
-      if (bv === null || bv === undefined) return 1;
+      if (bv === null || bv === undefined) return -1;
       if (typeof av === 'string') return av.localeCompare(bv) * dir;
       return (av - bv) * dir;
     });
@@ -373,6 +463,7 @@
       }).join('');
       var count = document.getElementById('screener-count');
       if (count) count.textContent = list.length + ' of ' + rows.length + ' shown';
+      body.classList.remove('is-loading'); /* CLS fix: data rendered, reserved space no longer needed */
     }
     var itbody = document.getElementById('indicators-body');
     if (itbody) {
@@ -381,12 +472,13 @@
         var noteBtn = r.note ? ' <button type="button" class="note-btn" data-symbol="' + escapeHtml(r.symbol) + '" aria-label="More about ' + escapeHtml(r.symbol) + '">+</button>' : '';
         var cls = signCls(r.dayChangePct);
         var sp = sparkFor(r.symbol);
-        return '<div class="tile" data-symbol="' + escapeHtml(r.symbol) + '"><div class="k">' + escapeHtml(r.name) + ' · ' + unitLabel(r) + '</div>'
+        return '<div class="tile" data-symbol="' + escapeHtml(r.symbol) + '" tabindex="0" role="button" aria-label="Open ' + escapeHtml(r.name) + ' chart"><div class="k">' + escapeHtml(r.name) + ' · ' + unitLabel(r) + '</div>'
           + '<div class="v">' + formatValue(r) + '</div><div class="d ' + cls + '">' + dayText(r) + '</div>'
           + (sp ? '<div class="spark-row">' + sp + '</div>' : '')
-          + '<div class="u">' + unitLabel(r) + ' ' + noteBtn + '</div>'
+          + '<div class="u">' + noteBtn + '</div>'
           + '<span class="tile-chart" aria-hidden="true">' + CHART_ICON + '</span></div>';
       }).join('');
+      itbody.classList.remove('is-loading'); /* CLS fix: data rendered, reserved space no longer needed */
     }
     updatePills();
     renderStatus();
@@ -451,9 +543,25 @@
       pricesFailed = !hasQuotes(eff);
       rows = mergeList(packRows, eff);
       indRows = mergeList(packIndicators, eff, indicatorLiveFn);
+      setSpyBridge(eff);
       render();
       notifyChart();
+      // The comparison chart's desk-live/Worker today-point is fetched
+      // once at load; re-fetch it on the same 5-min tick so the point
+      // does not go stale ~20 min after load while the cards keep
+      // refreshing. No-op if the chart script is not on the page.
+      if (typeof window.ScreenerChartRefreshDeskLive === 'function') window.ScreenerChartRefreshDeskLive();
     });
+  }
+
+  // SPY bridge for the comparison chart: SPY is a benchmark, not a
+  // Desk card row, so the chart cannot read it from `rows`. Stash the
+  // merged Finnhub quote here (refreshed every 5 min) for the chart's
+  // today-point. The chart checks the quote's own freshness before
+  // using it, so a stale bridge never becomes a point.
+  function setSpyBridge(eff) {
+    var spyQ = eff && eff.stocks && eff.stocks['SPY'];
+    window.__psSpy = (spyQ && typeof spyQ.c === 'number' && spyQ.c > 0) ? { c: spyQ.c, t: spyQ.t } : null;
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -469,7 +577,7 @@
         }
       })
       .catch(function () { /* no sparklines */ });
-    fetch('assets/data/screener-pack.json?v=dia1')
+    fetch('assets/data/screener-pack.json?v=dia3')
       .then(function (res) { return res.json(); })
       .then(function (data) {
         packRows = data.rows || [];
@@ -482,15 +590,40 @@
         pricesFailed = !hasQuotes(eff);
         rows = mergeList(packRows, eff);
         indRows = mergeList(packIndicators, eff, indicatorLiveFn);
+        setSpyBridge(eff);
         render();
         notifyChart();
+        // First render populated the tile grids, so the document is
+        // near full height: restore the saved scroll position now.
+        // This runs once — a later render() (e.g. the 5-min refresh)
+        // must never yank the page.
+        restoreScrollY();
+        // Second attempt: the comparison-chart section populates after
+        // this render (cmp-daily fetch), so the document can still grow
+        // after the first restore clamped to the then-max. Re-apply the
+        // saved offset once the page is full height — but only if the
+        // user has not moved it themselves. Deliberately a timer after
+        // the first render, NOT a load listener: load fires before the
+        // first render (subresources finish before the data fetches do),
+        // so a load-time restore clamped to the short document and the
+        // saver then clobbered the good value with it. Once Friday's
+        // CLS fix reserves the grid heights, the first restore is
+        // already against the full height and this is a no-op.
+        setTimeout(function () { if (!userMoved) restoreScrollY(); }, 2000);
         setInterval(refreshLive, 5 * 60 * 1000);
+        // Tab return: the chart's today-point goes stale after ~20 min
+        // (desk-live/Worker freshness), so re-fetch it when the tab
+        // becomes visible again instead of waiting for the next 5-min
+        // tick. The cards refresh on the interval; this covers the chart.
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden && typeof window.ScreenerChartRefreshDeskLive === 'function') window.ScreenerChartRefreshDeskLive();
+        });
       })
       .catch(function () {
         var b = document.getElementById('screener-body');
-        if (b) b.innerHTML = '<p>Screener data could not be loaded.</p>'; /* Batch B finding 7: <tr> in a <div> is dropped by the browser */
+        if (b) { b.innerHTML = '<p>Screener data could not be loaded.</p>'; b.classList.remove('is-loading'); /* CLS fix: failed load must not leave a tall empty box */ } /* Batch B finding 7: <tr> in a <div> is dropped by the browser */
         var ib = document.getElementById('indicators-body');
-        if (ib) ib.innerHTML = '<p>Screener data could not be loaded.</p>';
+        if (ib) { ib.innerHTML = '<p>Screener data could not be loaded.</p>'; ib.classList.remove('is-loading'); }
       });
     document.addEventListener('click', function (e) {
       var btn = e.target.closest ? e.target.closest('.note-btn') : null;
@@ -501,17 +634,94 @@
       if (e.key === 'Escape') closeNotePill();
     });
     window.addEventListener('scroll', closeNotePill, true);
-    /* Batch B bug 5: the floating 'Live BTC Chart' pill overlaps stock tile
-       prices while scrolling — hide it on scroll, show it again shortly
-       after the scroll stops. */
-    var clockFloat = document.querySelector('.clock-float'), scrollHideT = 0;
+    /* Batch B bug 5 (revised 24 Nov 2026): the floating 'Live BTC Chart'
+       pill overlaps stock tile prices. The old version hid it on any
+       scroll and showed it 200ms after scrolling stopped, so it sat on
+       the bottom-center tile whenever the user paused. Direction-based:
+       it is out of the way while scrolling down and back when the user
+       scrolls up (or is at the top). Strengthened 24 Nov 2026 (Sunil:
+       FIXED, not half fixed — the pill must NEVER cover a tile): a
+       timer alone still leaves it on a tile for the delay after the
+       user pauses, and moving it bottom-right cannot guarantee it
+       either (at 390px the tile grid is single-column full-width, so
+       every bottom position is over a tile). So the guarantee is a
+       live overlap check: the pill is only ever visible while its rect
+       intersects NO tile rect, in any scroll state. "Tile" means both
+       tile kinds — the 16 stock cards (#screener-body .card) and the
+       8 indicator tiles (#indicators-body .tile). The direction logic
+       decides the intent to show; the overlap check vetoes showing
+       whenever a tile is underneath. A 1s timer re-checks after
+       scrolling stops, and a resize re-checks too. Tiles render
+       asynchronously after the data loads, so the pill state is also
+       re-checked whenever either tile container changes (a
+       MutationObserver — this covers the initial render and every
+       5-minute refresh, filter, sort and search re-render), once
+       subresources have loaded, and once webfonts settle — otherwise
+       the pill could sit visible over tiles that did not exist when
+       the page first evaluated it. 1s, not 2.5s, because the overlap
+       check, not the timer, is now the guarantee, so the timer only
+       needs to catch layout changes promptly and never hides a pill
+       that is safely placed. */
+    var clockFloat = document.querySelector('.clock-float'), lastScrollY = window.scrollY || window.pageYOffset || 0, pillHideTimer = null, pillScrollingDown = false;
+    function pillOverlapsTile() {
+      if (!clockFloat) return false;
+      var pr = clockFloat.getBoundingClientRect();
+      var tiles = document.querySelectorAll('#screener-body .card[data-symbol], #indicators-body .tile[data-symbol]');
+      for (var i = 0; i < tiles.length; i++) {
+        var tr = tiles[i].getBoundingClientRect();
+        if (tr.bottom <= 0 || tr.top >= window.innerHeight) continue;
+        if (pr.left < tr.right && pr.right > tr.left && pr.top < tr.bottom && pr.bottom > tr.top) return true;
+      }
+      return false;
+    }
+    function refreshPill() {
+      if (!clockFloat) return;
+      var show = !pillScrollingDown && !pillOverlapsTile();
+      clockFloat.classList.toggle('scroll-hide', !show);
+    }
     if (clockFloat) {
       window.addEventListener('scroll', function () {
-        clockFloat.classList.add('scroll-hide');
-        clearTimeout(scrollHideT);
-        scrollHideT = setTimeout(function () { clockFloat.classList.remove('scroll-hide'); }, 200);
+        var y = window.scrollY || window.pageYOffset || 0;
+        if (pillHideTimer) { clearTimeout(pillHideTimer); pillHideTimer = null; }
+        pillScrollingDown = (y > lastScrollY && y > 0);
+        lastScrollY = y;
+        refreshPill();
+        pillHideTimer = setTimeout(refreshPill, 1000);
       }, true);
+      window.addEventListener('resize', refreshPill);
+      window.addEventListener('load', refreshPill);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(refreshPill);
+      if (typeof MutationObserver !== 'undefined') {
+        var pillObs = new MutationObserver(refreshPill);
+        ['screener-body', 'indicators-body'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) pillObs.observe(el, { childList: true, subtree: true });
+        });
+      }
+      refreshPill();
     }
+    // Scroll-position saving (25 Nov 2026): throttled to once per
+    // frame, same pattern as Friday's pill throttle — never on every
+    // scroll event. Also saved on pagehide and when the tab hides,
+    // which is the 30-min return path (iOS evicts the background tab;
+    // the saved offset is what the next load restores). userMoved
+    // tracks real user gestures (wheel/touch), not the programmatic
+    // restore scrolls, so the delayed second attempt above only runs
+    // before the user has moved the page themselves.
+    var scrollSaveQueued = false;
+    window.addEventListener('scroll', function () {
+      if (scrollSaveQueued) return;
+      scrollSaveQueued = true;
+      (window.requestAnimationFrame || function (f) { setTimeout(f, 16); })(function () {
+        scrollSaveQueued = false;
+        saveScrollY();
+      });
+    }, true);
+    window.addEventListener('pagehide', saveScrollY);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) saveScrollY(); });
+    ['wheel', 'touchmove'].forEach(function (ev) {
+      window.addEventListener(ev, function () { userMoved = true; }, { passive: true });
+    });
     window.addEventListener('resize', closeNotePill);
     var search = document.getElementById('screener-search');
     if (search) search.addEventListener('input', function (e) { state.q = e.target.value; render(); });

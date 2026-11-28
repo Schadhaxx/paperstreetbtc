@@ -32,7 +32,7 @@ chk('isFresh: a week before the week is stale', isFresh('2026-11-22', now - 8 * 
 chk('isFresh: garbage is stale', isFresh('soon', now) === false && isFresh(null, now) === false && isFresh('', now) === false);
 
 const page = fs.readFileSync(path.join(R, 'screener.html'), 'utf8');
-chk('page loads screener.js scr10', page.indexOf('assets/js/screener.js?v=scr10') !== -1);
+chk('page loads screener.js scr15', page.indexOf('assets/js/screener.js?v=scr15') !== -1);
 chk('page has spark-row css', page.indexOf('.tile .spark-row') !== -1);
 chk('screener.js fetches spark-pack spk1', src.indexOf("assets/data/spark-pack.json?v=spk1") !== -1);
 chk('screener.js renders sparks in cards and tiles', src.indexOf('sparkFor(r.symbol)') !== -1 && src.indexOf('class="spark-row"') !== -1);
