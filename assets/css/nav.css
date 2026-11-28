@@ -181,8 +181,13 @@
 .prd-card li{scroll-margin-top:70px;transition:background .4s}.prd-card li.prd-hl{background:rgba(34,211,238,.1);border-radius:8px}
 html.prd-lock,html.prd-lock body{overflow:hidden}
 /* Follow-ups (28 Nov 2026): same lock for the BTC chart popup (.bc-w),
-   set by open() and cleared by close() in btcchart-panel.js. */
-html.bc-lock,html.bc-lock body{overflow:hidden}
+   set by open() and cleared by close() in btcchart-panel.js.
+   Must-fix (28 Nov 2026): lock html ONLY. Locking body too un-sticks
+   the header, so open()'s place() measured the pill above the viewport
+   and the popup opened off-screen when the page was scrolled (top -332px
+   at 1440x900 scrolled 400px, vs 68px with the header stuck). Either
+   half alone still blocks the wheel behind the popup. */
+html.bc-lock{overflow:hidden}
 @media (max-width:640px){.prd-card{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));bottom:calc(8px + env(safe-area-inset-bottom));transform:none;width:auto;max-height:none;padding:18px 16px 22px}}
 /* v5: sticky header on phone/tablet (already sticky; make sure nothing disables it) */
 @media (max-width:1000px){.header{position:sticky!important;top:0;z-index:50;padding-top:env(safe-area-inset-top)}}

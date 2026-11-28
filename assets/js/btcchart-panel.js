@@ -664,20 +664,25 @@ function drawCandlesRange(){
     ctx.beginPath();ctx.moveTo(L,ly2);ctx.lineTo(W-R,ly2);ctx.stroke();ctx.setLineDash([]);
     ctx.strokeStyle=psC('#22d3ee','#0891b2');ctx.setLineDash([4,4]);
     ctx.strokeRect(lg.x-lg.bw/2-4,lg.wickTop-8,lg.bw+8,lg.wickBot-lg.wickTop+16);ctx.setLineDash([]);
-    /* Follow-ups (28 Nov 2026): the tag is a pill inside the plot,
-       right-aligned at the plot edge (W-R), so it never overlaps the
-       plot edge and R stays 12. The LIVE text is centred on the last
-       candle, clamped inside the plot. The tag sits at liveY, so the
-       existing 17px live-price de-collision keeps trendline pills
-       clear of it. */
+    /* Follow-ups (28 Nov 2026): the tag is a pill inside the plot, so
+       it never overlaps the plot edge and R stays 12. The LIVE text is
+       centred on the last candle, clamped inside the plot. The tag sits
+       at liveY, so the existing 17px live-price de-collision keeps
+       trendline pills clear of it.
+       Must-fix (28 Nov 2026): the pill was right-aligned at the plot
+       edge and covered the live candle (1M) / the last ~5 weekly candles
+       (1Y). It now ends left of the live-candle box (right edge at
+       lg.x - lg.bw/2 - 8) and shows just the price — the green LIVE word
+       already sits above the candle. Left edge clamped inside the plot. */
     ctx.font='bold 11px Inter, sans-serif';ctx.textAlign='center';
     ctx.fillStyle=psC('#22c55e','#15803d');
     var lx=Math.max(L+16,Math.min(W-R-16,lg.x));
     ctx.fillText('LIVE',lx,lg.wickTop-14);
-    var tag='LIVE '+fmt(live.usd), tw2=ctx.measureText(tag).width;
+    var tag=fmt(live.usd), tw2=ctx.measureText(tag).width;
     ctx.textAlign='left';
-    ctx.fillStyle=psC('#22d3ee','#0891b2');ctx.fillRect(W-R-tw2-12,ly2-8,tw2+8,16);
-    ctx.fillStyle=psC('#0b1226','#ffffff');ctx.fillText(tag,W-R-tw2-8,ly2+4);
+    var pr=Math.max(L+tw2+8,lg.x-lg.bw/2-8);
+    ctx.fillStyle=psC('#22d3ee','#0891b2');ctx.fillRect(pr-tw2-8,ly2-8,tw2+8,16);
+    ctx.fillStyle=psC('#0b1226','#ffffff');ctx.fillText(tag,pr-tw2-4,ly2+4);
     ctx.restore();
   }
   [CANDHOV,CANDSEL].forEach(function(idx,layer){
@@ -2194,7 +2199,10 @@ function open(from){if(INLINE)return;if(!dlg)build();opener=from||pill;if(menu&&
      wheel cannot scroll it; the sheet itself still scrolls, and
      overscroll-behavior:contain on .bc-w stops scroll chaining at
      its edges. Removed in close()'s finish(), which runs on every
-     close path. Inline mode returns above and never locks. */
+     close path. Inline mode returns above and never locks.
+     Must-fix (28 Nov 2026): the rule locks html ONLY — locking body
+     too un-sticks the header, so place() below measured the pill above
+     the viewport and the popup opened off-screen on a scrolled page. */
   document.documentElement.classList.add('bc-lock');
   var morph=null;
   if(!reducedMotion()&&opener&&opener.getBoundingClientRect){
