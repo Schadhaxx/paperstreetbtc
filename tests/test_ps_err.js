@@ -58,18 +58,18 @@ for (const p of PAGES) {
   beaconRefs += beacons;
   if (beacons !== 1) console.log('FAIL beacon ref count', p, beacons);
   if (!BEACON_LOADER.test(t)) console.log('FAIL beacon is not behind the opt-out loader', p);
-  if (/btcchart\.js\?v=wr18/.test(t)) loaderPins++;
+  if (/btcchart\.js\?v=wr19/.test(t)) loaderPins++;
   if (/btcchart\.js\?v=wr14/.test(t)) console.log('FAIL stale wr14 loader pin', p);
   if (/ps-ev\.js/.test(t)) console.log('FAIL Stage 3 file on a Stage 2 page', p);
 }
 chk('exactly one ps-err.js?v=err1 tag on each of the 16 pages', hookTags === 16, 'tags=' + hookTags);
 chk('exactly one beacon.min.js reference on each of the 16 pages', beaconRefs === 16, 'refs=' + beaconRefs);
 chk('beacon loader checks the opt-out flag on every page', true);
-chk('all 16 pages use btcchart.js?v=wr18', loaderPins === 16, 'wr18=' + loaderPins);
+chk('all 16 pages use btcchart.js?v=wr19', loaderPins === 16, 'wr19=' + loaderPins);
 chk('no Stage 3 ps-ev.js tag on any Stage 2 page', true);
 
 const stub = fs.readFileSync(path.join(R, 'assets/js/btcchart.js'), 'utf8');
-chk('btcchart.js loads the panel at wr17', /btcchart-panel.js\?v=wr17/.test(stub));
+chk('btcchart.js loads the panel at wr19', /btcchart-panel.js\?v=wr19/.test(stub));
 const panel = fs.readFileSync(path.join(R, 'assets/js/btcchart-panel.js'), 'utf8');
 chk('panel lineFail reports through the guarded __psErr hook', /function lineFail\(\)\{[\s\S]*?__psErr\('lineFail'/.test(panel));
 chk('panel lineFail keeps the clear-and-retry behaviour', /function lineFail\(\)\{[\s\S]*?lineRetry=true/.test(panel));

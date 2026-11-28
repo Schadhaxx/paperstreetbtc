@@ -51,9 +51,11 @@ chk('drawDailyNative layout carries kind daily', /lineGeom=\{kind:'daily',pad/.t
 /* Native-only wiring for the range views (Chart.js removed 20 Nov 2026).
    TA Stage 1 (20 Nov 2026): a TA after-draw hook + pill sync follow lineFail()
    on the next line, so this regex ends at lineFail(); (as step 2 does) instead
-   of pinning the closing brace. */
-chk('drawDaily draws natively, lineFail() on failure',
-  /var nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:effLog\}\);lineDrawn=nativeOK;\n  if\(nativeOK\)lineRetry=false;else lineFail\(\);/.test(panel));
+   of pinning the closing brace.
+   Rebase 21 Nov 2026: drawDaily also passes the skunkworks floor object
+   (or null) to drawDailyNative on 5Y/10Y line views with no comparison. */
+chk('drawDaily draws natively, lineFail() on failure, floor passed through',
+  /var nativeOK=drawDailyNative\(d,\{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:effLog,floor:\(FLOOR_ON&&\/\^\(5Y\|10Y\)\$\/\.test\(rng\)&&!sx\)\?FLOOR:null\}\);lineDrawn=nativeOK;\n  if\(nativeOK\)lineRetry=false;else lineFail\(\);/.test(panel));
 chk('drawDaily has no Chart.js guard', /function drawDaily\(\)\{if\(!DATA\)return;clearCandState\(\);/.test(panel));
 chk('draw-failure isolation records __BTC_DRAWERR for the daily line', /window\.__BTC_DRAWERR=\{where:'drawDailyNative'/.test(panel));
 
@@ -91,8 +93,8 @@ chk('panel keeps drawCandles1D + drawCandlesRange', /function drawCandles1D\(/.t
 chk('panel keeps endPress (round-3 pill fix)', /function endPress\(\)/.test(panel));
 chk('needChart removed with Chart.js', !/needChart/.test(panel));
 
-/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026) -> wr2 (TA Beta label, 21 Nov 2026) -> wr3 (drawing fixes Stage 1, 21 Nov 2026) -> wr4 (drawing fixes Job 1, 21 Nov 2026) -> wr5 (drawing fixes Job 2, 21 Nov 2026) -> wr6 (drawing fixes Job 3, 22 Nov 2026) -> ta12/wr7 (drawing fixes Job 4, 22 Nov 2026) -> ta13/wr8 (drawing fixes Job 5, 22 Nov 2026) -> ta15/wr10 (drawing fixes Job 6, 22 Nov 2026) -> ta16/wr11 (drawing fixes Job 9, 22 Nov 2026) -> ta17/wr12 (drawing fixes Job 11, 22 Nov 2026) -> ta18/wr13 (drawing fixes Job 12, 22 Nov 2026) -> wr14 (drawing fixes Job 10, 22 Nov 2026) -> wr17/wr18 + ta19 (follow-ups, 28 Nov 2026) */
-chk('stub loads the panel with wr17', /btcchart-panel\.js\?v=wr17/.test(stub));
+/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026) -> wr2 (TA Beta label, 21 Nov 2026) -> wr3 (drawing fixes Stage 1, 21 Nov 2026) -> wr4 (drawing fixes Job 1, 21 Nov 2026) -> wr5 (drawing fixes Job 2, 21 Nov 2026) -> wr6 (drawing fixes Job 3, 22 Nov 2026) -> ta12/wr7 (drawing fixes Job 4, 22 Nov 2026) -> ta13/wr8 (drawing fixes Job 5, 22 Nov 2026) -> ta15/wr10 (drawing fixes Job 6, 22 Nov 2026) -> ta16/wr11 (drawing fixes Job 9, 22 Nov 2026) -> ta17/wr12 (drawing fixes Job 11, 22 Nov 2026) -> ta18/wr13 (drawing fixes Job 12, 22 Nov 2026) -> wr14 (drawing fixes Job 10, 22 Nov 2026) -> wr17/wr18 + ta19 (follow-ups, 28 Nov 2026) -> wr19 (TA 2.0 floor rebase, 28 Nov 2026) */
+chk('stub loads the panel with wr19', /btcchart-panel\.js\?v=wr19/.test(stub));
 chk('stub does not load the panel with et20', !/btcchart-panel\.js\?v=et20/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
@@ -102,9 +104,9 @@ let wr14 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=wr18') wr14++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=wr19') wr14++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin wr16', wr14 === 16 && other.length === 0, 'wr16=' + wr14 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin wr19', wr14 === 16 && other.length === 0, 'wr19=' + wr14 + ' other=' + JSON.stringify(other));
 
 /* YTD hero chart out of scope: still Chart.js */
 chk('s2.js has no Chart.js fallback (removed 20 Nov 2026)', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));

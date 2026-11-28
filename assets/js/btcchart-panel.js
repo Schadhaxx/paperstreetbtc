@@ -12,6 +12,17 @@ var INLINEHOST=document.getElementById('bcInline');
 var INLINE=!!INLINEHOST;
 /* data */
 var DATA=null,PROV=false,dataP=null,SPX=null,SPXK=[],SHOWSPX=false,GOLD=null,GOLDK=[],SHOWGLD=false,MSTR=null,MSTRK=[],SHOWMSTR=false,CBDAILY=null;
+/* Skunkworks floor prototype (test branch only): long-term price floor
+   from tools/ta_floor.py (ta-floor.json, a generated artifact kept current
+   by .github/workflows/ta-lines-refresh.yml). Drawn on 5Y/10Y line views
+   only, never with a comparison on, never on candles. Default ON; the
+   "Trend support (weekly closes)" toggle hides it. Break rule: only a
+   COMPLETED weekly close (Monday-Sunday UTC) 2% or more below the floor
+   breaks it; the in-progress week is drawn dashed and never breaks it. */
+var FLOOR_LABEL='Trend support (weekly closes)';
+var FLOOR_BREAK_RULE='Completed weekly close (Monday-Sunday UTC) 2% or more below the floor. An in-progress week does not count.';
+var FLOOR_BROKEN_NOTE='Broken: a completed weekly close finished 2% or more below this line.';
+var FLOOR=null,floorP=null,FLOOR_ON=true,floorFailAt=0;
 /* Test branch 26 Oct 2026: 1D chart type Line | 1H | 4H, default Line. Only shown when 1D is selected. */
 var CT='line';
 /* Job 5: last 1D candle size picked (1h default), so a trip to a range
@@ -827,6 +838,7 @@ function syncCg(){
 var FALLBACK_NOTE='';
 function drawRange(){
   head();
+  var _fl=$('bcFloor');if(_fl)_fl.style.display='none'; /* floor: 5Y/10Y line views only */
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   $('bcSc').style.display='none';
   /* Candles are BTC-only, same rule as the 1D view: the S&P 500 / Gold / MSTR
@@ -976,6 +988,7 @@ function drawRange(){
 }
 function draw1D(){
   head();
+  var _fl1=$('bcFloor');if(_fl1)_fl1.style.display='none'; /* floor: 5Y/10Y line views only */
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   $('bcSc').style.display='none';
   /* Job 10: the compare toggles work on 1D Line (intraday compare);
@@ -1118,6 +1131,148 @@ function getData(){if(dataP)return dataP;
     MSTRK=Object.keys(MSTR).sort();
     return DATA;});
   dataP.catch(function(){dataP=null;});return dataP;}
+/* Skunkworks floor: lazy fetch of the ta-floor.json generated artifact
+   (cached; a failed fetch retries at most once a minute, and a missing or bad
+   file means no floor is drawn -- never an error on the page). */
+function getFloor(){
+  if(floorP)return floorP;
+  if(Date.now()-floorFailAt<60000)return Promise.resolve(null);
+  floorP=fetch(U('../data/ta-floor.json'),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(j){
+    if(!j||!j.anchor||typeof j.slopePerWeek!=='number'||!Array.isArray(j.weeks)||!j.weeks.length)throw new Error('bad floor');
+    FLOOR=j;return j;
+  });
+  floorP.catch(function(){FLOOR=null;floorP=null;floorFailAt=Date.now();});
+  return floorP;
+}
+/* Skunkworks floor, break rule (28 Nov 2026, Grok Bot test pack):
+   weeks are Monday-start UTC, closing Sunday UTC. Only a COMPLETED
+   weekly close 2% or more below the floor sets broken; the in-progress
+   week may be drawn dashed but never sets broken or turns the line red.
+   A stale j.broken flag is IGNORED: broken is always recomputed from
+   j.weeks. Date-only asOf (a YYYY-MM-DD daily close): the week is
+   complete iff asOf is that week's Sunday or later. Datetime asOf: the
+   week occupies [Mon 00:00 UTC, next Mon 00:00 UTC); Sunday 23:59 UTC
+   is still in-progress, Monday 00:00 UTC completes it. */
+function floorParseAsOf(value){
+  if(value instanceof Date){
+    if(isNaN(value.getTime()))throw new TypeError('bad as_of date');
+    return {kind:'datetime',date:floorUtcMidnight(value),instant:value};
+  }
+  if(typeof value!=='string')throw new TypeError('as_of must be an ISO string or Date');
+  var s=value.trim();
+  if(s.indexOf('T')!==-1){
+    var inst=new Date(s.endsWith('Z')||/[+-]\d\d:?\d\d$/.test(s)?s:s+'Z');
+    if(isNaN(inst.getTime()))throw new TypeError('bad as_of datetime');
+    return {kind:'datetime',date:floorUtcMidnight(inst),instant:inst};
+  }
+  var d=new Date(s.slice(0,10)+'T00:00:00Z');
+  if(isNaN(d.getTime()))throw new TypeError('bad as_of date');
+  return {kind:'date',date:d};
+}
+function floorUtcMidnight(d){
+  return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
+}
+function floorIsoDate(d){
+  var p=function(n){return n<10?'0'+n:String(n);};
+  return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate());
+}
+function floorWeekMonday(ts){
+  var p=floorParseAsOf(ts);
+  var d=p.kind==='datetime'?p.instant:p.date;
+  return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()-((d.getUTCDay()+6)%7)));
+}
+function floorIsWeekComplete(weekStart,asOf){
+  var mon=floorWeekMonday(weekStart);
+  var sunday=new Date(Date.UTC(mon.getUTCFullYear(),mon.getUTCMonth(),mon.getUTCDate()+6));
+  var nextMon=new Date(Date.UTC(mon.getUTCFullYear(),mon.getUTCMonth(),mon.getUTCDate()+7));
+  var p=floorParseAsOf(asOf);
+  if(p.kind==='date')return p.date.getTime()>=sunday.getTime();
+  return p.instant.getTime()>=nextMon.getTime();
+}
+/* Floor value for a UTC date (YYYY-MM-DD) or Date: whole Mondays since
+   the anchor Monday times the slope, on top of the anchor low. Before
+   the anchor, null. */
+function floorAt(j,ds){
+  if(!j||!j.anchor||typeof j.slopePerWeek!=='number')return null;
+  try{
+    var a=floorWeekMonday(j.anchor.date),mon=floorWeekMonday(ds);
+    var w=Math.round((mon-a)/(7*864e5));
+    if(w<0)return null;
+    return j.anchor.low+j.slopePerWeek*w;
+  }catch(e){return null;}
+}
+function floorRound2(x){return Math.round(x*100)/100;}
+function floorRound1(x){return Math.round(x*10)/10;}
+/* Classify completed vs in-progress weeks and apply the break rule.
+   j must have anchor, slopePerWeek, and weeks: [[monday_iso, close], ...].
+   asOf defaults to j.asOf. */
+function floorEvaluateBreak(j,asOf){
+  var empty={broken:false,lastCompletedWeek:null,lastCompletedSunday:null,
+    lastCompletedClose:null,floorAtLastCompleted:null,pctAtLastCompleted:null,
+    inProgressWeek:null,inProgressClose:null,inProgressPct:null,
+    inProgressTriggersBreak:false,maxUnderPct:0.0,floorNow:null,
+    breakTrigger:null,asOfInput:null,dashInProgress:false,lineIsRed:false,
+    inProgressWouldBreakIfCompleted:false};
+  if(!j)return empty;
+  var as_of=asOf!=null?asOf:j.asOf;
+  if(as_of==null)throw new Error('as_of or j.asOf is required');
+  var weeks=j.weeks||[];
+  var completed=[],inProg=null,floorNow=null;
+  for(var i=0;i<weeks.length;i++){
+    var monS=weeks[i][0],close=Number(weeks[i][1]);
+    var mon=floorWeekMonday(monS);
+    var fl=floorAt(j,mon);
+    if(fl!=null)floorNow=fl;
+    var pct=fl?(close/fl-1)*100:null;
+    var rec={monday:floorIsoDate(mon),
+      sunday:floorIsoDate(new Date(Date.UTC(mon.getUTCFullYear(),mon.getUTCMonth(),mon.getUTCDate()+6))),
+      close:close,floor:fl,pct:pct,complete:floorIsWeekComplete(mon,as_of)};
+    rec.weekBreaks=!!(rec.complete&&close!=null&&fl!=null&&fl!==0&&close<=fl*0.98);
+    if(rec.complete)completed.push(rec);else inProg=rec;
+  }
+  var last=completed.length?completed[completed.length-1]:null;
+  var unders=completed.filter(function(r){return r.pct!=null&&r.pct<0;}).map(function(r){return r.pct;});
+  var inWould=!!(inProg&&inProg.close!=null&&inProg.floor!=null&&inProg.floor!==0&&inProg.close<=inProg.floor*0.98);
+  var broken=completed.some(function(r){return r.weekBreaks;});
+  return {
+    broken:broken,
+    lastCompletedWeek:last?last.monday:null,
+    lastCompletedSunday:last?last.sunday:null,
+    lastCompletedClose:last?last.close:null,
+    floorAtLastCompleted:last&&last.floor!=null?floorRound2(last.floor):null,
+    pctAtLastCompleted:last&&last.pct!=null?floorRound1(last.pct):null,
+    inProgressWeek:inProg?inProg.monday:null,
+    inProgressClose:inProg?inProg.close:null,
+    inProgressPct:inProg&&inProg.pct!=null?floorRound1(inProg.pct):null,
+    inProgressTriggersBreak:false,
+    inProgressWouldBreakIfCompleted:inWould,
+    maxUnderPct:unders.length?floorRound2(Math.min.apply(null,unders)):0.0,
+    floorNow:floorNow==null?null:floorRound2(floorNow),
+    breakTrigger:last&&last.floor!=null?floorRound2(last.floor*0.98):null,
+    asOfInput:typeof as_of==='string'?as_of:(as_of instanceof Date?as_of.toISOString():String(as_of)),
+    dashInProgress:!!inProg,
+    lineIsRed:broken
+  };
+}
+/* Broken = a COMPLETED weekly close finished 2% or more below the floor.
+   Recomputed from j.weeks every time; a stale j.broken flag and the last
+   (in-progress) close are ignored. Bad/missing input fails closed. */
+function floorBroken(j,asOf){
+  if(!j||!j.weeks||!j.anchor)return false;
+  try{return floorEvaluateBreak(j,asOf).broken;}
+  catch(e){return false;}
+}
+/* Caption fields the chart must show. brokenNote is null when not broken. */
+function floorDisplay(j,asOf){
+  var ev=(j&&j.weeks)?floorEvaluateBreak(j,asOf):{broken:false,lastCompletedSunday:null};
+  return {
+    label:FLOOR_LABEL,
+    asOf:ev.lastCompletedSunday||null,
+    source:(j&&j.source)!=null?j.source:null,
+    breakRule:FLOOR_BREAK_RULE,
+    brokenNote:ev.broken?FLOOR_BROKEN_NOTE:null
+  };
+}
 /* dialog */
 var RANGES=['1D','1W','1M','3M','6M','YTD','1Y','5Y','10Y','Max'],DAYS={'1D':1,'1W':7,'1M':31,'3M':92,'6M':183,'1Y':366,'5Y':1827,'10Y':3653};
 var rng='1D',LOG=false,dlg=null,dim=null,opener=null;
@@ -1324,7 +1479,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
   dlg=document.createElement('div');dlg.className=INLINE?'bc-w bc-inline':'bc-w';dlg.hidden=true;dlg.setAttribute('role','dialog');if(!INLINE)dlg.setAttribute('aria-modal','true');dlg.setAttribute('aria-labelledby','bcTitle');
   dlg.innerHTML='<div class="bc-grab" aria-hidden="true"></div><div class="bc-h"><div><span class="lp-lab" id="bcTitle"><span class="lp-dot" aria-hidden="true"></span>Live BTC · BTC/'+CUR.code+'</span><div class="bc-px"><span id="bcPx">—</span><span id="bcChg" class="hdr-chg"></span></div><div class="bc-rr" id="bcRr"></div></div><button type="button" class="bc-x" id="bcX" aria-label="Close BTC chart">✕</button></div>'
    +'<div class="bc-rg" id="bcRg"><div class="bc-rgs" id="bcRgs" role="group" aria-label="Chart range">'+RANGES.map(function(r){return '<button type="button" data-r="'+r+'">'+r+'</button>';}).join('')+'</div><span class="bc-rg-hint" id="bcRgHint" aria-hidden="true">\u2190 Swipe for longer ranges</span><span class="bc-sc" id="bcSc" role="group" aria-label="Scale"><button type="button" data-s="lin">Linear</button><button type="button" data-s="log">Log</button></span></div>'
-   +'<div class="bc-row2" id="bcRow2"><div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button></div><button type="button" class="ta-typ" id="taTyp" aria-haspopup="true" aria-expanded="false" aria-label="Chart type: Line"><span>Line</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="ta-pill" id="taPill" aria-haspopup="dialog" aria-expanded="false" aria-label="Technical analysis"><span>TA</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
+   +'<div class="bc-row2" id="bcRow2"><div class="bc-lg" id="bcLg"><span class="bc-k bc-k-btc"><i aria-hidden="true"></i>BTC</span><button type="button" class="bc-k bc-k-spx" id="bcSpx" aria-pressed="false"><i aria-hidden="true"></i><span id="bcSpxT">+ S&amp;P 500</span></button><button type="button" class="bc-k bc-k-spx bc-k-gld" id="bcGld" aria-pressed="false"><i aria-hidden="true"></i><span id="bcGldT">+ Gold</span></button><button type="button" class="bc-k bc-k-spx bc-k-mstr" id="bcMstr" aria-pressed="false"><i aria-hidden="true"></i><span id="bcMstrT">+ MSTR</span></button><button type="button" class="bc-k" id="bcFloor" aria-pressed="true" style="display:none"><i aria-hidden="true"></i><span id="bcFloorT">Trend support (weekly closes) ✕</span></button></div><button type="button" class="ta-typ" id="taTyp" aria-haspopup="true" aria-expanded="false" aria-label="Chart type: Line"><span>Line</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="ta-pill" id="taPill" aria-haspopup="dialog" aria-expanded="false" aria-label="Technical analysis"><span>TA</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="bc-ct" id="bcCt" role="group" aria-label="1D chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-ct="line">Line</button><button type="button" data-ct="1h">1H</button><button type="button" data-ct="4h">4H</button></div>'
    +'<div class="bc-ct" id="bcCg" role="group" aria-label="Range chart type" style="display:none"><span class="bc-ct-lab">Chart</span><button type="button" data-cg="line">Line</button><button type="button" data-cg="candles">Candles</button><span class="bc-ct-lab" id="bcCgGranLab" style="display:none">Size</span><button type="button" data-cggran="4h" style="display:none">4H</button><button type="button" data-cggran="daily" style="display:none">Daily</button><button type="button" data-cggran="weekly" style="display:none">Weekly</button><button type="button" data-cggran="monthly" style="display:none">Monthly</button><button type="button" data-cggran="yearly" style="display:none">Yearly</button></div>'
    +'<div class="bc-box"><canvas id="bcC" aria-label="BTC price chart" role="img"></canvas></div><div class="ta-rsi" id="taRsi" hidden><button type="button" class="ta-rsi-t" aria-expanded="true">RSI 14 <b>—</b><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><canvas></canvas></div><div class="bc-nt" id="bcNt"></div><a class="bc-cl" href="'+U('../../clock/index.html')+'">Live BTC chart →</a><a class="bc-cl" href="'+U('../../screener.html')+'">The Desk →</a>';
   if(INLINE)INLINEHOST.appendChild(dlg);else{document.body.appendChild(dim);document.body.appendChild(dlg);}
@@ -1337,7 +1492,7 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
      the clock, so it is skipped in inline mode. */
   if(pxEl&&!INLINE)pxEl.addEventListener('dblclick',function(e){e.preventDefault();window.open(U('../../clock/index.html'),'_blank','noopener');});
   dim.addEventListener('click',close);
-  $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;if(CT==='1h'||CT==='4h')last1DCT=CT;draw();});
+  $('bcSpx').addEventListener('click',function(){SHOWSPX=!SHOWSPX;draw();});$('bcGld').addEventListener('click',function(){SHOWGLD=!SHOWGLD;draw();});$('bcMstr').addEventListener('click',function(){SHOWMSTR=!SHOWMSTR;draw();});$('bcFloor').addEventListener('click',function(){FLOOR_ON=!FLOOR_ON;draw();});$('bcCt').addEventListener('click',function(e){var b=e.target.closest('[data-ct]');if(!b)return;CT=b.dataset.ct;if(CT==='1h'||CT==='4h')last1DCT=CT;draw();});
   $('bcCg').addEventListener('click',function(e){var b=e.target.closest('[data-cg]');if(b){RGCT=b.dataset.cg;draw();return;}var g=e.target.closest('[data-cggran]');if(g){RGGRAN=g.dataset.cggran;draw();}});
   $('bcX').addEventListener('click',close);
   /* Tapping a non-interactive part of the popover (header, note, gaps) dismisses
@@ -1379,6 +1534,23 @@ function series(){var d=DATA.slice(),today=new Date().toISOString().slice(0,10);
   return d.filter(function(p){return p[0]>=st;});}
 function drawDaily(){if(!DATA)return;clearCandState();lineDrawn=false;lineHover=-1;linePts=null;lineGeom=null;head();var _cg=$('bcCg');if(_cg)syncCg();
 var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX&&SPXK.length>0,gxo=SHOWGLD&&GOLDK.length>0,mxo=SHOWMSTR&&MSTRK.length>0,sx=sxo||gxo||mxo;
+  /* Skunkworks floor: the toggle shows on 5Y/10Y line views only, never
+     with a comparison on (a price floor means nothing on an indexed %
+     chart). The line draws once the fixture loads; a later draw picks it up. */
+  var flBtn=$('bcFloor'),flShow=/^(5Y|10Y)$/.test(rng)&&!sx;
+  if(flBtn){
+    flBtn.style.display=flShow?'':'none';
+    flBtn.setAttribute('aria-pressed',FLOOR_ON?'true':'false');
+    $('bcFloorT').textContent=FLOOR_ON?FLOOR_LABEL+' ✕':'+ '+FLOOR_LABEL;
+    /* The toggle carries the label; the as-of date and the break rule
+       live in the note under the chart (bcNt) once the fixture loads. */
+    var _flDisp=FLOOR?floorDisplay(FLOOR):null;
+    flBtn.title=_flDisp?FLOOR_LABEL+' — as of '+_flDisp.asOf+'. '+FLOOR_BREAK_RULE+' Lows are close-based — lowest daily close in the week.':FLOOR_LABEL+'. '+FLOOR_BREAK_RULE+' Lows are close-based — lowest daily close in the week.';
+    var _fi=flBtn.querySelector('i');
+    if(_fi){_fi.style.background=psC('#22c55e','#15803d');_fi.style.opacity=FLOOR_ON?'':'0.35';}
+    flBtn.style.borderStyle=FLOOR_ON?'':'dashed';
+  }
+  if(flShow&&FLOOR_ON&&!FLOOR)getFloor().then(function(){if(/^(5Y|10Y)$/.test(rng)&&FLOOR_ON&&FLOOR)draw();});
   [].forEach.call($('bcRg').querySelectorAll('[data-r]'),function(b){b.classList.toggle('on',b.dataset.r===rng);b.setAttribute('aria-pressed',b.dataset.r===rng);});
   var onb=$('bcRgs').querySelector('.on'),rs=$('bcRgs');if(onb&&rs.scrollWidth>rs.clientWidth){var L=onb.offsetLeft-rs.offsetLeft,R=L+onb.offsetWidth;if(L<rs.scrollLeft+16||R>rs.scrollLeft+rs.clientWidth-16)rs.scrollTo({left:Math.max(0,L-(rs.clientWidth-onb.offsetWidth)/2),behavior:'smooth'});}
   $('bcSc').style.display=big?'':'none';
@@ -1414,9 +1586,16 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
   }
   [].forEach.call($('bcSc').children,function(b){var on=(b.dataset.s==='log')===effLog;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);if(b.dataset.s==='lin')b.disabled=_autoLog;});
   $('bcRr').textContent=rng==='Max'?'Max · from '+d[0][0]+' ('+pa+')':rng+': BTC '+fp(pc)+(spc!=null?' · S&P 500 '+fp(spc):'')+(gpc!=null?' · Gold '+fp(gpc):'')+(mpc!=null?' · MSTR '+fp(mpc):'')+' · from '+d[0][0]+' ('+pa+')'+cadTag()+(FALLBACK_NOTE?' · '+FALLBACK_NOTE:'');
-  $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(effLog?' Log scale.':'')+(FALLBACK_NOTE?' '+FALLBACK_NOTE:'');
+  /* Skunkworks floor: the note names the line, its as-of date (Sunday of
+     the last completed week) and the break rule — never a bare "Floor"
+     with no date or rule. Lows are close-based: lowest daily close in
+     the week, never intraday. */
+  var _flNote=(flShow&&FLOOR_ON&&FLOOR)?(function(){var _d=floorDisplay(FLOOR);return ' '+_d.label+', as of '+_d.asOf+'. '+_d.breakRule+' Lows are close-based — lowest daily close in the week.'+(_d.brokenNote?' '+_d.brokenNote:'');})():'';
+  $('bcNt').textContent=(sx?((((sxo?1:0)+(gxo?1:0)+(mxo?1:0))>1)?'All lines':'Both lines')+': % change from the first close in range (BTC daily UTC closes incl. weekends'+(sxo?'; S&P 500 ^GSPC session closes':'')+(gxo?'; Gold GC=F futures session closes':'')+(mxo?'; MSTR session closes':'')+', carried over weekends/holidays). '+(gLate?'Gold data starts '+gLate+'. ':''):'Daily closes (UTC day, weekends included)'+(hasLive?'; ':'. '))+(hasLive?(sx?'Last BTC point is the live price.':'last point is the live price.'):'')+(PROV?" Today's close is provisional until "+provCloseLabel()+".":'')+(effLog?' Log scale.':'')+(FALLBACK_NOTE?' '+FALLBACK_NOTE:'')+_flNote;
   /* Native range line (Chart.js removed 20 Nov 2026; no fallback library). */
-  var nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:effLog});lineDrawn=nativeOK;
+  /* Skunkworks floor: drawDailyNative also gets the floor object (or null)
+     on 5Y/10Y line views with no comparison on. */
+  var nativeOK=drawDailyNative(d,{sx:sx,S:S,G:G,M:M,s0:s0,g0:g0,m0:m0,hasLive:hasLive,log:effLog,floor:(FLOOR_ON&&/^(5Y|10Y)$/.test(rng)&&!sx)?FLOOR:null});lineDrawn=nativeOK;
   if(nativeOK)lineRetry=false;else lineFail();
   syncTypePill();}
 /* ===== Stage 2 native line renderer — Step 2: 1D line (8 Nov 2026) =====
@@ -1950,12 +2129,13 @@ function drawDailyTooltip(ctx,i,d,cmp,reb,xs,ysMap,W,padT,plotH){
 function drawDailyNative(d,cmp){
   /* Stage 2 Step 3 — implemented. The range daily line, drawn natively.
      Same data, same labels, same colours as the old Chart.js drawDaily.
-     cmp: {sx, S, G, M, s0, g0, m0, hasLive, log} (prepared by drawDaily;
+     cmp: {sx, S, G, M, s0, g0, m0, hasLive, log, floor} (prepared by drawDaily;
      S/G/M are the raw comparison closes, s0/g0/m0 their first non-null
-     values). Returns true on success, false on failure (caller runs
-     lineFail()). */
+     values; floor is the ta-floor.json object or null). Returns true on
+     success, false on failure (caller runs lineFail()). */
   try{
     if(!d||d.length<2||!cmp)return false;
+    window.__BTC_FLOOR={shown:false}; /* skunkworks floor: redrawn below when the floor applies */
     var c=$('bcC');if(!c)return false;
     var ctx=c.getContext('2d');
     var W=c.parentNode.clientWidth||640,H=c.parentNode.clientHeight||300;
@@ -1984,6 +2164,29 @@ function drawDailyNative(d,cmp){
       if(!arr)return;
       for(var i=0;i<arr.length;i++){var v=arr[i];if(v!=null&&isFinite(v)){if(v<lo)lo=v;if(v>hi)hi=v;}}
     });
+    /* Skunkworks floor: values per daily point + the 52-week projection.
+       flVals[i] is the floor at daily index i (null before the anchor);
+       flProj runs on Mondays past the last floor week, at daily-index
+       positions past the last point (the x domain extends to fit it). */
+    var fl=cmp.floor||null,flEv=null,flBrk=false,flVals=null,flProj=null,flExt=0;
+    if(fl){try{flEv=floorEvaluateBreak(fl);}catch(e){flEv=null;}flBrk=!!(flEv&&flEv.broken);}
+    if(fl&&!sx){
+      flVals=d.map(function(p){return floorAt(fl,p[0]);});
+      flVals.forEach(function(v){if(v!=null&&isFinite(v)){if(v<lo)lo=v;if(v>hi)hi=v;}});
+      if(!flBrk&&fl.weeks&&fl.weeks.length){
+        var _lw=new Date(fl.weeks[fl.weeks.length-1][0]+'T00:00:00Z');
+        var _ld=new Date(d[n-1][0]+'T00:00:00Z');
+        flProj=[];
+        for(var _k=1;_k<=52;_k++){
+          var _m=new Date(_lw);_m.setUTCDate(_m.getUTCDate()+7*_k);
+          var _v=floorAt(fl,_m.toISOString().slice(0,10));
+          var _di=(n-1)+Math.round((_m-_ld)/864e5);
+          flProj.push({di:_di,v:_v});
+          if(_v!=null&&isFinite(_v)){if(_v<lo)lo=_v;if(_v>hi)hi=_v;}
+        }
+        flExt=Math.max(0,flProj[flProj.length-1].di-(n-1));
+      }
+    }
     if(!(hi>lo)){lo=(lo===Infinity?0:lo);hi=lo+1;}
     var R=12,T=18,B=44,ih=H-T-B;
     var Y,yTicks=[];
@@ -2044,7 +2247,8 @@ function drawDailyNative(d,cmp){
     var maxLabW=0;
     yTicks.forEach(function(v){var s=yTickDaily(v,sx,LOG);if(s!=null)maxLabW=Math.max(maxLabW,ctx.measureText(s).width);});
     var L=Math.max(62,Math.ceil(maxLabW)+12),iw=W-L-R;
-    var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
+    var xN=n+flExt; /* extended domain when the floor projection runs past the data */
+    var X=function(i){return L+iw*(xN===1?0.5:i/(xN-1));};
     var xs=d.map(function(p,i){return X(i);});
     var btcYs=btcY.map(function(v){return Y(v);});
     /* TA Stage 2: publish the geometry for the overlay draw. closes are the
@@ -2147,6 +2351,50 @@ function drawDailyNative(d,cmp){
       if(gldYs){ctx.strokeStyle='#facc15';ctx.lineWidth=1.6;traceDS(gldYs,false);}
       if(mstrYs){ctx.strokeStyle='#f97316';ctx.lineWidth=1.6;traceDS(mstrYs,true);}
     }
+    /* Skunkworks floor line: solid over completed weeks, dashed over the
+       in-progress week (it may sit under the line without breaking it),
+       dashed projection past the data, right-edge price tag at the value
+       the line ends at. Broken: red, frozen at the last week, no
+       projection, no tag. */
+    if(fl&&flVals){
+      var flCol=flBrk?psC('#ef4444','#b91c1c'):psC('#22c55e','#15803d');
+      /* First daily index in the in-progress week (its Monday); the
+         dashed segment starts at the previous point so the step into the
+         new week is dashed too. -1 when every week is complete. */
+      var _dashFrom=-1;
+      if(flEv&&flEv.inProgressWeek){for(var _di=0;_di<n;_di++){if(d[_di][0]>=flEv.inProgressWeek){_dashFrom=_di;break;}}}
+      var _solidEnd=_dashFrom<0?n-1:_dashFrom-1; /* last solid index */
+      ctx.strokeStyle=flCol;ctx.lineWidth=2;
+      var _trace=function(from,to,dashed){ctx.setLineDash(dashed?[5,4]:[]);ctx.beginPath();var _st=false;for(var _i=from;_i<=to;_i++){var _v=flVals[_i];if(_v==null)continue;var _x=X(_i),_y=Y(_v);if(!_st){ctx.moveTo(_x,_y);_st=true;}else ctx.lineTo(_x,_y);}ctx.stroke();ctx.setLineDash([]);};
+      if(_solidEnd>=0)_trace(0,_solidEnd,false);
+      if(_dashFrom>=0&&_solidEnd<n-1)_trace(Math.max(0,_solidEnd),n-1,true);
+      var _tagV=null;
+      if(!flBrk&&flProj&&flProj.length){
+        var _lastV=null;
+        for(var _q=n-1;_q>=0;_q--){if(flVals[_q]!=null){_lastV=flVals[_q];break;}}
+        if(_lastV!=null){
+          ctx.setLineDash([5,4]);
+          ctx.beginPath();ctx.moveTo(X(n-1),Y(_lastV));
+          flProj.forEach(function(pp){ctx.lineTo(X(pp.di),Y(pp.v));});
+          ctx.stroke();ctx.setLineDash([]);
+          _tagV=flProj[flProj.length-1].v;
+        }
+      }
+      if(_tagV!=null){
+        var _tt=fmt(_tagV);
+        ctx.font='11px Inter, sans-serif';
+        var _tw=ctx.measureText(_tt).width+14,_th=18;
+        var _tx=L+iw-2-_tw,_ty=Y(_tagV)-_th/2;
+        if(_ty<T)_ty=T;if(_ty+_th>T+ih)_ty=T+ih-_th;
+        ctx.fillStyle=psC('rgba(15,23,42,.92)','#ffffff');
+        ctx.strokeStyle=flCol;ctx.lineWidth=1;
+        ctx.beginPath();ctx.rect(_tx,_ty,_tw,_th);ctx.fill();ctx.stroke();
+        ctx.fillStyle=flCol;ctx.textAlign='left';ctx.textBaseline='middle';
+        ctx.fillText(_tt,_tx+7,_ty+_th/2+0.5);
+      }
+      var _flDisp=floorDisplay(fl);
+      window.__BTC_FLOOR={shown:true,broken:flBrk,floorNow:fl.floorNow,trigger:(typeof fl.breakTrigger==='number'?fl.breakTrigger:null),projEnd:_tagV,label:_flDisp.label,asOf:_flDisp.asOf,breakRule:_flDisp.breakRule,brokenNote:_flDisp.brokenNote,inProgressWeek:flEv?flEv.inProgressWeek:null,inProgressDashed:_dashFrom>=0};
+    }
     /* Live "Now" dot (4px, same as Chart.js pointRadius) on the BTC line. */
     if(hasLive){ctx.beginPath();ctx.arc(xs[n-1],btcYs[n-1],4,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
     /* Hovered dots (3px, same as pointHoverRadius) on every visible
@@ -2180,6 +2428,21 @@ function drawDailyNative(d,cmp){
 }
 
 /* ===== end Stage 2 Step 2 native 1D line ===== */
+/* Skunkworks floor: test hook for the harness (floor value + break rule,
+   pure functions of the ta-floor.json object). broken recomputes from
+   j.weeks and ignores a stale j.broken flag; display returns the caption
+   fields (label, asOf, source, breakRule, brokenNote). Not used by live
+   code except through floorDisplay/floorBroken above.
+   (The old native-line test hook was dropped in the 21 Nov 2026 rebase:
+   the flag it toggled no longer exists after the Chart.js removal.) */
+/* NOTE: weekMonday returns the Monday as a 'YYYY-MM-DD' string, not a
+   Date: the panel runs inside a vm sandbox in the harness, and a Date
+   built there fails `instanceof Date` in the host realm (the pack's
+   mondayOf then stringifies it to "Mon Nov 16"). The string form is
+   what the pack compares, and no live code needs a Date from this hook
+   (floorWeekMonday, the Date form, stays internal). */
+function floorWeekMondayISO(ts){return floorIsoDate(floorWeekMonday(ts));}
+P._floor={at:floorAt,broken:floorBroken,isWeekComplete:floorIsWeekComplete,weekMonday:floorWeekMondayISO,evaluateBreak:floorEvaluateBreak,display:floorDisplay};
 
 /* Pill-expand morph, 3 Nov 2026: the dialog grows out of the pill that opened it (FLIP:
    measure the pill rect and the dialog's final rect, start the dialog scaled/translated
