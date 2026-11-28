@@ -84,11 +84,11 @@
    }
   ]
  },
- "generated": "2026-11-28T02:00:36Z",
+ "generated": "2026-11-28T02:30:35Z",
  "history_first": "2025-12-31",
  "history_last": "2026-11-27",
  "history_sessions": 229,
- "history_sha256": "97075ba909b8992620d931953dc60318f3c842003afb2080a802eb532fb396e7",
+ "history_sha256": "87c610ac807eab0d04c078161ca1d26a1d86e33d44b2159cebe843eb660ba5cf",
  "note": "Pre-computed by Python; the site displays these numbers, it does not re-derive them. Spot mode only.",
  "pulse": {
   "berkshire": {
