@@ -1,0 +1,51 @@
+{
+  "id": "in_progress_only_dip",
+  "note": "Same 3% dip as completed_week_break, but asOf is Thursday of that week. Must NOT be broken; in-progress week may be drawn dashed; line is not red.",
+  "anchor": {
+    "date": "2026-01-05",
+    "low": 10000
+  },
+  "slopePerWeek": 0.0,
+  "asOf": "2026-01-22",
+  "source": "synthetic",
+  "weeks": [
+    [
+      "2026-01-05",
+      11000
+    ],
+    [
+      "2026-01-12",
+      10500
+    ],
+    [
+      "2026-01-19",
+      9700
+    ]
+  ],
+  "expected": {
+    "broken": false,
+    "lastCompletedWeek": "2026-01-12",
+    "lastCompletedSunday": "2026-01-18",
+    "lastCompletedClose": 10500.0,
+    "floorAtLastCompleted": 10000.0,
+    "pctAtLastCompleted": 5.0,
+    "inProgressWeek": "2026-01-19",
+    "inProgressClose": 9700.0,
+    "inProgressPct": -3.0,
+    "inProgressTriggersBreak": false,
+    "inProgressWouldBreakIfCompleted": true,
+    "maxUnderPct": 0.0,
+    "floorNow": 10000.0,
+    "breakTrigger": 9800.0,
+    "asOfInput": "2026-01-22",
+    "dashInProgress": true,
+    "lineIsRed": false,
+    "display": {
+      "label": "Trend support (weekly closes)",
+      "asOf": "2026-01-18",
+      "source": "synthetic",
+      "breakRule": "Completed weekly close (Monday-Sunday UTC) 2% or more below the floor. An in-progress week does not count.",
+      "brokenNote": null
+    }
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "id": "week_boundary_sun_mon",
+  "note": "Week membership and completeness around the close of Mon 16\u2013Sun 22 Nov 2026. A 3% under close breaks only once the week is complete.",
+  "anchor": {
+    "date": "2026-01-05",
+    "low": 10000
+  },
+  "slopePerWeek": 0.0,
+  "source": "synthetic",
+  "weekUnderTest": "2026-11-16",
+  "cases": [
+    {
+      "asOf": "2026-11-22T23:59:59Z",
+      "note": "Sunday 23:59 UTC is still inside the week; week is not complete.",
+      "weeks": [
+        [
+          "2026-11-09",
+          10500
+        ],
+        [
+          "2026-11-16",
+          9700
+        ]
+      ],
+      "expectedComplete": false,
+      "expectedMondayOfAsOf": "2026-11-16",
+      "expected": {
+        "broken": false,
+        "lastCompletedWeek": "2026-11-09",
+        "lastCompletedSunday": "2026-11-15",
+        "lastCompletedClose": 10500.0,
+        "floorAtLastCompleted": 10000.0,
+        "pctAtLastCompleted": 5.0,
+        "inProgressWeek": "2026-11-16",
+        "inProgressClose": 9700.0,
+        "inProgressPct": -3.0,
+        "inProgressTriggersBreak": false,
+        "inProgressWouldBreakIfCompleted": true,
+        "maxUnderPct": 0.0,
+        "floorNow": 10000.0,
+        "breakTrigger": 9800.0,
+        "asOfInput": "2026-11-22T23:59:59Z",
+        "dashInProgress": true,
+        "lineIsRed": false,
+        "display": {
+          "label": "Trend support (weekly closes)",
+          "asOf": "2026-11-15",
+          "source": "synthetic",
+          "breakRule": "Completed weekly close (Monday-Sunday UTC) 2% or more below the floor. An in-progress week does not count.",
+          "brokenNote": null
+        }
+      }
+    },
+    {
+      "asOf": "2026-11-23T00:00:00Z",
+      "note": "Monday 00:00 UTC starts the next week; the Sunday week is complete and the 3% dip breaks it.",
+      "weeks": [
+        [
+          "2026-11-09",
+          10500
+        ],
+        [
+          "2026-11-16",
+          9700
+        ]
+      ],
+      "expectedComplete": true,
+      "expectedMondayOfAsOf": "2026-11-23",
+      "expected": {
+        "broken": true,
+        "lastCompletedWeek": "2026-11-16",
+        "lastCompletedSunday": "2026-11-22",
+        "lastCompletedClose": 9700.0,
+        "floorAtLastCompleted": 10000.0,
+        "pctAtLastCompleted": -3.0,
+        "inProgressWeek": null,
+        "inProgressClose": null,
+        "inProgressPct": null,
+        "inProgressTriggersBreak": false,
+        "inProgressWouldBreakIfCompleted": false,
+        "maxUnderPct": -3.0,
+        "floorNow": 10000.0,
+        "breakTrigger": 9800.0,
+        "asOfInput": "2026-11-23T00:00:00Z",
+        "dashInProgress": false,
+        "lineIsRed": true,
+        "display": {
+          "label": "Trend support (weekly closes)",
+          "asOf": "2026-11-22",
+          "source": "synthetic",
+          "breakRule": "Completed weekly close (Monday-Sunday UTC) 2% or more below the floor. An in-progress week does not count.",
+          "brokenNote": "Broken: a completed weekly close finished 2% or more below this line."
+        }
+      }
+    },
+    {
+      "asOf": "2026-11-22",
+      "note": "Date-only Sunday: the Sunday daily close is in hand, so the week is complete.",
+      "weeks": [
+        [
+          "2026-11-09",
+          10500
+        ],
+        [
+          "2026-11-16",
+          9700
+        ]
+      ],
+      "expectedComplete": true,
+      "expectedMondayOfAsOf": "2026-11-16",
+      "expected": {
+        "broken": true,
+        "lastCompletedWeek": "2026-11-16",
+        "lastCompletedSunday": "2026-11-22",
+        "lastCompletedClose": 9700.0,
+        "floorAtLastCompleted": 10000.0,
+        "pctAtLastCompleted": -3.0,
+        "inProgressWeek": null,
+        "inProgressClose": null,
+        "inProgressPct": null,
+        "inProgressTriggersBreak": false,
+        "inProgressWouldBreakIfCompleted": false,
+        "maxUnderPct": -3.0,
+        "floorNow": 10000.0,
+        "breakTrigger": 9800.0,
+        "asOfInput": "2026-11-22",
+        "dashInProgress": false,
+        "lineIsRed": true,
+        "display": {
+          "label": "Trend support (weekly closes)",
+          "asOf": "2026-11-22",
+          "source": "synthetic",
+          "breakRule": "Completed weekly close (Monday-Sunday UTC) 2% or more below the floor. An in-progress week does not count.",
+          "brokenNote": "Broken: a completed weekly close finished 2% or more below this line."
+        }
+      }
+    },
+    {
+      "asOf": "2026-11-21",
+      "note": "Date-only Saturday: week still in progress.",
+      "weeks": [
+        [
+          "2026-11-09",
+          10500
+        ],
+        [
+          "2026-11-16",
+          9700
+        ]
+      ],
+      "expectedComplete": false,
+      "expectedMondayOfAsOf": "2026-11-16",
+      "expected": {
+        "broken": false,
+        "lastCompletedWeek": "2026-11-09",
+        "lastCompletedSunday": "2026-11-15",
+        "lastCompletedClose": 10500.0,
+        "floorAtLastCompleted": 10000.0,
+        "pctAtLastCompleted": 5.0,
+        "inProgressWeek": "2026-11-16",
+        "inProgressClose": 9700.0,
+        "inProgressPct": -3.0,
+        "inProgressTriggersBreak": false,
+        "inProgressWouldBreakIfCompleted": true,
+        "maxUnderPct": 0.0,
+        "floorNow": 10000.0,
+        "breakTrigger": 9800.0,
+        "asOfInput": "2026-11-21",
+        "dashInProgress": true,
+        "lineIsRed": false,
+        "display": {
+          "label": "Trend support (weekly closes)",
+          "asOf": "2026-11-15",
+          "source": "synthetic",
+          "breakRule": "Completed weekly close (Monday-Sunday UTC) 2% or more below the floor. An in-progress week does not count.",
+          "brokenNote": null
+        }
+      }
+    }
+  ]
+}
