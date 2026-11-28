@@ -47,6 +47,8 @@ run vehicle node tests/test_vehicle.js "$WORK/history.json"                 # ET
 run vehicle_daily python3 tests/test_vehicle_daily.py                       # ETF toggle: nightly IBIT/FBTC updater (offline fixtures)
 run stock_weekly_py python3 tests/test_stock_weekly.py                       # screener stock candles: generator fixtures + shipped invariants
 run stock_weekly_js node tests/test_stock_weekly.js                          # screener stock candles: shipped JSON invariants (brief 4.6)
+run screener_daily_py python3 tests/test_screener_daily.py                   # screener daily closes: Yahoo null-close fallback (history, then shipped daily)
+run screener_alert_py python3 tests/test_screener_alert.py                   # recap fail-loud step: quiet when published, alert once per incident
 run desk_intraday python3 tests/test_desk_intraday.py                        # Desk intraday refresh: 15-min current-week candles (offline fixtures, no network)
 run desk_live python3 tests/test_desk_live.py                              # 5-min Desk (option b): desk-live.json builder + validator (offline fixtures)
 run ta_lines python3 tests/test_ta_lines.py                                # TA Stage 3: trendline job (tools/ta_lines.py) unit tests + replay gate (offline fixtures, no network)
