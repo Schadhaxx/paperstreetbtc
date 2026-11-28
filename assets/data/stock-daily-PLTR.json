@@ -1,11 +1,11 @@
 {
   "source": "Yahoo PLTR unadjusted daily closes",
-  "asOf": "2026-11-25",
-  "asOfLabel": "25 Nov 2026",
+  "asOf": "2026-11-27",
+  "asOfLabel": "27 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "firstSession": "2026-01-02",
-  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 25 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "note": "Daily closes, YTD 2026. First session 2 Jan 2026. Unadjusted Yahoo closes, ET dates for stocks, UTC dates for indicators. Latest completed session 27 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "days": [
     {
       "date": "2026-01-02",
@@ -914,6 +914,10 @@
     {
       "date": "2026-11-25",
       "close": 163.59
+    },
+    {
+      "date": "2026-11-27",
+      "close": 172.17
     }
   ]
 }
