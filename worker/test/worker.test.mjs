@@ -77,15 +77,41 @@ function makeFetchStub({ finnhubOk = true, coinbaseOk = true, statsOk = true, ge
 // assert against the same computation the Worker performs.
 const STATS_CHG24H = ((67280 - 70000) / 70000) * 100;
 
-function req(path = '/', { origin, ip = '1.2.3.4', method = 'GET' } = {}) {
+function req(path = '/', { origin, ip = '1.2.3.4', method = 'GET', body } = {}) {
   const headers = new Headers();
   if (origin !== undefined) headers.set('Origin', origin);
   if (ip) headers.set('CF-Connecting-IP', ip);
-  return new Request(`https://paperstreet-quotes.workers.dev${path}`, { method, headers });
+  const init = { method, headers };
+  if (body !== undefined) {
+    init.body = body;
+    headers.set('Content-Type', 'text/plain');
+  }
+  return new Request(`https://paperstreet-quotes.workers.dev${path}`, init);
 }
 
 async function body(res) {
   return JSON.parse(await res.text());
+}
+
+// Fake Analytics Engine binding: records every data point written.
+function makeEventsStub() {
+  const calls = [];
+  return {
+    calls,
+    writeDataPoint(dp) { calls.push(dp); },
+  };
+}
+
+// Env with the fake Analytics Engine binding (Stage 3 /ev tests).
+function envWithEvents(events) {
+  return { ...ENV, EVENTS: events };
+}
+
+const EV_ORIGIN = 'https://paperstreetbtc.com';
+function evReq(event, page, src, extra = {}) {
+  const payload = { event, page };
+  if (src !== undefined) payload.src = src;
+  return req('/ev', { origin: EV_ORIGIN, method: 'POST', body: JSON.stringify(payload), ...extra });
 }
 
 test.beforeEach(() => {
@@ -908,4 +934,107 @@ test('/err does not change the quote routes or their CORS', async () => {
   const h = await worker.fetch(req('/health'), env);
   assert.equal(h.status, 200);
   assert.equal((await body(h)).ok, true);
+});
+
+// --- Stage 3: POST /ev (event analytics) ------------------------------------
+
+test('POST /ev happy path writes one data point and answers 204', async () => {
+  const events = makeEventsStub();
+  const res = await worker.fetch(evReq('desk_open', '/screener.html', 'x'), envWithEvents(events));
+  assert.equal(res.status, 204);
+  assert.equal(res.headers.get('Access-Control-Allow-Origin'), EV_ORIGIN);
+  assert.equal(events.calls.length, 1);
+  assert.deepEqual(events.calls[0].blobs, ['desk_open', '/screener.html', 'x']);
+  assert.deepEqual(events.calls[0].doubles, [1]);
+  assert.deepEqual(events.calls[0].indexes, ['desk_open']);
+});
+
+test('POST /ev without src writes an empty src blob', async () => {
+  const events = makeEventsStub();
+  const res = await worker.fetch(evReq('xfollow', '/'), envWithEvents(events));
+  assert.equal(res.status, 204);
+  assert.equal(events.calls.length, 1);
+  assert.deepEqual(events.calls[0].blobs, ['xfollow', '/', '']);
+});
+
+test('POST /ev rejects a missing or disallowed origin with 403 and writes nothing', async () => {
+  const events = makeEventsStub();
+  const env = envWithEvents(events);
+  // No Origin header at all.
+  let res = await worker.fetch(req('/ev', { method: 'POST', body: JSON.stringify({ event: 'desk_open', page: '/' }) }), env);
+  assert.equal(res.status, 403);
+  // Disallowed origin.
+  res = await worker.fetch(evReq('desk_open', '/', undefined, { origin: 'https://evil.example.com' }), env);
+  assert.equal(res.status, 403);
+  assert.equal(events.calls.length, 0);
+});
+
+test('POST /ev rejects a bad event, bad page, bad JSON, and oversized body', async () => {
+  const events = makeEventsStub();
+  const env = envWithEvents(events);
+  // Unknown event name.
+  let res = await worker.fetch(evReq('nope', '/', undefined), env);
+  assert.equal(res.status, 400);
+  // Page without a leading slash.
+  res = await worker.fetch(evReq('desk_open', 'screener.html'), env);
+  assert.equal(res.status, 400);
+  // Page with a query string.
+  res = await worker.fetch(evReq('desk_open', '/screener.html?x=1'), env);
+  assert.equal(res.status, 400);
+  // Not JSON.
+  res = await worker.fetch(req('/ev', { origin: EV_ORIGIN, method: 'POST', body: 'not json' }), env);
+  assert.equal(res.status, 400);
+  // Oversized body (> 2 KB).
+  res = await worker.fetch(
+    req('/ev', { origin: EV_ORIGIN, method: 'POST', body: JSON.stringify({ event: 'desk_open', page: '/', pad: 'x'.repeat(3000) }) }),
+    env,
+  );
+  assert.equal(res.status, 413);
+  assert.equal(events.calls.length, 0);
+});
+
+test('POST /ev with an invalid src drops the tag but still records the event', async () => {
+  const events = makeEventsStub();
+  const res = await worker.fetch(evReq('range_switch', '/clock/', 'bad src!'), envWithEvents(events));
+  assert.equal(res.status, 204);
+  assert.equal(events.calls.length, 1);
+  assert.deepEqual(events.calls[0].blobs, ['range_switch', '/clock/', '']);
+});
+
+test('POST /ev without the Analytics Engine binding still answers 204', async () => {
+  // No EVENTS in env (local test without the binding): the write is
+  // skipped, the send still succeeds.
+  const res = await worker.fetch(evReq('desk_open', '/screener.html', 'x'), ENV);
+  assert.equal(res.status, 204);
+});
+
+test('POST /ev rate limit: more than 30/min from one IP gets 429', async () => {
+  const events = makeEventsStub();
+  const env = envWithEvents(events);
+  const ip = '10.0.0.9';
+  let last;
+  for (let i = 0; i < 31; i++) {
+    last = await worker.fetch(evReq('desk_open', '/screener.html', undefined, { ip }), env);
+  }
+  assert.equal(last.status, 429);
+  assert.equal(last.headers.get('Retry-After'), '60');
+  assert.equal(events.calls.length, 30);
+  // A different IP is unaffected, and quotes are unaffected too.
+  const other = await worker.fetch(evReq('desk_open', '/screener.html', undefined, { ip: '10.0.0.10' }), env);
+  assert.equal(other.status, 204);
+});
+
+test('POST / is still 405, GET /ev is 405, unknown route is still 404', async () => {
+  const events = makeEventsStub();
+  const env = envWithEvents(events);
+  assert.equal((await worker.fetch(req('/', { method: 'POST' }), env)).status, 405);
+  assert.equal((await worker.fetch(req('/ev', { origin: EV_ORIGIN }), env)).status, 405);
+  assert.equal((await worker.fetch(req('/nope'), env)).status, 404);
+  assert.equal(events.calls.length, 0);
+});
+
+test('OPTIONS preflight allows POST', async () => {
+  const res = await worker.fetch(req('/', { origin: EV_ORIGIN, method: 'OPTIONS' }), ENV);
+  assert.equal(res.status, 204);
+  assert.ok(res.headers.get('Access-Control-Allow-Methods').includes('POST'));
 });

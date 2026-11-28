@@ -21,3 +21,11 @@ compatibility_date = "2026-11-14"
 binding = "ERR_DB"
 database_name = "paperstreet-errors"
 database_id = "c2576d50-569c-443a-ac3a-f838aeda6c85"
+
+# Stage 3 (27 Nov 2026): Workers Analytics Engine dataset for the seven
+# counted events (POST /ev). The dataset is created automatically on the
+# first write; no migration, no secret, no pre-created resource. Free tier
+# is 100,000 data points written/day — far above this site's volume.
+[[analytics_engine_datasets]]
+binding = "EVENTS"
+dataset = "paperstreet-events"

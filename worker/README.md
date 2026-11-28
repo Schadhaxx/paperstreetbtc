@@ -118,14 +118,62 @@ on `desk-live.json`; the Worker only patches the close.
 4. Deploy this code (`wrangler deploy` from `worker/`, or dashboard upload).
    The Worker is NOT wired live on the site until Sunil's yes.
 
+## Stage 3 event analytics (27 Nov 2026) — POST /ev
+
+The site counts seven key actions (client: `assets/js/ps-ev.js`, pin `ev1`)
+and sends each as one fire-and-forget POST to `/ev`, which writes one data
+point to Workers Analytics Engine (dataset `paperstreet-events`, binding
+`EVENTS` in `wrangler.toml`). Counts only: event name + page + the `?src=`
+tag. No cookies, no personal data, no IP stored. No dashboard.
+
+- Events: `desk_open`, `lab_model`, `range_switch`, `btc_chart_open`,
+  `xfollow`, `screener_use`, `compare_use`. Anything else is a 400.
+- Body: JSON as `text/plain` (so `sendBeacon` sends no CORS preflight),
+  max 2 KB. `page` is a pathname only (must start with `/`, no `?`/`#`,
+  max 100 chars). `src` is the `?src=` tag (max 40 chars,
+  `[A-Za-z0-9._-]`); anything else is dropped to `''`.
+- `POST /ev` requires an allowed `Origin` (missing or disallowed is 403)
+  and has its own per-IP rate limit (30/min, 429 beyond it), separate from
+  the quotes bucket. Response is 204. If the Analytics Engine binding is
+  missing, the write is skipped and the endpoint still answers 204.
+- `POST /` is still 405; any other method on `/ev` is 405.
+
+### Weekly count (no dashboard)
+
+Query the dataset with the Analytics Engine SQL API (one API token with
+Analytics Engine read permission, created once in the Cloudflare dashboard;
+fill in `{account_id}` from the dashboard URL):
+
+```sql
+SELECT blob1 AS event, blob3 AS src, SUM(double1) AS n
+FROM paperstreet-events
+WHERE timestamp > NOW() - INTERVAL '7' DAY
+GROUP BY event, src
+ORDER BY n DESC
+```
+
+```bash
+curl -s -X POST \
+  "https://api.cloudflare.com/client/v4/accounts/{account_id}/analytics_engine/sql" \
+  -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" \
+  -d '{"query": "SELECT blob1 AS event, blob3 AS src, SUM(double1) AS n FROM paperstreet-events WHERE timestamp > NOW() - INTERVAL '\''7'\'' DAY GROUP BY event, src ORDER BY n DESC"}'
+```
+
+`blob1` is the event name, `blob2` the page, `blob3` the `?src=` tag
+(`''` when the visit had none), `double1` is always 1. Free tier is
+100,000 data points written/day and 10,000 read queries/day — this site's
+volume is a handful of events per day. Cloudflare states Analytics Engine
+usage is not currently billed.
+
 ## Tests
 
 `node --test worker/test/worker.test.mjs` (node:test, no dependencies).
 Covers caching, rate limiting, CORS, fallback (last-good + omission),
-USDCAD inversion, the `prices.json` response shape, and the Stage 2
+USDCAD inversion, the `prices.json` response shape, the Stage 2
 `/err` report + read routes (fake in-memory D1 binding, placeholder
-`ERR_READ_SECRET`). All upstream fetches are stubbed — no real network
-calls, no real key.
+`ERR_READ_SECRET`), and the Stage 3 `/ev` endpoint (happy path, origin
+checks, validation, rate limit). All upstream fetches are stubbed — no
+real network calls, no real key.
 
 ## D1 migration (Stage 2)
 
