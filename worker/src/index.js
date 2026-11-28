@@ -67,6 +67,32 @@ const LASTGOOD_CHG_MAX_AGE_MS = 10 * 60 * 1000;
 // Per-client rate limit: max requests per IP per rolling minute.
 const RATE_LIMIT_PER_MINUTE = 30;
 
+// Stage 2 analytics (27 Nov 2026): POST /err has its OWN bucket —
+// 5 posts per IP per minute — so an error flood cannot starve quotes
+// and quote traffic cannot block reports. Never share the 30/min bucket.
+const ERR_RATE_LIMIT_PER_MINUTE = 5;
+const ERR_MAX_ROWS = 5000; // D1 cap: delete the oldest past this many rows
+const ERR_RETENTION_DAYS = 30;
+const errRateLimitStore = new Map(); // ip -> array of request timestamps (ms)
+
+function isErrRateLimited(ip) {
+  const now = Date.now();
+  const windowStart = now - 60_000;
+  let hits = errRateLimitStore.get(ip);
+  if (!hits) {
+    hits = [];
+    errRateLimitStore.set(ip, hits);
+    if (errRateLimitStore.size > RATE_LIMIT_MAX_IPS) {
+      const oldest = errRateLimitStore.keys().next().value;
+      errRateLimitStore.delete(oldest);
+    }
+  }
+  while (hits.length && hits[0] < windowStart) hits.shift();
+  if (hits.length >= ERR_RATE_LIMIT_PER_MINUTE) return true;
+  hits.push(now);
+  return false;
+}
+
 // Allowed CORS origins. localhost (any port) is for local testing only.
 const ALLOWED_ORIGINS = ['https://paperstreetbtc.com'];
 function isAllowedOrigin(origin) {
@@ -488,6 +514,177 @@ async function getQuotes(env) {
 }
 
 // ---------------------------------------------------------------------------
+// Stage 2 analytics: page-error reports (POST /err) + secret read (GET /err)
+// ---------------------------------------------------------------------------
+//
+// POST /err: the public pages' ps-err.js hook reports window.onerror,
+// unhandledrejection, and BTC-chart lineFail here. No personal data:
+// pathname only, basename only, browser/device parsed client-side.
+// D1 down (or binding missing) still returns 204 — the page must never
+// see a stack or a secret. GET /err: secret-protected read for Chief of
+// Staff's weekday health check. No CORS on the read route (curl/script).
+
+const ERR_BROWSERS = ['Chrome', 'Safari', 'Firefox', 'Edge', 'Other'];
+const ERR_DEVICES = ['phone', 'desktop'];
+const ERR_KINDS = ['onerror', 'unhandledrejection', 'lineFail'];
+const ERR_SRC_RE = /^[A-Za-z0-9._-]{1,40}$/;
+
+// Constant-time string compare (no early exit on the first mismatch).
+function timingSafeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  let diff = a.length === b.length ? 0 : 1;
+  const len = Math.max(a.length, b.length);
+  for (let i = 0; i < len; i++) {
+    const ca = i < a.length ? a.charCodeAt(i) : 0;
+    const cb = i < b.length ? b.charCodeAt(i) : 0;
+    diff |= ca ^ cb;
+  }
+  return diff === 0;
+}
+
+function validateErrBody(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const path = data.path;
+  if (typeof path !== 'string' || !path.startsWith('/') || path.includes('?') || path.includes('#') || path.length > 100) return null;
+  const kind = data.kind;
+  if (typeof kind !== 'string' || !ERR_KINDS.includes(kind)) return null;
+  const message = typeof data.message === 'string' ? data.message.slice(0, 200) : '';
+  let file = '';
+  if (typeof data.file === 'string') {
+    const stripped = data.file.split('?')[0].split('#')[0];
+    const slash = stripped.lastIndexOf('/');
+    file = (slash >= 0 ? stripped.slice(slash + 1) : stripped).slice(0, 80);
+  }
+  let line = 0;
+  if (typeof data.line === 'number' && Number.isInteger(data.line)) line = data.line;
+  const browser = typeof data.browser === 'string' && ERR_BROWSERS.includes(data.browser) ? data.browser : 'Other';
+  const device = typeof data.device === 'string' && ERR_DEVICES.includes(data.device) ? data.device : 'desktop';
+  const pin = typeof data.pin === 'string' ? data.pin.slice(0, 20) : '';
+  const src = typeof data.src === 'string' && ERR_SRC_RE.test(data.src) ? data.src : null;
+  return { path, message, file, line, browser, device, pin, kind, src };
+}
+
+async function pruneErrTable(db) {
+  const cutoff = new Date(Date.now() - ERR_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  await db.prepare('DELETE FROM errors WHERE ts < ?').bind(cutoff).run();
+  const total = await db.prepare('SELECT COUNT(*) AS n FROM errors').first();
+  const n = total && typeof total.n === 'number' ? total.n : 0;
+  if (n > ERR_MAX_ROWS) {
+    await db.prepare('DELETE FROM errors WHERE id IN (SELECT id FROM errors ORDER BY ts ASC LIMIT ?)').bind(n - ERR_MAX_ROWS).run();
+  }
+}
+
+async function handleErrPost(request, env, cors) {
+  // Missing or disallowed Origin: 403 (the main abuse check). The quote
+  // routes allow no-Origin curl; /err does not.
+  const origin = request.headers.get('Origin');
+  if (!origin || !isAllowedOrigin(origin)) {
+    return jsonResponse({ error: 'origin not allowed' }, 403, cors);
+  }
+  const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
+  if (isErrRateLimited(ip)) {
+    return jsonResponse({ error: 'rate limited' }, 429, { ...cors, 'Retry-After': '60' });
+  }
+  const lenHeader = request.headers.get('Content-Length');
+  if (lenHeader !== null && Number(lenHeader) > 2048) {
+    return jsonResponse({ error: 'body too large' }, 413, cors);
+  }
+  let text = '';
+  try {
+    text = await request.text();
+  } catch {
+    return jsonResponse({ error: 'bad body' }, 400, cors);
+  }
+  if (text.length > 2048) {
+    return jsonResponse({ error: 'body too large' }, 413, cors);
+  }
+  let data = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return jsonResponse({ error: 'bad json' }, 400, cors);
+  }
+  const row = validateErrBody(data);
+  if (!row) {
+    return jsonResponse({ error: 'bad report' }, 400, cors);
+  }
+  // D1 down (or binding missing, or table not migrated yet): still 204.
+  // The page must never see a stack, a secret, or a 5xx for reporting.
+  try {
+    const db = env && env.ERR_DB;
+    if (db) {
+      const ts = new Date().toISOString();
+      await db
+        .prepare('INSERT INTO errors (ts, path, message, file, line, browser, device, pin, kind, src) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .bind(ts, row.path, row.message, row.file, row.line, row.browser, row.device, row.pin, row.kind, row.src)
+        .run();
+      await pruneErrTable(db);
+    }
+  } catch {
+    // Swallow D1 errors: the report is best-effort, the page is unaffected.
+  }
+  return new Response(null, { status: 204, headers: { ...cors } });
+}
+
+async function handleErrRead(request, env) {
+  // No CORS on this route: it is for Chief's script / curl, not the site.
+  const secret = env && typeof env.ERR_READ_SECRET === 'string' ? env.ERR_READ_SECRET : '';
+  if (!secret) {
+    return jsonResponse({ error: 'not configured' }, 500, { 'Cache-Control': 'no-store' });
+  }
+  const auth = request.headers.get('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!timingSafeEqual(token, secret)) {
+    return jsonResponse({ error: 'unauthorized' }, 401, { 'Cache-Control': 'no-store' });
+  }
+  let days = 7;
+  try {
+    const d = parseInt(new URL(request.url).searchParams.get('days') || '', 10);
+    if (Number.isFinite(d)) days = Math.min(30, Math.max(1, d));
+  } catch {
+    days = 7;
+  }
+  const db = env && env.ERR_DB;
+  if (!db) {
+    return jsonResponse({ error: 'not configured' }, 500, { 'Cache-Control': 'no-store' });
+  }
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  let countRow, topRows, recentRows, srcRows;
+  try {
+    countRow = await db.prepare('SELECT COUNT(*) AS n FROM errors WHERE ts >= ?').bind(since).first();
+    topRows = await db
+      .prepare('SELECT message, COUNT(*) AS n, MAX(ts) AS last, path FROM errors WHERE ts >= ? GROUP BY message ORDER BY n DESC LIMIT 10')
+      .bind(since)
+      .all();
+    recentRows = await db
+      .prepare('SELECT ts, path, message, file, line, browser, device, pin, kind, src FROM errors WHERE ts >= ? ORDER BY ts DESC LIMIT 50')
+      .bind(since)
+      .all();
+    srcRows = await db
+      .prepare('SELECT src, COUNT(*) AS n FROM errors WHERE ts >= ? GROUP BY src ORDER BY n DESC')
+      .bind(since)
+      .all();
+  } catch {
+    return jsonResponse({ error: 'not configured' }, 500, { 'Cache-Control': 'no-store' });
+  }
+  return jsonResponse(
+    {
+      ok: true,
+      days,
+      count: countRow && typeof countRow.n === 'number' ? countRow.n : 0,
+      top: (topRows && topRows.results ? topRows.results : []).map((r) => ({ message: r.message, count: r.n, last: r.last, path: r.path })),
+      recent: (recentRows && recentRows.results ? recentRows.results : []).map((r) => ({
+        ts: r.ts, path: r.path, message: r.message, file: r.file, line: r.line,
+        browser: r.browser, device: r.device, pin: r.pin, kind: r.kind, src: r.src || null,
+      })),
+      bySrc: (srcRows && srcRows.results ? srcRows.results : []).map((r) => ({ src: r.src || null, count: r.n })),
+    },
+    200,
+    { 'Cache-Control': 'no-store' },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // HTTP handler
 // ---------------------------------------------------------------------------
 
@@ -507,29 +704,45 @@ function jsonResponse(payload, status = 200, extraHeaders = {}) {
 
 async function handleFetch(request, env) {
   const url = new URL(request.url);
+
+  // GET /err is the secret-protected read route (Chief's script / curl):
+  // no CORS, no origin check — it runs before the CORS gate below.
+  if (url.pathname === '/err' && request.method === 'GET') {
+    return handleErrRead(request, env);
+  }
+
   const cors = corsHeaders(request);
   if (cors === null) {
     return jsonResponse({ error: 'origin not allowed' }, 403);
   }
 
-  // Preflight.
+  // Preflight. POST is allowed for /err (sendBeacon posts text/plain and
+  // must not hit a preflight it cannot complete); POST / stays 405.
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
       headers: {
         ...cors,
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Max-Age': '86400',
       },
     });
   }
+
+  // POST /err: page-error reports (Stage 2). Origin + rate limit inside.
+  if (url.pathname === '/err' && request.method === 'POST') {
+    return handleErrPost(request, env, cors);
+  }
+
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'method not allowed' }, 405, cors);
   }
 
-  // Only two routes: / (or /quotes) serves the quotes payload; /health is a
-  // cheap liveness check that never touches an upstream provider.
+  // Only three route families: / (or /quotes) serves the quotes payload;
+  // /health is a cheap liveness check that never touches an upstream
+  // provider; /err is the Stage 2 page-error report (POST) and its
+  // secret-protected read (GET, handled before the CORS gate above).
   if (url.pathname === '/health') {
     return jsonResponse({ ok: true, asOf: new Date().toISOString() }, 200, cors);
   }
@@ -564,6 +777,7 @@ export const __test = {
   reset() {
     memoryCache.clear();
     rateLimitStore.clear();
+    errRateLimitStore.clear();
     lastGoodBtcChg = null;
   },
   // Clear only the in-memory last-good 24h change (simulates a cold

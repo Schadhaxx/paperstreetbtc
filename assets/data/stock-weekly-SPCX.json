@@ -1,15 +1,15 @@
 {
   "source": "Yahoo SPCX unadjusted daily OHLC",
-  "asOf": "2026-11-18",
-  "asOfLabel": "18 Nov 2026",
+  "asOf": "2026-11-27",
+  "asOfLabel": "27 Nov 2026",
   "unit": "usd",
   "basis": "listing",
   "baseClose": 160.95,
   "baseSession": "2026-06-12",
   "baseLabel": "Listing close",
-  "lastSession": "2026-11-18",
-  "inProgress": "in progress, through last completed session 18 Nov 2026 \u2014 week not finished",
-  "note": "Weekly candles since listing, UTC Monday-Sunday weeks. First week is partial: 1 trading day (12 Jun 2026), week starting Mon 8 Jun 2026. Nothing before listing is included. The baseline is the first trading close, not an IPO print. The first candle open is the first trade and is not that baseline. Latest week is in progress as of 18 Nov 2026, 4:15 PM ET; its close is not a final close. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "lastSession": "2026-11-27",
+  "inProgress": null,
+  "note": "Weekly candles since listing, UTC Monday-Sunday weeks. First week is partial: 1 trading day (12 Jun 2026), week starting Mon 8 Jun 2026. Nothing before listing is included. The baseline is the first trading close, not an IPO print. The first candle open is the first trade and is not that baseline. Latest week is a final close through 27 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "weeks": [
     {
       "monday": "2026-06-08",
@@ -268,12 +268,23 @@
       "monday": "2026-11-16",
       "sunday": "2026-11-22",
       "label": "16 Nov 2026 \u2013 22 Nov 2026",
-      "days": 3,
+      "days": 5,
       "open": 138.5,
-      "high": 146.3,
-      "low": 135.0,
-      "close": 143.5,
-      "volume": 275875519
+      "high": 147.29,
+      "low": 127.25,
+      "close": 127.79,
+      "volume": 518529789
+    },
+    {
+      "monday": "2026-11-23",
+      "sunday": "2026-11-29",
+      "label": "23 Nov 2026 \u2013 29 Nov 2026",
+      "days": 4,
+      "open": 140.04,
+      "high": 141.87,
+      "low": 112.93,
+      "close": 133.59,
+      "volume": 398972298
     }
   ]
 }

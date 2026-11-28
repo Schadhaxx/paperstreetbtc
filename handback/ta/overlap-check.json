@@ -1,0 +1,389 @@
+{
+ "clock-390-dark-panel": {
+  "stage": {
+   "x": 12,
+   "y": 116,
+   "w": 366,
+   "h": 796,
+   "r": 378,
+   "b": 912
+  },
+  "panelVisible": true,
+  "menuVisible": false,
+  "vw": 390,
+  "vh": 900,
+  "panel": {
+   "x": 117,
+   "y": 340.65625,
+   "w": 248,
+   "h": 306,
+   "r": 365,
+   "b": 646.65625
+  },
+  "menu": null,
+  "pill": {
+   "x": 311.625,
+   "y": 302.65625,
+   "w": 53.375,
+   "h": 32,
+   "r": 365,
+   "b": 334.65625
+  },
+  "rsi": null,
+  "box": {
+   "x": 25,
+   "y": 340.65625,
+   "w": 340,
+   "h": 537.34375,
+   "r": 365,
+   "b": 878
+  },
+  "prot": {
+   "BTC price": {
+    "x": 25,
+    "y": 165,
+    "w": 340,
+    "h": 87.65625,
+    "r": 365,
+    "b": 252.65625
+   },
+   "Keep screen on": {
+    "x": 274.15625,
+    "y": 62,
+    "w": 103.84375,
+    "h": 15,
+    "r": 378,
+    "b": 77
+   },
+   "Exit full screen": null,
+   "Light/Dark pill": {
+    "x": 316.78125,
+    "y": 857.8125,
+    "w": 65.21875,
+    "h": 34.1875,
+    "r": 382,
+    "b": 892
+   },
+   "Full-screen buttons": null,
+   "Price clock": null,
+   "Switch to chart": null,
+   "Theme dot": null,
+   "Price pill": null,
+   "Close": null
+  },
+  "vis": {
+   "BTC price": true,
+   "Keep screen on": true,
+   "Exit full screen": false,
+   "Light/Dark pill": true,
+   "Full-screen buttons": false,
+   "Price clock": false,
+   "Switch to chart": false,
+   "Theme dot": false,
+   "Price pill": false,
+   "Close": false
+  },
+  "overlaps": [],
+  "lane": {
+   "x": 25,
+   "y": 302.65625,
+   "w": 340,
+   "h": 32,
+   "r": 365,
+   "b": 334.65625
+  },
+  "scrollY": 0
+ },
+ "clock-1440-light-panel": {
+  "stage": {
+   "x": 82,
+   "y": 91,
+   "w": 1276,
+   "h": 814,
+   "r": 1358,
+   "b": 905
+  },
+  "panelVisible": true,
+  "menuVisible": false,
+  "vw": 1440,
+  "vh": 900,
+  "panel": {
+   "x": 1089,
+   "y": 192,
+   "w": 248,
+   "h": 306,
+   "r": 1337,
+   "b": 498
+  },
+  "menu": null,
+  "pill": {
+   "x": 1283.625,
+   "y": 154,
+   "w": 53.375,
+   "h": 32,
+   "r": 1337,
+   "b": 186
+  },
+  "rsi": null,
+  "box": {
+   "x": 620.59375,
+   "y": 194,
+   "w": 716.40625,
+   "h": 673,
+   "r": 1337,
+   "b": 867
+  },
+  "prot": {
+   "BTC price": {
+    "x": 103,
+    "y": 432.75,
+    "w": 493.59375,
+    "h": 130.5,
+    "r": 596.59375,
+    "b": 563.25
+   },
+   "Keep screen on": {
+    "x": 183.109375,
+    "y": 64.5,
+    "w": 103.84375,
+    "h": 15,
+    "r": 286.953125,
+    "b": 79.5
+   },
+   "Exit full screen": null,
+   "Light/Dark pill": {
+    "x": 24,
+    "y": 841.8125,
+    "w": 65.21875,
+    "h": 34.1875,
+    "r": 89.21875,
+    "b": 876
+   },
+   "Full-screen buttons": {
+    "x": 103,
+    "y": 575.25,
+    "w": 493.59375,
+    "h": 32,
+    "r": 596.59375,
+    "b": 607.25
+   },
+   "Price clock": null,
+   "Switch to chart": null,
+   "Theme dot": null,
+   "Price pill": null,
+   "Close": null
+  },
+  "vis": {
+   "BTC price": true,
+   "Keep screen on": true,
+   "Exit full screen": false,
+   "Light/Dark pill": true,
+   "Full-screen buttons": true,
+   "Price clock": false,
+   "Switch to chart": false,
+   "Theme dot": false,
+   "Price pill": false,
+   "Close": false
+  },
+  "overlaps": [],
+  "lane": {
+   "x": 620.59375,
+   "y": 154,
+   "w": 716.40625,
+   "h": 32,
+   "r": 1337,
+   "b": 186
+  },
+  "scrollY": 0
+ },
+ "popover-390-dark-panel": {
+  "stage": {
+   "x": 0,
+   "y": 135.140625,
+   "w": 390,
+   "h": 764.859375,
+   "r": 390,
+   "b": 900
+  },
+  "panelVisible": true,
+  "menuVisible": false,
+  "vw": 390,
+  "vh": 900,
+  "panel": {
+   "x": 125,
+   "y": 402.671875,
+   "w": 248,
+   "h": 308,
+   "r": 373,
+   "b": 710.671875
+  },
+  "menu": null,
+  "pill": {
+   "x": 319.140625,
+   "y": 364.671875,
+   "w": 53.859375,
+   "h": 32,
+   "r": 373,
+   "b": 396.671875
+  },
+  "rsi": null,
+  "box": {
+   "x": 17,
+   "y": 410.671875,
+   "w": 356,
+   "h": 380,
+   "r": 373,
+   "b": 790.671875
+  },
+  "prot": {
+   "BTC price": {
+    "x": 17,
+    "y": 190.734375,
+    "w": 310,
+    "h": 38,
+    "r": 327,
+    "b": 228.734375
+   },
+   "Keep screen on": null,
+   "Exit full screen": null,
+   "Light/Dark pill": {
+    "x": 8,
+    "y": 857.8125,
+    "w": 65.21875,
+    "h": 34.1875,
+    "r": 73.21875,
+    "b": 892
+   },
+   "Full-screen buttons": null,
+   "Price clock": null,
+   "Switch to chart": null,
+   "Theme dot": null,
+   "Price pill": null,
+   "Close": {
+    "x": 337,
+    "y": 161.140625,
+    "w": 36,
+    "h": 36,
+    "r": 373,
+    "b": 197.140625
+   }
+  },
+  "vis": {
+   "BTC price": true,
+   "Keep screen on": false,
+   "Exit full screen": false,
+   "Light/Dark pill": false,
+   "Full-screen buttons": false,
+   "Price clock": false,
+   "Switch to chart": false,
+   "Theme dot": false,
+   "Price pill": false,
+   "Close": true
+  },
+  "overlaps": [],
+  "lane": {
+   "x": 17,
+   "y": 358.671875,
+   "w": 356,
+   "h": 44,
+   "r": 373,
+   "b": 402.671875
+  },
+  "scrollY": 0
+ },
+ "popover-390-dark-menu": {
+  "stage": {
+   "x": 0,
+   "y": 135.140625,
+   "w": 390,
+   "h": 764.859375,
+   "r": 390,
+   "b": 900
+  },
+  "panelVisible": false,
+  "menuVisible": true,
+  "vw": 390,
+  "vh": 900,
+  "panel": null,
+  "menu": {
+   "x": 65.140625,
+   "y": 402.671875,
+   "w": 248,
+   "h": 216,
+   "r": 313.140625,
+   "b": 618.671875
+  },
+  "pill": {
+   "x": 319.140625,
+   "y": 364.671875,
+   "w": 53.859375,
+   "h": 32,
+   "r": 373,
+   "b": 396.671875
+  },
+  "rsi": null,
+  "box": {
+   "x": 17,
+   "y": 410.671875,
+   "w": 356,
+   "h": 380,
+   "r": 373,
+   "b": 790.671875
+  },
+  "prot": {
+   "BTC price": {
+    "x": 17,
+    "y": 190.734375,
+    "w": 310,
+    "h": 38,
+    "r": 327,
+    "b": 228.734375
+   },
+   "Keep screen on": null,
+   "Exit full screen": null,
+   "Light/Dark pill": {
+    "x": 8,
+    "y": 857.8125,
+    "w": 65.21875,
+    "h": 34.1875,
+    "r": 73.21875,
+    "b": 892
+   },
+   "Full-screen buttons": null,
+   "Price clock": null,
+   "Switch to chart": null,
+   "Theme dot": null,
+   "Price pill": null,
+   "Close": {
+    "x": 337,
+    "y": 161.140625,
+    "w": 36,
+    "h": 36,
+    "r": 373,
+    "b": 197.140625
+   }
+  },
+  "vis": {
+   "BTC price": true,
+   "Keep screen on": false,
+   "Exit full screen": false,
+   "Light/Dark pill": false,
+   "Full-screen buttons": false,
+   "Price clock": false,
+   "Switch to chart": false,
+   "Theme dot": false,
+   "Price pill": false,
+   "Close": true
+  },
+  "overlaps": [],
+  "lane": {
+   "x": 17,
+   "y": 358.671875,
+   "w": 356,
+   "h": 44,
+   "r": 373,
+   "b": 402.671875
+  },
+  "scrollY": 0
+ }
+}

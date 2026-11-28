@@ -1,0 +1,26 @@
+{
+ "1d-line": {
+  "size_match": true,
+  "diff_px": 0,
+  "total_px": 182920,
+  "diff_pct": 0.0
+ },
+ "1y-line": {
+  "size_match": true,
+  "diff_px": 0,
+  "total_px": 182920,
+  "diff_pct": 0.0
+ },
+ "1d-1h-candles": {
+  "size_match": true,
+  "diff_px": 18763,
+  "total_px": 182920,
+  "diff_pct": 10.257
+ },
+ "1w-daily-candles": {
+  "size_match": true,
+  "diff_px": 23585,
+  "total_px": 182920,
+  "diff_pct": 12.894
+ }
+}

@@ -119,8 +119,8 @@ chk('drawDailyTooltip shows each comparison line with % change', /'S&P 500 '\+cm
 chk('draw1D tooltip shows Now (live) on the last point', /'Now \(live\)'/.test(panel));
 chk('live Now point is drawn on the BTC line when hasLive', /hasLive/.test(panel) && /Now/.test(panel));
 
-/* Pin bumped et25 -> et26 (subdomain fill: loader content changed; panel still et24) (panel content changed in Step 4). */
-chk('stub loads the panel with et24', /btcchart-panel\.js\?v=et24/.test(stub));
+/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026) -> wr2 (TA Beta label, 21 Nov 2026) -> wr3 (drawing fixes Stage 1, 21 Nov 2026) -> wr4 (drawing fixes Job 1, 21 Nov 2026) -> wr5 (drawing fixes Job 2, 21 Nov 2026) -> wr6 (drawing fixes Job 3, 22 Nov 2026) -> ta12/wr7 (drawing fixes Job 4, 22 Nov 2026) -> ta13/wr8 (drawing fixes Job 5, 22 Nov 2026) -> ta15/wr10 (drawing fixes Job 6, 22 Nov 2026) -> ta16/wr11 (drawing fixes Job 9, 22 Nov 2026) -> ta17/wr12 (drawing fixes Job 11, 22 Nov 2026) -> ta18/wr13 (drawing fixes Job 12, 22 Nov 2026) -> wr14 (drawing fixes Job 10, 22 Nov 2026). */
+chk('stub loads the panel with wr15', /btcchart-panel\.js\?v=wr15/.test(stub));
 const fs2 = require('fs');
 const html = [];
 function walk(d) {
@@ -131,16 +131,16 @@ function walk(d) {
   });
 }
 walk(R);
-let et27 = 0, other = [];
+let wr14 = 0, other = [];
 html.forEach(function (p) {
   const s = fs2.readFileSync(p, 'utf8');
   const m = s.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=et27') et27++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=wr16') wr14++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin et27', et27 === 16 && other.length === 0, 'et27=' + et27 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin wr16', wr14 === 16 && other.length === 0, 'wr16=' + wr14 + ' other=' + JSON.stringify(other));
 
-/* YTD hero chart (s2.js) is out of scope: it must still use Chart.js. */
-chk('s2.js (YTD hero) still uses Chart.js', /new Chart\(/.test(s2));
+/* YTD hero (s2.js): native only since the Chart.js removal (20 Nov 2026). */
+chk('s2.js (YTD hero) has no Chart.js fallback', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));
 
 console.log('\n' + n + ' checks, ' + f + ' failed');
 process.exit(f ? 1 : 0);

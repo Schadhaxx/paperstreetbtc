@@ -60,9 +60,12 @@ function paint(){if(live.usd==null)return;var cls='hdr-chg '+(live.chg>=0?'up':'
 window.addEventListener('btcprice',function(e){live.usd=e.detail.usd;live.chg=e.detail.chg;paint();});
 /* pages without the homepage price widget fetch the same feed themselves */
 if(!$('btcLive')){
-  var tf=function(u){return fetch(u,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});};
+  /* Batch B finding 3: tf now has the same 8s abort as tfw, so a hung
+     CoinGecko/Coinbase fallback cannot leave the pill blank with no retry. */
+  var tf=function(u){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},8000):0;
+    return fetch(u,{cache:'no-store',signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json();},function(e){clearTimeout(t);throw e;});};
   /* CF-2: Cloudflare live-quote Worker — single configurable URL. tfw has an
-     8s timeout so a slow Worker falls back promptly (tf has none, as before). */
+     8s timeout so a slow Worker falls back promptly (tf has the same 8s abort). */
   var WORKER='https://paperstreet-quotes.schadha08.workers.dev/';
   var tfw=function(u){var c=window.AbortController?new AbortController():null,t=c?setTimeout(function(){c.abort();},8000):0;
     return fetch(u,{cache:'no-store',signal:c?c.signal:undefined}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error(r.status);return r.json();},function(e){clearTimeout(t);throw e;});};
@@ -109,7 +112,7 @@ function loadPanel(){
   if(P.panelP)return P.panelP;
   P.panelP=new Promise(function(ok,no){
     var s=document.createElement('script');
-    s.src=U('btcchart-panel.js?v=et24');
+    s.src=U('btcchart-panel.js?v=wr15');
     s.onload=function(){ok();};
     s.onerror=function(){P.panelP=null;no(new Error('btc panel'));};
     document.head.appendChild(s);

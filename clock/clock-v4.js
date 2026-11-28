@@ -54,6 +54,15 @@
     syncIpadFs();
     placeWake();
     setBtns();
+    /* Batch B item 12: the "Drag to move" hint shows on entering chart
+       mode and hides on leaving it (showPillHint is defined with the
+       pill code below; apply only runs from user events, so it exists). */
+    if (m === 'chart') showPillHint(); else hidePillHint();
+    /* Rotate hint (TA final job, 21 Nov 2026): the "rotate your phone"
+       prompt shows on entering chart mode while still portrait, and hides
+       on leaving it. showRotPrompt lives below; apply only runs from
+       user events, so it exists by then. */
+    if (m === 'chart') showRotPrompt(); else hideRotPrompt();
     kick();
     after();
   }
@@ -70,6 +79,11 @@
   }
   function exit() {
     if (!mode) return;
+    /* Batch B bug 11: a drag on the giant price can leave its text selected
+       (and an inline size from fitPrice); clear both so the exit cannot
+       leave the giant price rendered over the normal hero. */
+    try { var _sel = window.getSelection(); if (_sel) _sel.removeAllRanges(); } catch (e) {}
+    try { var _pe = document.getElementById('price'); if (_pe) _pe.style.fontSize = ''; } catch (e) {}
     var el = fsEl();
     if (el) {
       try {
@@ -159,6 +173,38 @@
   var chgEl = document.getElementById('chg');
   var plot = stage.querySelector('.v4-plot');
   var KEY = 'ps-clock-pxpill', pos = null, drag = null, fsExitPending = false;
+  /* Batch B item 12: "Drag to move" hint under the pill. Shown once, on
+     entering chart mode, until the user has moved the pill (flag in
+     localStorage, so it never shows again on that device); fades after
+     ~4s. A tap does not count — only a real drag or a keyboard move. */
+  var HINT_KEY = 'ps-clock-pxpill-dragged';
+  var hint = document.getElementById('pxPillHint'), hintTimer = null;
+  function hintSeen() {
+    try { return localStorage.getItem(HINT_KEY) === '1'; } catch (e) { return false; }
+  }
+  function hidePillHint() {
+    if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+    if (!hint) return;
+    hint.classList.remove('show');
+    hint.classList.remove('fade');
+  }
+  function fadePillHint() {
+    if (!hint || !hint.classList.contains('show')) return;
+    hint.classList.add('fade');
+    hintTimer = setTimeout(hidePillHint, 700);
+  }
+  function showPillHint() {
+    if (!hint || mode !== 'chart' || hintSeen()) return;
+    if (hint.classList.contains('show')) return;
+    hint.classList.remove('fade');
+    hint.classList.add('show');
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(fadePillHint, 4000);
+  }
+  function markPillDragged() {
+    try { localStorage.setItem(HINT_KEY, '1'); } catch (e) {}
+    hidePillHint();
+  }
   try { var sv = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (sv && isFinite(sv.fx) && isFinite(sv.fy)) pos = { fx: sv.fx, fy: sv.fy }; } catch (e) {}
   function syncPill() {
     if (!pill || !priceEl) return;
@@ -226,7 +272,7 @@
       var b = bounds(); if (!b) return;
       var m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(pill.style.transform || '');
       var cx = m ? +m[1] : b.x0, cy = m ? +m[2] : b.y0;
-      drag = { id: e.pointerId, dx: e.clientX - cx, dy: e.clientY - cy, b: b };
+      drag = { id: e.pointerId, dx: e.clientX - cx, dy: e.clientY - cy, b: b, x0: cx, y0: cy, moved: false };
       try { pill.setPointerCapture(e.pointerId); } catch (er) {}
       pill.classList.add('dragging');
       e.preventDefault(); e.stopPropagation();
@@ -243,6 +289,12 @@
     pill.addEventListener('pointermove', function (e) {
       if (!drag || e.pointerId !== drag.id) return;
       var b = drag.b;
+      /* Batch B item 12: a real drag (pointer actually moved from where
+         the drag started — a tap fires no pointermove, and a push against
+         the clamp still counts as trying to drag) hides the hint for good. */
+      if (!drag.moved && (e.clientX - drag.dx !== drag.x0 || e.clientY - drag.dy !== drag.y0)) {
+        drag.moved = true; markPillDragged();
+      }
       var x = Math.min(b.x0 + b.sx, Math.max(b.x0, e.clientX - drag.dx));
       var y = Math.min(b.y0 + b.sy, Math.max(b.y0, e.clientY - drag.dy));
       pos = { fx: b.sx ? (x - b.x0) / b.sx : 0, fy: b.sy ? (y - b.y0) / b.sy : 0 };
@@ -270,7 +322,11 @@
       if (k === 'Home') {
         pos = null;
         try { sessionStorage.removeItem(KEY); } catch (er) {}
-        placePill(); e.preventDefault(); e.stopPropagation(); return;
+        placePill();
+        /* Batch B item 12: a keyboard move is the same discovery as a
+           drag — the user knows the pill moves, so the hint is done. */
+        markPillDragged();
+        e.preventDefault(); e.stopPropagation(); return;
       }
       if (k === 'ArrowLeft') dx = -step; else if (k === 'ArrowRight') dx = step;
       else if (k === 'ArrowUp') dy = -step; else if (k === 'ArrowDown') dy = step;
@@ -283,6 +339,7 @@
       pos = { fx: b.sx ? (x - b.x0) / b.sx : 0, fy: b.sy ? (y - b.y0) / b.sy : 0 };
       pill.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
       try { sessionStorage.setItem(KEY, JSON.stringify(pos)); } catch (er) {}
+      markPillDragged(); /* Batch B item 12: keyboard move counts as a move */
       e.preventDefault(); e.stopPropagation();
     });
     syncPill();
@@ -299,7 +356,7 @@
     try { requestAnimationFrame(layout); } catch (e) { layout(); }
     setTimeout(layout, 150); setTimeout(layout, 400);
   }
-  window.addEventListener('resize', function () { if (mode) after(); });
+  window.addEventListener('resize', function () { if (mode) after(); if (mode === 'chart' && !isPortrait()) hideRotPrompt(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (mode) layout(); });
 
   /* CF-4 add-on 3: theme dot in the price-only view. Toggles light/dark
@@ -340,6 +397,68 @@
     if (typeof window.drawHash === 'function') { try { window.drawHash(); } catch (er) {} }
   });
   syncDot();
+
+  /* Rotate hint (TA final job, 21 Nov 2026): a small pill at the
+     bottom-left of the clock-page chart, portrait only. Tap enters
+     full-screen chart mode and shows a "rotate your phone" prompt while
+     still portrait. iOS cannot force landscape — the hint only suggests,
+     never locks orientation. The hint lives inside .bc-box (bottom-left
+     corner of the canvas); the RSI strip is a grid row below the box and
+     the TA pill is in the toolbar row above, so neither is covered. The
+     prompt is a toast inside the stage, shown once per chart-mode entry,
+     fading after ~5s, hiding on landscape rotation, on exit, or on tap. */
+  var rotHint = null, rotPrompt = null, rotTimer = null, rotShown = false;
+  function isPortrait() {
+    try { return window.matchMedia('(orientation: portrait)').matches; }
+    catch (e) { return (window.innerHeight || 0) >= (window.innerWidth || 0); }
+  }
+  function hideRotPrompt() {
+    if (rotTimer) { clearTimeout(rotTimer); rotTimer = null; }
+    if (rotPrompt) rotPrompt.classList.remove('show');
+    rotShown = false;
+  }
+  function showRotPrompt() {
+    if (!rotPrompt || mode !== 'chart' || !isPortrait() || rotShown) return;
+    rotShown = true;
+    rotPrompt.classList.add('show');
+    if (rotTimer) clearTimeout(rotTimer);
+    rotTimer = setTimeout(hideRotPrompt, 5000);
+  }
+  function mountRotateHint() {
+    if (rotHint) return;
+    var box = stage.querySelector('.bc-box');
+    if (!box) return;
+    rotHint = document.createElement('button');
+    rotHint.type = 'button';
+    rotHint.className = 'v4-rotate-hint';
+    rotHint.id = 'rotateHint';
+    rotHint.setAttribute('aria-label', 'Rotate for full screen: show the chart full screen');
+    rotHint.innerHTML = '\u21bb Rotate for full screen';
+    rotHint.addEventListener('click', function (e) {
+      e.stopPropagation();
+      enter('chart', rotHint);
+    });
+    box.appendChild(rotHint);
+    rotPrompt = document.createElement('div');
+    rotPrompt.className = 'v4-rotate-prompt';
+    rotPrompt.id = 'rotatePrompt';
+    rotPrompt.setAttribute('role', 'status');
+    rotPrompt.innerHTML = '<span aria-hidden="true">\u21bb</span> Rotate your phone for the full chart';
+    rotPrompt.addEventListener('click', function (e) { e.stopPropagation(); hideRotPrompt(); });
+    stage.appendChild(rotPrompt);
+  }
+  /* The chart mounts async (btcchart.js): watch for .bc-box. A
+     MutationObserver (not a timer) so the hint also mounts when the
+     page clock is mocked in tests. */
+  (function () {
+    if (stage.querySelector('.bc-box')) { mountRotateHint(); return; }
+    var host = document.getElementById('bcInline');
+    if (!host || !window.MutationObserver) return;
+    var mo = new MutationObserver(function () {
+      if (stage.querySelector('.bc-box')) { mountRotateHint(); mo.disconnect(); }
+    });
+    mo.observe(host, { childList: true, subtree: true });
+  })();
 
   window.__psClockFs = { enter: enter, exit: exit, mode: function () { return mode; } };
 })();

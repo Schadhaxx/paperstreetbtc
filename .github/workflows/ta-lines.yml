@@ -1,0 +1,106 @@
+name: ta-lines
+# TA trendlines (Stage 3): compute tools/ta_lines.py and publish
+# ta-lines.json to the `data` branch, next to prices.json.
+#
+# LIVE (Sunil's go-live yes, Sat 21 Nov 2026): runs hourly at :22 UTC
+# (cron '22 * * * *', clear of the Desk refresh at :07/:37) and can be
+# run once by hand via workflow_dispatch. The 1h lines refresh on
+# every tick, the 4h lines recompute on the same tick, and the 1d
+# lines refresh on the 00:05 UTC tick. The in-job data is the real
+# control: the job fails loudly (exit 1, no output) if the Coinbase
+# fetch or the validation fails.
+# NOTE: this file cannot be pushed by the GitHub App (it returns 403
+# on workflow files). It is added via the GitHub website as Schadhaxx.
+# Do not merge the code branch without it — the job would not exist.
+# Re-saved 2026-11-21 ~18:15 EST to re-register the schedule (7 of 8 slots missed today; only the 15:22 slot fired, 33 min late).
+on:
+  schedule:
+    - cron: '22 * * * *'
+  workflow_dispatch:
+permissions: {}
+jobs:
+  ta-lines:
+    # Computes ta-lines.json (schema 1) from live Coinbase 1h candles
+    # + assets/data/btc-daily.json, and publishes ONLY that one file
+    # to the data branch. Never touches main, never touches any other
+    # data-branch file. The front end (Stage 4) fetches ta-lines.json
+    # only when Trends is on, and hides the lines + shows
+    # "Trendlines updating…" when asOf is stale.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: ta-lines
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2, pinned
+        with:
+          ref: main
+          fetch-depth: 0
+      # Read the previous ta-lines.json from the data branch so the
+      # job can apply hysteresis (an incumbent line ranks with score
+      # x1.15; a challenger must beat it by >15%). Missing is fine
+      # (first run): the job runs without --prev.
+      - name: Fetch previous ta-lines.json from the data branch
+        id: prev
+        run: |
+          set -e
+          PREV="${RUNNER_TEMP:-/tmp}/prev-ta-lines.json"
+          git fetch -q origin +refs/heads/data:refs/remotes/origin/data
+          if git show origin/data:ta-lines.json > "$PREV" 2>/dev/null; then
+            echo "has_prev=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "no previous ta-lines.json on the data branch; first run"
+            echo "has_prev=0" >> "$GITHUB_OUTPUT"
+          fi
+      # The job validates its own output (schema 1) before writing it
+      # and exits 1 with no output on a fetch or validation failure —
+      # a failed run never publishes a partial or stale file.
+      - name: Compute ta-lines.json (live Coinbase 1h + btc-daily.json)
+        run: |
+          set -e
+          OUT="${RUNNER_TEMP:-/tmp}/ta-lines.json"
+          ARGS="--live --out $OUT"
+          if [ "${{ steps.prev.outputs.has_prev }}" = "1" ]; then
+            ARGS="$ARGS --prev ${RUNNER_TEMP:-/tmp}/prev-ta-lines.json"
+          fi
+          python3 tools/ta_lines.py $ARGS
+      # Publish ONLY ta-lines.json to the `data` branch (validated;
+      # rebase + retry, never force). A failed publish fails the run
+      # loudly (the last step) instead of passing quietly.
+      - name: Publish ta-lines.json to the data branch (rebase + retry, never force)
+        id: publish
+        continue-on-error: true
+        run: |
+          set -e
+          OUT="${RUNNER_TEMP:-/tmp}/ta-lines.json"
+          DW="${RUNNER_TEMP:-/tmp}/data-work"
+          git worktree remove --force "$DW" 2>/dev/null || true
+          rm -rf "$DW"; git worktree prune
+          git fetch -q origin +refs/heads/data:refs/remotes/origin/data
+          git worktree add -q --detach "$DW" origin/data
+          cp "$OUT" "$DW/ta-lines.json.tmp" && mv "$DW/ta-lines.json.tmp" "$DW/ta-lines.json"
+          cd "$DW"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          other=$(git status --porcelain | grep -v ' ta-lines.json$' | head -1 || true)
+          if [ -n "$other" ]; then echo "::error::data worktree has an unexpected change: $other"; exit 1; fi
+          git add -- ta-lines.json
+          if git diff --cached --quiet; then echo "ta-lines.json unchanged"; echo "published=0" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git commit -q -m "ta-lines: trendlines $(date -u +%FT%TZ)"
+          for wait in 0 5 15 30; do
+            sleep $wait
+            if git push -q origin HEAD:data; then echo "published=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+            echo "data push rejected; rebasing onto origin/data (never force-push)"
+            git fetch -q origin +refs/heads/data:refs/remotes/origin/data
+            git rebase -q origin/data || { git rebase --abort || true; echo "::error::rebase conflict on the data branch; ta-lines.json not published"; exit 1; }
+            changed=$(git diff --name-only origin/data HEAD)
+            if [ "$changed" != "ta-lines.json" ]; then echo "::error::ta-lines commit would change: $changed"; exit 1; fi
+          done
+          echo "::error::ta-lines push failed after 4 tries" ; exit 1
+      - name: Fail the run if the ta-lines publish failed
+        if: steps.publish.outcome == 'failure'
+        run: |
+          echo "::error::ta-lines.json was computed but NOT published to the data branch; the front end keeps the previous file (stale asOf hides the lines)"
+          exit 1

@@ -1,0 +1,409 @@
+{
+ "windows": {
+  "selloff": {
+   "label": "selloff Oct 22-Nov 21 2026 (84.3k -> 57.7k)",
+   "timeframes": {
+    "1h": {
+     "runs": 337,
+     "flicker_max_change": 2,
+     "flicker_firing_steps": 6,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 86,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         50,
+         51
+        ],
+        "run": "2026-11-09T02:00:00Z",
+        "gap_runs": 1,
+        "ext_from": 73477.0,
+        "ext_to": 73477.0,
+        "reversal_atr": 0.0
+       }
+      },
+      "resistance": {
+       "observations": 5,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         167,
+         168
+        ],
+        "run": "2026-11-13T23:00:00Z",
+        "gap_runs": 1,
+        "ext_from": 81923.87,
+        "ext_to": 81923.87,
+        "reversal_atr": 0.0
+       }
+      },
+      "passed": true,
+      "max_reversal_atr": 0.0
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 16.09,
+     "worst_distance": {
+      "run": "2026-11-14T22:00:00Z",
+      "price": 75558.81,
+      "lastClose": 63495.0,
+      "atr": 749.59
+     },
+     "trigger_B_distance": true
+    },
+    "4h": {
+     "runs": 337,
+     "flicker_max_change": 2,
+     "flicker_firing_steps": 1,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 147,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         1,
+         2
+        ],
+        "run": "2026-11-07T01:00:00Z",
+        "gap_runs": 1,
+        "ext_from": 75035.1,
+        "ext_to": 75035.1,
+        "reversal_atr": 0.0
+       }
+      },
+      "resistance": {
+       "observations": 8,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         192,
+         193
+        ],
+        "run": "2026-11-15T00:00:00Z",
+        "gap_runs": 1,
+        "ext_from": 81855.67,
+        "ext_to": 81855.67,
+        "reversal_atr": 0.0
+       }
+      },
+      "passed": true,
+      "max_reversal_atr": 0.0
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 13.67,
+     "worst_distance": {
+      "run": "2026-11-17T19:00:00Z",
+      "price": 80882.94,
+      "lastClose": 63675.22,
+      "atr": 1258.64
+     },
+     "trigger_B_distance": true
+    },
+    "1d": {
+     "runs": 90,
+     "flicker_max_change": 1,
+     "flicker_firing_steps": 0,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 0,
+       "max_reversal_atr": 0.0,
+       "worst": null
+      },
+      "resistance": {
+       "observations": 0,
+       "max_reversal_atr": 0.0,
+       "worst": null
+      },
+      "passed": true,
+      "max_reversal_atr": 0.0
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 5.87,
+     "worst_distance": {
+      "run": "2026-09-14T00:00:00Z",
+      "price": 65212.92,
+      "lastClose": 78175.01,
+      "atr": 2207.57
+     },
+     "trigger_B_distance": false
+    }
+   }
+  },
+  "ranging": {
+   "label": "ranging 30d ending 2026-01-10 (net +0.1%, range 12.4%)",
+   "timeframes": {
+    "1h": {
+     "runs": 337,
+     "flicker_max_change": 3,
+     "flicker_firing_steps": 11,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 3,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         56,
+         57
+        ],
+        "run": "2025-12-29T08:00:00Z",
+        "gap_runs": 1,
+        "ext_from": 84400.0,
+        "ext_to": 84400.0,
+        "reversal_atr": 0.0
+       }
+      },
+      "resistance": {
+       "observations": 40,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         143,
+         168
+        ],
+        "run": "2026-01-02T23:00:00Z",
+        "gap_runs": 25,
+        "ext_from": 93594.76,
+        "ext_to": 93594.76,
+        "reversal_atr": 0.0
+       }
+      },
+      "passed": true,
+      "max_reversal_atr": 0.0
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 8.02,
+     "worst_distance": {
+      "run": "2026-01-06T04:00:00Z",
+      "price": 89947.87,
+      "lastClose": 93796.03,
+      "atr": 480.02
+     },
+     "trigger_B_distance": false
+    },
+    "4h": {
+     "runs": 337,
+     "flicker_max_change": 1,
+     "flicker_firing_steps": 0,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 0,
+       "max_reversal_atr": 0.0,
+       "worst": null
+      },
+      "resistance": {
+       "observations": 92,
+       "max_reversal_atr": 0.176,
+       "worst": {
+        "runs": [
+         267,
+         280
+        ],
+        "run": "2026-01-07T15:00:00Z",
+        "gap_runs": 13,
+        "ext_from": 94825.27,
+        "ext_to": 94632.45,
+        "reversal_atr": 0.176
+       }
+      },
+      "passed": true,
+      "max_reversal_atr": 0.176
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 7.62,
+     "worst_distance": {
+      "run": "2026-01-05T19:00:00Z",
+      "price": 87455.71,
+      "lastClose": 94296.02,
+      "atr": 897.57
+     },
+     "trigger_B_distance": false
+    },
+    "1d": {
+     "runs": 90,
+     "flicker_max_change": 2,
+     "flicker_firing_steps": 2,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 25,
+       "max_reversal_atr": 0.636,
+       "worst": {
+        "runs": [
+         41,
+         42
+        ],
+        "run": "2025-11-23T00:00:00Z",
+        "gap_runs": 1,
+        "ext_from": 37608.05,
+        "ext_to": 40421.61,
+        "reversal_atr": 0.636
+       }
+      },
+      "resistance": {
+       "observations": 5,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         1,
+         14
+        ],
+        "run": "2025-10-26T00:00:00Z",
+        "gap_runs": 13,
+        "ext_from": 126296.0,
+        "ext_to": 126296.0,
+        "reversal_atr": 0.0
+       }
+      },
+      "passed": true,
+      "max_reversal_atr": 0.636
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 5.14,
+     "worst_distance": {
+      "run": "2025-11-22T00:00:00Z",
+      "price": 107432.8,
+      "lastClose": 84684.0,
+      "atr": 4421.79
+     },
+     "trigger_B_distance": false
+    }
+   }
+  },
+  "uptrend": {
+   "label": "uptrend 30d ending 2025-05-09 (net +29.5%, mdd -2.7%)",
+   "timeframes": {
+    "1h": {
+     "runs": 337,
+     "flicker_max_change": 2,
+     "flicker_firing_steps": 7,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 4,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         54,
+         73
+        ],
+        "run": "2025-04-28T00:00:00Z",
+        "gap_runs": 19,
+        "ext_from": 75721.12,
+        "ext_to": 75721.12,
+        "reversal_atr": 0.0
+       }
+      },
+      "resistance": {
+       "observations": 66,
+       "max_reversal_atr": 0.179,
+       "worst": {
+        "runs": [
+         292,
+         293
+        ],
+        "run": "2025-05-07T04:00:00Z",
+        "gap_runs": 1,
+        "ext_from": 97948.56,
+        "ext_to": 97843.3,
+        "reversal_atr": 0.179
+       }
+      },
+      "passed": true,
+      "max_reversal_atr": 0.179
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 19.33,
+     "worst_distance": {
+      "run": "2025-04-27T00:00:00Z",
+      "price": 87769.36,
+      "lastClose": 94909.29,
+      "atr": 369.41
+     },
+     "trigger_B_distance": true
+    },
+    "4h": {
+     "runs": 337,
+     "flicker_max_change": 1,
+     "flicker_firing_steps": 0,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 0,
+       "max_reversal_atr": 0.0,
+       "worst": null
+      },
+      "resistance": {
+       "observations": 115,
+       "max_reversal_atr": 0.0,
+       "worst": {
+        "runs": [
+         1,
+         2
+        ],
+        "run": "2025-04-25T01:00:00Z",
+        "gap_runs": 1,
+        "ext_from": 94686.0,
+        "ext_to": 94686.0,
+        "reversal_atr": 0.0
+       }
+      },
+      "passed": true,
+      "max_reversal_atr": 0.0
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 12.19,
+     "worst_distance": {
+      "run": "2025-04-28T11:00:00Z",
+      "price": 83755.95,
+      "lastClose": 95363.13,
+      "atr": 952.44
+     },
+     "trigger_B_distance": true
+    },
+    "1d": {
+     "runs": 90,
+     "flicker_max_change": 2,
+     "flicker_firing_steps": 1,
+     "flicker_steps": 0,
+     "flicker_detail": [],
+     "ext_guard": {
+      "support": {
+       "observations": 1,
+       "max_reversal_atr": 0.0,
+       "worst": null
+      },
+      "resistance": {
+       "observations": 0,
+       "max_reversal_atr": 0.0,
+       "worst": null
+      },
+      "passed": true,
+      "max_reversal_atr": 0.0
+     },
+     "trigger_A_flicker": false,
+     "max_distance_atr": 5.21,
+     "worst_distance": {
+      "run": "2025-03-05T00:00:00Z",
+      "price": 65045.52,
+      "lastClose": 90603.73,
+      "atr": 4909.89
+     },
+     "trigger_B_distance": false
+    }
+   }
+  }
+ }
+}

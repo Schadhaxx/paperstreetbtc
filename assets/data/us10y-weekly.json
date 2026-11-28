@@ -1,7 +1,7 @@
 {
   "source": "Yahoo ^TNX (CBOE Interest Rate 10 Year T Note), yields in %",
-  "asOf": "18 Nov 2026, 4:15 PM ET",
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Yields in percent, shown to 3 decimals. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026 closed final: 30 Oct 2026 yield 4.929%, vs 29 Oct 4.989% (-0.060 pp). Source is Yahoo ^TNX, not Treasury par yield. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Latest week (16 Nov 2026 \u2013 22 Nov 2026) refreshed in progress as of 18 Nov 2026, 4:15 PM ET; its close is not a final close.",
+  "asOf": "27 Nov 2026, 1:30 PM ET",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. Yields in percent, shown to 3 decimals. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. Week of 26 Oct 2026 closed final: 30 Oct 2026 yield 4.929%, vs 29 Oct 4.989% (-0.060 pp). Source is Yahoo ^TNX, not Treasury par yield. Weekly snapshot \u2014 the latest week is in progress until it closes. Refreshed by the weekly rebuild (proposals/current-week-candle). Latest week (23 Nov 2026 \u2013 29 Nov 2026) refreshed in progress as of 27 Nov 2026, 1:30 PM ET; its close is not a final close.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -467,12 +467,22 @@
       "monday": "2026-11-16",
       "sunday": "2026-11-22",
       "label": "16 Nov 2026 \u2013 22 Nov 2026",
-      "days": 3,
+      "days": 5,
       "open": 5.139,
       "high": 5.152,
-      "low": 5.052,
-      "close": 5.066
+      "low": 4.906,
+      "close": 4.912
+    },
+    {
+      "monday": "2026-11-23",
+      "sunday": "2026-11-29",
+      "label": "23 Nov 2026 \u2013 29 Nov 2026",
+      "days": 4,
+      "open": 4.934,
+      "high": 4.982,
+      "low": 4.801,
+      "close": 4.936
     }
   ],
-  "inProgress": "in progress, as of 18 Nov 2026, 4:15 PM ET"
+  "inProgress": "in progress, as of 27 Nov 2026, 1:30 PM ET"
 }

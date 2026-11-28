@@ -1,0 +1,202 @@
+/* TA Stage 1 (20 Nov 2026): chart-type pill + menu, TA pill, floating TA panel,
+   RSI strip container. Look reused from the docs/ta-brief mockup (option C);
+   scoped to the BTC chart dialog (.bc-w) so it works in the popover on every
+   page and in the clock inline. Nothing here draws an overlay (Stage 2+). */
+
+/* ---------- Row 2: asset chips, then chart-type pill, then TA pill ---------- */
+.bc-w .bc-row2{display:flex;align-items:center;gap:6px;min-width:0;margin:0 0 8px}
+.bc-w .bc-row2 .bc-lg{flex:1 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0}
+.bc-w .bc-row2 .bc-lg::-webkit-scrollbar{display:none}
+.bc-w .bc-row2 .bc-lg .bc-k{flex:0 0 auto}
+
+/* Clock inline: the row is the grid's row 2, spanning all columns. Margin 0
+   here (the clock's legend row has no bottom margin) so the chart box keeps
+   exactly the height it had before TA. */
+body.ps-clock .v4-stage .bc-inline .bc-row2{grid-column:1 / -1;grid-row:2;align-self:center;margin:0}
+body.ps-clock .v4-stage .bc-inline .bc-row2 .bc-lg{grid-column:auto;grid-row:auto}
+
+/* ---------- Chart-type pill + TA pill ---------- */
+.bc-w .ta-typ,
+.bc-w .ta-pill{
+  flex:0 0 auto;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  min-height:32px;min-width:46px;padding:5px 11px;border-radius:999px;box-sizing:border-box;
+  font:600 11.84px/1 Inter,sans-serif;letter-spacing:.02em;white-space:nowrap;
+  background:transparent;color:#cbd5e1;border:1px solid #1e293b;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.bc-w .ta-typ svg,.bc-w .ta-pill svg{width:9px;height:9px;display:block;opacity:.8;transition:transform .15s;flex:0 0 auto}
+.bc-w .ta-pill.open,.bc-w .ta-typ.open{border-color:#22d3ee;color:#22d3ee;background:rgba(34,211,238,.08)}
+.bc-w .ta-pill.open svg,.bc-w .ta-typ.open svg{transform:rotate(180deg)}
+.bc-w .ta-pill.act{border-color:rgba(34,211,238,.55);color:#e2e8f0}
+.bc-w .ta-pill:disabled,.bc-w .ta-typ:disabled{opacity:.45;cursor:default}
+.bc-w .ta-n{
+  display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;padding:0 4px;box-sizing:border-box;
+  border-radius:999px;background:#22d3ee;color:#041018;font:700 9.5px/1 Inter,sans-serif;font-style:normal;
+}
+@media (orientation:landscape) and (max-height:500px) and (min-width:700px){
+  .bc-w .ta-typ,.bc-w .ta-pill{min-height:28px;padding:4px 10px}
+}
+html[data-theme="light"] .bc-w .ta-typ,
+html[data-theme="light"] .bc-w .ta-pill{background:#fff;color:#334155;border-color:#e2e8f0}
+html[data-theme="light"] .bc-w .ta-pill.act{border-color:#22d3ee;color:#0f172a}
+html[data-theme="light"] .bc-w .ta-pill.open,
+html[data-theme="light"] .bc-w .ta-typ.open{border-color:#0e7490;color:#0e7490;background:#ecfeff}
+
+/* The old button rows stay in the DOM (the menu drives them) but are never
+   shown: the pill + menu replace them. */
+.bc-w .bc-ct{display:none !important}
+
+/* ---------- Chart-type menu (same look as the TA panel) ---------- */
+.bc-w .ta-menu,.v4-stage .ta-menu{
+  position:absolute;z-index:60;width:248px;max-width:calc(100% - 16px);box-sizing:border-box;padding:8px;border-radius:16px;
+  background:rgba(8,13,28,.97);border:1px solid rgba(34,211,238,.30);color:#e2e8f0;
+  box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.02);
+  font:500 12.5px/1.25 Inter,sans-serif;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+}
+.bc-w .ta-menu .ta-mh,.v4-stage .ta-menu .ta-mh{font:700 10.5px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8;padding:4px 8px 6px}
+.bc-w .ta-menu .ta-mo,.v4-stage .ta-menu .ta-mo{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;box-sizing:border-box;
+  min-height:36px;padding:0 8px;border:0;border-radius:10px;background:none;color:#e2e8f0;
+  font:600 12.5px Inter,sans-serif;cursor:pointer;text-align:left;
+}
+.bc-w .ta-menu .ta-mo:hover,.v4-stage .ta-menu .ta-mo:hover{background:rgba(34,211,238,.08)}
+.bc-w .ta-menu .ta-mo.on,.v4-stage .ta-menu .ta-mo.on{color:#22d3ee}
+.bc-w .ta-menu .ta-mo .ta-ck,.v4-stage .ta-menu .ta-mo .ta-ck{opacity:0;font-weight:700}
+.bc-w .ta-menu .ta-mo.on .ta-ck,.v4-stage .ta-menu .ta-mo.on .ta-ck{opacity:1}
+.bc-w .ta-menu .ta-mo:disabled,.v4-stage .ta-menu .ta-mo:disabled{opacity:.45;cursor:default}
+.bc-w .ta-menu .ta-md,.v4-stage .ta-menu .ta-md{height:1px;background:rgba(148,163,184,.12);margin:6px 4px}
+html[data-theme="light"] .bc-w .ta-menu,
+html[data-theme="light"] .v4-stage .ta-menu{background:rgba(255,255,255,.98);border-color:#cbd5e1;color:#0f172a;box-shadow:0 16px 36px rgba(15,23,42,.18)}
+html[data-theme="light"] .bc-w .ta-menu .ta-mh,
+html[data-theme="light"] .v4-stage .ta-menu .ta-mh{color:#475569}
+html[data-theme="light"] .bc-w .ta-menu .ta-mo,
+html[data-theme="light"] .v4-stage .ta-menu .ta-mo{color:#0f172a}
+html[data-theme="light"] .bc-w .ta-menu .ta-mo.on,
+html[data-theme="light"] .v4-stage .ta-menu .ta-mo.on{color:#0e7490}
+html[data-theme="light"] .bc-w .ta-menu .ta-md,
+html[data-theme="light"] .v4-stage .ta-menu .ta-md{background:#eef2f7}
+
+/* ---------- Floating TA panel ---------- */
+.v4-stage .ta-panel,.bc-w .ta-panel{
+  position:absolute;z-index:60;width:248px;box-sizing:border-box;padding:10px 12px 8px;border-radius:16px;
+  background:rgba(8,13,28,.97);border:1px solid rgba(34,211,238,.30);color:#e2e8f0;
+  box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.02);
+  font:500 12.5px/1.25 Inter,sans-serif;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+}
+.v4-stage .ta-panel .ta-ph,.bc-w .ta-panel .ta-ph{display:flex;justify-content:space-between;align-items:center;margin:0 0 4px}
+.v4-stage .ta-panel .ta-ph b,.bc-w .ta-panel .ta-ph b{font:700 10.5px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8}
+.v4-stage .ta-panel .ta-ph button,.bc-w .ta-panel .ta-ph button{border:0;background:none;color:#22d3ee;font:600 11.5px Inter,sans-serif;padding:6px 0 6px 10px;cursor:pointer}
+/* TA Beta label (21 Nov 2026): small pill beside the panel title. */
+.v4-stage .ta-panel .ta-ph-t,.bc-w .ta-panel .ta-ph-t{display:flex;align-items:center;gap:6px;min-width:0}
+.v4-stage .ta-panel .ta-beta,.bc-w .ta-panel .ta-beta{font:600 10px/1 Inter,sans-serif;letter-spacing:.02em;color:#22d3ee;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.35);border-radius:999px;padding:3px 6px;white-space:nowrap}
+/* Stage 2: comparison-on note (TA is BTC-only). */
+.v4-stage .ta-panel .ta-cmp,.bc-w .ta-panel .ta-cmp{font-size:11.5px;color:#94a3b8;padding:2px 0 6px}
+html[data-theme="light"] .v4-stage .ta-panel .ta-cmp,
+html[data-theme="light"] .bc-w .ta-panel .ta-cmp{color:#64748b}
+/* Job 6 (22 Nov 2026): the same note outside the panel — a line under
+   the pills row, so it reads without opening the panel. Same type and
+   colour as the panel note; hidden unless a comparison is hiding TA. */
+.bc-w .ta-cmp-out{font-size:11.5px;color:#94a3b8;padding:6px 2px 0}
+html[data-theme="light"] .bc-w .ta-cmp-out{color:#64748b}
+/* Stage 4: trendline file status under the Smart Trendlines row. */
+.v4-stage .ta-panel .ta-tl-status,.bc-w .ta-panel .ta-tl-status{font-size:11.5px;color:#94a3b8;padding:0 0 6px}
+html[data-theme="light"] .v4-stage .ta-panel .ta-tl-status,
+html[data-theme="light"] .bc-w .ta-panel .ta-tl-status{color:#64748b}
+.v4-stage .ta-panel .ta-it,.bc-w .ta-panel .ta-it{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;border-top:1px solid rgba(148,163,184,.12)}
+.v4-stage .ta-panel .ta-it:first-of-type,.bc-w .ta-panel .ta-it:first-of-type{border-top:0}
+.v4-stage .ta-panel .ta-it .nm,.bc-w .ta-panel .ta-it .nm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.v4-stage .ta-panel .ta-it .nm span,.bc-w .ta-panel .ta-it .nm span{font-weight:600;color:#e2e8f0;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.v4-stage .ta-panel .ta-it .nm span i,.bc-w .ta-panel .ta-it .nm span i{width:12px;height:3px;border-radius:2px;display:block;flex:0 0 auto}
+.v4-stage .ta-panel .ta-it .nm small,.bc-w .ta-panel .ta-it .nm small{font-size:10.5px;color:#64748b}
+.v4-stage .ta-panel .ta-sw,.bc-w .ta-panel .ta-sw{flex:0 0 auto;width:38px;height:22px;border-radius:999px;background:#1e293b;position:relative;transition:background .15s;border:0;padding:0;cursor:pointer}
+.v4-stage .ta-panel .ta-sw::after,.bc-w .ta-panel .ta-sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#94a3b8;transition:left .15s}
+.v4-stage .ta-panel .ta-sw.on,.bc-w .ta-panel .ta-sw.on{background:#22d3ee}
+.v4-stage .ta-panel .ta-sw.on::after,.bc-w .ta-panel .ta-sw.on::after{left:18px;background:#041018}
+/* Stage 3 fix (item 6): six MA chips, one per SMA/EMA 20/50/200. Each chip
+   carries its MA's colour dot + label (the chips are the legend); an enabled
+   chip is highlighted in its own colour (--mac, set inline per chip). */
+.v4-stage .ta-panel .ta-ma,.bc-w .ta-panel .ta-ma{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 8px}
+.v4-stage .ta-panel .ta-ma-chip,.bc-w .ta-panel .ta-ma-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #1e293b;border-radius:999px;background:none;color:#94a3b8;font:600 11px/1 Inter,sans-serif;padding:0 10px;min-height:26px;cursor:pointer}
+.v4-stage .ta-panel .ta-ma-chip i,.bc-w .ta-panel .ta-ma-chip i{width:8px;height:8px;border-radius:50%;background:var(--mac,#f472b6);display:block;flex:0 0 auto}
+.v4-stage .ta-panel .ta-ma-chip.on,.bc-w .ta-panel .ta-ma-chip.on{border-color:var(--mac,#f472b6);color:#e2e8f0;background:rgba(255,255,255,.05)}
+.v4-stage .ta-panel .ta-ma.off .ta-ma-chip,.bc-w .ta-panel .ta-ma.off .ta-ma-chip{opacity:.45}
+/* Drawing fixes Stage 1 (21 Nov 2026): a gated toggle stays visible but
+   greyed out (disabled) on views where its overlay does not work. */
+.v4-stage .ta-panel .ta-sw:disabled,.bc-w .ta-panel .ta-sw:disabled{opacity:.45;cursor:default}
+.v4-stage .ta-panel .ta-it.gated .nm,.bc-w .ta-panel .ta-it.gated .nm{opacity:.5}
+.v4-stage .ta-panel .ta-ma-chip:disabled,.bc-w .ta-panel .ta-ma-chip:disabled{opacity:.45;cursor:default}
+html[data-theme="light"] .v4-stage .ta-panel,
+html[data-theme="light"] .bc-w .ta-panel{background:rgba(255,255,255,.98);border-color:#cbd5e1;color:#0f172a;box-shadow:0 16px 36px rgba(15,23,42,.18)}
+html[data-theme="light"] .v4-stage .ta-panel .ta-ph b,
+html[data-theme="light"] .bc-w .ta-panel .ta-ph b{color:#475569}
+html[data-theme="light"] .v4-stage .ta-panel .ta-ph button,
+html[data-theme="light"] .bc-w .ta-panel .ta-ph button{color:#0e7490}
+html[data-theme="light"] .v4-stage .ta-panel .ta-beta,
+html[data-theme="light"] .bc-w .ta-panel .ta-beta{color:#0e7490;background:rgba(14,116,144,.10);border-color:rgba(14,116,144,.35)}
+html[data-theme="light"] .v4-stage .ta-panel .ta-it,
+html[data-theme="light"] .bc-w .ta-panel .ta-it{border-top-color:#eef2f7}
+html[data-theme="light"] .v4-stage .ta-panel .ta-it .nm span,
+html[data-theme="light"] .bc-w .ta-panel .ta-it .nm span{color:#0f172a}
+html[data-theme="light"] .v4-stage .ta-panel .ta-it .nm small,
+html[data-theme="light"] .bc-w .ta-panel .ta-it .nm small{color:#64748b}
+html[data-theme="light"] .v4-stage .ta-panel .ta-sw,
+html[data-theme="light"] .bc-w .ta-panel .ta-sw{background:#e2e8f0}
+html[data-theme="light"] .v4-stage .ta-panel .ta-sw::after,
+html[data-theme="light"] .bc-w .ta-panel .ta-sw::after{background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.25)}
+html[data-theme="light"] .v4-stage .ta-panel .ta-sw.on,
+html[data-theme="light"] .bc-w .ta-panel .ta-sw.on{background:#22d3ee}
+html[data-theme="light"] .v4-stage .ta-panel .ta-sw.on::after,
+html[data-theme="light"] .bc-w .ta-panel .ta-sw.on::after{background:#fff}
+html[data-theme="light"] .v4-stage .ta-panel .ta-ma-chip,
+html[data-theme="light"] .bc-w .ta-panel .ta-ma-chip{border-color:#e2e8f0;color:#475569}
+html[data-theme="light"] .v4-stage .ta-panel .ta-ma-chip.on,
+html[data-theme="light"] .bc-w .ta-panel .ta-ma-chip.on{color:#0f172a;background:rgba(15,23,42,.04)}
+@media (orientation:landscape) and (max-height:500px){
+  .v4-stage .ta-panel,.bc-w .ta-panel{width:300px;padding:7px 10px 6px}
+  .v4-stage .ta-panel .ta-it,.bc-w .ta-panel .ta-it{min-height:32px}
+  .v4-stage .ta-panel .ta-it .nm small,.bc-w .ta-panel .ta-it .nm small{display:none}
+  .v4-stage .ta-panel .ta-ma,.bc-w .ta-panel .ta-ma{padding:0 0 5px}
+  .v4-stage .ta-panel .ta-ma-chip,.bc-w .ta-panel .ta-ma-chip{min-height:24px}
+}
+/* Full-screen price mode hides the chart, so the TA panel is hidden there. */
+html.v4-fs-price .ta-panel{display:none !important}
+
+/* ---------- RSI strip (grid row after the chart; hidden when RSI is off) ---------- */
+.bc-w .ta-rsi{position:relative;height:76px;border-top:1px solid rgba(148,163,184,.14);box-sizing:border-box;min-width:0;margin-top:6px}
+.bc-w .ta-rsi canvas{position:absolute;left:0;right:0;bottom:0;top:0;width:100%;height:100%}
+.bc-w .ta-rsi-t{position:absolute;right:4px;top:3px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:999px;
+  font:600 10px/1.3 Inter,sans-serif;color:#94a3b8;background:rgba(2,6,23,.65);border:0;cursor:pointer}
+.bc-w .ta-rsi-t b{color:#c4b5fd;font-weight:700}
+.bc-w .ta-rsi-t svg{width:8px;height:8px}
+.bc-w .ta-rsi.col{height:20px}
+.bc-w .ta-rsi.col canvas{display:none}
+html[data-theme="light"] .bc-w .ta-rsi{border-top-color:#e2e8f0}
+html[data-theme="light"] .bc-w .ta-rsi-t{color:#475569;background:rgba(255,255,255,.85)}
+html[data-theme="light"] .bc-w .ta-rsi-t b{color:#6d28d9}
+@media (orientation:landscape) and (max-height:500px) and (min-width:700px){
+  .bc-w .ta-rsi{height:60px}
+  .bc-w .ta-rsi.col{height:18px}
+}
+/* Clock inline: the strip is the grid's row 4 when shown. */
+body.ps-clock .v4-stage .bc-inline .ta-rsi{grid-column:1 / -1;grid-row:4}
+body.ps-clock .v4-stage .bc-inline.ta-rsi-on{grid-template-rows:auto auto 1fr auto !important}
+/* Job 6 (22 Nov 2026): the external comparison note needs an explicit
+   grid row on the clock page — without one it auto-places into the
+   chart's 1fr row and stretches (235px tall on phones, where the grid
+   has no align-items to save it). The dialog gains .ta-cmp-out-on
+   while the note shows, inserting an auto row between the pills row
+   and the chart; the box and the RSI strip shift down one row. Follows
+   the .ta-rsi-on precedent above. */
+body.ps-clock .v4-stage .bc-inline .ta-cmp-out{grid-column:1 / -1;grid-row:3;align-self:start}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on{grid-template-rows:auto auto auto 1fr !important}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on.ta-rsi-on{grid-template-rows:auto auto auto 1fr auto !important}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on .bc-box{grid-row:4}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on .ta-rsi{grid-row:5}
+/* Clock at phone width: the fixed Light/Dark pill sits bottom-right over
+   the RSI strip's bottom-right corner (~48x20px). Lift the strip clear of
+   it while RSI is on; the strip keeps full width so its x positions still
+   match the chart. RSI off: the strip is hidden, so this changes nothing. */
+@media (max-width:760px){
+  body.ps-clock .v4-stage .bc-inline .ta-rsi{margin-bottom:24px;}
+}

@@ -157,6 +157,13 @@ html[data-theme="light"] .bench-btn {
   color: #475569;
   background: #ffffff;
 }
+/* Selected benchmark (homepage hero only): bolder outline, slightly lighter.
+   Dark mode untouched — this rule is light-only and scoped to .bench-selector,
+   so the Live/Month-end mode toggle and vehicle toggle keep the 1px border. */
+html[data-theme="light"] .bench-selector .bench-btn.active {
+  border-width: 2px;
+  border-color: #67e8f9;
+}
 html[data-theme="light"] .tracker-visual,
 html[data-theme="light"] .chart-wrap {
   background: #ffffff;

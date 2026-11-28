@@ -179,6 +179,42 @@ body.ps-clock .v4-caption{
   flex:0 0 auto;
 }
 
+/* Desk link, 17 Nov 2026: a small text link to the Desk, sitting in the
+   chart caption under the plot — clock page only, no new row, no new space.
+   The caption already wraps, so narrow phones wrap cleanly instead of
+   overflowing. Hidden in full-screen modes (html.v4-fs-on). The padding
+   widens the tap target to ~32px tall without changing the caption's
+   visual height (negative margin cancels it). */
+body.ps-clock .v4-desk-link{
+  color:#22d3ee;
+  text-decoration:none;
+  font-weight:700;
+  white-space:nowrap;
+  padding:10px 6px;
+  margin:-10px -6px;
+}
+body.ps-clock .v4-desk-link:hover{text-decoration:underline;}
+body.ps-clock .v4-desk-link:focus-visible{outline:2px solid #22d3ee;outline-offset:2px;border-radius:4px;}
+html.v4-fs-on body.ps-clock .v4-desk-link{display:none;}
+html[data-theme="light"] body.ps-clock .v4-desk-link{color:#0e7490;}
+
+/* Desk link, fix 19 Nov 2026 (Chief's Batch A review): the link lives in
+   .v4-caption, which is hidden on phones (portrait ≤480px, landscape
+   ≤500px tall) — so it rendered at zero size on iPhone. On phones, show
+   the caption row with ONLY the link: the other caption text stays hidden
+   so the row costs a single line (~32px) and the plot just flex-shrinks.
+   Still hidden in full-screen modes (the html:not(.v4-fs-on) guard, plus
+   the .v4-desk-link rule above). The .v4-plot qualifier lifts specificity
+   above the later hide rules regardless of file order. */
+@media (max-width:480px) and (orientation:portrait){
+  html:not(.v4-fs-on) body.ps-clock .v4-plot .v4-caption{display:flex;}
+  html:not(.v4-fs-on) body.ps-clock .v4-plot .v4-caption span{display:none;}
+}
+@media (orientation:landscape) and (max-height:500px){
+  html:not(.v4-fs-on) body.ps-clock .v4-plot .v4-caption{display:flex;}
+  html:not(.v4-fs-on) body.ps-clock .v4-plot .v4-caption span{display:none;}
+}
+
 /* Light pill: keep off the y-axis on phones; desktop stays bottom-left
    (it then sits on the price column in the split). */
 @media (max-width:760px){
@@ -695,6 +731,34 @@ html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-sym{color:#0e7490}
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.up{color:#15803d}
 html[data-theme="light"] body.ps-clock .v4-px-pill .v4-px-chg.down{color:#b91c1c}
 
+/* Batch B item 12 (15 Nov 2026): "Drag to move" hint under the price
+   pill. Shown once, on entering full-screen chart mode, until the user
+   has moved the pill (localStorage ps-clock-pxpill-dragged); fades after
+   ~4s. Absolutely positioned under the pill, so the pill's transform
+   carries it along when dragged. pointer-events:none so it can never
+   steal a drag; aria-hidden so it never reaches a screen reader. */
+html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint{
+  position:absolute;left:50%;top:calc(100% + 12px);transform:translateX(-50%);
+  display:none;padding:7px 16px;border-radius:999px;
+  background:rgba(7,11,24,.85);color:#94a3b8;
+  border:1px solid rgba(148,163,184,.35);
+  font:600 15px/1.4 Inter,system-ui,sans-serif;letter-spacing:0;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .6s ease;
+}
+html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint.show{display:block;opacity:1}
+html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint.fade{opacity:0}
+html[data-theme="light"].v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint{
+  background:rgba(255,255,255,.94);color:#475569;border-color:rgba(15,23,42,.2);
+}
+@media (prefers-reduced-motion:reduce){
+  html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint{transition:none}
+}
+@media (max-width:620px),(max-height:500px){
+  html.v4-fs-chart body.ps-clock .v4-px-pill .v4-px-hint{
+    top:calc(100% + 8px);padding:5px 12px;font-size:12px;
+  }
+}
+
 /* ---- CF-4 add-on 3 (14 Nov 2026): theme dot, price-only view only ----
    The floating theme pill (z-index 50) sits behind the full-screen stage
    (z-index 100), so the price-only view has no theme control at all.
@@ -731,3 +795,43 @@ html[data-theme="light"].v4-fs-price body.ps-clock .v4-theme-dot::after{
   box-shadow:0 0 0 1px rgba(15,23,42,.3),0 2px 10px rgba(15,23,42,.3);
 }
 html.v4-fs-price body.ps-clock .v4-theme-dot:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
+
+/* ---- Rotate hint (TA final job, 21 Nov 2026) ----
+   A small pill at the bottom-left of the clock-page chart, portrait
+   only. Tap enters full-screen chart mode and shows a "rotate your
+   phone" prompt while still portrait. iOS cannot force landscape — the
+   hint only suggests, never locks orientation. The hint lives inside
+   .bc-box (bottom-left corner of the canvas); the RSI strip is a grid
+   row below the box and the TA pill is in the toolbar row above, so
+   neither is covered. Hidden in landscape and in full-screen modes
+   (there the chart is already full screen). The prompt is a toast
+   inside the stage, bottom-centre, shown only in full-screen chart
+   mode while portrait; it fades after ~5s, hides on landscape
+   rotation, on exit, or on tap. */
+body.ps-clock .v4-rotate-hint{display:none}
+body.ps-clock .v4-rotate-prompt{display:none}
+@media (orientation:portrait){
+  html:not(.v4-fs-on) body.ps-clock .v4-rotate-hint{
+    display:inline-flex;align-items:center;gap:6px;
+    position:absolute;z-index:5;left:8px;bottom:8px;
+    background:rgba(7,11,24,.88);color:#e8eef7;
+    border:1px solid rgba(34,211,238,.45);border-radius:999px;
+    padding:6px 12px;min-height:36px;
+    font:900 12px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;
+    -webkit-tap-highlight-color:transparent;
+  }
+  html:not(.v4-fs-on) body.ps-clock .v4-rotate-hint:hover{color:#22d3ee;border-color:rgba(34,211,238,.55)}
+  html:not(.v4-fs-on) body.ps-clock .v4-rotate-hint:focus-visible{outline:2px solid #22d3ee;outline-offset:2px}
+  html.v4-fs-chart body.ps-clock .v4-rotate-prompt.show{
+    display:flex;align-items:center;gap:8px;
+    position:absolute;z-index:8;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%);
+    background:rgba(7,11,24,.92);color:#e8eef7;border:1px solid rgba(34,211,238,.45);
+    border-radius:999px;padding:10px 16px;white-space:nowrap;
+    font:700 13px/1.2 Inter,system-ui,sans-serif;cursor:pointer;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+  }
+}
+html[data-theme="light"] body.ps-clock .v4-rotate-hint{background:rgba(255,255,255,.92);color:#0f172a;border-color:#e2e8f0}
+html[data-theme="light"] body.ps-clock .v4-rotate-hint:hover{color:#0e7490;border-color:#22d3ee}
+html[data-theme="light"].v4-fs-chart body.ps-clock .v4-rotate-prompt.show{background:rgba(255,255,255,.95);color:#0f172a;border-color:#e2e8f0;box-shadow:0 12px 32px rgba(15,23,42,.18)}

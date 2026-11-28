@@ -1,0 +1,851 @@
+{
+ "stale_after_ms": {
+  "1h": 8400000,
+  "4h": 30600000,
+  "1d": 180000000
+ },
+ "today_file": "today-2026-11-21T04:55Z.json",
+ "cases": [
+  {
+   "id": "today_missing_support_sloped_still_draws",
+   "rule": "1",
+   "about": "Real 04:55Z file (11:55 PM ET Nov 20): missingSupport on 1h, only resistance horizontals, two sloped supports. Live price = file lastClose 56347.46. Sloped supports still draw; no support horizontal is invented.",
+   "file": {
+    "$file": "today-2026-11-21T04:55Z.json"
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 56347.46,
+   "now": "2026-11-21T04:55:46Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 62203.93,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 61285.0,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 56297.71,
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 55258.09,
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    }
+   ]
+  },
+  {
+   "id": "today_1h_after_low_close_55704",
+   "rule": "1+3",
+   "about": "Same file after the 05:00Z close 55704.83 (lowest hourly close; 55500.00 and 55106.00 were wicks). 1h sloped 56297.71 is now above the live close and is omitted; 55258.09 still draws.",
+   "file": {
+    "$file": "today-2026-11-21T04:55Z.json"
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 55704.83,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 62203.93,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 61285.0,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 55258.09,
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    }
+   ]
+  },
+  {
+   "id": "today_4h_live_close_through_sloped",
+   "rule": "3+5",
+   "about": "Same file, 4h lines on a 1h chart after the 55704.83 close. Both 4h sloped supports (56563.10 and 55954.99) have been crossed and are omitted. The three 4h resistances still draw, each with tf_label '4h'.",
+   "file": {
+    "$file": "today-2026-11-21T04:55Z.json"
+   },
+   "timeframe": "4h",
+   "chart_tf": "1h",
+   "live_price": 55704.83,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 61973.08,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": "4h"
+    },
+    {
+     "price": 63704.64,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": "4h"
+    },
+    {
+     "price": 65703.42,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": "4h"
+    }
+   ]
+  },
+  {
+   "id": "wick_through_close_holds",
+   "rule": "3",
+   "about": "The 04:00Z hour wicked to 55500.00 (06:00Z wick 55106.00) but the 04:00 close was 56220.85, which held above sloped support 55258.09. A wick through is not a cross; that line still draws. The same close did break 56297.71, which is omitted.",
+   "file": {
+    "$file": "today-2026-11-21T04:55Z.json"
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 56220.85,
+   "now": "2026-11-21T05:00:00Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 62203.93,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 61285.0,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 55258.09,
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    }
+   ]
+  },
+  {
+   "id": "broken_level_draws_as_current_kind",
+   "rule": "4",
+   "about": "broken:true levels draw as their current kind on the correct side of live price, never hidden. Flipped resistance 60000 and flipped support 52000 both draw at live 55700.",
+   "file": {
+    "v": 1,
+    "kind": "ta-lines",
+    "asOf": "2026-11-21T05:00:00Z",
+    "timeframes": {
+     "1h": {
+      "asOf": "2026-11-21T04:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [
+       {
+        "price": 60000,
+        "kind": "resistance",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 5,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": true,
+        "held": false,
+        "extreme": false
+       },
+       {
+        "price": 52000,
+        "kind": "support",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 4,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": true,
+        "held": false,
+        "extreme": false
+       }
+      ],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "4h": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "1d": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     }
+    }
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 55700,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 60000.0,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 52000.0,
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    }
+   ]
+  },
+  {
+   "id": "no_pad_draw_only_what_is_in_the_file",
+   "rule": "2",
+   "about": "File has 2 ranked resistances (not 3), no EXT, one sloped support, missingSupport true. Draw those three items; do not pad a third horizontal or a range-low.",
+   "file": {
+    "v": 1,
+    "kind": "ta-lines",
+    "asOf": "2026-11-21T05:00:00Z",
+    "timeframes": {
+     "1h": {
+      "asOf": "2026-11-21T04:00:00Z",
+      "lastClose": 58000,
+      "atr": 800,
+      "levels": [
+       {
+        "price": 60000,
+        "kind": "resistance",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 6,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": false,
+        "held": false,
+        "extreme": false
+       },
+       {
+        "price": 59000,
+        "kind": "resistance",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 3,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": false,
+        "held": false,
+        "extreme": false
+       }
+      ],
+      "sloped": [
+       {
+        "kind": "support",
+        "slope": -10,
+        "anchor": {
+         "t": "2026-11-20T00:00:00Z",
+         "price": 59000
+        },
+        "touches": 3,
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 0.5,
+        "priceNow": 57000,
+        "broken": false,
+        "held": false
+       }
+      ],
+      "missingSupport": true,
+      "missingResistance": false
+     },
+     "4h": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "1d": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     }
+    }
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 58000,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 60000.0,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 59000.0,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 57000.0,
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    }
+   ]
+  },
+  {
+   "id": "ext_is_faded_and_labelled_range_low",
+   "rule": "7",
+   "about": "The extreme slot is mixed into levels with extreme:true. It draws style=ext, label 'range low' (support) or 'range high' (resistance), never ranked style. At most one EXT per timeframe in a valid file.",
+   "file": {
+    "v": 1,
+    "kind": "ta-lines",
+    "asOf": "2026-11-21T05:00:00Z",
+    "timeframes": {
+     "1h": {
+      "asOf": "2026-11-21T04:00:00Z",
+      "lastClose": 58000,
+      "atr": 800,
+      "levels": [
+       {
+        "price": 60000,
+        "kind": "resistance",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 5,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": false,
+        "held": false,
+        "extreme": false
+       },
+       {
+        "price": 54000,
+        "kind": "support",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 1,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": false,
+        "held": false,
+        "extreme": true
+       }
+      ],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "4h": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "1d": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     }
+    }
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 58000,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 60000.0,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    },
+    {
+     "price": 54000.0,
+     "kind": "support",
+     "style": "ext",
+     "label": "range low",
+     "tf_label": ""
+    }
+   ]
+  },
+  {
+   "id": "higher_tf_on_lower_chart_is_labelled",
+   "rule": "5",
+   "about": "1d lines on a 1h chart carry tf_label '1d'. After the 55704.83 close, sloped 55899.93 is omitted (above live); 52848.93 and the three 1d resistances still draw, all labelled.",
+   "file": {
+    "$file": "today-2026-11-21T04:55Z.json"
+   },
+   "timeframe": "1d",
+   "chart_tf": "1h",
+   "live_price": 55704.83,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 65286.49,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": "1d"
+    },
+    {
+     "price": 62298.44,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": "1d"
+    },
+    {
+     "price": 58263.52,
+     "kind": "resistance",
+     "style": "ranked",
+     "label": "",
+     "tf_label": "1d"
+    },
+    {
+     "price": 52848.93,
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": "1d"
+    }
+   ]
+  },
+  {
+   "id": "lower_tf_not_drawn_on_higher_chart",
+   "rule": "5",
+   "about": "1h lines are not drawn on a 1d chart (lower TF on a higher-TF chart).",
+   "file": {
+    "$file": "today-2026-11-21T04:55Z.json"
+   },
+   "timeframe": "1h",
+   "chart_tf": "1d",
+   "live_price": 55704.83,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": []
+  },
+  {
+   "id": "stale_timeframe_draws_nothing",
+   "rule": "6",
+   "about": "1h asOf is 2026-11-21T04:00:00Z; now is 07:00:00Z (3h later). Proposed stale window for 1h is 2h 20m from asOf, so no 1h lines.",
+   "file": {
+    "$file": "today-2026-11-21T04:55Z.json"
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 58000,
+   "now": "2026-11-21T07:00:00Z",
+   "candles": null,
+   "expect": []
+  },
+  {
+   "id": "invalid_file_draws_nothing",
+   "rule": "6",
+   "about": "Bad header (v != 1). No lines for any timeframe.",
+   "file": {
+    "v": 2,
+    "kind": "ta-lines",
+    "asOf": "2026-11-21T05:10:00Z",
+    "timeframes": {
+     "$file_timeframes": "today-2026-11-21T04:55Z.json"
+    }
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 56000,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": []
+  },
+  {
+   "id": "partial_file_missing_4h",
+   "rule": "6",
+   "about": "File is missing the 4h timeframe (partial). Requesting 4h returns no lines. A present, fresh 1h still draws (fail closed per timeframe).",
+   "file": {
+    "v": 1,
+    "kind": "ta-lines",
+    "asOf": "2026-11-21T05:10:00Z",
+    "timeframes": {
+     "1h": {
+      "$tf": "today-2026-11-21T04:55Z.json",
+      "name": "1h"
+     },
+     "1d": {
+      "$tf": "today-2026-11-21T04:55Z.json",
+      "name": "1d"
+     }
+    }
+   },
+   "timeframe": "4h",
+   "chart_tf": "1h",
+   "live_price": 56000,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": []
+  },
+  {
+   "id": "invalid_timeframe_missing_sloped_key",
+   "rule": "6",
+   "about": "1h object is missing the required sloped key. That timeframe draws nothing.",
+   "file": {
+    "$file": "today-2026-11-21T04:55Z.json",
+    "$delete": [
+     "timeframes",
+     "1h",
+     "sloped"
+    ]
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 56000,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": []
+  },
+  {
+   "id": "sloped_index_math_across_a_gap",
+   "rule": "8",
+   "about": "Five 1h candles with a weekend-sized hole after Friday 23:00Z (next bar is Monday 00:00Z). Slope is -10 per candle index, anchor 100 at the first bar. Live-edge price must be 60 (4 index steps), not a wall-clock walk of ~52 hours.",
+   "file": {
+    "v": 1,
+    "kind": "ta-lines",
+    "asOf": "2026-11-23T01:30:00Z",
+    "timeframes": {
+     "1h": {
+      "asOf": "2026-11-23T01:00:00Z",
+      "lastClose": 60,
+      "atr": 5,
+      "levels": [],
+      "sloped": [
+       {
+        "kind": "support",
+        "slope": -10.0,
+        "anchor": {
+         "t": "2026-11-20T21:00:00Z",
+         "price": 100.0
+        },
+        "touches": 3,
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 0.5,
+        "priceNow": 60.0,
+        "broken": false,
+        "held": false
+       }
+      ],
+      "missingSupport": true,
+      "missingResistance": true
+     },
+     "4h": {
+      "asOf": "2026-11-23T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "1d": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     }
+    }
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 60,
+   "now": "2026-11-23T01:30:00Z",
+   "candles": [
+    [
+     1795208400000,
+     100,
+     101,
+     99,
+     100
+    ],
+    [
+     1795212000000,
+     90,
+     101,
+     99,
+     90
+    ],
+    [
+     1795215600000,
+     80,
+     101,
+     99,
+     80
+    ],
+    [
+     1795392000000,
+     70,
+     101,
+     99,
+     70
+    ],
+    [
+     1795395600000,
+     60,
+     101,
+     99,
+     60
+    ]
+   ],
+   "expect": [
+    {
+     "endpoints": [
+      {
+       "t": "2026-11-20T21:00:00Z",
+       "t_ms": 1795208400000,
+       "price": 100.0
+      },
+      {
+       "t": "2026-11-23T01:00:00Z",
+       "t_ms": 1795395600000,
+       "price": 60.0
+      }
+     ],
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    }
+   ]
+  },
+  {
+   "id": "omit_support_above_or_resistance_below_live_close",
+   "rule": "3",
+   "about": "Live close 58000 has crossed a 59000 support and a 57000 resistance (and a sloped support at 59000). All omitted until the file catches up.",
+   "file": {
+    "v": 1,
+    "kind": "ta-lines",
+    "asOf": "2026-11-21T05:00:00Z",
+    "timeframes": {
+     "1h": {
+      "asOf": "2026-11-21T04:00:00Z",
+      "lastClose": 58000,
+      "atr": 800,
+      "levels": [
+       {
+        "price": 59000,
+        "kind": "support",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 3,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": false,
+        "held": false,
+        "extreme": false
+       },
+       {
+        "price": 57000,
+        "kind": "resistance",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 3,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": false,
+        "held": false,
+        "extreme": false
+       }
+      ],
+      "sloped": [
+       {
+        "kind": "support",
+        "slope": 0,
+        "anchor": {
+         "t": "2026-11-21T00:00:00Z",
+         "price": 59000
+        },
+        "touches": 3,
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 0.5,
+        "priceNow": 59000,
+        "broken": false,
+        "held": false
+       }
+      ],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "4h": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "1d": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     }
+    }
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 58000,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": []
+  },
+  {
+   "id": "line_equal_to_live_close_still_draws",
+   "rule": "3",
+   "about": "A support exactly at the live close is on the correct side (price <= live) and still draws.",
+   "file": {
+    "v": 1,
+    "kind": "ta-lines",
+    "asOf": "2026-11-21T05:00:00Z",
+    "timeframes": {
+     "1h": {
+      "asOf": "2026-11-21T04:00:00Z",
+      "lastClose": 58000,
+      "atr": 800,
+      "levels": [
+       {
+        "price": 58000,
+        "kind": "support",
+        "score": 1.0,
+        "rawScore": 1.0,
+        "distAtr": 1.0,
+        "touches": 3,
+        "lastTouch": "2026-11-20T00:00:00Z",
+        "ageCandles": 10,
+        "broken": false,
+        "held": false,
+        "extreme": false
+       }
+      ],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": true
+     },
+     "4h": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     },
+     "1d": {
+      "asOf": "2026-11-21T00:00:00Z",
+      "lastClose": 55700,
+      "atr": 800,
+      "levels": [],
+      "sloped": [],
+      "missingSupport": false,
+      "missingResistance": false
+     }
+    }
+   },
+   "timeframe": "1h",
+   "chart_tf": "1h",
+   "live_price": 58000,
+   "now": "2026-11-21T05:10:00Z",
+   "candles": null,
+   "expect": [
+    {
+     "price": 58000.0,
+     "kind": "support",
+     "style": "ranked",
+     "label": "",
+     "tf_label": ""
+    }
+   ]
+  }
+ ]
+}

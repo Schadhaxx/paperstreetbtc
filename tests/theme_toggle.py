@@ -171,7 +171,7 @@ with sync_playwright() as p:
             try:
                 pg.evaluate('document.getElementById("hdrTick").click()'); pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
                 pg.screenshot(path='%s/widget_btcchart_1D_%s.png' % (shots, tag), animations='disabled')
-                pg.click('#bcCt button[data-ct="1h"]'); pg.wait_for_timeout(1200)
+                pg.wait_for_function("!!window.__BTTA", timeout=8000); pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000); pg.click('.ta-menu [data-ta-size="1h"]'); pg.wait_for_timeout(1200)
                 bx = pg.locator('#bcC').bounding_box(); pg.mouse.click(bx['x'] + bx['width'] * 0.7, bx['y'] + bx['height'] * 0.5); pg.wait_for_timeout(500)
                 pg.screenshot(path='%s/widget_candle_pill_%s.png' % (shots, tag), animations='disabled')
                 check('candle pill shown (%s)' % tag, pg.locator('#bcSel').is_visible())

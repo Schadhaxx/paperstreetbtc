@@ -75,9 +75,16 @@ usage:
   python3 tools/screener_daily.py --symbol TSLA [--out-dir DIR]
   python3 tools/screener_daily.py --fixture bars.json [--out-dir DIR] [--now ISO]
   python3 tools/screener_daily.py --check-only [--out-dir assets/data] [--weekly-dir assets/data]
+  python3 tools/screener_daily.py --stale-check [--out-dir assets/data]
+    (--stale-check compares asOf across the five ind-daily files and
+    exits 1 if any lags the newest; the recap job runs it after copying
+    so one stale file can't lag the rest silently.)
 """
 import json, math, os, sys, time, datetime as dt, urllib.request
 from zoneinfo import ZoneInfo
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import stock_weekly as sw
 
 NY = ZoneInfo('America/New_York')
 UTC = dt.timezone.utc
@@ -93,10 +100,16 @@ HOLIDAYS = {
     '2028-07-04', '2028-09-04', '2028-11-23', '2028-12-25',
 }
 # Null-OHLC days Yahoo inserts for indicator holidays/weekends (UTC dates).
-IND_HOLIDAYS = {
-    '2025-12-25', '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03',
-    '2026-05-25', '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25',
-}
+# This is the shared NYSE holiday set from tools/stock_weekly.py
+# (2026-2028): a local copy here would go stale in 2027, and a null
+# close on a 2027 indicator holiday would fail the daily build instead
+# of being skipped. The set starts 2026-01-01, but the Yahoo fetch
+# begins 2025-12-20, so a null bar before the series starts (e.g.
+# ^VIX on 2025-12-25) still reaches the parser — closes_from_payload
+# skips null indicator bars dated before firstSession for that reason.
+# Do NOT "fix" this by re-adding 2025-12-25 to the set: the
+# firstSession skip covers that bar and any other pre-series null bar.
+IND_HOLIDAYS = sw.HOLIDAYS
 FINAL_HM = (16, 15)
 IND_FINAL_HM = (18, 0)   # indicators: today's bar (ET) is final at/after 18:00 ET
 
@@ -226,6 +239,9 @@ def closes_from_payload(key, payload, is_stock):
     except (KeyError, IndexError, TypeError) as e:
         raise RuntimeError(f'{key}: Yahoo payload missing closes ({type(e).__name__})')
     tz = NY if is_stock else UTC
+    # First shipped session. A null indicator bar before it can never
+    # reach the file (build_doc only ships days in [first, asOf]).
+    first_day = None if is_stock else dt.date.fromisoformat(first)
     out = {}
     for t, c in zip(ts, q['close']):
         if t is None:
@@ -237,6 +253,15 @@ def closes_from_payload(key, payload, is_stock):
             # null close on any other day is a hard failure.
             if is_stock:
                 raise RuntimeError(f'{key}: null close on {day} — refusing to skip or fill')
+            if first_day is not None and day < first_day:
+                # Before the series starts. The Yahoo fetch begins
+                # 2025-12-20, so ^VIX's null bar on 2025-12-25 reaches
+                # the parser even though 2025-12-25 is not in
+                # IND_HOLIDAYS (PR #15 dropped it). Skipping here is
+                # safe: the bar is outside [first, asOf] and can never
+                # be written. This also covers any other pre-series
+                # null bar without maintaining a pre-2026 holiday list.
+                continue
             if day.weekday() >= 5 or day.isoformat() in IND_HOLIDAYS:
                 continue
             raise RuntimeError(f'{key}: null close on {day} — refusing to skip or fill')
@@ -390,8 +415,33 @@ def write_doc(path, doc):
     os.replace(tmp, path)
 
 
+def check_ind_stale(out_dir):
+    """Compare asOf across the five ind-daily files. Returns the sorted
+    list of indicator keys whose asOf lags the newest file. A missing or
+    unreadable file counts as lagging (it is worse than stale). An empty
+    list means all five agree. This is the check that would have caught
+    ind-daily-vix.json sitting at Nov 20 while the other four moved to
+    Nov 23: the VIX write failed, the recap job committed the rest, and
+    nothing compared the files afterwards."""
+    asofs = {}
+    lagging = []
+    for k in INDICATORS:
+        path = os.path.join(out_dir, ALL[k][5])
+        try:
+            with open(path) as f:
+                doc = json.load(f)
+            asofs[k] = dt.date.fromisoformat(doc['asOf'])
+        except Exception:
+            lagging.append(k)
+    if asofs:
+        newest = max(asofs.values())
+        lagging += [k for k, a in asofs.items() if a < newest]
+    return sorted(set(lagging))
+
+
 def main(argv):
     out_dir, weekly_dir, fixture, now, check_only, only = 'assets/data', 'assets/data', None, None, False, None
+    stale_check = False
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -407,6 +457,8 @@ def main(argv):
             only = argv[i + 1]; i += 2
         elif a == '--check-only':
             check_only = True; i += 1
+        elif a == '--stale-check':
+            stale_check = True; i += 1
         else:
             print(f'unknown arg {a}', file=sys.stderr); return 2
     if only and only not in ALL:
@@ -464,6 +516,13 @@ def main(argv):
             print('BAD', b)
         print('screener-daily', 'OK' if not bad else 'INVALID', len(keys), 'files')
         return 1 if bad else 0
+    if stale_check:
+        lagging = check_ind_stale(out_dir)
+        if lagging:
+            print('ind-daily stale: ' + ', '.join(lagging))
+            return 1
+        print('ind-daily OK: all five files share the newest asOf')
+        return 0
     docs = {}
     failed = []
     for k in keys:
