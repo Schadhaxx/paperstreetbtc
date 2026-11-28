@@ -128,13 +128,15 @@ def main():
     card = ('<section><h2>Bitcoin in %s</h2><div class="card"><div style="overflow-x:auto"><table class="btcm">'
             '<tr><th>Open (%s close)</th><th>Close (%s)</th><th>Change</th><th>High close (in %s)</th><th>Low close (in %s)</th></tr>'
             '<tr><td>$%s</td><td>$%s</td><td class="%s">%+.2f%%</td><td>$%s · %s</td><td>$%s · %s</td></tr></table></div>'
-            '<p class="note">BTC-USD daily closes (UTC day, %s) from the site\'s BTC history (Yahoo Finance). High/low are the highest and lowest daily closes, not intraday extremes.%s</p></div></section>\n') % (
+            '<p class="note">BTC-USD daily closes (UTC day, %s) from the site\'s BTC history (Yahoo Finance). High/low are the highest and lowest daily closes, not intraday extremes.%s</p></div>'
+            '<div class="card" style="margin-top:16px"><h3>Bitcoin daily closes</h3><div class="chartbox" style="height:260px"><canvas id="recapChart" style="width:100%%;height:100%%;display:block"></canvas></div>'
+            '<p class="note">Daily closes %s → %s, from the site\'s BTC history (Yahoo Finance).</p></div></section>\n') % (
         full + ('' if final else ' (to date)'), nicey(bopen) if mo == 1 else nice(bopen), nice(bdays[-1]), full, full, f'{bo:,.2f}', f'{bc:,.2f}', 'pos' if chg >= 0 else 'neg', chg,
         f'{B[hi]:,.2f}', nice(hi) + (' (provisional)' if hi in BPROV or hi in tf else ''), f'{B[lo]:,.2f}', nice(lo) + (' (provisional)' if lo in BPROV or lo in tf else ''), days_txt,
         ('' if final else f' Static snapshot through {nicey(bdays[-1])}; the month is not complete.') +
         ((' Provisional (fallback source until Yahoo\'s final bar arrives): ' + ', '.join(nice(x) for x in sorted(BPROV) if x in bdays and x not in tf) + '.') if any(x in bdays and x not in tf for x in BPROV) else '') +
         ((' Tiingo-confirmed (Yahoo\'s final bar pending): ' + ', '.join(nice(x) for x in sorted(tf) if x in bdays) + '.') if any(x in bdays for x in tf) else '') +
-        ((' This month is final on a Tiingo-confirmed close; Yahoo\'s final bar is still pending.') if final and ME in tf else ''))
+        ((' This month is final on a Tiingo-confirmed close; Yahoo\'s final bar is still pending.') if final and ME in tf else ''), nice(PM), nice(ME))
     s = sub1(s, r'<section><h2>Bitcoin in .*?</section>\n(?=<section><h2>Sleeves vs spot BTC</h2>)', card, re.S)
     s = sub1(s, r'<p class="note" style="margin-bottom:12px">Month = [^<]*',
              f'<p class="note" style="margin-bottom:12px">Month = {nicey(PM) if PM < "2026-01-01" else nice(PM)} → {nice(ME)} close. YTD = Dec 31, 2025 → {nice(ME)} close.')
@@ -144,6 +146,10 @@ def main():
     cl = {d: {k: C[d][k] for k in ['BTC', 'MSTR', 'STRC', 'TSLA', 'PLTR', 'GLD']} for d in D}
     s = sub1(s, r'const CL=\{.*?\}\},', 'const CL=' + json.dumps(cl, separators=(',', ':')) + ',', re.S)
     s = sub1(s, r"const ME='[\d-]+',PM='[\d-]+';", f"const ME='{ME}',PM='{PM}';")
+    if 'recap-chart.js' not in s:  # chart script loads after the inline CL script (enhancements 5); new months inherit it from the previous page
+        anchor = '</script><a href="../../index.html" style="position:fixed'
+        if anchor in s:
+            s = s.replace(anchor, '</script><script src="../../assets/js/recap-chart.js?v=rcp1"></script><a href="../../index.html" style="position:fixed', 1)
     s = sub1(s, r"e\.payD>='\d{4}-\d\d-01'", f"e.payD>='{m}-01'")
     pfull = calendar.month_name[int(prev_m[5:])]
     s = sub1(s, r'<nav class="pn"[^>]*>.*?</nav>', f'<nav class="pn" style="display:flex;justify-content:space-between;gap:12px;margin:24px 0 8px;font-weight:600"><a href="../{prev_m}/index.html">← {pfull} {prev_m[:4]}</a><a href="../index.html">All recaps →</a></nav>', re.S)
@@ -160,6 +166,8 @@ def main():
     # validate
     err = []
     if 'pollPX(' not in s or 'assets/js/et.js' not in s: err.append('live ticker / et.js missing')
+    if 'recap-chart.js' not in s: err.append('recap chart script missing')
+    if '<canvas id="recapChart"' not in s: err.append('recap chart canvas missing')
     if 'NaN' in s or 'undefined' in s.split('<script>')[0] or 'NaN' in ent: err.append('NaN/undefined in output')
     if not (0.5 * len(src) < len(s) < 2 * len(src)): err.append('page size out of range')
     if f"const ME='{ME}'" not in s or ME != LASTF: err.append('through date mismatch')

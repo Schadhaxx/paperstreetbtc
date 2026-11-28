@@ -16,6 +16,55 @@ let cmpNativeDrawn = false; /* true while the native Compare chart is on the can
 let cmpHover = -1; /* hovered date index, -1 = none */
 let cmpNativeGeom = null; /* {lbls, datasets, xs, plot} of the last native draw */
 
+/* Shareable calculator links (enhancements 4, 21 Nov 2026): pure
+   encode/decode for the setup hash. No DOM access here, so the node
+   test (tests/test_cmp_share.js) can eval this block directly — the
+   same pattern as CmpMath in screener-chart.js.
+   Hash form: #s=<sleeve>&d=<YYYY-MM-DD>&a=<amount>&v=<SPOT|IBIT|FBTC>[&x=<amt>@<date>,...]
+   A setup equal to the defaults encodes to '' (no hash), so a plain
+   /compare/ link still opens the default setup. Dates are validated
+   exactly like calc() does (ISO, on/after 2026-01-01); anything
+   invalid falls back to its default instead of breaking the link. */
+var PsShare = (function () {
+  function validDate(d){ return typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d + 'T00:00:00Z')) && d >= '2026-01-01'; }
+  function validAmount(a){ return typeof a === 'number' && isFinite(a) && a > 0; }
+  function decodeHash(hash, sleeves){
+    if (typeof hash !== 'string' || !hash) return null;
+    var p, out = { s: null, d: null, a: null, v: null, x: [] };
+    try { p = new URLSearchParams(hash); } catch (e) { return null; }
+    var s = p.get('s');
+    if (s && sleeves.indexOf(s) !== -1) out.s = s;
+    var d = p.get('d');
+    if (validDate(d)) out.d = d;
+    var a = p.get('a');
+    if (a !== null && a !== '') { var n = +a; if (validAmount(n)) out.a = n; }
+    var v = p.get('v');
+    if (v === 'SPOT' || v === 'IBIT' || v === 'FBTC') out.v = v;
+    var x = p.get('x');
+    if (x) x.split(',').forEach(function (part) {
+      var m = part.split('@');
+      if (m.length !== 2) return;
+      var amt = +m[0];
+      if (validAmount(amt) && validDate(m[1])) out.x.push({ amt: amt, dt: m[1] });
+    });
+    if (!out.s && !out.d && !out.a && !out.v && !out.x.length) return null;
+    return out;
+  }
+  function encodeSetup(setup, sleeves, defaults){
+    var s = (setup.s && sleeves.indexOf(setup.s) !== -1) ? setup.s : defaults.s;
+    var d = validDate(setup.d) ? setup.d : defaults.d;
+    var a = validAmount(setup.a) ? setup.a : defaults.a;
+    var v = (setup.v === 'IBIT' || setup.v === 'FBTC') ? setup.v : 'SPOT';
+    var xs = (setup.x || []).filter(function (e) { return validAmount(e.amt) && validDate(e.dt); });
+    if (s === defaults.s && d === defaults.d && a === defaults.a && v === defaults.v && !xs.length) return '';
+    var parts = ['s=' + encodeURIComponent(s), 'd=' + d, 'a=' + String(a), 'v=' + v];
+    if (xs.length) parts.push('x=' + xs.map(function (e) { return String(e.amt) + '@' + e.dt; }).join(','));
+    return parts.join('&');
+  }
+  return { validDate: validDate, validAmount: validAmount, decodeHash: decodeHash, encodeSetup: encodeSetup };
+})();
+window.__psShare = PsShare;
+
 function cmpNiceNum(x){
   var r = Math.round(x);
   if (Math.abs(x - r) < x / 1e3) x = r;
@@ -587,6 +636,28 @@ vehInit();
 if(document.getElementById('pvCalc')){
 // calculator
 const cS=document.getElementById('pvS');cS.innerHTML=Object.keys(L.sleeves).map(k=>`<option value="${k}">${L.sleeves[k].n}</option>`).join('');document.getElementById('pvD').max=LAST;
+/* Shareable calculator links (enhancements 4): the setup lives in the
+   URL hash (PsShare above). Applied on load before the first calc();
+   re-written on every calc() via replaceState, so no history spam and
+   the address bar always carries the setup on screen. */
+const SHARE_DEFS={s:Object.keys(L.sleeves)[0],d:'2026-01-01',a:10000,v:'SPOT'};
+function shareRead(){const setup={s:cS.value,d:document.getElementById('pvD').value,a:+document.getElementById('pvA').value||0,v:VEH,x:[]};
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(setup.d)||isNaN(Date.parse(setup.d+'T00:00:00Z')))setup.d='2026-01-01';if(setup.d<'2026-01-01')setup.d='2026-01-01';
+ document.querySelectorAll('#pvX .pvx-row').forEach(r=>{const c=+r.querySelector('.pvx-a').value||0,dd=r.querySelector('.pvx-d').value;if(c>0&&dd)setup.x.push({amt:c,dt:dd})});
+ return setup}
+function shareSync(){const h=PsShare.encodeSetup(shareRead(),Object.keys(L.sleeves),SHARE_DEFS);
+ if(location.hash.slice(1)===h)return;
+ try{history.replaceState(null,'',location.pathname+location.search+(h?'#'+h:''))}catch(e){}}
+function shareApply(){const setup=PsShare.decodeHash(location.hash.slice(1),Object.keys(L.sleeves));
+ if(!setup)return false;
+ if(setup.s)cS.value=setup.s;
+ if(setup.d)document.getElementById('pvD').value=setup.d;
+ if(setup.a)document.getElementById('pvA').value=setup.a;
+ /* vehApply lives in the chart block above (runs first on this page);
+    guarded so a calculator without a chart never throws. */
+ if(setup.v&&setup.v!=='SPOT'&&typeof vehApply==='function')vehApply(setup.v);
+ setup.x.forEach(e=>addRow(e.amt,e.dt));
+ return true}
 /* CR-005: extra lump-sum contributions, each bought at its trading day's 9:30 AM ET OPEN (assets/data/opens.json; BTC = Coinbase 9:30 AM ET price) at the sleeve's target weights; weekend/holiday dates are held to the next trading day's open; STRC dividends on those shares are reinvested at the pay day's open. A missing/bad open falls back to that day's close and the row says so. In ETF mode the BTC leg buys at the vehicle close (no vehicle opens exist) — disclosed in the fieldset note, the row note and the summary line. A vehicle price still missing in ETF mode throws instead of falling back to spot; the row is then excluded here and from the line, so the two stay in agreement. */
 const cW=document.getElementById('pvX'),cAdd=document.getElementById('pvXAdd');
 let LFB=0;const opx=(d,a)=>{const o=OP&&OP[d]&&OP[d][a],c=CL[d]&&CL[d][a];if(typeof o==='number'&&isFinite(o)&&o>0&&!(c>0&&Math.abs(o/c-1)>.25))return o;LFB++;return c};
@@ -614,8 +685,22 @@ function calc(e){e&&e.preventDefault();VEHGAP=null;const k=cS.value;let a=+docum
  document.getElementById('pvRB').textContent=usd(bv);document.getElementById('pvRBp').innerHTML=`<span class="${cls(bv-a)}">${fp(pct(a,bv))}</span>`;
  const openTxt=VEH!=='SPOT'?` (each at its trading day's open, target weights; in ${VEH} mode the BTC leg is priced at the vehicle close, since no vehicle opens exist)`:` (each at its trading day's open, target weights)`;
  document.getElementById('pvRN').textContent=`Bought at the ${s0} close${nx?` plus ${nx} extra contribution${nx>1?'s':''}${openTxt}, total invested ${usd(inv)}`:''}, valued at the ${LAST} close. ${sv>=bv?'Beat':'Trailed'} spot BTC by ${usd(Math.abs(sv-bv))}.`
- if(document.getElementById('pvChart')&&window.__psRedraw)window.__psRedraw();}
-window.__psCalc=calc;document.getElementById('pvCalc').onsubmit=calc;['pvS','pvD','pvA'].forEach(i=>document.getElementById(i).oninput=calc);calc();
+ if(document.getElementById('pvChart')&&window.__psRedraw)window.__psRedraw();shareSync();}
+window.__psCalc=calc;document.getElementById('pvCalc').onsubmit=calc;['pvS','pvD','pvA'].forEach(i=>document.getElementById(i).oninput=calc);
+const sharedSetup=shareApply();calc();
+if(sharedSetup){const c=document.getElementById('calculator');if(c)c.scrollIntoView({behavior:(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)?'auto':'smooth'});}
+/* Copy link to this setup (enhancements 4): copies the current URL,
+   hash synced first so the link carries the setup on screen. */
+const pvCopy=document.getElementById('pvCopyLink');
+if(pvCopy){const copyLabel=pvCopy.textContent;
+ pvCopy.addEventListener('click',()=>{
+  shareSync();
+  const url=location.href;
+  const done=()=>{pvCopy.textContent='Copied ✓';setTimeout(()=>{pvCopy.textContent=copyLabel;},2000);};
+  const fail=()=>{pvCopy.textContent='Copy the link from the address bar';setTimeout(()=>{pvCopy.textContent=copyLabel;},3000);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done,fail);}
+  else{try{const t=document.createElement('textarea');t.value=url;document.body.appendChild(t);t.select();const ok=document.execCommand('copy');t.remove();if(ok)done();else fail();}catch(e){fail();}}
+ });}
 
 }
 }

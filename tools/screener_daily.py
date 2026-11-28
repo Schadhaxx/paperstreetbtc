@@ -16,6 +16,17 @@ dailyUrl: null.
 (The ind-daily- prefix avoids colliding with the Compare daily files
 gold-daily.json and mstr-daily.json, which are different data.)
 
+Also writes one combined file, assets/data/spark-pack.json
+(enhancements 6, 21 Nov 2026): the last 12 weekly closes per Desk
+symbol (all 24, including QQQ/USDCAD/DXY, which have weekly files
+but no daily files), for the tile/card sparklines on screener.html.
+Built from the shipped weekly files in --weekly-dir, not from the
+Yahoo fetches, so it needs no new fetch; closes are raw (USDCAD
+moves in the 4th decimal). NOTE: the prices.yml screener-daily step
+must copy + commit spark-pack.json (its file list is explicit) — see
+the enhancements 4–6 handover; until that lands, the shipped pack is
+a snapshot and goes stale after the next Friday close.
+
 Source: Yahoo chart API, unadjusted daily closes (quote close, never
 adjclose) — the same bars the weekly tools aggregate, so a daily close
 on a week's last session equals that week's close in the shipped weekly
@@ -175,8 +186,25 @@ WEEKLY_FILES = {
     'WTI': 'wti-weekly.json', 'GOLD': 'gold-weekly.json',
     'US10Y': 'us10y-weekly.json', 'VIX': 'vix-weekly.json',
     'DIA': 'dia-weekly.json',
+    # No daily file, but a weekly file — their Desk charts have
+    # dailyUrl: null, yet their tiles still get a sparkline.
+    'QQQ': 'qqq-weekly.json', 'USDCAD': 'usdcad-weekly.json', 'DXY': 'dxy-weekly.json',
 }
 ALL = {**STOCKS, **INDICATORS}
+
+# Sparkline pack (enhancements 6, 21 Nov 2026): one slim combined file
+# of the last 12 weekly closes per Desk symbol, for the tile/card
+# sparklines on screener.html. Built from the shipped weekly files in
+# --weekly-dir (the same files the daily consistency check reads), so
+# it needs no new fetch. Closes are shipped raw (unrounded): USDCAD
+# moves in the 4th decimal (0.7134), and rounding to cents would flatline
+# its spark. asOf is the week-ending Sunday of the latest week — the
+# honest "through the week ending" date, up to 2 days ahead on a Friday.
+SPARK_WEEKS = 12
+SPARK_FILE = 'spark-pack.json'
+SPARK_KEYS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'SPCX', 'META', 'BRK.B',
+              'AAPL', 'AMZN', 'MSFT', 'NFLX', 'SPOT', 'XYZ', 'GOOGL', 'NVDA',
+              'WTI', 'GOLD', 'US10Y', 'VIX', 'DIA', 'QQQ', 'USDCAD', 'DXY']
 
 
 def rnd(x, nd):
@@ -517,6 +545,43 @@ def load_weekly(weekly_dir, key):
     return weeks, doc.get('asOf')
 
 
+def build_spark_pack(weekly_dir):
+    """(symbols, asOf, skipped): last SPARK_WEEKS weekly closes per Desk
+    symbol, from the shipped weekly files. A symbol whose weekly file
+    is unreadable, or with fewer than 2 usable closes, is skipped —
+    never invented. asOf is the latest week-ending Sunday across the
+    symbols that made it in."""
+    symbols, skipped, asof = {}, [], None
+    for k in SPARK_KEYS:
+        try:
+            weeks, _ = load_weekly(weekly_dir, k)
+        except Exception:
+            skipped.append(k)
+            continue
+        closes = []
+        for w in weeks:
+            c = w.get('close')
+            if isinstance(c, bool) or not isinstance(c, (int, float)) or not math.isfinite(c) or c <= 0:
+                continue
+            closes.append(c)
+        if len(closes) < 2:
+            skipped.append(k)
+            continue
+        symbols[k] = closes[-SPARK_WEEKS:]
+        try:
+            sun = dt.date.fromisoformat(weeks[-1]['sunday'])
+        except Exception:
+            continue
+        if asof is None or sun > asof:
+            asof = sun
+    return symbols, asof.isoformat() if asof else None, skipped
+
+
+def spark_pack_doc(weekly_dir):
+    symbols, asof, skipped = build_spark_pack(weekly_dir)
+    return {'version': 1, 'asOf': asof, 'weeks': SPARK_WEEKS, 'symbols': symbols}, skipped
+
+
 def write_doc(path, doc):
     tmp = path + '.tmp'
     with open(tmp, 'w') as f:
@@ -625,6 +690,22 @@ def main(argv):
                     print(f'NOTE {k}: weekly-consistency notes (reported, not fatal): ' + '; '.join(mism))
             except Exception as e:
                 bad.append(f'{k}: consistency check failed: {e}')
+        if only is None:  # full run: the spark pack must match the weekly files too
+            spath = os.path.join(out_dir, SPARK_FILE)
+            try:
+                sdoc = json.load(open(spath))
+            except Exception as e:
+                bad.append(f'spark-pack: cannot read {spath} ({type(e).__name__})')
+            else:
+                want, _ = spark_pack_doc(weekly_dir)
+                if sdoc.get('version') != 1 or sdoc.get('weeks') != SPARK_WEEKS:
+                    bad.append('spark-pack: bad version/weeks')
+                if sdoc.get('asOf') != want['asOf']:
+                    bad.append(f"spark-pack: asOf {sdoc.get('asOf')!r} != weekly files {want['asOf']!r}")
+                if sdoc.get('symbols') != want['symbols']:
+                    diff = sorted(set(want['symbols']) ^ set(sdoc.get('symbols') or {})) or [
+                        k for k in want['symbols'] if (sdoc.get('symbols') or {}).get(k) != want['symbols'][k]][:3]
+                    bad.append(f'spark-pack: closes differ from weekly files ({diff})')
         for b in bad:
             print('BAD', b)
         print('screener-daily', 'OK' if not bad else 'INVALID', len(keys), 'files')
@@ -667,6 +748,18 @@ def main(argv):
     print('screener-daily wrote', len(docs), 'file(s) ->', out_dir)
     if fallbacks:
         print(f'screener-daily: {len(fallbacks)} fallback(s) used (see FALLBACK lines above)')
+    # Spark pack (enhancements 6): combined last-12 weekly closes for
+    # the Desk sparklines, built from the weekly files, not the fetches
+    # — so a partial --symbol run still writes a complete pack. Best
+    # effort per symbol; a skip never fails the run (the daily files
+    # are the primary output, and their own failure already reports it).
+    sdoc, sskip = spark_pack_doc(weekly_dir)
+    if sdoc['symbols']:
+        write_doc(os.path.join(out_dir, SPARK_FILE), sdoc)
+        print(f'spark-pack: {len(sdoc["symbols"])} symbols, asOf={sdoc["asOf"]}' +
+              (f', skipped {", ".join(sskip)}' if sskip else ''))
+    elif sskip:
+        print(f'spark-pack: skipped, no usable weekly closes ({", ".join(sskip)})', file=sys.stderr)
     if failed:
         print('screener-daily: skipped ' + ', '.join(failed) + f' ({len(failed)} failed, {len(docs)} written)', file=sys.stderr)
         return 1

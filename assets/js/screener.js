@@ -105,6 +105,48 @@
   var CHART_ICON = '<svg viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M2 10.5L5 7L8 8.5L12 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="3.5" r="1.4" fill="currentColor"/></svg>';
   var indRows = [];
   var pricesFailed = false;
+  var sparkBySymbol = {};
+
+  /* Desk sparklines (enhancements 6, 21 Nov 2026): 72x28 SVG polyline
+     from weekly closes, same geometry as the compare board spark() in
+     screener-chart.js (72 wide, 28 tall, 2px vertical padding).
+     Green when the closes end higher, red when lower, grey when flat —
+     the page's signed-number colours. isFresh caps how old a pack may
+     be: asOf is the week-ending Sunday (up to 2 days ahead on a
+     Friday), and 14 days covers one missed weekly refresh. No DOM
+     access here, so the node test can eval this block directly. */
+  var DeskSpark = (function () {
+    function sparkSvg(closes) {
+      if (!closes || closes.length < 2) return '';
+      var pts = closes.slice();
+      var first = pts[0], last = pts[pts.length - 1];
+      var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+      var span = (max - min) || 1, w = 72, h = 28;
+      var d = pts.map(function (p, i) {
+        var x = (i / (pts.length - 1)) * w;
+        var y = h - ((p - min) / span) * (h - 4) - 2;
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+      var color = last > first ? '#22c55e' : (last < first ? '#ef4444' : '#94a3b8');
+      var chg = (last / first - 1) * 100;
+      return '<svg class="cmp-spark" viewBox="0 0 72 28" aria-hidden="true"><polyline points="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.6" /></svg>'
+        + '<span class="cmp-sr">12 weekly closes ' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span>';
+    }
+    function isFresh(asOf, nowMs) {
+      if (typeof asOf !== 'string' || !asOf) return false;
+      var t = Date.parse(asOf + 'T12:00:00Z');
+      if (isNaN(t)) return false;
+      var age = (nowMs - t) / 86400000;
+      return age >= -7 && age <= 14;
+    }
+    return { sparkSvg: sparkSvg, isFresh: isFresh };
+  })();
+  window.__psDeskSpark = DeskSpark;
+  function sparkFor(sym) {
+    var closes = sparkBySymbol[sym];
+    if (!closes) return '';
+    return DeskSpark.sparkSvg(closes);
+  }
   var noteBySymbol = {};
   var openNotePill = null;
   var openNoteBtn = null;
@@ -407,6 +449,7 @@
         if (r.note) noteBySymbol[r.symbol] = r.note;
         var noteBtn = r.note ? ' <button type="button" class="note-btn" data-symbol="' + escapeHtml(r.symbol) + '" aria-label="More about ' + escapeHtml(r.symbol) + '">+</button>' : '';
         var cls = signCls(r.dayChangePct);
+        var sp = sparkFor(r.symbol);
         var chartLabel = (r.ytdBasis === 'listing')
           ? ('Open ' + r.symbol + ' chart since listing')
           : ('Open ' + r.symbol + ' YTD chart');
@@ -415,6 +458,7 @@
           + '<div><div class="price">' + money(r.price) + '</div><span class="day-pill ' + cls + '">' + dayText(r) + '</span></div></div>'
           + '<div class="meta"><span class="ytd">' + (r.ytdBasis === 'listing' ? 'Since listing' : 'YTD') + ' <b class="' + signCls(r.ytdPct) + '">' + pct(r.ytdPct) + '</b>'
           + (r.ytdBasis === 'listing' ? '<div class="row-note">Since listing 12 Jun 2026</div>' : '') + '</span>'
+          + sp
           + '<span class="card-chart" aria-hidden="true">' + CHART_ICON + '</span></div></article>';
       }).join('');
       var count = document.getElementById('screener-count');
@@ -427,8 +471,10 @@
         if (r.note) noteBySymbol[r.symbol] = r.note;
         var noteBtn = r.note ? ' <button type="button" class="note-btn" data-symbol="' + escapeHtml(r.symbol) + '" aria-label="More about ' + escapeHtml(r.symbol) + '">+</button>' : '';
         var cls = signCls(r.dayChangePct);
+        var sp = sparkFor(r.symbol);
         return '<div class="tile" data-symbol="' + escapeHtml(r.symbol) + '" tabindex="0" role="button" aria-label="Open ' + escapeHtml(r.name) + ' chart"><div class="k">' + escapeHtml(r.name) + ' · ' + unitLabel(r) + '</div>'
           + '<div class="v">' + formatValue(r) + '</div><div class="d ' + cls + '">' + dayText(r) + '</div>'
+          + (sp ? '<div class="spark-row">' + sp + '</div>' : '')
           + '<div class="u">' + noteBtn + '</div>'
           + '<span class="tile-chart" aria-hidden="true">' + CHART_ICON + '</span></div>';
       }).join('');
@@ -519,6 +565,18 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    /* Sparklines (enhancements 6): one slim combined file, fetched in
+       parallel with the pack; a missing or stale pack just means no
+       sparklines — tiles render as before. */
+    fetch('assets/data/spark-pack.json?v=spk1')
+      .then(function (res) { if (!res.ok) throw new Error(res.status); return res.json(); })
+      .then(function (data) {
+        if (data && data.symbols && typeof data.symbols === 'object' && DeskSpark.isFresh(data.asOf, Date.now())) {
+          sparkBySymbol = data.symbols;
+          render();
+        }
+      })
+      .catch(function () { /* no sparklines */ });
     fetch('assets/data/screener-pack.json?v=dia3')
       .then(function (res) { return res.json(); })
       .then(function (data) {

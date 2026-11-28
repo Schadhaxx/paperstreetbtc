@@ -500,6 +500,56 @@ class TestHistoryFallback(unittest.TestCase):
             out = sd.load_shipped_daily(td, 'TSLA')
         self.assertEqual(out, {dt.date(2026, 1, 5): 100.0, dt.date(2026, 1, 6): 102.25})
         self.assertEqual(sd.load_shipped_daily(td, 'AAPL'), {})
+class TestSparkPack(unittest.TestCase):
+    """Sparkline pack (enhancements 6, 21 Nov 2026): last 12 weekly
+    closes per Desk symbol, from the shipped weekly files."""
+
+    def _weekly_doc(self, closes, last_sunday='2026-11-22'):
+        weeks = []
+        mon = dt.date(2026, 9, 7)
+        for i, c in enumerate(closes):
+            m = mon + dt.timedelta(days=7 * i)
+            weeks.append({'monday': m.isoformat(), 'sunday': (m + dt.timedelta(days=6)).isoformat(),
+                          'close': c, 'open': c, 'high': c, 'low': c, 'days': 5})
+        weeks[-1]['sunday'] = last_sunday
+        return {'weeks': weeks, 'asOf': '2026-11-20'}
+
+    def test_build_spark_pack_slices_last_12_and_skips_bad(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, 'stock-weekly-TSLA.json'), 'w') as f:
+                json.dump(self._weekly_doc(list(range(100, 115))), f)
+            with open(os.path.join(d, 'gold-weekly.json'), 'w') as f:
+                json.dump(self._weekly_doc([3900.5, 3901.2]), f)
+            with open(os.path.join(d, 'wti-weekly.json'), 'w') as f:
+                json.dump({'weeks': [{'monday': '2026-11-16', 'sunday': '2026-11-22', 'close': 104.24}]}, f)
+            syms, asof, skipped = sd.build_spark_pack(d)
+            self.assertEqual(syms['TSLA'], list(range(103, 115)))
+            self.assertEqual(syms['GOLD'], [3900.5, 3901.2])
+            self.assertEqual(asof, '2026-11-22')
+            self.assertIn('WTI', skipped)   # 1 close is not a series
+            self.assertIn('NVDA', skipped)  # no weekly file in the fixture dir
+
+    def test_spark_keys_are_exactly_the_desk_symbols(self):
+        root = os.path.join(os.path.dirname(__file__), '..', 'assets', 'data')
+        with open(os.path.join(root, 'screener-pack.json')) as f:
+            pack = json.load(f)
+        want = [r['symbol'] for r in pack['rows']] + [i['symbol'] for i in pack['indicators']]
+        self.assertEqual(sd.SPARK_KEYS, want)
+        self.assertEqual(len(sd.SPARK_KEYS), 24)
+
+    def test_shipped_spark_pack_matches_weekly_files(self):
+        root = os.path.join(os.path.dirname(__file__), '..', 'assets', 'data')
+        with open(os.path.join(root, 'spark-pack.json')) as f:
+            shipped = json.load(f)
+        want, skipped = sd.spark_pack_doc(root)
+        self.assertEqual(skipped, [])
+        self.assertEqual(shipped, want)
+        self.assertEqual(shipped['version'], 1)
+        self.assertEqual(shipped['weeks'], sd.SPARK_WEEKS)
+        self.assertRegex(shipped['asOf'], r'^\d{4}-\d\d-\d\d$')
+        for k, closes in shipped['symbols'].items():
+            self.assertEqual(len(closes), 12, k)
+            self.assertTrue(all(isinstance(c, (int, float)) and c > 0 for c in closes), k)
 
 
 if __name__ == '__main__':

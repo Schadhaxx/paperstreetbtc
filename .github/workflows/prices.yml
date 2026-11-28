@@ -841,7 +841,7 @@ jobs:
           fi
           set -e
           wrote=0
-          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json ind-daily-dia.json; do
+          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json ind-daily-dia.json spark-pack.json; do
             [ -f "/tmp/screener-daily/$f" ] && wrote=1 && break
           done
           if [ "$wrote" -eq 0 ] || { [ "$gen_rc" -eq 0 ] && [ "$chk_rc" -ne 0 ]; }; then
@@ -860,7 +860,7 @@ jobs:
           # btc-daily stall step below). The publish itself is not blocked.
           echo "failed=$failed" >> $GITHUB_OUTPUT
           changed=0
-          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json ind-daily-dia.json; do
+          for f in stock-daily-TSLA.json stock-daily-PLTR.json stock-daily-MSTR.json stock-daily-IBIT.json stock-daily-MU.json stock-daily-META.json stock-daily-SPCX.json stock-daily-BRK.B.json stock-daily-AAPL.json stock-daily-AMZN.json stock-daily-MSFT.json stock-daily-NFLX.json stock-daily-SPOT.json stock-daily-XYZ.json stock-daily-GOOGL.json stock-daily-NVDA.json ind-daily-wti.json ind-daily-gold.json ind-daily-us10y.json ind-daily-vix.json ind-daily-dia.json spark-pack.json; do
             if [ -f "/tmp/screener-daily/$f" ] && ! cmp -s "/tmp/screener-daily/$f" "assets/data/$f"; then cp "/tmp/screener-daily/$f" "assets/data/$f.tmp" && mv "assets/data/$f.tmp" "assets/data/$f"; echo "updated $f"; changed=1; fi
           done
           # Staleness check: all five ind-daily files must share the
@@ -909,7 +909,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- recap/ sitemap.xml assets/data/btc-daily.json assets/data/opens.json assets/data/vehicle-daily.json assets/data/stock-daily-*.json assets/data/ind-daily-*.json assets/data/cmp-daily.json
+          git add -- recap/ sitemap.xml assets/data/btc-daily.json assets/data/opens.json assets/data/vehicle-daily.json assets/data/stock-daily-*.json assets/data/ind-daily-*.json assets/data/cmp-daily.json assets/data/spark-pack.json
           msg=""; [ "${{ steps.gen.outputs.changed }}" = 1 ] && msg="recap/btc-daily"; [ "${{ steps.opens.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }opens"
           [ "${{ steps.vehicle.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }vehicle"
           [ "${{ steps.screener_daily.outputs.changed }}" = 1 ] && msg="${msg:+$msg + }screener-daily"
