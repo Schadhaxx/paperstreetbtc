@@ -205,7 +205,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   }
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, tilePrice: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0 };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, tilePrice: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0, savedScrollY: 0, scrollLocked: false };
 
 
   // --- Experimental live feel: pure helpers (also exposed for harness) ---
@@ -870,6 +870,26 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (canvas) canvas.setAttribute('aria-label', cfg.stock ? (cfg.symbol + ' weekly candle chart') : 'Indicator weekly candle chart, year to date');
     m.classList.add('open');
     m.setAttribute('aria-hidden', 'false');
+    // Scroll lock (25 Nov 2026, Sunil): the modal used to leave the
+    // page scrollable behind it, so swipes chained through to the page
+    // and it drifted down invisibly while the chart was open; on tab
+    // return Safari restored the drifted spot (chart / heat map).
+    // Lock with the iOS-safe pattern — plain overflow:hidden does not
+    // stop background scrolling on iOS Safari, which is exactly how
+    // this happened. Save the position first, and stash it in
+    // sessionStorage too, so a tab evicted while the modal is open
+    // still restores the pre-modal spot instead of the drifted one.
+    // Guarded on scrollLocked so reopening for another symbol while
+    // already open never re-saves (the saved spot stays pre-modal).
+    if (!state.scrollLocked) {
+      state.savedScrollY = window.scrollY || window.pageYOffset || 0;
+      state.scrollLocked = true;
+      try { sessionStorage.setItem('ps-desk-scroll-y', String(state.savedScrollY)); } catch (e) {}
+      document.body.style.position = 'fixed';
+      document.body.style.top = (-state.savedScrollY) + 'px';
+      document.body.style.left = '0';
+      document.body.style.width = '100%';
+    }
     // A different symbol always starts blank: clear the old pill,
     // popup, source "+" and canvas, and invalidate any load still
     // in flight for the old symbol (its response is ignored below).
@@ -913,6 +933,17 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     stopDeskLiveTimer();
     m.classList.remove('open');
     m.setAttribute('aria-hidden', 'true');
+    // Unlock and restore the exact pre-modal position (see openModal).
+    // Only when this module locked it: a close with no lock (e.g. an
+    // Escape keypress with the modal already closed) must not scroll.
+    if (state.scrollLocked) {
+      state.scrollLocked = false;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.width = '';
+      window.scrollTo(0, state.savedScrollY);
+    }
   }
 
   // Shipped file ONLY — no browser fetch fallback (see header).

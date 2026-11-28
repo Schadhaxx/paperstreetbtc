@@ -84,7 +84,7 @@
      column, dismiss by close button, tap outside, or Escape. */
   .ind-modal { display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.72); align-items:flex-end; justify-content:center; padding:16px; }
   .ind-modal.open { display:flex; }
-  .ind-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .ind-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; overscroll-behavior:contain; box-shadow:0 20px 60px rgba(0,0,0,.6); }
   @media (orientation:landscape) and (min-width:700px){ .ind-dialog{ max-width:920px; } }
   /* Short landscape (iPhone landscape 844x390, 8 Nov 2026, round 3):
      the dialog is bottom-anchored and only ~227px of the 280px canvas
@@ -372,8 +372,8 @@
     <button type="button" class="btn" id="ind-retry">Retry</button>
   </div>
 </div>
-<script src="assets/js/screener.js?v=scr13"></script>
-<script src="assets/js/screener-indicator-chart.js?v=stocks26"></script>
+<script src="assets/js/screener.js?v=scr14"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks27"></script>
 <script src="assets/js/screener-chart.js?v=cmp14"></script>
 <script src="assets/js/et.js?v=et2"></script>
 <script src="assets/js/btcchart.js?v=wr16"></script>
