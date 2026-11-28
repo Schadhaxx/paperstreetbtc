@@ -832,7 +832,7 @@ jobs:
         run: |
           mkdir -p /tmp/screener-daily
           set +e
-          python3 tools/screener_daily.py --out-dir /tmp/screener-daily --weekly-dir assets/data 2>&1 | tee /tmp/screener-daily.log
+          python3 tools/screener_daily.py --out-dir /tmp/screener-daily --weekly-dir assets/data --history /tmp/history.json 2>&1 | tee /tmp/screener-daily.log
           gen_rc=${PIPESTATUS[0]}
           chk_rc=0
           if [ "$gen_rc" -eq 0 ]; then
@@ -889,7 +889,7 @@ jobs:
           # still-forming bar; a run before the cutoff would end BTC a day
           # behind the NYSE asOf, which is correct by design.
           set +e
-          python3 tools/cmp_daily.py --out /tmp/cmp-daily.json --pack assets/data/screener-pack.json --weekly-dir assets/data 2>&1 | tee /tmp/cmp-daily.log
+          python3 tools/cmp_daily.py --out /tmp/cmp-daily.json --pack assets/data/screener-pack.json --weekly-dir assets/data --history /tmp/history.json --shipped assets/data/cmp-daily.json 2>&1 | tee /tmp/cmp-daily.log
           gen_rc=${PIPESTATUS[0]}
           chk_rc=0
           if [ "$gen_rc" -eq 0 ]; then
@@ -938,9 +938,26 @@ jobs:
           exit 1
       - name: screener-daily failed or stale (run turns red AFTER the recap was published)
         if: always() && (steps.screener_daily.outputs.failed != '' || steps.screener_daily.outputs.stale != '')
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "::error::screener-daily failed for: ${{ steps.screener_daily.outputs.failed }}; ind-daily stale: ${{ steps.screener_daily.outputs.stale }}. The recap still published; see the screener-daily step log."
-          exit 1
+          # tools/screener_alert.py decides whether this step goes red.
+          # It stays quiet in two cases (Grok Bot's follow-up #1):
+          #   (b) the published files already hold that session's close
+          #       (the gen failed but the data is already published, so
+          #       there is nothing missing);
+          #   (a) the failure is identical to the most recent alert the
+          #       recap job already raised (same symbols, same stale
+          #       keys, same session) -- alert once per incident, not
+          #       every 5-minute run. The walk-back skips quiet runs, so
+          #       a repeat stays quiet until the signature changes.
+          # A real miss still exits 1 and turns the run red. If the
+          # repeat lookup fails (no token, API error) the tool fails
+          # open and alerts.
+          python3 tools/screener_alert.py \
+            --failed "${{ steps.screener_daily.outputs.failed }}" \
+            --stale "${{ steps.screener_daily.outputs.stale }}" \
+            --log /tmp/screener-daily.log --data-dir assets/data
       - name: Summary
         if: always()
         run: |
