@@ -259,6 +259,15 @@ var CANDRANGE=false,CANDGRAN='daily',RGCAND=null,RGLBL='',RGLIVE=false;
    fallback if 4H is unavailable). Job 9 (22 Nov 2026): 3M/6M/YTD gained
    Daily, so their default moved from Weekly to Daily (finest-first). */
 function defaultGran(r){return (r==='1W')?'4h':(r==='1Y')?'weekly':'daily';}
+/* Item 17: the FINEST candle size for a range — the size a range switch
+   lands on when the viewer is in candles. This is the opposite of
+   defaultGran (the coarsest), which is still the default for an explicit
+   Line -> Candles tap. 1D finest is 1H (CT, not RGGRAN). Rebase fix
+   (28 Nov 2026): Daily is the finest offered size for 3M/6M/YTD/5Y/10Y/
+   Max since Job 9 (finest-first defaults) — the old 'weekly' there
+   landed a candle viewer on weekly while the range default is Daily.
+   1Y offers no Daily (monthly|weekly), so its finest stays Weekly. */
+function finestGran(r){return r==='1W'?'4h':(r==='1Y'?'weekly':'daily');}
 var RGCT='line',RGGRAN=defaultGran('1M'),RGSEEN={};
 /* Candle ranges, Day 2: 3M/6M/YTD/1Y join 1W/1M. Granularity choices:
    1W daily|4h (default 4h); 1M weekly|daily (default daily); 3M/6M/YTD/1Y monthly|weekly
@@ -351,6 +360,7 @@ function drawCandles1D(candles,label,per){
   /* short fade-in for the razzle layer, only when the candle set changes (not on hover redraws, or it would flicker) */
   if(!prevCAND || prevCAND.length!==candles.length || prevCAND[0].t!==candles[0].t || prevCAND!==candles){ /* first draw of a new set fades in; hover redraws reuse the same array object, so they skip the fade */ if(prevCAND!==candles){c.style.transition='opacity .3s ease';c.style.opacity='0';requestAnimationFrame(function(){c.style.opacity='1';});} }
   ctx.clearRect(0,0,W,H);
+  lastDrawKind='cand1d'; /* Item 14: record the kind so a switch back to line fades. */
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   /* Job 12: widen the axis for an overlay that runs outside the candle
@@ -363,7 +373,7 @@ function drawCandles1D(candles,label,per){
      pad (and an overlay expansion) could push lo negative on long
      ranges (10Y monthly read $-17,147). */
   if(lo<0)lo=0;
-  var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
+  var R=12,T=18,B=44,ih=H-T-B;
   /* Follow-ups (28 Nov 2026): nice y-ticks like the line views
      (nativeNiceTicks) instead of the 0/33/66/100% fractions, which
      printed odd steps ($84,033 / $73,469 / $63,216 / $52,963). Same
@@ -373,31 +383,40 @@ function drawCandles1D(candles,label,per){
   var _hr=nativeHeadroomTicks(ticks,lo,hi);if(_hr)ticks=_hr.ticks;
   ticks=ticks.filter(function(t){return t>=0;});if(!ticks.length)ticks=[0];
   if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
+  /* Item 2: one plot box for candles and line — the left margin is measured
+     from the y-axis labels actually drawn (nice ticks), never less than 62px,
+     so switching views cannot shift the plot. */
+  var L=plotLeftMargin(ctx,ticks.map(function(v){var s=yTickDaily(v,false,false);return s==null?'':s;})),iw=W-L-R;
   /* TA Stage 1, candle inset (item 1): half a slot at each end, so the first
      and last candles sit fully inside the plot instead of on its edges.
      CANDGEOM carries these x positions, so later stages reuse the same inset. */
   var X=function(i){return L+iw*(i+0.5)/candles.length;};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
-  ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
+  /* Item 10: softer grid — the candle gridlines were darker than the line
+     views' (.08/.10); now they match the line views (.05/.08) and read as
+     guides, not a border. */
+  ctx.strokeStyle=psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   ticks.forEach(function(v){var y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();var s=yTickDaily(v,false,false);if(s!=null)ctx.fillText(s,L-6,y+4);});
-  ctx.textAlign='center';CANDGEOM=[];drawCandles1D._lastTx=null;
+  ctx.textAlign='center';CANDGEOM=[];
+  var labIdx1D=rangeLabelIndices(candles.length,iw),lastRight1D=-1e9;
   candles.forEach(function(k,i){
-    var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
+    var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(22,iw/candles.length*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
     CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
-    ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
-    ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
-    /* X-axis, iPhone-first, two clean rows so date and time never overlap and never overlap each other:
-       - bottom row (H-8): time only, at most 4 labels on a phone (step 6 for 24 candles = ~82px apart on a 390px phone, time label ~55px wide, so no overlap), at most 6 on desktop
-       - upper row (H-24): date only ("Oct 27"), only at the first candle and when the day changes, clamped inside the chart
-       - labels are also spaced by measured width: a label is skipped if it would come within 62px of the previous one */
-    var phoneW=W<=640;
-    var step=phoneW?Math.max(1,Math.ceil(candles.length/4)):Math.max(1,Math.floor(candles.length/6));
-    if(i%step===0&&x>L+32&&x<W-R-32){
-      /* Must-fix (27 Nov 2026): the time row is a neutral slate, like the
-         date row — it used to inherit the candle's green/red fillStyle
-         set two lines earlier for the body. */
-      var _prevX=drawCandles1D._lastTx;if(_prevX==null||x-_prevX>=62){ctx.fillStyle=psC('#9aa6bc','#475569');ctx.fillText(etTime(k.t),x,H-8);drawCandles1D._lastTx=x;}
+    /* Items 5 + 4 + 12 + 6: 1px soft wick, rounded 1px body corners with a
+       faint top-light, and a visible tick when the body is flat (doji). */
+    drawCandleWick(ctx,x,Y(k.h),Y(k.l),col);
+    fillCandleBody(ctx,x,top,bot,bw,col,k.c>=k.o);
+    /* X-axis, iPhone-first, two clean rows so date and time never overlap:
+       - bottom row (H-8): time only, evenly spaced via rangeLabelIndices —
+         the same rule as the range view (item 3), first and last included,
+         with a measured-width guard instead of the old step + 62px rule.
+         Labels are still skipped within 32px of the plot corners.
+       - upper row (H-24): date only ("Oct 27"), only at the first candle
+         and when the day changes, clamped inside the chart. */
+    if(labIdx1D.indexOf(i)>=0&&x>L+32&&x<W-R-32){
+      var tx=etTime(k.t),nr1D=evenLabelGuard(ctx,lastRight1D,x,tx);
+      if(nr1D>=0){ctx.fillText(tx,x,H-8);lastRight1D=nr1D;}
     }
     var prev=candles[i-1],dayChange=!prev||new Date(prev.t).toLocaleDateString('en-US',{timeZone:'America/New_York'})!==new Date(k.t).toLocaleDateString('en-US',{timeZone:'America/New_York'});
     if(dayChange){
@@ -412,7 +431,9 @@ function drawCandles1D(candles,label,per){
     if(layer===0){ctx.strokeStyle=psC('rgba(255,255,255,.25)','rgba(15,23,42,.35)');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle=psC('#ffffff','#0f172a');ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
-  ctx.fillStyle=psC('#9aa6bc','#475569');ctx.textAlign='left';ctx.fillText(label, L, 12);
+  /* Item 11: title more presence — 12px and brighter, so it reads as a
+     chart label rather than fading into the axis colour. */
+  ctx.font='12px Inter, sans-serif';ctx.fillStyle=psC('#cbd5e1','#334155');ctx.textAlign='left';ctx.fillText(label, L, 12);
   /* TA Stage 2: publish the geometry (inset x positions from CANDGEOM) and
      draw the overlays — here, not at the call site, so hover redraws
      (redrawCandles) repaint the overlays too. */
@@ -571,6 +592,61 @@ function rangeLabelIndices(n,iw){
   }
   return out;
 }
+/* Cleanup (Nov 2026, items 2–7, 10–12): shared candle-drawing helpers so
+   the two candle renderers (1D + range) and the two native line renderers
+   all use the same plot box, label rhythm and body style.
+   - plotLeftMargin (item 2): one rule for the left margin everywhere — the
+     widest y-axis label + 12px, never less than 62px. The daily line view
+     used to size this dynamically while the candle views fixed it at 62px,
+     so switching Daily Line <-> Daily Candles shifted the plot sideways.
+   - evenLabelGuard (item 3): one measured-width rule for x labels — a label
+     is drawn only if it clears the previous label's right edge by 8px.
+     Returns the new right edge, or -1 when the label must be skipped.
+   - fillCandleBody (items 4, 6, 12): rounded 1px corners, a visible
+     horizontal tick for flat/doji candles, and a faint top-light gradient.
+   - drawCandleWick (item 5): 1px hairline wick at 70% opacity. */
+function plotLeftMargin(ctx,labels){
+  ctx.font='11px Inter, sans-serif';
+  var maxLabW=0;
+  labels.forEach(function(s){if(s!=null)maxLabW=Math.max(maxLabW,ctx.measureText(s).width);});
+  return Math.max(62,Math.ceil(maxLabW)+12);
+}
+function evenLabelGuard(ctx,prevRight,x,text){
+  var w=ctx.measureText(text).width;
+  if(x-w/2<prevRight+8)return -1;
+  return x+w/2;
+}
+function fillCandleBody(ctx,x,top,bot,bw,col,up){
+  var h=bot-top;
+  if(h<=0){
+    /* Doji (item 6): open == close draws as a 2px sliver that can vanish
+       against the grid — draw a short horizontal tick at the open/close
+       price instead, the full body width, so flat candles stay readable. */
+    ctx.strokeStyle=col;ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(x-bw/2,top);ctx.lineTo(x+bw/2,top);ctx.stroke();
+    return;
+  }
+  var hh=Math.max(2,h),rx=x-bw/2;
+  ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(rx,top,bw,hh,1);else ctx.rect(rx,top,bw,hh);
+  ctx.fillStyle=col;ctx.fill();
+  /* Top-light (item 12): a faint white gradient, lighter at the top for
+     up candles and at the bottom for down candles — depth without
+     changing the flat look. Barely-there by design. */
+  var g=ctx.createLinearGradient(0,top,0,top+hh);
+  if(up){g.addColorStop(0,'rgba(255,255,255,.16)');g.addColorStop(1,'rgba(255,255,255,0)');}
+  else{g.addColorStop(0,'rgba(255,255,255,0)');g.addColorStop(1,'rgba(255,255,255,.12)');}
+  ctx.fillStyle=g;
+  ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(rx,top,bw,hh,1);else ctx.rect(rx,top,bw,hh);
+  ctx.fill();
+}
+function drawCandleWick(ctx,x,wickTop,wickBot,col){
+  ctx.save();
+  ctx.globalAlpha=0.7;ctx.strokeStyle=col;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(x,wickTop);ctx.lineTo(x,wickBot);ctx.stroke();
+  ctx.restore();
+}
 /* Experimental live feel: time left until the current bucket closes
    (daily -> midnight UTC, weekly -> Monday 00:00 UTC, monthly -> 1st,
    yearly -> 1 Jan). */
@@ -598,6 +674,7 @@ function drawCandlesRange(){
   var c=$('bcC'),ctx=c.getContext('2d'),W=c.parentNode.clientWidth||640,H=c.parentNode.clientHeight||300;
   var dpr=window.devicePixelRatio||1;c.width=W*dpr;c.height=H*dpr;c.style.width=W+'px';c.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,W,H);
+  lastDrawKind='range'; /* Item 14: record the kind so a switch back to line fades. */
   var lo=Math.min.apply(null,candles.map(function(k){return k.l;})), hi=Math.max.apply(null,candles.map(function(k){return k.h;}));
   var pad=(hi-lo)*0.08||1;lo-=pad;hi+=pad;
   /* Job 12: widen the axis for an overlay that runs outside the candle
@@ -616,7 +693,10 @@ function drawCandlesRange(){
      tag, ~84-110px on a phone, so the plot filled only ~2/3 of the
      width). The tag is now a pill inside the plot, right-aligned at
      the plot edge, like the trendline pills. This supersedes the TA
-     Stage 1 CAD live-tag fix (item 8), which sized R to the tag. */
+     Stage 1 CAD live-tag fix (item 8), which sized R to the tag. */  try{window.__BTC_CAND_LIVE=RGLIVE;}catch(_){} /* Item 15 test hook: the shortened footnote no longer says whether the last candle is live, so the live-feel tests read this instead of the footnote text. */
+  /* Item 2: the left margin is re-measured from the nice-tick labels below
+     (same rule as the daily line view), never less than 62px — see the
+     re-measure after the ticks block. */
   var R=12;
   var iw=W-L-R,ih=H-T-B;
   /* Follow-ups (28 Nov 2026): nice y-ticks like the line views — see
@@ -625,19 +705,27 @@ function drawCandlesRange(){
   var _hr=nativeHeadroomTicks(ticks,lo,hi);if(_hr)ticks=_hr.ticks;
   ticks=ticks.filter(function(t){return t>=0;});if(!ticks.length)ticks=[0];
   if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
+  /* Item 2: re-measure the left margin from the tick labels actually drawn
+     (same rule as the daily line view), never less than 62px. */
+  L=plotLeftMargin(ctx,ticks.map(function(v){var s=yTickDaily(v,false,false);return s==null?'':s;}));iw=W-L-R;
   /* TA Stage 1, candle inset (item 1): half a slot at each end — see drawCandles1D. */
   var X=function(i){return L+iw*(i+0.5)/candles.length;};
   var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
-  ctx.strokeStyle=psC('rgba(255,255,255,.08)','rgba(15,23,42,.10)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
+  /* Item 10: softer grid — the candle gridlines were darker than the line
+     views' (.08/.10); now they match the line views (.05/.08) and read as
+     guides, not a border. */
+  ctx.strokeStyle=psC('rgba(255,255,255,.05)','rgba(15,23,42,.08)');ctx.fillStyle=psC('#9aa6bc','#475569');ctx.font='11px Inter, sans-serif';ctx.textAlign='right';
   ticks.forEach(function(v){var y=Y(v);ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();var s=yTickDaily(v,false,false);if(s!=null)ctx.fillText(s,L-6,y+4);});
   ctx.textAlign='center';CANDGEOM=[];
-  var lastTx=null,lastMd=null,labIdx=rangeLabelIndices(candles.length,iw);
+  var lastRight=null,lastMd=null,labIdx=rangeLabelIndices(candles.length,iw);
   candles.forEach(function(k,i){
-    var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(28,iw/candles.length*0.55));
+    var x=X(i),col=k.c>=k.o?'#22c55e':'#ef4444',bw=Math.max(4,Math.min(22,iw/candles.length*0.55));
     var top=Y(Math.max(k.o,k.c)),bot=Y(Math.min(k.o,k.c));
     CANDGEOM.push({x:x,bw:bw,top:top,bot:bot,wickTop:Y(k.h),wickBot:Y(k.l)});
-    ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,Y(k.h));ctx.lineTo(x,Y(k.l));ctx.stroke();
-    ctx.fillStyle=col;ctx.fillRect(x-bw/2,top,bw,Math.max(2,bot-top));
+    /* Items 5 + 4 + 12 + 6: 1px soft wick, rounded 1px body corners with a
+       faint top-light, and a visible tick when the body is flat (doji). */
+    drawCandleWick(ctx,x,Y(k.h),Y(k.l),col);
+    fillCandleBody(ctx,x,top,bot,bw,col,k.c>=k.o);
     /* X-axis: date only (month + day), evenly spaced via rangeLabelIndices
        (first and last included, ~64px apart). The 62px guard stays as a
        safety net — it now rarely fires, instead of swallowing every label
@@ -647,12 +735,13 @@ function drawCandlesRange(){
        Must-fix (27 Nov 2026): multi-year ranges print the year
        ("Nov 20, 21") so labels never repeat, and a date that already
        drew is skipped — 1W 4H printed each date twice (two 4-hour
-       buckets land on the same day). */
+       buckets land on the same day).  Item 3: the old 56px fixed guard is now the shared measured-width guard, so a wide label can never crowd the previous one. */
     if(labIdx.indexOf(i)>=0){
       var _long=(rng==='5Y'||rng==='10Y'||rng==='Max');
       var md=new Date(k.t).toLocaleDateString('en-US',_long?{timeZone:'UTC',month:'short',day:'numeric',year:'2-digit'}:{timeZone:'UTC',month:'short',day:'numeric'});
       var dx=Math.max(24,Math.min(W-24,x));
-      if(md!==lastMd&&(lastTx==null||dx-lastTx>=56)){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastTx=dx;lastMd=md;}
+      if(md!==lastMd){var nr=evenLabelGuard(ctx,lastRight==null?-1e9:lastRight,dx,md);
+      if(nr>=0){ctx.fillStyle=psC('#64748b','#475569');ctx.fillText(md,dx,H-24);ctx.fillStyle=psC('#9aa6bc','#475569');lastRight=nr;lastMd=md;}}
     }
   });
   if(typeof RGLIVE!=='undefined'&&RGLIVE&&live.usd!=null&&candles.length){
@@ -662,8 +751,16 @@ function drawCandlesRange(){
     // cyan/green wash out on a light chart background).
     ctx.strokeStyle=psC('#22d3ee','#0891b2');ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
     ctx.beginPath();ctx.moveTo(L,ly2);ctx.lineTo(W-R,ly2);ctx.stroke();ctx.setLineDash([]);
+    /* Item 9: the dashed live outline is clamped inside the plot — its
+       right edge stops at W-R instead of running past it with the last
+       candle's body (the candle inset itself is item 1, TA's job, and
+       stays out of this branch). Item 13: the outline is drawn with a
+       soft cyan glow so the "now" candle reads as live. */
+    var orx=lg.x-lg.bw/2-4, orw=Math.min(lg.bw+8,(W-R)-orx);
+    ctx.save();ctx.shadowColor=psC('#22d3ee','#0891b2');ctx.shadowBlur=14;
     ctx.strokeStyle=psC('#22d3ee','#0891b2');ctx.setLineDash([4,4]);
     ctx.strokeRect(lg.x-lg.bw/2-4,lg.wickTop-8,lg.bw+8,lg.wickBot-lg.wickTop+16);ctx.setLineDash([]);
+    ctx.restore(); /* Item 13: balances the shadow save above (soft cyan glow on the outline). */
     /* Follow-ups (28 Nov 2026): the tag is a pill inside the plot, so
        it never overlaps the plot edge and R stays 12. The LIVE text is
        centred on the last candle, clamped inside the plot. The tag sits
@@ -690,7 +787,9 @@ function drawCandlesRange(){
     if(layer===0){ctx.strokeStyle=psC('rgba(255,255,255,.25)','rgba(15,23,42,.35)');ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(g.x,T);ctx.lineTo(g.x,H-B);ctx.stroke();ctx.setLineDash([]);}
     else{ctx.save();ctx.shadowColor=col;ctx.shadowBlur=12;ctx.strokeStyle=psC('#ffffff','#0f172a');ctx.lineWidth=1.5;ctx.strokeRect(g.x-g.bw/2-2,g.top-2,g.bw+4,Math.max(4,g.bot-g.top)+4);ctx.restore();}
   });
-  ctx.fillStyle=psC('#9aa6bc','#475569');ctx.textAlign='left';ctx.fillText(RGLBL, L, 12);
+  /* Item 11: title more presence — 12px and brighter, so it reads as a
+     chart label rather than fading into the axis colour. */
+  ctx.font='12px Inter, sans-serif';ctx.fillStyle=psC('#cbd5e1','#334155');ctx.textAlign='left';ctx.fillText(RGLBL, L, 12);
   /* TA Stage 2: publish the geometry (inset x positions from CANDGEOM) and
      draw the overlays — here, not at the call site, so hover redraws
      (redrawCandles) repaint the overlays too. */
@@ -871,7 +970,7 @@ function drawRange(){
     RGCAND=cand4;RGLBL='1W · 4-hour candles';
     var a04=cand4[0].o,b04=cand4[cand4.length-1].c,pc04=(b04/a04-1)*100;
     $('bcRr').textContent='1W: BTC '+((pc04>=0?'+':'')+pc04.toFixed(2)+'%')+' · '+cand4.length+' 4-hour candles, from '+new Date(cand4[0].t).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'})+' ('+fmt(a04)+')';
-    $('bcNt').textContent='Coinbase 4-hour candles (UTC), in 4-hour blocks. Green = close above open, Red = below. Tap a candle for its High, Low and Change. Last candle is the latest complete 4-hour block; today\'s live price is not a candle. S&P 500, Gold and MSTR toggles are off for candle view.';
+    $('bcNt').textContent='Coinbase 4-hour candles (UTC). Tap a candle for its High, Low and Change.';
     clearLineChart();
     CANDSEL=-1;CANDHOV=-1;drawCandlesRange();return;
   }
@@ -1346,16 +1445,56 @@ function build(){dim=document.createElement('div');dim.className='bc-dim';dim.hi
      buttons/links do their own thing, and the pill ✕ stops propagation. */
   dlg.addEventListener('click',function(e){if(!candViewActive())return;if(e.target.closest('canvas,button,a'))return;dismissCandInfo();});
   $('bcRg').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;if(b.dataset.r){
-    /* Job 5: the chart type survives a range switch. CT (1D) and RGCT
-       (ranges) are separate state, so 1D Candles used to silently become
-       Line on 1W, and a candles range back to 1D came back Line. Carry
-       the type over: a candles view stays candles, a line view stays
-       line. RGGRAN still resets to the new range's default (1W 4H is the
-       sensible size for a 1D 4H carry; 1D 1H has no 1W equivalent). */
+    /* Item 17: a range switch keeps the chart type — a candle viewer stays
+       in candles, a line viewer stays in line, both ways. Must-fix
+       (27 Nov 2026): the carry test is candViewActive(), the actually
+       active view — the leftover RGCT/CT memory must NOT carry the type,
+       or 1D Line opens the next range in candles. A trip through a
+       no-candle range (5Y/10Y/Max) is a line view, so switching back
+       does not restore candles. The line branch below also clears RGCT
+       on a candle range: without that the leftover RGCT='candles' would
+       still route draw() to candles even with the carry test fixed.
+       On landing in candles the new range opens on its FINEST candle
+       size (1W 4H, 1M/3M/6M/YTD Daily, 1Y Weekly); 1D keeps its own
+       size via the wasGran carry below (4H from a 4H range, else the
+       last 1D size). RGSEEN is
+       marked so drawRange's first-visit rule does not clobber that with
+       the coarsest default. The existing data-failure fallback to line
+       (fallback() in drawRange) is untouched. */
     var wasCandles=candViewActive(),wasGran=RGGRAN;
-    rng=b.dataset.r;FALLBACK_NOTE='';if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;RGGRAN=defaultGran(rng);
-    if(rng==='1D'){if(wasCandles&&CT==='line')CT=(wasGran==='4h')?'4h':last1DCT;else if(!wasCandles)CT='line';}
-    else{if(wasCandles)RGCT='candles';else RGCT='line';}
+    var oldRng=rng;
+    rng=b.dataset.r;FALLBACK_NOTE='';if(!/^(5Y|10Y|Max)$/.test(rng))LOG=false;
+    /* Re-clicking the range already shown changes nothing (a redundant
+       1D click must not reset a 4H view to 1H). */
+    if(b.dataset.r===oldRng){draw();return;}
+    if(wasCandles){
+      /* Must-fix (28 Nov 2026, Grok Bot re-check of the cleanup rebase):
+         landing on 1D from candles keeps the 1D size — it is NOT reset to
+         1H. When CT is still 'line' (the 1D size was never set, e.g. the
+         viewer came from 1D Line), the previous range's size carries over:
+         4H when the range was on 4H (wasGran carry), else the last 1D
+         size (last1DCT, 1H by default). A kept 1D size ('1h'/'4h') is
+         never reset, so 1D Candles -> 1W -> 1D comes back on the original
+         1H. The old code forced CT='1h' here, which dropped a 1W 4H view
+         to 1H on the way back to 1D. */
+      if(rng==='1D'){if(CT==='line')CT=(wasGran==='4h')?'4h':last1DCT;}
+      else if(CANDLE_RANGES.indexOf(rng)>=0){RGCT='candles';RGGRAN=finestGran(rng);RGSEEN[rng]=true;}
+      /* 5Y/10Y/Max: no candles — draw() routes to line. RGCT/CT are left
+         alone here (they belong to the range/1D views), but the next
+         switch re-tests candViewActive(), so the 5Y line view itself
+         never restores candles (must-fix, 27 Nov 2026). */
+    }else{
+      /* Line view stays line both ways: landing on 1D from a line view
+         resets CT to 'line', so a kept 1D candle size cannot restore
+         candles after a trip through a line view (1D Candles -> 1W Line
+         -> 1D, or 1D Candles -> 5Y/10Y/Max -> 1D). This is main's rule
+         (else if(!wasCandles)CT='line'); without it the Item-17 comment
+         above ("a trip through a no-candle range ... does not restore
+         candles") would not hold. */
+      if(rng==='1D')CT='line';
+      if(CANDLE_RANGES.indexOf(rng)>=0){RGCT='line';}
+      RGGRAN=defaultGran(rng);
+    }
   }else if(b.dataset.s){LOG=b.dataset.s==='log';}draw();});
   document.addEventListener('keydown',function(e){if(INLINE||dlg.hidden)return;if(e.key==='Escape'){e.preventDefault();close();}
     if(e.key==='Tab'){var f=[].slice.call(dlg.querySelectorAll('button,a[href]'));var a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus();}}});
@@ -1435,6 +1574,18 @@ var d=series(),big=/^(5Y|10Y|Max)$/.test(rng),hasLive=live.usd!=null,sxo=SHOWSPX
    removed on 20 Nov 2026 (draw*Native returns false on any failure; the
    caller then runs lineFail() and a later resize retries the draw). */
 var lineDrawn=false; /* F1: true while the native 1D line is on the canvas. */
+var lastDrawKind=''; /* Item 14: kind of the last chart drawn ('line1d', 'daily', 'cand1d', 'range') — the view-switch fade fires only when the kind changes, never on hover redraws. */
+function fadeCanvasIfKindChanged(c,kind){
+  /* Item 14: the same 0.3s canvas fade the candle views already use, now
+     applied when switching between line and candles — a quick crossfade
+     instead of a hard cut. Guarded by the draw kind: hover redraws call
+     the same draw functions with the same kind, and must NOT flicker. */
+  if(lastDrawKind&&lastDrawKind!==kind){
+    c.style.transition='opacity .3s ease';c.style.opacity='0';
+    requestAnimationFrame(function(){c.style.opacity='1';});
+  }
+  lastDrawKind=kind;
+}
 var linePts=null; /* pts array last drawn by draw1DNative (tooltip + redraw). */
 var lineHover=-1; /* index of the hovered/tapped point, -1 = none. */
 var lineGeom=null; /* layout of the last native 1D draw (hit-testing + parity). */
@@ -1747,6 +1898,7 @@ function draw1DNative(pts,cmp){
     c.style.width=W+'px';c.style.height=H+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,W,H);
+    fadeCanvasIfKindChanged(c,'line1d');
     var hasLive=pts[pts.length-1].live===true;
     var vals=pts.map(function(p){return p.v;});
     var rawVals=vals.slice();
@@ -1784,13 +1936,17 @@ function draw1DNative(pts,cmp){
        Job 12 headroom rule below is narrower: it only steps the axis
        out by one nice tick when a drawn extreme sits within half a
        tick of the edge, so a 1D peak never flattens against the top. */
-    var L=62,R=12,T=18,B=44,iw=W-L-R,ih=H-T-B;
+    var R=12,T=18,B=44,ih=H-T-B;
     var ticks=nativeNiceTicks(lo,hi,ih);
     var _hr=nativeHeadroomTicks(ticks,lo,hi);if(_hr)ticks=_hr.ticks;
     /* Must-fix (27 Nov 2026): a price axis never goes below $0. A
        comparison % axis may go negative — it is not a price. */
     if(!sx){ticks=ticks.filter(function(t){return t>=0;});if(!ticks.length)ticks=[0];}
     if(ticks.length){lo=Math.min(lo,ticks[0]);hi=Math.max(hi,ticks[ticks.length-1]);}
+    /* Item 2: one plot box for candles and line — the left margin is
+       measured from the y labels actually drawn (same rule as the candle
+       views and the daily line view), never less than 62px. */
+    var L=plotLeftMargin(ctx,ticks.map(function(v){var vv=curVal(v);return vv>=1000?curSym()+(vv/1000).toLocaleString('en-US')+'k':curSym()+Math.round(vv);})),iw=W-L-R;
     var n=pts.length;
     var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
     var Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
@@ -1964,6 +2120,7 @@ function drawDailyNative(d,cmp){
     c.style.width=W+'px';c.style.height=H+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,W,H);
+    fadeCanvasIfKindChanged(c,'daily');
     var n=d.length,hasLive=!!cmp.hasLive,sx=!!cmp.sx,LOG=!!cmp.log;
     var a=d[0][1];
     /* Plotted values: dollars when alone, rebased to 100 at the first close
@@ -2036,14 +2193,13 @@ function drawDailyNative(d,cmp){
       yTicks=ticks;
       Y=function(v){return T+ih*(1-(v-lo)/(hi-lo));};
     }
-    /* Chart.js sizes the left margin to fit the widest y-axis label; a fixed
-       62px clips long labels (Max + comparisons: '+179,999,900%'). Measure
-       the labels and widen the margin when they need it; short labels keep
-       the usual 62px. */
-    ctx.font='11px Inter, sans-serif';
-    var maxLabW=0;
-    yTicks.forEach(function(v){var s=yTickDaily(v,sx,LOG);if(s!=null)maxLabW=Math.max(maxLabW,ctx.measureText(s).width);});
-    var L=Math.max(62,Math.ceil(maxLabW)+12),iw=W-L-R;
+    /* Item 2: one plot box for candles and line — the left margin is
+       measured from the y labels actually drawn via the shared
+       plotLeftMargin rule (same as the candle views), never less than
+       62px. Chart.js sizes the left margin to fit the widest y-axis label;
+       a fixed 62px clips long labels (Max + comparisons: '+179,999,900%').
+       Short labels keep the usual 62px. */
+    var L=plotLeftMargin(ctx,yTicks.map(function(v){return yTickDaily(v,sx,LOG);})),iw=W-L-R;
     var X=function(i){return L+iw*(n===1?0.5:i/(n-1));};
     var xs=d.map(function(p,i){return X(i);});
     var btcYs=btcY.map(function(v){return Y(v);});

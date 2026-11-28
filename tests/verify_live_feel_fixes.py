@@ -210,10 +210,11 @@ try:
           const t = document.body.innerText;
           return { exp: t.includes('EXPERIMENTAL'),
                    note: (document.getElementById('bcNt') || {}).textContent || '',
-                   rr: (document.getElementById('bcRr') || {}).textContent || '' };
+                   rr: (document.getElementById('bcRr') || {}).textContent || '',
+                   live: window.__BTC_CAND_LIVE === true };
         }""")
         check("BTC popover EXPERIMENTAL chip present", pop["exp"])
-        check("BTC popover note has live-bucket text", "Last candle is live" in pop["note"] or "latest complete UTC day" in pop["note"], pop["note"][:100])
+        check("BTC popover live bucket drawn (LIVE overlay)", pop["live"], pop["note"][:100])
         check("BTC popover range header shows", "1W" in pop["rr"], pop["rr"][:80])
         page.screenshot(path=f"{SHOTS}/after-btc-popover-1280.png")
         page.close()

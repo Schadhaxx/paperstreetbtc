@@ -165,7 +165,22 @@ def main():
             pg.click('#bcRgs button[data-r="5Y"]'); pg.wait_for_timeout(900)
             chk('clock 390 dark: 5Y pill enabled, says Candles \u00b7 Daily (Job 9)', pg.evaluate("!document.getElementById('taTyp').disabled && document.getElementById('taTyp').textContent.includes('Candles') && document.getElementById('taTyp').textContent.includes('Daily')"))
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(1200)
+            # Rebase note (28 Nov 2026): the must-fix's "stays Line" expectation
+            # was written when 5Y had no candles (branch base 21 Nov, pre-Job 9).
+            # On current main 5Y HAS candles (Job 9), so the 5Y view IS a candle
+            # view and the carry restores 1H on return to 1D — same as main's
+            # Job 5 carry. The must-fix itself (candViewActive() carry test)
+            # still stands: it stops LEFTOVER RGCT/CT memory from carrying,
+            # verified by the Line -> 1W check below with the view actually on Line.
             chk('clock 390 dark: back to 1D 1H candles (Job 5 carry, Job 9)', '1H candles' in pg.inner_text('#taTyp'))
+            # The must-fix bug, with the view actually on Line: switch to Line
+            # on 1D first, then 1W must open in Line — leftover RGCT='candles'
+            # must not route it to candles.
+            pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
+            pg.click('.ta-menu [data-ta-pick="line"]'); pg.wait_for_timeout(900)
+            chk('clock 390 dark: 1D back to Line', pg.inner_text('#taTyp').strip().startswith('Line'))
+            pg.click('#bcRgs button[data-r="1W"]'); pg.wait_for_timeout(900)
+            chk('clock 390 dark: 1D Line opens 1W in Line (must-fix 27 Nov)', pg.inner_text('#taTyp').strip().startswith('Line'))
             chk('clock 390 dark: no console errors', not errs, '; '.join(errs[:3]))
         except Exception as e:
             chk('clock 390 dark', False, str(e)[:200])

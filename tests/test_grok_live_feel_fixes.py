@@ -268,9 +268,9 @@ try:
         page.wait_for_timeout(800)
         page.click('[data-cg="candles"]')
         page.wait_for_timeout(2500)
-        note_a = page.evaluate("() => (document.getElementById('bcNt') || {}).textContent || ''")
+        live_a = page.evaluate("() => window.__BTC_CAND_LIVE === true")
         check("[SIMULATED] Fix 3a: stale feed (last bar Mon 2 Nov, today Fri 6 Nov) still extends current week",
-              "Last candle is live" in note_a, note_a[:130])
+              live_a, "live=" + str(live_a))
         page.close()
         # Case B (new week, no rollover): last daily bar Fri 30 Oct, today
         # Fri 6 Nov. No candle for the new week must be fabricated.
@@ -286,11 +286,11 @@ try:
         page.wait_for_timeout(800)
         page.click('[data-cg="candles"]')
         page.wait_for_timeout(2500)
-        note_b = page.evaluate("() => (document.getElementById('bcNt') || {}).textContent || ''")
+        live_b = page.evaluate("() => window.__BTC_CAND_LIVE === true")
         rr_b = page.evaluate("() => (document.getElementById('bcRr') || {}).textContent || ''")
         check("[SIMULATED] Fix 3b: new week with no data does NOT fabricate a rollover candle",
-              "latest complete UTC day" in note_b and "Last candle is live" not in note_b,
-              note_b[:130] + " | " + rr_b[:80])
+              live_b is False,
+              "live=" + str(live_b) + " | " + rr_b[:80])
         page.close()
 
         # ===== Fix 4: overlay colors theme-aware (light mode popover) =====
@@ -308,9 +308,9 @@ try:
         page.wait_for_timeout(2500)
         errs4 = []
         page.on("console", lambda m: errs4.append(m.text) if m.type == "error" else None)
-        light_note = page.evaluate("() => (document.getElementById('bcNt') || {}).textContent || ''")
+        light_live = page.evaluate("() => window.__BTC_CAND_LIVE === true")
         check("[SIMULATED] Fix 4: light-mode popover shows live bucket (overlay drawn)",
-              "Last candle is live" in light_note, light_note[:100])
+              light_live, "live=" + str(light_live))
         page.screenshot(path=f"{SHOTS}/fix4-btc-popover-light-1280.png")
         check("[SIMULATED] Fix 4: light-mode popover, no console errors", not errs4, "; ".join(errs4[:2]))
         page.close()
