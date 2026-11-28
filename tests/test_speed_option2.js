@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Lazy BTC panel split (7 Nov 2026, rebuilt from main c9340ef7): btcchart.js is the eager pill only;
-   the chart panel lives in btcchart-panel.js?v=wr17 and loads on first
+   the chart panel lives in btcchart-panel.js?v=wr20 and loads on first
    open (or on page load on /clock/). Forked from btcchart.js et15 —
    live-feel, 1W 4H candles, FLIP morph, CAD and inline mount must survive.
    s2.js / the YTD chart are NOT part of this split (separate candidate). */
@@ -29,7 +29,7 @@ chk('eager: no panel code (drawDaily/getData/build/CB4H/morph/mountInline)',
 chk('eager: no bare early return killing the clock (inline host path kept)',
   !/if\s*\(!pill\)\s*return;/.test(pill) && /INLINEHOST/.test(pill) &&
   /if\(!pill&&!INLINEHOST\)return;/.test(pill) && /if\(INLINE\)loadPanel/.test(pill));
-chk('eager: lazy-loads panel at wr17', /btcchart-panel\.js\?v=wr17/.test(pill));
+chk('eager: lazy-loads panel at wr20', /btcchart-panel\.js\?v=wr20/.test(pill));
 chk('eager: dedupes open while loading (pendingFrom + shared loadPanel)',
   /pendingFrom/.test(pill) && /loadPanel\(\)\.then/.test(pill) && /if\(P\.panelP\)return P\.panelP/.test(pill));
 chk('eager: accessible load error (role=alert, tabindex -1, focus, retry)',
@@ -73,7 +73,7 @@ chk('panel: _needChart test hook removed with Chart.js', !/_needChart/.test(pane
 chk('s2.js has no Chart.js fallback (no new Chart, no typeof Chart)',
   !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));
 
-// --- pins: all 16 HTML refs on wr16 (Stage 2, 27 Nov 2026), panel pin wr15 ---
+// --- pins: all 16 HTML refs on wr20 (TA 2.0 MA200 rebase, 28 Nov 2026), panel pin wr20 ---
 const htmls = [];
 (function walk(d) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -88,10 +88,10 @@ for (const h of htmls) {
   const t = fs.readFileSync(h, 'utf8');
   if (!/btcchart\.js/.test(t)) continue;
   refs++;
-  if (!/btcchart\.js\?v=wr18/.test(t)) { bad++; console.log('FAIL stale btcchart pin', path.relative(R, h)); }
+  if (!/btcchart\.js\?v=wr20/.test(t)) { bad++; console.log('FAIL stale btcchart pin', path.relative(R, h)); }
   if (/btcchart\.js\?v=et15/.test(t)) { bad++; console.log('FAIL still et15', path.relative(R, h)); }
 }
-chk('all btcchart.html refs use ?v=wr18 (16 files)', bad === 0 && refs === 16);
+chk('all btcchart.html refs use ?v=wr20 (16 files)', bad === 0 && refs === 16);
 chk('no burned btcchart pins (et5/et6/et7/et8/et12/et13/et14/et15/et21/et22/et23) in new files',
   !/btcchart(?:-panel)?\.js\?v=et(?:5|6|7|8|12|13|14|15|21|22|23)\b/.test(pill + panel));
 
