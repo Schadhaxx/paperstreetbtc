@@ -115,6 +115,64 @@ def browser_checks():
         if srv:
             srv.terminate()
 
+def browser_checks_scrolled():
+    """Must-fix (28 Nov 2026): the BTC popup opened off-screen when the page
+    was scrolled — open() added html.bc-lock before place() ran, and locking
+    body too un-sticks the header, so place() measured the pill above the
+    viewport (top -332px at 1440x900 scrolled 400px, vs 68px on main).
+    Opens the popup from a scrolled page and checks the dialog lands below
+    the (still stuck) header and the wheel stays blocked."""
+    from playwright.sync_api import sync_playwright
+    srv = None
+    if len(sys.argv) > 1:
+        base = sys.argv[1].rstrip('/')
+    else:
+        port = free_port()
+        srv = subprocess.Popen([sys.executable, '-m', 'http.server', str(port), '--bind', '127.0.0.1'],
+                               cwd=str(R), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        base = 'http://127.0.0.1:%d' % port
+        for _ in range(40):
+            try:
+                urllib.request.urlopen(base + '/index.html', timeout=1); break
+            except Exception:
+                time.sleep(0.25)
+    try:
+        with sync_playwright() as p:
+            b = p.chromium.launch(executable_path=CHROME, args=['--no-sandbox', '--disable-gpu'])
+            pg = b.new_page(viewport={'width': 1440, 'height': 900})
+            pg.goto(base + '/index.html', wait_until='load', timeout=60000)
+            try:
+                pg.wait_for_function('window.__S2_NATIVE_DRAWN === true', timeout=30000)
+                pg.evaluate('window.scrollTo(0, 400)')
+                pg.wait_for_timeout(500)
+                chk('scrolled: header stuck before open',
+                    pg.evaluate("Math.round(document.querySelector('.header').getBoundingClientRect().top)") == 0)
+                pg.locator('#hdrTick').click()
+                pg.wait_for_selector('.bc-w:not([hidden])', timeout=15000)
+                pg.wait_for_timeout(1500)
+                m = pg.evaluate("""(function(){
+                  var r = document.querySelector('.bc-w').getBoundingClientRect();
+                  var hdr = document.querySelector('.header').getBoundingClientRect();
+                  var pill = document.getElementById('hdrTick').getBoundingClientRect();
+                  return {top: Math.round(r.top), headerTop: Math.round(hdr.top),
+                          pillBottom: Math.round(pill.bottom), scrollY: Math.round(window.scrollY)};})()""")
+                chk('scrolled: popup opens below the header (top = pill bottom + 10)',
+                    40 <= m['top'] <= 100 and abs(m['top'] - (m['pillBottom'] + 10)) <= 1, m)
+                chk('scrolled: header stays stuck while popup is open', m['headerTop'] == 0, m)
+                pg.mouse.move(720, 450)
+                pg.mouse.wheel(0, 600)
+                pg.wait_for_timeout(500)
+                chk('scrolled: wheel over open popup does not scroll the page',
+                    pg.evaluate('Math.round(window.scrollY)') == 400)
+            except Exception as e:
+                chk('scrolled: popup opens from a scrolled page', False, str(e)[:200])
+            pg.close()
+            b.close()
+    finally:
+        if srv:
+            srv.terminate()
+
 browser_checks()
+browser_checks_scrolled()
 print('NO CHART.JS TESTS', n, 'FAIL', len(fails))
 sys.exit(1 if fails else 0)

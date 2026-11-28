@@ -687,8 +687,11 @@ function tlDrawLabels(ctx,g,labels,liveClose){
      (three 4h tags collided there). Spacing is now 17px from everything,
      and the search runs both ways from the ideal spot (down, then up,
      alternating) so a tag keeps its price instead of sliding to the
-     bottom; the last resort is the ideal spot itself (an overlap beats
-     a dropped label). */
+     bottom. Follow-ups (28 Nov 2026): the search is capped at 4 steps
+     (~68px) so a pill never lands far from its line, and when no free
+     spot is found the pill is dropped instead of falling back to the
+     ideal spot — a dropped label beats an overlap; the line still
+     draws, only its pill is skipped. */
   var SP=17,placed=[];
   items.forEach(function(lb){
     /* Clamp into the plot first, then de-collide — so the clamp can never
@@ -701,18 +704,19 @@ function tlDrawLabels(ctx,g,labels,liveClose){
     };
     if(clash(y0)){
       var found=false;
-      for(var s=1;s<=30&&!found;s++){
+      for(var s=1;s<=4&&!found;s++){
         var yd=y0+s*SP,yu=y0-s*SP;
         if(yd<=B-8&&!clash(yd)){y=yd;found=true;break;}
         if(yu>=T+8&&!clash(yu)){y=yu;found=true;break;}
       }
-      if(!found)y=y0;
+      if(!found){lb._drop=true;return;}
     }
     placed.push(y);
     lb.y=y;
   });
   ctx.font='11px Inter, sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
   items.forEach(function(lb){
+    if(lb._drop)return;
     var x=g.pad.l+g.plotW-4;
     var w=ctx.measureText(lb.text).width;
     ctx.fillStyle=psC2('rgba(2,6,23,.72)','rgba(255,255,255,.85)');

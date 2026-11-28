@@ -208,8 +208,13 @@ def main():
             m1w['drawn'] >= 2 and m1w['visible'] == m1w['drawn'], m1w)
     chk('1W Line: the trendline toggle is enabled (not greyed out)', t1w is True, t1w)
     if m1dc and m1d:
+        # Must-fix (28 Nov 2026): the follow-ups batch widened the candle
+        # y-axis to nice ticks (nativeNiceTicks, same as the line views),
+        # which brings two more trendlines into the plot on 1D 1H candles
+        # (9 visible, was 7). That is the intended axis change, not a
+        # regression in the candle view, so the expected count is 9.
         chk('1D candles unchanged by the fix (Line-only change)',
-            m1dc['visible'] == 7, m1dc)
+            m1dc['visible'] == 9, m1dc)
     print('JOB1 %d checks, %d FAIL' % (n, len(fails)))
     for f in fails:
         print('  FAIL:', f)

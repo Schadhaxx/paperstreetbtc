@@ -227,7 +227,7 @@ def main():
         xl = (L['layout'] or {}).get('xLabels') or []
         nonempty = [x for x in xl if x]
         chk('5Y: no duplicate year labels', len(set(nonempty)) == len(nonempty), 'xLabels=%s' % xl)
-        chk('5Y: every year 2021-2026 still labelled once', sorted(set(nonempty)) == ['2021', '2022', '2023', '2024', '2025', '2026'], 'xLabels=%s' % xl)
+        chk('5Y: every year 2022-2026 labelled once (2021 is a stub first year, dropped by the 28 Nov 2026 follow-ups)', sorted(set(nonempty)) == ['2022', '2023', '2024', '2025', '2026'], 'xLabels=%s' % xl)
 
         # ---- Item 4b (must-fix 27 Nov 2026): 10Y Line — every year once, floor >= 0 ----
         print('--- Item 4b: 10Y Line year labels + floor ---')
@@ -236,7 +236,7 @@ def main():
         xl = (L['layout'] or {}).get('xLabels') or []
         nonempty = [x for x in xl if x]
         chk('10Y: no duplicate year labels', len(set(nonempty)) == len(nonempty), 'xLabels=%s' % xl)
-        chk('10Y: every year 2016-2026 labelled once', sorted(set(nonempty)) == ['2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'], 'xLabels=%s' % xl)
+        chk('10Y: every year 2017-2026 labelled once (2016 is a stub first year, dropped by the 28 Nov 2026 follow-ups)', sorted(set(nonempty)) == ['2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'], 'xLabels=%s' % xl)
         yt = (L['layout'] or {}).get('yTicks') or []
         chk('10Y: y-axis floor is not negative', bool(yt) and min(yt) >= 0, 'yTicks=%s' % yt)
 
