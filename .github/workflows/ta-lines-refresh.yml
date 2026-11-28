@@ -1,0 +1,68 @@
+name: ta-lines-refresh
+# Regenerate the long-term-lines fixtures (assets/data/ta-floor.json and
+# assets/data/ta-ma200.json) from assets/data/btc-daily.json and commit
+# them to main when they change.
+#
+# The fixtures are generated artifacts, not hand-edited data: the floor
+# break rule and the 200-week MA are recomputed from the latest daily
+# closes on every run, so the lines stay current without a code change.
+# Default ON: runs daily at 01:30 UTC (after the recap job's final close
+# ~00:20 UTC refreshes btc-daily.json — the Monday run is the weekly
+# refresh after the Sunday close), plus manual workflow_dispatch. The
+# push trigger below is belt-and-braces for human/PAT pushes; note that
+# pushes made by another workflow with GITHUB_TOKEN do not trigger
+# workflows, so the daily schedule is what carries the daily update.
+# Fails loudly (exit 1, no commit) if either generator or the
+# validation fails — a failed run never publishes a partial fixture.
+# NOTE: this file cannot be pushed by the GitHub App (it returns 403
+# on workflow files). If the API refuses it, add it via the GitHub
+# website as Schadhaxx. Do not merge the code branch without it — the
+# job would not exist.
+on:
+  schedule:
+    - cron: '30 1 * * *'
+  push:
+    paths:
+      - assets/data/btc-daily.json
+  workflow_dispatch:
+permissions: {}
+jobs:
+  refresh:
+    # Recomputes both fixtures from the current btc-daily.json and
+    # commits them to main only when they change. Never touches any
+    # other file, never touches the data branch.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: ta-lines-refresh
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2, pinned
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Regenerate ta-floor.json + ta-ma200.json from btc-daily.json
+        run: |
+          set -e
+          python3 tools/ta_floor.py
+          python3 tools/ta_ma200.py
+      # Validate before committing: schema + the break rule's headline
+      # fields must be present and typed. A bad fixture fails the run
+      # with no commit.
+      - name: Validate fixtures
+        run: |
+          set -e
+          python3 -c "import json; f=json.load(open('assets/data/ta-floor.json')); m=json.load(open('assets/data/ta-ma200.json')); assert f['v']==1 and m['v']==1; assert isinstance(f['broken'], bool); print('floor asOf', f['asOf'], 'broken', f['broken'], 'floorNow', f['floorNow']); print('ma200 asOf', m['asOf'], 'maNow', m['maNow'])"
+      - name: Commit + push if changed (rebase + retry, never force)
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/data/ta-floor.json assets/data/ta-ma200.json
+          git diff --cached --quiet && { echo "no fixture change"; exit 0; }
+          git commit -m "ta-lines-refresh: regenerate ta-floor.json + ta-ma200.json from btc-daily.json"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin main && break || sleep 10
+          done
