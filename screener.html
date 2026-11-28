@@ -84,7 +84,7 @@
      column, dismiss by close button, tap outside, or Escape. */
   .ind-modal { display:none; position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.72); align-items:flex-end; justify-content:center; padding:16px; }
   .ind-modal.open { display:flex; }
-  .ind-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; box-shadow:0 20px 60px rgba(0,0,0,.6); }
+  .ind-dialog { background:linear-gradient(180deg,#1e293b,#0f172a); border:1px solid rgba(34,211,238,.55); border-radius:24px; padding:18px; width:100%; max-width:560px; max-height:88vh; overflow:auto; overscroll-behavior:contain; box-shadow:0 20px 60px rgba(0,0,0,.6); }
   @media (orientation:landscape) and (min-width:700px){ .ind-dialog{ max-width:920px; } }
   /* Short landscape (iPhone landscape 844x390, 8 Nov 2026, round 3):
      the dialog is bottom-anchored and only ~227px of the 280px canvas
@@ -174,8 +174,14 @@
   .cmp-stat { background:rgba(5,7,15,.38); border:1px solid var(--line); border-radius:14px; padding:8px 10px; min-height:54px; }
   .cmp-stat span { display:block; color:var(--mut); font-size:10px; letter-spacing:.14em; text-transform:uppercase; font-weight:800; }
   .cmp-stat b { display:block; margin-top:3px; font-size:15px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
-  .cmp-chips { display:flex; gap:8px; overflow-x:auto; max-width:100%; padding:2px 0 8px; scrollbar-width:none; }
+  .cmp-chips { display:flex; gap:8px; overflow-x:auto; max-width:100%; padding:2px 0 8px; scrollbar-width:none; -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%); mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 28px),transparent 100%); }
   .cmp-chips::-webkit-scrollbar { display:none; }
+  /* Right-edge fade cue (21 Nov 2026): the row is a hidden-scrollbar
+     scroller, so a partially-visible chip at the edge is the only sign
+     more chips exist. The trailing spacer sits in the fade zone at max
+     scroll, so the last chip itself is never faded — the fade only ever
+     covers chips still hidden past the edge (or this invisible spacer). */
+  .cmp-chips::after { content:""; flex:0 0 28px; }
   .cmp-chip { display:inline-flex; align-items:center; gap:6px; padding:0 12px; }
   .cmp-chip.is-on { border-color:var(--cyan); box-shadow:inset 0 0 0 1px var(--cyan); color:var(--txt); }
   .cmp-chip[aria-pressed="false"] { color:var(--mut); }
@@ -367,8 +373,8 @@
     <button type="button" class="btn" id="ind-retry">Retry</button>
   </div>
 </div>
-<script src="assets/js/screener.js?v=scr13"></script>
-<script src="assets/js/screener-indicator-chart.js?v=stocks26"></script>
+<script src="assets/js/screener.js?v=scr14"></script>
+<script src="assets/js/screener-indicator-chart.js?v=stocks27"></script>
 <script src="assets/js/screener-chart.js?v=cmp14"></script>
 <script src="assets/js/et.js?v=et2"></script>
 <script src="assets/js/btcchart.js?v=wr16"></script>
