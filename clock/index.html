@@ -14,9 +14,11 @@
 <meta name="twitter:image" content="https://paperstreetbtc.com/assets/og-card.png">
 <meta name="twitter:image:alt" content="Paperstreet BTC owl logo">
 <link rel="canonical" href="https://paperstreetbtc.com/clock/">
-<link rel="stylesheet" href="../assets/css/nav.css">
+<link rel="stylesheet" href="../assets/css/nav.css?v=cr030">
 <link rel="stylesheet" href="../light.css?v=lm5">
+<script src="../assets/js/ps-err.js?v=err1"></script>
 <script src="../chart-theme.js?v=ct1"></script>
+<script src="../assets/js/ps-ev.js?v=ev1" defer></script>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#05070f;color:#e8eef7;font-family:Inter,system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
 body:before{content:"";position:fixed;inset:0;background:radial-gradient(600px 300px at 15% -5%,rgba(34,211,238,.22),transparent 60%),radial-gradient(700px 350px at 90% 10%,rgba(249,115,22,.18),transparent 60%),radial-gradient(500px 400px at 50% 110%,rgba(34,197,94,.12),transparent 60%);pointer-events:none}
@@ -334,7 +336,7 @@ $('refreshBtn').addEventListener('click',update);
 render();/* Paint the initial state at once (restored CAD, or the CAD loading state) instead of waiting for the first fetch. */update();tick();setInterval(tick,1000);setInterval(update,60000);
 </script>
 <script src="../assets/js/et.js?v=et2" defer></script>
-<script src="../assets/js/btcchart.js?v=wr1" defer></script>
+<script src="../assets/js/btcchart.js?v=wr19" defer></script>
 <script src="clock-v4.js?v=v4u" defer></script>
 <script>
 /* V4: after the inlined chart mounts, fire one resize so the canvas
@@ -416,5 +418,5 @@ document.addEventListener('visibilitychange',function(){if(document.visibilitySt
 b.hidden=false;ui('off');
 window.__PS_WAKE={state:function(){return {want:want,locked:!!lock,label:b.textContent,pressed:b.getAttribute('aria-pressed')};}};
 })();</script>
-<script src="../assets/js/theme-pill.js?v=lm3" defer></script><!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fe85a8ffb309453da6b9f3518d2dd97e"}'></script><!-- End Cloudflare Web Analytics -->
+<script src="../assets/js/theme-pill.js?v=lm3" defer></script><!-- Cloudflare Web Analytics --><script>try{if(localStorage.getItem('ps-no-count')!=='1'){var s=document.createElement('script');s.type='module';s.src='https://static.cloudflareinsights.com/beacon.min.js';s.setAttribute('data-cf-beacon','{"token": "fe85a8ffb309453da6b9f3518d2dd97e"}');(document.body||document.documentElement).appendChild(s);}}catch(e){}</script><!-- End Cloudflare Web Analytics -->
 </body></html>

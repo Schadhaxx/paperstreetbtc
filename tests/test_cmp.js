@@ -74,7 +74,7 @@ const pack = JSON.parse(fs.readFileSync(path.join(R, 'assets/data/screener-pack.
 const packRow = {};
 (pack.rows || []).forEach(function (r) { packRow[r.symbol] = r; });
 const STOCKS = ['TSLA', 'PLTR', 'MSTR', 'IBIT', 'MU', 'META', 'SPCX'];
-chk('asOf is 30 Oct 2026', doc.asOf === '2026-10-30' && doc.unit === 'usd');
+chk('asOf is 23 Nov 2026', doc.asOf === '2026-11-23' && doc.unit === 'usd');
 
 STOCKS.forEach(function (sym) {
   const s = doc.symbols[sym];

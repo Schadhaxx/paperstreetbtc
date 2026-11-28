@@ -31,6 +31,9 @@ def _find_chrome():
 
 CHROME = os.environ.get('CHROME_PATH') or _find_chrome()
 FIXED = dt.datetime(2026, 10, 30, 20, tzinfo=dt.timezone.utc)
+# Stage 1: seed Bollinger + MA (SMA 50) + RSI on, so the tests observe the
+# values instead of clicking the toggles on. last1DSize is the TA default ('1h').
+SEED = "localStorage.setItem('ps-ta-v1', JSON.stringify({tl:false,bb:true,ma:true,maSet:{sma50:true},rsi:true,rsiCol:false,last1DSize:'1h'}));"
 fails, n = [], 0
 
 def chk(name, ok, detail=''):
@@ -170,11 +173,13 @@ def inked(pg, sel='#bcC'):
 
 def has_overlay(pg):
     """True if an overlay line is present on the main chart canvas: MA pink
-    (light #db2777 / dark #f472b6) or Bollinger violet (light #7c3aed /
-    dark #a78bfa), +/-40 per channel for antialiasing. Either one proves
-    drawOverlays ran — the MA alone is not guaranteed visible: on a candle
-    view after a fall it can sit entirely above the price y-range (its
-    values are still valid, just off-chart)."""
+    (light #db2777 / dark #f472b6), SMA 50 amber (light #d97706 / dark
+    #fbbf24), or Bollinger violet (light #7c3aed / dark #a78bfa), +/-40
+    per channel for antialiasing. Either one proves drawOverlays ran —
+    the MA alone is not guaranteed visible: on a candle view after a fall
+    it can sit entirely above the price y-range (its values are still
+    valid, just off-chart). Amber is included because on a 1W view the
+    only MA left drawing may be SMA 50 (SMA 20/50 gated there)."""
     return pg.evaluate("""() => { const c = document.querySelector('#bcC'); if (!c) return false;
       const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
       const near = (r,g,b, R,G,B) => Math.abs(r-R)<40 && Math.abs(g-G)<40 && Math.abs(b-B)<40;
@@ -182,17 +187,14 @@ def has_overlay(pg):
         const r = d[i], g = d[i+1], b = d[i+2], a = d[i+3];
         if (a < 200) continue;
         if (near(r,g,b, 219,39,119) || near(r,g,b, 244,114,182)) return true;
+        if (near(r,g,b, 217,119,6) || near(r,g,b, 251,191,36)) return true;
         if (near(r,g,b, 124,58,237) || near(r,g,b, 167,139,250)) return true;
       } return false; }""")
 
-def enable_all(pg):
-    """Open the TA panel and turn on Bollinger + MA (SMA 50) + RSI.
-    The SMA 50 chip enables that MA and turns the MA group on."""
-    pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
-    pg.click('.ta-panel [data-ta-key="bb"]')
-    pg.click('.ta-panel [data-ta-ma="sma50"]')
-    pg.click('.ta-panel [data-ta-key="rsi"]')
-    pg.wait_for_timeout(800)
+def open_panel(pg):
+    """Open the TA panel if it is hidden (the pill toggles it)."""
+    if pg.evaluate("document.querySelector('.ta-panel').hidden"):
+        pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
 
 def wait_warm(pg, want=200, timeout=8000):
     """Wait until the intraday warm-up fetch has landed (range views are
@@ -225,6 +227,7 @@ def main():
         b = p.chromium.launch(**launch)
         # ---- clock page, phone 390 dark: 1D line, all overlays on ----
         ctx = b.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce'); ctx.route('**/*', handler)
+        ctx.add_init_script(SEED)
         pg = ctx.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text and 'ERR_FAILED' not in m.text else None)
@@ -234,33 +237,52 @@ def main():
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
             chk('clock 390 dark: chart paints', inked(pg))
             chk('clock 390 dark: TA module loaded', pg.evaluate("!!window.__BTTA && !!window.__BCTA && !!window.__TA_DEBUG"))
-            enable_all(pg)
+            open_panel(pg)
+            # Gating on 1D Line: RSI is ENABLED (Job 3 ungreyed it — the
+            # strip now has a scale, bands and a live value, and Job 2's
+            # pre-warm makes it valid from index 0 there now). Bollinger
+            # and SMA 200 are ENABLED (Job 2 ungreyed them). SMA 20/50
+            # and EMA 20 stay live.
+            chk('clock 390 dark: Bollinger toggle enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
+            chk('clock 390 dark: RSI toggle enabled on 1D (Job 3)', not pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
+            chk('clock 390 dark: SMA 200 chip enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
+            chk('clock 390 dark: SMA 20/50 + EMA 20 chips enabled on 1D', not pg.is_disabled('.ta-panel [data-ta-ma="sma20"]') and not pg.is_disabled('.ta-panel [data-ta-ma="sma50"]') and not pg.is_disabled('.ta-panel [data-ta-ma="ema20"]'))
             chk('clock 390 dark: warm-up fetch lands (>=200 closes)', wait_warm(pg, 200))
             dbg = pg.evaluate("window.__TA_DEBUG()")
             chk('clock 390 dark: 1D line geometry', dbg and dbg['kind'] == '1d-line', dbg and dbg['kind'])
             chk('clock 390 dark: first visible point valid (MA/BB/RSI)', dbg and dbg['firstValid'] == {'ma': 0, 'bb': 0, 'rsi': 0}, dbg and dbg['firstValid'])
             check_values('clock 390 dark: indicator values match Python', dbg)
-            chk('clock 390 dark: RSI strip shows + draws', pg.evaluate("!document.getElementById('taRsi').hidden") and inked(pg, '#taRsi canvas'))
+            chk('clock 390 dark: RSI strip shows (Job 3)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             tip = pg.evaluate("window.__BCTA.taTip('1d-line', 50)")
-            chk('clock 390 dark: tooltip shows indicator values', tip and len(tip) == 3 and 'SMA 50' in tip[0]['t'] and 'BB 20' in tip[1]['t'] and tip[2]['t'].startswith('RSI'), str(tip)[:160])
-            # Stage 3 fix (item 6): stacking MAs — SMA 20 + 50 + 200 all on
-            pg.click('.ta-panel [data-ta-ma="sma20"]'); pg.click('.ta-panel [data-ta-ma="sma200"]'); pg.wait_for_timeout(600)
+            chk('clock 390 dark: tooltip shows SMA 50 + BB + RSI (Job 3)', tip and len(tip) == 3 and 'SMA 50' in tip[0]['t'] and 'BB 20' in tip[1]['t'] and 'RSI' in tip[2]['t'], str(tip)[:160])
+            # Stage 3 fix (item 6): stacking MAs — SMA 20 on here; SMA 200
+            # is live on 1D now (Job 2), but it is added on 1M Line, where
+            # the stacking values are checked against Python for the
+            # daily-line geometry; then all three stack and all three
+            # colours draw.
+            pg.click('.ta-panel [data-ta-ma="sma20"]'); pg.wait_for_timeout(600)
+            chk('clock 390 dark: SMA 200 chip enabled on 1D after SMA 20 on (Job 2)', not pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
+            pg.click('#bcRgs button[data-r="1M"]'); pg.wait_for_timeout(1200)
+            open_panel(pg)
+            pg.click('.ta-panel [data-ta-ma="sma200"]'); pg.wait_for_timeout(600)
             chk('clock 390 dark: three MA chips on', pg.evaluate("['sma20','sma50','sma200'].every(k => document.querySelector('.ta-panel [data-ta-ma=\"' + k + '\"]').classList.contains('on'))"))
             dbgS = pg.evaluate("window.__TA_DEBUG()")
             chk('clock 390 dark: stacking first valid 0 for all three', dbgS and dbgS['firstValid'] == {'ma': 0, 'bb': 0, 'rsi': 0} and dbgS['firstValidMas'] == {'sma20': 0, 'sma50': 0, 'sma200': 0}, dbgS and (dbgS['firstValid'], dbgS['firstValidMas']))
             check_values('clock 390 dark: stacked SMA 20/50/200 match Python', dbgS, ma_keys=('sma20', 'sma50', 'sma200'))
-            tipS = pg.evaluate("window.__BCTA.taTip('1d-line', 50)")
-            chk('clock 390 dark: tooltip lists all three MAs', tipS and len(tipS) == 5 and 'SMA 20' in tipS[0]['t'] and 'SMA 50' in tipS[1]['t'] and 'SMA 200' in tipS[2]['t'] and 'BB 20' in tipS[3]['t'] and tipS[4]['t'].startswith('RSI'), str(tipS)[:200])
+            tipS = pg.evaluate("window.__BCTA.taTip('daily-line', 20)")
+            chk('clock 390 dark: tooltip lists all three MAs + BB + RSI (Job 3)', tipS and len(tipS) == 5 and 'SMA 20' in tipS[0]['t'] and 'SMA 50' in tipS[1]['t'] and 'SMA 200' in tipS[2]['t'] and 'BB 20' in tipS[3]['t'] and 'RSI' in tipS[4]['t'], str(tipS)[:200])
             chk('clock 390 dark: pill count badge 5 (BB + 3 MAs + RSI)', '5' in pg.inner_text('#taPill'))
-            # dark theme: SMA 20 pink #f472b6, SMA 50 amber #fbbf24, SMA 200 green #34d399
-            cols = ma_colours_present(pg, [[244, 114, 182], [251, 191, 36], [52, 211, 153]])
+            # dark theme: SMA 20 pink #f472b6, SMA 50 amber #fbbf24, SMA 200 near-white #e8eef7
+            cols = ma_colours_present(pg, [[244, 114, 182], [251, 191, 36], [232, 238, 247]])
             chk('clock 390 dark: all three MA colours drawn', cols == [True, True, True], str(cols))
             pg.screenshot(path=str(shots / 'clock-390-dark-ta-all-on.png'), animations='disabled')
             # EMA stacks alongside SMA: add EMA 50, both still match Python
+            open_panel(pg)
             pg.click('.ta-panel [data-ta-ma="ema50"]'); pg.wait_for_timeout(600)
             dbg2 = pg.evaluate("window.__TA_DEBUG()")
             check_values('clock 390 dark: EMA 50 stacks with SMA 50', dbg2, ma_keys=('sma50', 'ema50'))
             # all off again (Clear all): strip hides, pill count clears
+            open_panel(pg)
             pg.click('.ta-panel [data-ta-clear]'); pg.wait_for_timeout(600)
             chk('clock 390 dark: Clear all hides RSI strip', pg.evaluate("document.getElementById('taRsi').hidden"))
             pg.screenshot(path=str(shots / 'clock-390-dark-ta-all-off.png'), animations='disabled')
@@ -277,6 +299,7 @@ def main():
         ctx.close()
         # ---- clock page, desktop 1440 light: 1Y line + 1W candles + compare ----
         ctx = b.new_context(viewport={'width': 1440, 'height': 900}, reduced_motion='reduce', color_scheme='light'); ctx.route('**/*', handler)
+        ctx.add_init_script(SEED)
         pg = ctx.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text and 'ERR_FAILED' not in m.text else None)
@@ -286,7 +309,12 @@ def main():
             pg.evaluate("document.documentElement.setAttribute('data-theme','light')")
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
             pg.click('#bcRgs button[data-r="1Y"]'); pg.wait_for_timeout(1200)
-            enable_all(pg)
+            open_panel(pg)
+            # Gating on 1Y Line: RSI is live (Job 3 ungreyed it);
+            # Bollinger and SMA 200 are live (Job 2 ungreyed Bollinger everywhere).
+            chk('clock 1440 light: Bollinger toggle enabled on 1Y (Job 2)', not pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
+            chk('clock 1440 light: RSI toggle enabled on 1Y (Job 3)', not pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
+            chk('clock 1440 light: SMA 200 chip enabled (kept on 1Y)', not pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
             dbg = pg.evaluate("window.__TA_DEBUG()")
             chk('clock 1440 light: 1Y line geometry', dbg and dbg['kind'] == 'daily-line', dbg and dbg['kind'])
             chk('clock 1440 light: DATA warm-up >=200 closes', dbg and dbg['warm'] >= 200, dbg and dbg['warm'])
@@ -308,9 +336,9 @@ def main():
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(900)
             chk('clock 1440 light: 1D warm-up lands', wait_warm(pg, 200))
             chk('clock 1440 light: 1D cmp() false with Spx still on', pg.evaluate("window.__BCTA.cmp()===false"))
-            chk('clock 1440 light: 1D RSI strip visible with Spx still on', pg.evaluate("!document.getElementById('taRsi').hidden"))
+            chk('clock 1440 light: 1D RSI strip shows with Spx still on (Job 3, cmp off on 1D)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             chk('clock 1440 light: 1D compare note hidden with Spx still on', pg.evaluate("document.querySelector('.ta-panel .ta-cmp').hidden"))
-            chk('clock 1440 light: 1D overlays drawn with Spx still on', inked(pg, '#taRsi canvas') and has_overlay(pg))
+            chk('clock 1440 light: 1D overlays drawn with Spx still on', has_overlay(pg))
             # (b) back to 1Y (compare still on), then 1W + daily candles
             pg.click('#bcRgs button[data-r="1Y"]'); pg.wait_for_timeout(1200)
             chk('clock 1440 light: compare note shows again at 1Y', pg.evaluate("!document.querySelector('.ta-panel .ta-cmp').hidden"))
@@ -318,9 +346,9 @@ def main():
             pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
             pg.click('.ta-menu [data-ta-size="daily"]'); pg.wait_for_timeout(1200)
             chk('clock 1440 light: 1W candles cmp() false with Spx still on', pg.evaluate("window.__BCTA.cmp()===false"))
-            chk('clock 1440 light: 1W candles RSI strip visible with Spx still on', pg.evaluate("!document.getElementById('taRsi').hidden"))
+            chk('clock 1440 light: 1W candles RSI strip shows with Spx still on (Job 3, cmp off on 1W candles)', not pg.evaluate("document.getElementById('taRsi').hidden"))
             chk('clock 1440 light: 1W candles compare note hidden with Spx still on', pg.evaluate("document.querySelector('.ta-panel .ta-cmp').hidden"))
-            chk('clock 1440 light: 1W candles overlays drawn with Spx still on', inked(pg, '#taRsi canvas') and has_overlay(pg))
+            chk('clock 1440 light: 1W candles overlays draw (BB + SMA 200 ungated, Job 2) with Spx still on', has_overlay(pg))
             # restore: compare off, so the rest of the section runs as before
             pg.click('#bcSpx'); pg.wait_for_timeout(900)
             # 1W daily candles with overlays on
@@ -360,6 +388,7 @@ def main():
         ctx.close()
         # ---- popover on the homepage, phone 390 dark ----
         ctx = b.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce'); ctx.route('**/*', handler)
+        ctx.add_init_script(SEED)
         pg = ctx.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text and 'ERR_FAILED' not in m.text else None)
@@ -367,7 +396,8 @@ def main():
         try:
             pg.goto(U + 'index.html', wait_until='networkidle')
             pg.evaluate("document.getElementById('hdrTick').click()"); pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
-            enable_all(pg)
+            open_panel(pg)
+            chk('popover 390 dark: Bollinger toggle enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
             chk('popover 390 dark: warm-up fetch lands', wait_warm(pg, 200))
             dbg = pg.evaluate("window.__TA_DEBUG()")
             check_values('popover 390 dark: indicator values match Python', dbg)

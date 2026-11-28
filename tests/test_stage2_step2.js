@@ -30,8 +30,8 @@ const s2 = fs.readFileSync(path.join(R, 'assets/js/s2.js'), 'utf8');
 
 /* Step 2 native section exists */
 chk('panel has Stage 2 Step 2 native section', /Stage 2 native line renderer — Step 2: 1D line/.test(panel));
-chk('panel has draw1DNative implemented', /function draw1DNative\(pts\)\{/.test(panel));
-chk('draw1DNative returns true on success', /function draw1DNative\(pts\)\{[\s\S]*?return true;\n  \}catch/.test(panel));
+chk('panel has draw1DNative implemented', /function draw1DNative\(pts,cmp\)\{/.test(panel));
+chk('draw1DNative returns true on success', /function draw1DNative\(pts,cmp\)\{[\s\S]*?return true;\n  \}catch/.test(panel));
 chk('draw1DNative has no "not yet implemented" marker', !/function draw1DNative[\s\S]{0,400}not yet implemented/.test(panel));
 chk('drawDailyNative implemented (Step 3 — see test_stage2_step3.js for detail)', /function drawDailyNative\(d,cmp\)\{[\s\S]*?Stage 2 Step 3 — implemented/.test(panel));
 chk('panel has nativeNiceTicks implemented (Chart.js-faithful, plot-height tick limit)', /function nativeNiceTicks\(min,max,plotH\)\{[\s\S]*?Math\.pow\(10/.test(panel) && /function chartNiceNum\(x\)\{/.test(panel));
@@ -44,7 +44,7 @@ chk('panel has nativeTooltipBind implemented', /function nativeTooltipBind\(c\)\
 chk('panel has nativeTooltipHide implemented', /function nativeTooltipHide\(\)\{[\s\S]*?lineHover=-1/.test(panel));
 chk('panel has nativeResize implemented (rAF-coalesced)', /function nativeResize\(\)\{if\(nrRaf\)return;var f=function\(\)\{nrRaf=0;redrawLine\(\);\};nrRaf=window\.requestAnimationFrame\?window\.requestAnimationFrame\(f\):setTimeout\(f,16\);\}/.test(panel));
 chk('pending resize frame cancelled by clearLineChart and close() (Chart.js fallbacks removed 20 Nov 2026)', (panel.match(/cancelNativeResize\(\);/g)||[]).length === 2 && /function cancelNativeResize\(\)\{if\(nrRaf\)/.test(panel));
-chk('panel has drawLineTooltip', /function drawLineTooltip\(ctx,p,px,py,W,padT,plotH\)/.test(panel));
+chk('panel has drawLineTooltip', /function drawLineTooltip\(ctx,p,px,py,W,padT,plotH,cmpT\)/.test(panel));
 
 /* Native-only wiring (Chart.js removed 20 Nov 2026: no NATIVE_LINE flag, no fallback) */
 chk('panel has no NATIVE_LINE flag or setNativeLine hook', !/NATIVE_LINE/.test(panel) && !/setNativeLine/.test(panel));
@@ -77,8 +77,8 @@ chk('onLive redraws when the native line is showing (or a failed draw awaits ret
 chk('resize listener redraws the native line', /if\(candViewActive\(\)\)redrawCandles\(\);nativeResize\(\);\}\}\);/.test(panel));
 
 /* Flag F5 — DPR uncapped in draw1DNative (matches the candles) */
-chk('draw1DNative uses uncapped DPR (F5)', /function draw1DNative\(pts\)\{[\s\S]*?var dpr=window\.devicePixelRatio\|\|1;/.test(panel));
-chk('draw1DNative does NOT cap DPR at 2', !/function draw1DNative\(pts\)\{[\s\S]*?Math\.min\(window\.devicePixelRatio/.test(panel));
+chk('draw1DNative uses uncapped DPR (F5)', /function draw1DNative\(pts,cmp\)\{[\s\S]*?var dpr=window\.devicePixelRatio\|\|1;/.test(panel));
+chk('draw1DNative does NOT cap DPR at 2', !/function draw1DNative\(pts,cmp\)\{[\s\S]*?Math\.min\(window\.devicePixelRatio/.test(panel));
 
 /* Flag F6 — hardcoded dark Chart.js colours, not "improved" */
 chk('native line colour is #22d3ee', /ctx\.strokeStyle='#22d3ee';ctx\.lineWidth=2;/.test(panel));
@@ -107,21 +107,20 @@ chk('panel keeps open/close/place', /function open\(from\)/.test(panel) && /func
 chk('panel keeps getData + getIntraday', /function getData\(\)/.test(panel) && /function getIntraday\(\)/.test(panel));
 chk('needChart removed with Chart.js', !/needChart/.test(panel));
 
-/* Rebase 21 Nov 2026: loader + panel et31 on this branch (main is wr1; the
-   branch panel differs, so it keeps its own pin) */
-chk('stub loads the panel with et31', /btcchart-panel\.js\?v=et31/.test(stub));
+/* Chart.js removal (20 Nov 2026): loader + panel et29 -> ta3 -> ta4 (Stage 4, 21 Nov 2026) -> ta5 (candle default, 21 Nov 2026) -> ta6 ($NaN label fix, 21 Nov 2026) -> wr1 (weekly rollover fix, 21 Nov 2026) -> wr2 (TA Beta label, 21 Nov 2026) -> wr3 (drawing fixes Stage 1, 21 Nov 2026) -> wr4 (drawing fixes Job 1, 21 Nov 2026) -> wr5 (drawing fixes Job 2, 21 Nov 2026) -> wr6 (drawing fixes Job 3, 22 Nov 2026) -> ta12/wr7 (drawing fixes Job 4, 22 Nov 2026) -> ta13/wr8 (drawing fixes Job 5, 22 Nov 2026) -> ta15/wr10 (drawing fixes Job 6, 22 Nov 2026) -> ta16/wr11 (drawing fixes Job 9, 22 Nov 2026) -> ta17/wr12 (drawing fixes Job 11, 22 Nov 2026) -> ta18/wr13 (drawing fixes Job 12, 22 Nov 2026) -> wr14 (drawing fixes Job 10, 22 Nov 2026) -> wr17/wr18 + ta19 (follow-ups, 28 Nov 2026) -> wr19 (TA 2.0 floor rebase, 28 Nov 2026) */
+chk('stub loads the panel with wr19', /btcchart-panel\.js\?v=wr19/.test(stub));
 chk('stub does not load the panel with et19', !/btcchart-panel\.js\?v=et19/.test(stub));
 const pages = ['index.html', 'screener.html', 'compare/index.html', 'clock/index.html', 'recap/index.html',
   'recap/2026-01/index.html', 'recap/2026-02/index.html', 'recap/2026-03/index.html', 'recap/2026-04/index.html',
   'recap/2026-05/index.html', 'recap/2026-06/index.html', 'recap/2026-07/index.html', 'recap/2026-08/index.html',
   'recap/2026-09/index.html', 'recap/2026-10/index.html', 'recap/2026-11/index.html'];
-let wr1 = 0, other = [];
+let wr14 = 0, other = [];
 pages.forEach(function (p) {
   const html = fs.readFileSync(path.join(R, p), 'utf8');
   const m = html.match(/btcchart\.js\?v=([a-z0-9]+)/g) || [];
-  m.forEach(function (x) { if (x === 'btcchart.js?v=wr1') wr1++; else other.push(p + ':' + x); });
+  m.forEach(function (x) { if (x === 'btcchart.js?v=wr19') wr14++; else other.push(p + ':' + x); });
 });
-chk('all 16 callers pin wr1', wr1 === 16 && other.length === 0, 'wr1=' + wr1 + ' other=' + JSON.stringify(other));
+chk('all 16 callers pin wr19', wr14 === 16 && other.length === 0, 'wr19=' + wr14 + ' other=' + JSON.stringify(other));
 
 /* YTD hero: native only since the Chart.js removal (20 Nov 2026) */
 chk('s2.js has no Chart.js fallback', !/new Chart\s*\(/.test(s2) && !/typeof Chart/.test(s2));

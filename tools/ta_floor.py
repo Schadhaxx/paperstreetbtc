@@ -20,7 +20,9 @@ bear-market bottom over a 5-year window).
 Break rule: a weekly CLOSE 2% or more under the floor breaks it. The
 trigger for the current week is floorNow * 0.98. Two closes in
 Dec 2022 / Jan 2023 finished slightly under the line (max -1.65%) and
-recovered -- inside the 2% tolerance, so the floor has never broken.
+recovered -- inside the 2% tolerance. The 23 Nov 2026 weekly close
+($60,495.57) finished 3.12% under the line, past the tolerance, so
+as of 26 Nov 2026 the floor is BROKEN.
 
 Output: assets/data/ta-floor.json (a local fixture for now -- there is
 NO workflow file yet; the front end reads the fixture directly).
