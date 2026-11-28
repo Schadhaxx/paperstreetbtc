@@ -211,6 +211,9 @@ def main():
         # ---- Phase A: fresh fixture, clock 390 dark ----
         FIXTURE['body'] = fixture('fresh')
         ctx = b.new_context(viewport={'width': 390, 'height': 900}, reduced_motion='reduce'); ctx.route('**/*', handler)
+        # Seed Trends on, so the 1D Line checks below see the lines draw
+        # (Job 1 ungreyed the toggle there; it is no longer gated).
+        ctx.add_init_script("localStorage.setItem('ps-ta-v1', JSON.stringify({tl:true}));")
         pg = ctx.new_page(); errs = []
         pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
         pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text and 'ERR_FAILED' not in m.text else None)
@@ -220,7 +223,17 @@ def main():
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
             chk('A clock 390 dark: chart paints', inked(pg))
             chk('A clock 390 dark: TA module + TL probe loaded', pg.evaluate("!!window.__BTTA && !!window.__BCTA && !!window.__TA_TL_DEBUG"))
-            turn_tl_on(pg); wait_status(pg, 'live')
+            # Job 1: on 1D Line the Trends switch is ENABLED and the lines
+            # draw (the y-range expands to include them); the same toggle
+            # works on 1D 1H candles below.
+            pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
+            chk('A 1D Line: Trends toggle enabled (Job 1)', not pg.is_disabled('.ta-panel [data-ta-key="tl"]'))
+            wait_status(pg, 'live')
+            pr = tl(pg)
+            chk('A 1D Line: status live, 12 lines draw (Job 1)', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
+            chk('A 1D Line: panel says Live 1h + 4h + 1d 12 lines (Job 1)', panel_status(pg) == 'Live · 1h + 4h + 1d · 12 lines', panel_status(pg))
+            pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
+            pick_size(pg, '1h'); wait_status(pg, 'live')
             pr = tl(pg)
             chk('A 1D line: tf is 1h', pr['tf'] == '1h', pr['tf'])
             chk('A 1D line: status live, file ok', pr['status'] == 'live' and pr['fileOk'])
@@ -263,8 +276,14 @@ def main():
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(1200)
             pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
             pg.click('.ta-menu [data-ta-pick="line"]'); pg.wait_for_timeout(1200)
+            wait_status(pg, 'live')
             pr = tl(pg)
-            chk('A back to 1D Line: live again, 12 lines', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
+            chk('A back to 1D Line: live, 12 lines (Job 1)', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
+            chk('A back to 1D Line: panel says Live 1h + 4h + 1d 12 lines (Job 1)', panel_status(pg) == 'Live · 1h + 4h + 1d · 12 lines', panel_status(pg))
+            pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
+            pick_size(pg, '1h'); wait_status(pg, 'live')
+            pr = tl(pg)
+            chk('A back to 1D 1H: live again, 12 lines', pr['tf'] == '1h' and pr['status'] == 'live' and len(pr['last']['lines']) == 12, str(pr))
             chk('A clock 390 dark: no console errors', not errs, '; '.join(errs[:3]))
         except Exception as e:
             chk('A clock 390 dark', False, str(e)[:200])
@@ -279,7 +298,7 @@ def main():
         try:
             pg.goto(U + 'clock/index.html', wait_until='networkidle')
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
-            turn_tl_on(pg); wait_status(pg, 'live')
+            pick_size(pg, '1h'); turn_tl_on(pg); wait_status(pg, 'live')
             pr = tl(pg)
             chk('B stale 1h: status live (4h + 1d still draw), 6 lines, 1h stale', pr['status'] == 'live' and len(pr['last']['lines']) == 6 and pr['last'].get('stale') and pr['last']['perTf'].get('1h') == 'stale', str(pr))
             chk('B stale 1h: no 1h lines draw, only 4h + 1d', all(l['tf'] != '1h' for l in pr['last']['lines']) and len([l for l in pr['last']['lines'] if l['tf'] == '4h']) == 3 and len([l for l in pr['last']['lines'] if l['tf'] == '1d']) == 3, str(pr['last']))
@@ -301,7 +320,7 @@ def main():
         try:
             pg.goto(U + 'clock/index.html', wait_until='networkidle')
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
-            turn_tl_on(pg); wait_status(pg, 'updating')
+            pick_size(pg, '1h'); turn_tl_on(pg); wait_status(pg, 'updating')
             pr = tl(pg)
             chk('B2 all stale: status updating, no lines', pr['status'] == 'updating' and pr['last']['lines'] == [] and pr['last'].get('stale'), str(pr))
             chk('B2 all stale: panel says Trendlines updating…', panel_status(pg) == 'Trendlines updating…', panel_status(pg))
@@ -319,7 +338,7 @@ def main():
         try:
             pg.goto(U + 'clock/index.html', wait_until='networkidle')
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
-            turn_tl_on(pg); wait_status(pg, 'updating')
+            pick_size(pg, '1h'); turn_tl_on(pg); wait_status(pg, 'updating')
             pr = tl(pg)
             chk('C missing file: status updating, no lines', pr['status'] == 'updating' and pr['last']['lines'] == [] and not pr['fileOk'], str(pr))
             chk('C missing file: panel says Trendlines updating…', panel_status(pg) == 'Trendlines updating…', panel_status(pg))
@@ -337,7 +356,7 @@ def main():
         try:
             pg.goto(U + 'clock/index.html', wait_until='networkidle')
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
-            turn_tl_on(pg); wait_status(pg, 'updating')
+            pick_size(pg, '1h'); turn_tl_on(pg); wait_status(pg, 'updating')
             pr = tl(pg)
             chk('D invalid file: status updating, no lines, bad schema', pr['status'] == 'updating' and pr['last']['lines'] == [] and pr['fileReason'] == 'bad schema', str(pr))
             chk('D invalid file: no console errors', not errs, '; '.join(errs[:3]))
@@ -354,7 +373,7 @@ def main():
         try:
             pg.goto(U + 'clock/index.html', wait_until='networkidle')
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
-            turn_tl_on(pg); wait_status(pg, 'live')
+            pick_size(pg, '1h'); turn_tl_on(pg); wait_status(pg, 'live')
             pr = tl(pg)
             drawn_levels = {(l['kind'], l['price']) for l in pr['last']['lines'] if l['type'] == 'level'}
             chk('E crossed 1D line: 9 draw (1h 4 + 4h 2 + 1d 3), 3 omitted', len(pr['last']['lines']) == 9 and len(pr['last']['omitted']) == 3, str(pr['last']))
@@ -383,7 +402,7 @@ def main():
             pg.evaluate("document.documentElement.setAttribute('data-theme','light')")
             pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
             chk('F clock 1440 light: chart paints', inked(pg))
-            turn_tl_on(pg); wait_status(pg, 'live')
+            pick_size(pg, '1h'); turn_tl_on(pg); wait_status(pg, 'live')
             pr = tl(pg)
             chk('F clock 1440 light: 12 lines draw', len(pr['last']['lines']) == 12, str(pr['last']))
             chk('F clock 1440 light: panel says Live 1h + 4h + 1d 12 lines', panel_status(pg) == 'Live · 1h + 4h + 1d · 12 lines', panel_status(pg))
@@ -406,7 +425,7 @@ def main():
             pg.goto(U + 'index.html', wait_until='networkidle')
             pg.evaluate("document.getElementById('hdrTick').click()"); pg.wait_for_selector('#bcC', timeout=8000); pg.wait_for_timeout(1500)
             chk('G popover 390 dark: chart paints', inked(pg))
-            turn_tl_on(pg); wait_status(pg, 'live')
+            pick_size(pg, '1h'); turn_tl_on(pg); wait_status(pg, 'live')
             pr = tl(pg)
             chk('G popover 390 dark: 12 lines draw', len(pr['last']['lines']) == 12 and pr['tf'] == '1h', str(pr['last']))
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)

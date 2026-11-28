@@ -86,7 +86,15 @@ html[data-theme="light"] .v4-stage .ta-menu .ta-md{background:#eef2f7}
 }
 .v4-stage .ta-panel .ta-ph,.bc-w .ta-panel .ta-ph{display:flex;justify-content:space-between;align-items:center;margin:0 0 4px}
 .v4-stage .ta-panel .ta-ph b,.bc-w .ta-panel .ta-ph b{font:700 10.5px/1 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8}
-.v4-stage .ta-panel .ta-ph button,.bc-w .ta-panel .ta-ph button{border:0;background:none;color:#22d3ee;font:600 11.5px Inter,sans-serif;padding:6px 0 6px 10px;cursor:pointer}
+.v4-stage .ta-panel .ta-ph button,.bc-w .ta-panel .ta-ph button{border:0;background:none;color:#22d3ee;font:600 11.5px Inter,sans-serif;padding:6px 0 6px 10px;cursor:pointer;white-space:nowrap;flex:0 0 auto}
+/* Follow-ups (28 Nov 2026): the chips row is a hidden-scrollbar
+   scroller like the range row (.bc-rgs) — without a cue the trailing
+   chips (+ Gold / + MSTR, and + S&P 500 in Candles) read as clipped
+   off. Same right-edge fade as .bc-rgs, so the cut reads as
+   "scroll for more". Scoped to the same <=1000px breakpoint. */
+@media (max-width:1000px){
+  .bc-w .bc-row2 .bc-lg{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 28px),transparent)}
+}
 /* TA Beta label (21 Nov 2026): small pill beside the panel title. */
 .v4-stage .ta-panel .ta-ph-t,.bc-w .ta-panel .ta-ph-t{display:flex;align-items:center;gap:6px;min-width:0}
 .v4-stage .ta-panel .ta-beta,.bc-w .ta-panel .ta-beta{font:600 10px/1 Inter,sans-serif;letter-spacing:.02em;color:#22d3ee;background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.35);border-radius:999px;padding:3px 6px;white-space:nowrap}
@@ -94,6 +102,11 @@ html[data-theme="light"] .v4-stage .ta-menu .ta-md{background:#eef2f7}
 .v4-stage .ta-panel .ta-cmp,.bc-w .ta-panel .ta-cmp{font-size:11.5px;color:#94a3b8;padding:2px 0 6px}
 html[data-theme="light"] .v4-stage .ta-panel .ta-cmp,
 html[data-theme="light"] .bc-w .ta-panel .ta-cmp{color:#64748b}
+/* Job 6 (22 Nov 2026): the same note outside the panel — a line under
+   the pills row, so it reads without opening the panel. Same type and
+   colour as the panel note; hidden unless a comparison is hiding TA. */
+.bc-w .ta-cmp-out{font-size:11.5px;color:#94a3b8;padding:6px 2px 0}
+html[data-theme="light"] .bc-w .ta-cmp-out{color:#64748b}
 /* Stage 4: trendline file status under the Smart Trendlines row. */
 .v4-stage .ta-panel .ta-tl-status,.bc-w .ta-panel .ta-tl-status{font-size:11.5px;color:#94a3b8;padding:0 0 6px}
 html[data-theme="light"] .v4-stage .ta-panel .ta-tl-status,
@@ -116,6 +129,11 @@ html[data-theme="light"] .bc-w .ta-panel .ta-tl-status{color:#64748b}
 .v4-stage .ta-panel .ta-ma-chip i,.bc-w .ta-panel .ta-ma-chip i{width:8px;height:8px;border-radius:50%;background:var(--mac,#f472b6);display:block;flex:0 0 auto}
 .v4-stage .ta-panel .ta-ma-chip.on,.bc-w .ta-panel .ta-ma-chip.on{border-color:var(--mac,#f472b6);color:#e2e8f0;background:rgba(255,255,255,.05)}
 .v4-stage .ta-panel .ta-ma.off .ta-ma-chip,.bc-w .ta-panel .ta-ma.off .ta-ma-chip{opacity:.45}
+/* Drawing fixes Stage 1 (21 Nov 2026): a gated toggle stays visible but
+   greyed out (disabled) on views where its overlay does not work. */
+.v4-stage .ta-panel .ta-sw:disabled,.bc-w .ta-panel .ta-sw:disabled{opacity:.45;cursor:default}
+.v4-stage .ta-panel .ta-it.gated .nm,.bc-w .ta-panel .ta-it.gated .nm{opacity:.5}
+.v4-stage .ta-panel .ta-ma-chip:disabled,.bc-w .ta-panel .ta-ma-chip:disabled{opacity:.45;cursor:default}
 html[data-theme="light"] .v4-stage .ta-panel,
 html[data-theme="light"] .bc-w .ta-panel{background:rgba(255,255,255,.98);border-color:#cbd5e1;color:#0f172a;box-shadow:0 16px 36px rgba(15,23,42,.18)}
 html[data-theme="light"] .v4-stage .ta-panel .ta-ph b,
@@ -153,9 +171,9 @@ html[data-theme="light"] .bc-w .ta-panel .ta-ma-chip.on{color:#0f172a;background
 html.v4-fs-price .ta-panel{display:none !important}
 
 /* ---------- RSI strip (grid row after the chart; hidden when RSI is off) ---------- */
-.bc-w .ta-rsi{position:relative;height:50px;border-top:1px solid rgba(148,163,184,.14);box-sizing:border-box;min-width:0;margin-top:6px}
+.bc-w .ta-rsi{position:relative;height:76px;border-top:1px solid rgba(148,163,184,.14);box-sizing:border-box;min-width:0;margin-top:6px}
 .bc-w .ta-rsi canvas{position:absolute;left:0;right:0;bottom:0;top:0;width:100%;height:100%}
-.bc-w .ta-rsi-t{position:absolute;left:4px;top:3px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:999px;
+.bc-w .ta-rsi-t{position:absolute;right:4px;top:3px;z-index:2;display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:999px;
   font:600 10px/1.3 Inter,sans-serif;color:#94a3b8;background:rgba(2,6,23,.65);border:0;cursor:pointer}
 .bc-w .ta-rsi-t b{color:#c4b5fd;font-weight:700}
 .bc-w .ta-rsi-t svg{width:8px;height:8px}
@@ -165,12 +183,24 @@ html[data-theme="light"] .bc-w .ta-rsi{border-top-color:#e2e8f0}
 html[data-theme="light"] .bc-w .ta-rsi-t{color:#475569;background:rgba(255,255,255,.85)}
 html[data-theme="light"] .bc-w .ta-rsi-t b{color:#6d28d9}
 @media (orientation:landscape) and (max-height:500px) and (min-width:700px){
-  .bc-w .ta-rsi{height:38px}
+  .bc-w .ta-rsi{height:60px}
   .bc-w .ta-rsi.col{height:18px}
 }
 /* Clock inline: the strip is the grid's row 4 when shown. */
 body.ps-clock .v4-stage .bc-inline .ta-rsi{grid-column:1 / -1;grid-row:4}
 body.ps-clock .v4-stage .bc-inline.ta-rsi-on{grid-template-rows:auto auto 1fr auto !important}
+/* Job 6 (22 Nov 2026): the external comparison note needs an explicit
+   grid row on the clock page — without one it auto-places into the
+   chart's 1fr row and stretches (235px tall on phones, where the grid
+   has no align-items to save it). The dialog gains .ta-cmp-out-on
+   while the note shows, inserting an auto row between the pills row
+   and the chart; the box and the RSI strip shift down one row. Follows
+   the .ta-rsi-on precedent above. */
+body.ps-clock .v4-stage .bc-inline .ta-cmp-out{grid-column:1 / -1;grid-row:3;align-self:start}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on{grid-template-rows:auto auto auto 1fr !important}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on.ta-rsi-on{grid-template-rows:auto auto auto 1fr auto !important}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on .bc-box{grid-row:4}
+body.ps-clock .v4-stage .bc-inline.ta-cmp-out-on .ta-rsi{grid-row:5}
 /* Clock at phone width: the fixed Light/Dark pill sits bottom-right over
    the RSI strip's bottom-right corner (~48x20px). Lift the strip clear of
    it while RSI is on; the strip keeps full width so its x positions still

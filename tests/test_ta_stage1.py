@@ -119,17 +119,41 @@ def main():
             chk('clock 390 dark: pill back to Line', pg.inner_text('#taTyp').strip().startswith('Line'))
             pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
             chk('clock 390 dark: TA panel opens with 4 toggles', pg.locator('.ta-panel .ta-sw').count() == 4)
-            pg.click('.ta-panel [data-ta-key="rsi"]'); pg.wait_for_timeout(600)
-            chk('clock 390 dark: RSI strip shows when on', pg.evaluate("!document.getElementById('taRsi').hidden"))
+            # Gating on 1D Line: RSI is ENABLED (Job 3 ungreyed it — the
+            # strip now has a scale, bands and a live value), and the
+            # RSI strip stays hidden here only because RSI is off by
+            # default in this test (no seed). Bollinger and SMA 200 are
+            # ENABLED on 1D Line (Job 2 ungreyed them — the pre-warm
+            # makes them valid from index 0 there now), and SMA 20
+            # stays live. Trends is ENABLED on 1D Line (Job 1 ungreyed
+            # it — the lines draw there now).
+            chk('clock 390 dark: Trends toggle enabled on 1D (Job 1)', not pg.is_disabled('.ta-panel [data-ta-key="tl"]'))
+            chk('clock 390 dark: Bollinger toggle enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-key="bb"]'))
+            chk('clock 390 dark: RSI toggle enabled on 1D (Job 3)', not pg.is_disabled('.ta-panel [data-ta-key="rsi"]'))
+            chk('clock 390 dark: SMA 200 chip enabled on 1D (Job 2)', not pg.is_disabled('.ta-panel [data-ta-ma="sma200"]'))
+            chk('clock 390 dark: SMA 20 chip enabled on 1D', not pg.is_disabled('.ta-panel [data-ta-ma="sma20"]'))
+            chk('clock 390 dark: RSI strip stays hidden (RSI off)', pg.evaluate("document.getElementById('taRsi').hidden"))
+            # The MA group switch is live on 1D. Job 5 removed the SMA 50
+            # auto-select, so turning the group on with nothing selected
+            # shows no badge (nothing draws); selecting a chip shows
+            # badge 1, and turning the group off clears it.
+            pg.click('.ta-panel [data-ta-key="ma"]'); pg.wait_for_timeout(600)
+            chk('clock 390 dark: MA group on with nothing selected shows no badge (Job 5)', '1' not in pg.inner_text('#taPill'))
+            pg.click('.ta-panel [data-ta-ma="sma50"]'); pg.wait_for_timeout(600)
             chk('clock 390 dark: pill count badge 1', pg.inner_text('#taPill').strip().startswith('TA1') or '1' in pg.inner_text('#taPill'))
-            pg.click('.ta-panel [data-ta-key="rsi"]'); pg.wait_for_timeout(400)
+            pg.click('.ta-panel [data-ta-key="ma"]'); pg.wait_for_timeout(400)
             pg.screenshot(path=str(shots / 'clock-390-dark-ta-panel.png'), animations='disabled')
             r = pg.evaluate("window.__taRects()")
             overlap['clock-390-dark-panel'] = r
             chk('clock 390 dark: overlap 0 with panel open', r['overlaps'] == [], r['overlaps'])
             pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
             chk('clock 390 dark: Esc closes panel', pg.evaluate("document.querySelector('.ta-panel').hidden"))
-            # range x type: 1W candles Daily, 1M candles Weekly, 5Y disabled
+            # range x type: 1W candles Daily, 1M candles Weekly, 5Y candles
+            # Daily (Job 9: 5Y has candles now — the pill is enabled and the
+            # 1M candles carry over, reset to the 5Y Daily default), then
+            # back to 1D 1H candles (Job 5 carry through the 5Y candle view;
+            # before Job 9, 5Y was Line-only so the carry did not apply and
+            # the pill came back Line).
             pg.click('#bcRgs button[data-r="1W"]'); pg.wait_for_timeout(900)
             pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
             pg.click('.ta-menu [data-ta-size="daily"]'); pg.wait_for_timeout(1200)
@@ -139,19 +163,22 @@ def main():
             pg.click('.ta-menu [data-ta-size="weekly"]'); pg.wait_for_timeout(1200)
             chk('clock 390 dark: 1M pill says Candles \u00b7 Weekly', 'Candles' in pg.inner_text('#taTyp') and 'Weekly' in pg.inner_text('#taTyp'))
             pg.click('#bcRgs button[data-r="5Y"]'); pg.wait_for_timeout(900)
-            chk('clock 390 dark: 5Y pill disabled, says Line', pg.evaluate("document.getElementById('taTyp').disabled && document.getElementById('taTyp').textContent.trim().startsWith('Line')"))
+            chk('clock 390 dark: 5Y pill enabled, says Candles \u00b7 Daily (Job 9)', pg.evaluate("!document.getElementById('taTyp').disabled && document.getElementById('taTyp').textContent.includes('Candles') && document.getElementById('taTyp').textContent.includes('Daily')"))
             pg.click('#bcRgs button[data-r="1D"]'); pg.wait_for_timeout(1200)
-            # Must-fix (27 Nov 2026) supersedes item 17's restore: the type
-            # only carries when the candle view is actually active
-            # (candViewActive). The viewer was in candles on 1M, 5Y forced
-            # line (no candles there), and on 5Y the candle view is NOT
-            # active — so returning to 1D stays Line (CT was 'line': the
-            # viewer picked Line on 1D before the candle ranges). The old
-            # expectation (1H candles) was the leftover-RGCT memory the
-            # must-fix removes.
-            chk('clock 390 dark: back to 1D stays Line (must-fix 27 Nov)', pg.inner_text('#taTyp').strip().startswith('Line'))
-            # And the reported bug itself: 1D Line with leftover RGCT must
-            # open the next range in line, not candles.
+            # Rebase note (28 Nov 2026): the must-fix's "stays Line" expectation
+            # was written when 5Y had no candles (branch base 21 Nov, pre-Job 9).
+            # On current main 5Y HAS candles (Job 9), so the 5Y view IS a candle
+            # view and the carry restores 1H on return to 1D — same as main's
+            # Job 5 carry. The must-fix itself (candViewActive() carry test)
+            # still stands: it stops LEFTOVER RGCT/CT memory from carrying,
+            # verified by the Line -> 1W check below with the view actually on Line.
+            chk('clock 390 dark: back to 1D 1H candles (Job 5 carry, Job 9)', '1H candles' in pg.inner_text('#taTyp'))
+            # The must-fix bug, with the view actually on Line: switch to Line
+            # on 1D first, then 1W must open in Line — leftover RGCT='candles'
+            # must not route it to candles.
+            pg.click('#taTyp'); pg.wait_for_selector('.ta-menu:not([hidden])', timeout=5000)
+            pg.click('.ta-menu [data-ta-pick="line"]'); pg.wait_for_timeout(900)
+            chk('clock 390 dark: 1D back to Line', pg.inner_text('#taTyp').strip().startswith('Line'))
             pg.click('#bcRgs button[data-r="1W"]'); pg.wait_for_timeout(900)
             chk('clock 390 dark: 1D Line opens 1W in Line (must-fix 27 Nov)', pg.inner_text('#taTyp').strip().startswith('Line'))
             chk('clock 390 dark: no console errors', not errs, '; '.join(errs[:3]))

@@ -1,15 +1,15 @@
 {
   "source": "Yahoo MSFT unadjusted daily OHLC",
-  "asOf": "2026-11-20",
-  "asOfLabel": "20 Nov 2026",
+  "asOf": "2026-11-27",
+  "asOfLabel": "27 Nov 2026",
   "unit": "usd",
   "basis": "ytd",
   "baseClose": 483.62,
   "baseSession": "2025-12-31",
   "baseLabel": "31 Dec close",
-  "lastSession": "2026-11-20",
+  "lastSession": "2026-11-27",
   "inProgress": null,
-  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is a final close through 20 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "note": "Weekly candles, UTC Monday-Sunday weeks, YTD 2026. First week is partial: 1 trading day (2 Jan 2026), week starting Mon 29 Dec 2025. The 31 Dec 2025 close is the baseline, not a candle. Latest week is a final close through 27 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "weeks": [
     {
       "monday": "2025-12-29",
@@ -527,6 +527,17 @@
       "low": 481.03,
       "close": 484.52,
       "volume": 152994055
+    },
+    {
+      "monday": "2026-11-23",
+      "sunday": "2026-11-29",
+      "label": "23 Nov 2026 \u2013 29 Nov 2026",
+      "days": 4,
+      "open": 506.06,
+      "high": 509.15,
+      "low": 477.39,
+      "close": 492.85,
+      "volume": 91014740
     }
   ]
 }

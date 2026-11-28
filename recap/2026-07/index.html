@@ -1,5 +1,6 @@
 <!doctype html><html lang="en"><head><script>(function(){var q=null,s=null;try{q=new URLSearchParams(location.search).get("theme")}catch(e){}try{s=localStorage.getItem("ps-theme")}catch(e){}var on=q==="light"||(q!=="dark"&&s==="light");if(on)document.documentElement.setAttribute("data-theme","light");try{if(q==="light")localStorage.setItem("ps-theme","light");else if(q==="dark"||(s!==null&&s!=="light"))localStorage.removeItem("ps-theme")}catch(e){}})();window.psC=function(d,l){return document.documentElement.getAttribute("data-theme")==="light"?l:d};</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="../assets/owl-220.png"><title>July 2026 Recap · Paperstreet BTC</title>
+<link rel="canonical" href="https://paperstreetbtc.com/recap/2026-07/">
 <style>
 @font-face{font-family:Inter;font-weight:400 700;src:url(../assets/fonts/inter-normal-latin.woff2) format('woff2')}
 @font-face{font-family:Outfit;font-weight:400 700;src:url(../assets/fonts/outfit-normal-latin.woff2) format('woff2')}
@@ -31,9 +32,11 @@ footer{border-top:1px solid var(--border);padding:24px 0 40px;color:var(--muted)
 table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:6px 4px;border-bottom:1px solid var(--border);text-align:right}td:first-child,th:first-child{text-align:left}th{color:var(--muted);font-weight:500}
 @media(max-width:700px){.two{grid-template-columns:1fr}.chartbox{height:300px}.res{grid-template-columns:1fr}}
 </style>
-<link rel="stylesheet" href="../../assets/css/header.css"><link rel="stylesheet" href="../../assets/css/nav.css"><link rel="stylesheet" href="../../assets/css/ps-tabs.css?v=t2"><link rel="stylesheet" href="../../assets/css/xfollow.css?v=x2">
+<link rel="stylesheet" href="../../assets/css/header.css"><link rel="stylesheet" href="../../assets/css/nav.css?v=cr030"><link rel="stylesheet" href="../../assets/css/ps-tabs.css?v=t2"><link rel="stylesheet" href="../../assets/css/xfollow.css?v=x2">
 <link rel="stylesheet" href="../../light.css?v=lm5">
+<script src="../../assets/js/ps-err.js?v=err1"></script>
 <script src="../../chart-theme.js?v=ct1"></script>
+<script src="../../assets/js/ps-ev.js?v=ev1" defer></script>
 </head><body class="ps-recap">
 <header class="header">
   <div class="container header-inner">
@@ -53,9 +56,9 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:6px 4px;b
           <a href="../../recap/index.html">Monthly Recap</a>
         </div>
       </div>
-      <a href="../../compare/index.html">Portfolio Lab</a>
       <a href="../../clock/index.html">Live BTC Chart</a>
       <a href="../../screener.html">The Desk</a>
+      <a href="../../compare/index.html">Portfolio Lab</a>
       <a href="../../index.html#articles">Articles</a>
     </nav>
   </div>
@@ -65,9 +68,9 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:6px 4px;b
       <div class="ps-tab-fade ps-tab-fade-l" aria-hidden="true"></div>
       <div class="ps-tabs-scroller">
         <button type="button" class="ps-tab-drop" aria-expanded="false" aria-controls="psSleevesRow">Sleeves<svg class="ps-tab-dis" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.75L5 6.75L8 3.75" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <a href="../../compare/index.html">Portfolio Lab</a>
         <a href="../../clock/index.html">Live BTC Chart</a>
         <a href="../../screener.html">The Desk</a>
+        <a href="../../compare/index.html">Portfolio Lab</a>
         <a href="../../index.html#articles">Articles</a>
       </div>
       <div class="ps-tab-fade ps-tab-fade-r" aria-hidden="true"></div>
@@ -140,5 +143,4 @@ let live=null,lastT='';rT(null);pollPX();setInterval(pollPX,300000);
 async function poll(){try{const r=await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');const j=await r.json();live=+j.data.amount;rT(live,lastT=ET.time(new Date(),true))}catch(e){rT(null)}}
 poll();setInterval(poll,15000);
 </script><a href="../../index.html" style="position:fixed;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25);left:18px;background:#f7931a;color:#111">&larr; Home</a><a href="../index.html" style="position:fixed;bottom:18px;z-index:50;padding:10px 16px;border-radius:999px;font:600 14px Inter,system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25);left:120px;background:#22d3ee;color:#04121a">All recaps</a>
-<script src="../../assets/js/s7.js"></script><script src="../../assets/js/ps-tabs.js?v=t1"></script><script src="../../assets/js/btcchart.js?v=wr4"></script><!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fe85a8ffb309453da6b9f3518d2dd97e"}'></script><!-- End Cloudflare Web Analytics -->
-</body></html>
+<script src="../../assets/js/s7.js"></script><script src="../../assets/js/ps-tabs.js?v=t1"></script><script src="../../assets/js/btcchart.js?v=wr21"></script><!-- Cloudflare Web Analytics --><script>try{if(localStorage.getItem('ps-no-count')!=='1'){var s=document.createElement('script');s.type='module';s.src='https://static.cloudflareinsights.com/beacon.min.js';s.setAttribute('data-cf-beacon','{"token": "fe85a8ffb309453da6b9f3518d2dd97e"}');(document.body||document.documentElement).appendChild(s);}}catch(e){}</script><!-- End Cloudflare Web Analytics --></body></html>

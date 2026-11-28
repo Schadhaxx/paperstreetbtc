@@ -110,6 +110,9 @@ def open_page(p, width, height, light=False):
     ctx = p.new_context(viewport={'width': width, 'height': height}, reduced_motion='reduce',
                         color_scheme='light' if light else 'dark')
     ctx.route('**/*', handler)
+    # Stage 1: seed RSI on, so the strip-hidden check in Phase A is
+    # meaningful (hidden despite RSI on, not merely because it is off).
+    ctx.add_init_script("localStorage.setItem('ps-ta-v1', JSON.stringify({rsi:true}));")
     pg = ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append('pageerror: ' + str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text and 'ERR_FAILED' not in m.text else None)
@@ -156,14 +159,11 @@ def main():
             chk('A hint does not cover Keep screen on', not ov(q['hint'], q['keep']), str(q['keep']))
             chk('A hint does not cover the Light pill', not ov(q['hint'], q['light']), str(q['light']))
             chk('A hint does not cover Exit (hidden in normal mode)', not ov(q['hint'], q['exit']), str(q['exit']))
-            # RSI on: the strip is a grid row below the box; the hint must not cover it.
-            pg.click('#taPill'); pg.wait_for_selector('.ta-panel:not([hidden])', timeout=5000)
-            pg.click('.ta-panel [data-ta-key="rsi"]'); pg.wait_for_timeout(900)
-            pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
-            q = rects(pg)
-            chk('A RSI strip is on', q['rsi'] is not None, str(q['rsi']))
+            # Job 3: RSI is ungated now, so the strip shows with RSI
+            # seeded on — the hint sits inside the chart box, above the
+            # strip, and must not cover it.
+            chk('A RSI strip shows (Job 3) with RSI on', not pg.evaluate("document.getElementById('taRsi').hidden"))
             chk('A hint does not cover the RSI strip', not ov(q['hint'], q['rsi']), str(q['rsi']))
-            chk('A hint still inside the box with RSI on', inside(q['hint'], q['box']))
             pg.screenshot(path=str(shots / 'rotate-hint-390-dark-portrait.png'), animations='disabled')
             # ---- Phase B: tap the hint ----
             pg.click('#rotateHint'); pg.wait_for_timeout(800)

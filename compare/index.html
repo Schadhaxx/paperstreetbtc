@@ -4,9 +4,11 @@
 <link rel="icon" href="../favicon.ico" sizes="any">
 <link rel="icon" href="../favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
-<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../assets/css/nav.css?v=cr028"><link rel="stylesheet" href="../assets/css/ps-tabs.css?v=t2">
+<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../assets/css/nav.css?v=cr030"><link rel="stylesheet" href="../assets/css/ps-tabs.css?v=t2">
 <style>
 .pv .pill{display:inline-flex;flex-wrap:wrap;gap:6px}.pv .controls{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin:18px 0 12px}
+.pv .controls.is-loading{min-height:93px}#pvChartNote.is-loading{min-height:41px}#pvStats.is-waiting{min-height:1314px}#pvCandWrap.is-loading{min-height:527px}
+@media(max-width:1000px){.pv .controls.is-loading{min-height:124px}#pvStats.is-waiting{min-height:1461px}}
 .pv .chartbox{position:relative;height:380px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
 .pv .note{font-size:.8rem;color:var(--muted)}.pv .prov{color:var(--orange)}.pv .pos{color:#34d399}.pv .neg{color:#f87171}
 .pv .bench-btn.on{background:var(--accent);color:#04121a;border-color:var(--accent);font-weight:600}
@@ -18,7 +20,7 @@
 .pv .btn{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#04121a;border:0;border-radius:10px;padding:11px;font:inherit;font-weight:700;cursor:pointer}
 .pv .res{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pv .res>div{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
 .pv .big{font-size:1.6rem;font-weight:600}
-@media(max-width:700px){.pv .chartbox{height:300px}.pv-calc,.pv .res{grid-template-columns:1fr}}
+@media(max-width:700px){.pv .chartbox{height:300px}.pv-calc,.pv .res{grid-template-columns:1fr}.pv .controls.is-loading{min-height:223px}#pvChartNote.is-loading{min-height:61px}#pvStats.is-waiting{min-height:1736px}#pvCandWrap.is-loading{min-height:620px}}
 @media(max-width:480px){#compare{padding-bottom:24px}#calculator{padding-top:24px}}
 .pv-stats-scroll{overflow-x:auto;margin:14px 0 4px}
 .pv-stats{border-collapse:collapse;width:100%;font-size:.85rem;white-space:nowrap}
@@ -34,7 +36,9 @@
 </style><link rel="stylesheet" href="../assets/css/xfollow.css?v=x2">
 <style>.wt-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.wt-foot{margin:16px 0 14px}@media(max-width:700px){.wt-cards{grid-template-columns:1fr}}</style><style>.pvx{border:1px solid var(--border,#1e293b);border-radius:10px;padding:10px 12px;margin:4px 0 0;min-width:0}.pvx legend{padding:0 6px;font-weight:600}.pvx-row{display:grid;grid-template-columns:1fr 1fr 44px;gap:8px;align-items:end;margin:8px 0}.pvx-row label{min-width:0}.pvx-row input{width:100%;box-sizing:border-box}.pvx-rm{width:44px;height:44px;border-radius:10px;border:1px solid var(--border,#1e293b);background:transparent;color:#cbd5e1;cursor:pointer}.pvx-n{grid-column:1/-1;margin:0}#pvXAdd{min-height:44px}</style>
 <link rel="stylesheet" href="../light.css?v=lm5">
+<script src="../assets/js/ps-err.js?v=err1"></script>
 <script src="../chart-theme.js?v=ct1"></script>
+<script src="../assets/js/ps-ev.js?v=ev1" defer></script>
 </head><body>
 <header class="header">
   <div class="container header-inner">
@@ -54,9 +58,9 @@
           <a href="../recap/index.html">Monthly Recap</a>
         </div>
       </div>
-      <a href="../compare/index.html">Portfolio Lab</a>
       <a href="../clock/index.html">Live BTC Chart</a>
       <a href="../screener.html">The Desk</a>
+      <a href="../compare/index.html">Portfolio Lab</a>
       <a href="../index.html#articles">Articles</a>
     </nav>
   </div>
@@ -66,9 +70,9 @@
       <div class="ps-tab-fade ps-tab-fade-l" aria-hidden="true"></div>
       <div class="ps-tabs-scroller">
         <button type="button" class="ps-tab-drop" aria-expanded="false" aria-controls="psSleevesRow">Sleeves<svg class="ps-tab-dis" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.75L5 6.75L8 3.75" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <a href="../compare/index.html">Portfolio Lab</a>
         <a href="../clock/index.html">Live BTC Chart</a>
         <a href="../screener.html">The Desk</a>
+        <a href="../compare/index.html">Portfolio Lab</a>
         <a href="../index.html#articles">Articles</a>
       </div>
       <div class="ps-tab-fade ps-tab-fade-r" aria-hidden="true"></div>
@@ -93,10 +97,9 @@
   <div class="container">
     <h1 style="margin-bottom:8px">Portfolio Lab</h1>
     <p class="section-lead">Sleeves against Spot BTC, Gold (GLD), MSTR, Berkshire (BRK-B), and S&amp;P 500 (SPY) and QQQ as total return (dividends reinvested). Toggle series, pick a range, hover for exact values. Below, the calculator draws your sleeve on this chart.</p>
-    <div class="controls"><div class="pill" id="pvSeries"></div><div class="pill" id="pvRange"></div><button type="button" class="bench-btn" id="pvRefresh">Refresh</button></div>
+    <div class="controls is-loading"><div class="pill" id="pvSeries"></div><div class="pill" id="pvRange"></div><button type="button" class="bench-btn" id="pvRefresh">Refresh</button></div>
     <div class="chartbox"><canvas id="pvChart"></canvas></div>
-    <p class="note" id="pvChartNote" style="margin-top:8px"></p>
-    <div id="pvStats"></div>
+    <p class="note is-loading" id="pvChartNote" style="margin-top:8px"></p>
   </div>
 </section>
 
@@ -113,13 +116,14 @@
 </section>
 <section class="section pv">
   <div class="container">
-    <div id="pvCandWrap" style="margin-top:24px">
+    <div id="pvCandWrap" class="is-loading" style="margin-top:24px">
       <h2 style="margin-bottom:8px">Sleeve candles</h2>
       <p class="note">Weekly candles of one sleeve's value over the range above, built from the same daily sleeve values as the line chart. Tap a candle for its week.</p>
       <div class="controls"><div class="pill" id="pvCandS"></div></div>
       <div class="chartbox" style="height:auto"><canvas id="pvCandles"></canvas></div>
       <p class="note" id="pvCandNote" style="margin-top:8px"></p>
     </div>
+    <div id="pvStats" class="is-waiting"></div>
   </div>
 </section>
 <section id="weights" class="section">
@@ -172,6 +176,5 @@ Weights are the book. Rebalance monthly. Dividends on issue day. Spot BTC is the
 <p class="xsub"><a href="https://x.com/PaperstreetBTC" target="_blank" rel="noreferrer noopener" aria-label="Follow @PaperstreetBTC on X"><span class="xsub-i"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></span>Follow @PaperstreetBTC on X</a></p>
 </main>
 <script src="../assets/js/et.js?v=et2"></script>
-<script src="../assets/js/compare.js?v=et33"></script><script src="../assets/js/stats-display.js?v=sd2"></script><script src="../assets/js/s4.js"></script>
-<script src="../assets/js/s7.js"></script><script src="../assets/js/ps-tabs.js?v=t1"></script><script src="../assets/js/btcchart.js?v=wr4"></script><!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fe85a8ffb309453da6b9f3518d2dd97e"}'></script><!-- End Cloudflare Web Analytics -->
-</body></html>
+<script src="../assets/js/compare.js?v=et35"></script><script src="../assets/js/stats-display.js?v=sd3"></script><script src="../assets/js/s4.js"></script>
+<script src="../assets/js/s7.js"></script><script src="../assets/js/ps-tabs.js?v=t1"></script><script src="../assets/js/btcchart.js?v=wr21"></script><!-- Cloudflare Web Analytics --><script>try{if(localStorage.getItem('ps-no-count')!=='1'){var s=document.createElement('script');s.type='module';s.src='https://static.cloudflareinsights.com/beacon.min.js';s.setAttribute('data-cf-beacon','{"token": "fe85a8ffb309453da6b9f3518d2dd97e"}');(document.body||document.documentElement).appendChild(s);}}catch(e){}</script><!-- End Cloudflare Web Analytics --></body></html>
