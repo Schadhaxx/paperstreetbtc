@@ -36,35 +36,35 @@ def chk(name, ok, info=''):
 daily, _src = TM.load_daily(DAILY)
 weeks = TM.build_weeks(daily)
 ma_weeks = TM.compute_ma(weeks)
-last = ma_weeks[-1]          # in-progress week of 16 Nov 2026
-prev = ma_weeks[-2]          # last completed week of 9 Nov 2026
+last = ma_weeks[-1]          # in-progress week of 23 Nov 2026
+prev = ma_weeks[-2]          # last completed week of 16 Nov 2026
 below = [w for w in ma_weeks if w['close'] < w['ma']]
 longest = TM.longest_below_run(ma_weeks)
 
-chk('650 MA weeks 2014-06-09..2026-11-16',
-    len(ma_weeks) == 650 and ma_weeks[0]['monday'] == '2014-06-09'
-    and ma_weeks[-1]['monday'] == '2026-11-16',
+chk('651 MA weeks 2014-06-09..2026-11-23',
+    len(ma_weeks) == 651 and ma_weeks[0]['monday'] == '2014-06-09'
+    and ma_weeks[-1]['monday'] == '2026-11-23',
     (len(ma_weeks), ma_weeks[0]['monday'], ma_weeks[-1]['monday']))
 chk('first MA week 9 Jun 2014 $125.51',
     round(ma_weeks[0]['ma'], 2) == 125.51, ma_weeks[0]['ma'])
-chk('MA now $68,169.58 (in-progress week)',
-    round(last['ma'], 2) == 68169.58, last['ma'])
-chk('MA last completed week $67,973.67',
-    round(prev['ma'], 2) == 67973.67, prev['ma'])
-chk('last close $61,901.82 / prev close $65,305.06',
-    round(last['close'], 2) == 61901.82
-    and round(prev['close'], 2) == 65305.06,
+chk('MA now $68,349.48 (in-progress week)',
+    round(last['ma'], 2) == 68349.48, last['ma'])
+chk('MA last completed week $68,165.88',
+    round(prev['ma'], 2) == 68165.88, prev['ma'])
+chk('last close $60,495.57 / prev close $61,161.91',
+    round(last['close'], 2) == 60495.57
+    and round(prev['close'], 2) == 61161.91,
     (last['close'], prev['close']))
-chk('price vs MA -9.19% now / -3.93% last completed week',
-    round((last['close'] / last['ma'] - 1) * 100, 2) == -9.19
-    and round((prev['close'] / prev['ma'] - 1) * 100, 2) == -3.93)
-chk('MA a year ago $55,569.11 (week of 17 Nov 2025)',
-    round(ma_weeks[-53]['ma'], 2) == 55569.11, ma_weeks[-53]['ma'])
-chk('MA slope +$238.55/week (mockup: about +$239/wk)',
-    round((prev['ma'] - ma_weeks[-53]['ma']) / 52, 2) == 238.55,
+chk('price vs MA -11.49% now / -10.27% last completed week',
+    round((last['close'] / last['ma'] - 1) * 100, 2) == -11.49
+    and round((prev['close'] / prev['ma'] - 1) * 100, 2) == -10.27)
+chk('MA a year ago $55,831.49 (week of 24 Nov 2025)',
+    round(ma_weeks[-53]['ma'], 2) == 55831.49, ma_weeks[-53]['ma'])
+chk('MA slope +$237.20/week (mockup: about +$239/wk)',
+    round((prev['ma'] - ma_weeks[-53]['ma']) / 52, 2) == 237.2,
     (prev['ma'] - ma_weeks[-53]['ma']) / 52)
-chk('57 of 650 weeks closed below the MA',
-    len(below) == 57, len(below))
+chk('58 of 651 weeks closed below the MA',
+    len(below) == 58, len(below))
 chk('longest below run 30 weeks, 15 Aug 2022 – 6 Mar 2023',
     longest == (30, '2022-08-15', '2023-03-06'), longest)
 
@@ -96,28 +96,28 @@ chk('Summer 2026 brushes +1.05% / +1.22% / +0.34% above the MA',
 # The shipped fixture matches a fresh compute on every mockup key.
 fix = json.load(open(FIXTURE))
 chk('fixture matches fresh compute on every mockup key',
-    fix.get('maNow') == 68169.58
-    and fix.get('maPrev') == 67973.67
-    and fix.get('lastClose') == 61901.82
-    and fix.get('prevClose') == 65305.06
-    and fix.get('priceVsMaNowPct') == -9.19
-    and fix.get('priceVsMaPrevPct') == -3.93
-    and fix.get('maYearAgo') == 55569.11
-    and fix.get('maSlopePerWeek') == 238.55
-    and fix.get('weeksBelow') == 57
-    and fix.get('weeksTotal') == 650
+    fix.get('maNow') == 68349.48
+    and fix.get('maPrev') == 68165.88
+    and fix.get('lastClose') == 60495.57
+    and fix.get('prevClose') == 61161.91
+    and fix.get('priceVsMaNowPct') == -11.49
+    and fix.get('priceVsMaPrevPct') == -10.27
+    and fix.get('maYearAgo') == 55831.49
+    and fix.get('maSlopePerWeek') == 237.2
+    and fix.get('weeksBelow') == 58
+    and fix.get('weeksTotal') == 651
     and fix.get('longestBelowWeeks') == 30
     and fix.get('longestBelow') == {'start': '2022-08-15',
                                     'end': '2023-03-06'}
-    and fix.get('lastWeek', {}).get('monday') == '2026-11-16'
+    and fix.get('lastWeek', {}).get('monday') == '2026-11-23'
     and fix.get('lastWeek', {}).get('inProgress') is True
-    and fix.get('prevWeek', {}).get('monday') == '2026-11-09'
-    and len(fix.get('weeks', [])) == 650
+    and fix.get('prevWeek', {}).get('monday') == '2026-11-16'
+    and len(fix.get('weeks', [])) == 651
     and fix['weeks'][0] == ['2014-06-09', 572.28, 572.28, 125.51]
-    and fix['weeks'][-1] == ['2026-11-16', 61901.82, 61901.82, 68169.58]
+    and fix['weeks'][-1] == ['2026-11-23', 60495.57, 59747.77, 68349.48]
     and all(fix['weeks'][i][3] == round(ma_weeks[i]['ma'], 2)
             for i in range(len(ma_weeks))), '')
-chk('fixture asOf 2026-11-19', fix.get('asOf') == '2026-11-19',
+chk('fixture asOf 2026-11-26', fix.get('asOf') == '2026-11-26',
     fix.get('asOf'))
 chk('fixture episodes carry the verified numbers',
     {e['monday']: e for e in fix.get('episodes', [])}['2018-12-10']

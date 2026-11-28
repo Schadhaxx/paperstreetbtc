@@ -119,6 +119,7 @@
 .bc-w.pop{width:640px;max-width:calc(100vw - 32px);max-height:calc(100vh - 24px);overflow:auto;border-radius:14px;padding:16px 20px}
 @media (orientation:landscape) and (min-width:900px){.bc-w.pop{width:min(900px,calc(100vw - 32px));}}
 .bc-w.sheet{left:0;right:0;bottom:0;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;border-bottom:0;padding:10px 16px calc(20px + env(safe-area-inset-bottom))}
+.bc-w.pop,.bc-w.sheet{overscroll-behavior:contain}
 .bc-grab{width:40px;height:5px;border-radius:9px;background:#334155;margin:0 auto 10px}
 .bc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .bc-px{font:700 1.9rem Outfit,sans-serif;margin-top:4px}.bc-px .hdr-chg{font-size:.9rem;font-weight:600;margin-left:6px}
@@ -131,6 +132,7 @@
 .bc-sc{display:inline-flex;border:1px solid var(--border,#1e293b);border-radius:8px;overflow:hidden;margin-left:auto}
 .bc-sc button{border:0!important;border-radius:0!important;padding:4px 9px!important}
 .bc-sc button.on{background:rgba(34,211,238,.15)!important;color:#22d3ee!important}
+.bc-sc button:disabled{opacity:.45;cursor:default}
 .bc-box{position:relative;height:300px}#bcC{touch-action:pan-y}.bc-w.sheet .bc-box{height:min(380px,48vh)}
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){.bc-box{height:380px;}}
 /* Short landscape (iPhone landscape 844x390, 8 Nov 2026, round 3):
@@ -155,7 +157,12 @@
   .bc-w.pop .bc-k-spx{min-height:32px;}
   .bc-w.pop .bc-ct{margin:0 0 6px;}
 }
-.bc-nt{color:#94a3b8;font-size:.74rem;margin-top:8px;line-height:1.4}
+.bc-nt{color:#94a3b8;font-size:.74rem;margin-top:8px;line-height:1.4;min-height:2.8em}
+/* Follow-ups (28 Nov 2026): the note is two lines once " Log scale."
+   is appended, and at widths where it sits at the wrap boundary
+   (430px) the toggle grew the sheet by one line and shifted the chart
+   up 16px. Reserving two lines keeps the sheet still across the
+   toggle; longer notes (compare) are unaffected. */
 .bc-cl{display:inline-block;margin-top:10px;color:#22d3ee;font:600 .9rem Outfit,sans-serif;text-decoration:none}
 .bc-cl+.bc-cl{margin-left:18px} /* menu reorg 8 Nov 2026: popup footer now has two links (Live BTC chart + The Desk) */
 .rules-benchmarks{margin-top:36px;scroll-margin-top:96px}
@@ -173,6 +180,14 @@
 .prd-x{position:sticky;top:0;float:right;margin:-6px -8px 0 0;width:44px;height:44px;border-radius:10px;border:1px solid var(--border,#1e293b);background:#0b1224;color:#cbd5e1;font-size:1.1rem;cursor:pointer;z-index:1}
 .prd-card li{scroll-margin-top:70px;transition:background .4s}.prd-card li.prd-hl{background:rgba(34,211,238,.1);border-radius:8px}
 html.prd-lock,html.prd-lock body{overflow:hidden}
+/* Follow-ups (28 Nov 2026): same lock for the BTC chart popup (.bc-w),
+   set by open() and cleared by close() in btcchart-panel.js.
+   Must-fix (28 Nov 2026): lock html ONLY. Locking body too un-sticks
+   the header, so open()'s place() measured the pill above the viewport
+   and the popup opened off-screen when the page was scrolled (top -332px
+   at 1440x900 scrolled 400px, vs 68px with the header stuck). Either
+   half alone still blocks the wheel behind the popup. */
+html.bc-lock{overflow:hidden}
 @media (max-width:640px){.prd-card{left:8px;right:8px;top:calc(8px + env(safe-area-inset-top));bottom:calc(8px + env(safe-area-inset-bottom));transform:none;width:auto;max-height:none;padding:18px 16px 22px}}
 /* v5: sticky header on phone/tablet (already sticky; make sure nothing disables it) */
 @media (max-width:1000px){.header{position:sticky!important;top:0;z-index:50;padding-top:env(safe-area-inset-top)}}

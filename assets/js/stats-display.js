@@ -164,8 +164,9 @@ window.PSStats = (function () {
       .then(function (S) {
         var html = render(S);
         if (html) el.innerHTML = html;
+        el.classList.remove('is-waiting'); /* CLS fix: stats rendered (or empty), reserved height no longer needed */
       })
-      .catch(function () { /* stats not published yet: leave hidden */ });
+      .catch(function () { /* stats not published yet: leave hidden, but release the reserved height so the page does not keep a tall blank hole */ el.classList.remove('is-waiting'); });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', load);

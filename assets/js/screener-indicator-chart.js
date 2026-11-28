@@ -205,7 +205,7 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   }
 
-  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0 };
+  var state = { cfg: null, weeks: [], loading: false, selected: -1, footerText: '', infoOpen: false, infoText: '', loadedSymbol: '', loadToken: 0, rows: [], indRows: [], base: null, progressNote: null, resolvedSub: '', livePrice: null, liveOn: false, livePrev: null, tilePrice: null, drawStart: 0, pulseTimer: null, dailyDays: null, dailyBoll: null, dailyError: null, dailyLoading: false, loadedDailySymbol: '', deskLive: null, deskLiveToken: 0, deskLiveTimer: null, deskLiveAt: 0, savedScrollY: 0, scrollLocked: false };
 
 
   // --- Experimental live feel: pure helpers (also exposed for harness) ---
@@ -516,7 +516,15 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     } else {
       if (liveEl) liveEl.style.display = 'none';
       var last = state.weeks[state.weeks.length - 1];
-      setStatus('Market closed · Last close ' + state.cfg.format(last.close) + ' · ' + countdownText() + ' · Tap a candle for its week.');
+      /* Modal "Last close" vs tile (24 Nov 2026): when the row isn't Live
+         the tile keeps moving overnight from prices.json (USDCAD/DXY trade
+         overnight) while the last shipped weekly candle is frozen at the
+         cash close — so show the tile's price here, not the weekly close.
+         Falls back to the weekly close when no tile price is available
+         (rows not loaded yet). The candle itself still uses the weekly
+         close; only this displayed value changes. */
+      var closeVal = (typeof state.tilePrice === 'number' && isFinite(state.tilePrice)) ? state.tilePrice : last.close;
+      setStatus('Market closed · Last close ' + state.cfg.format(closeVal) + ' · ' + countdownText() + ' · Tap a candle for its week.');
     }
   }
   function refreshLive() {
@@ -526,6 +534,10 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     var wasOn = state.liveOn, wasPrice = state.livePrice;
     state.liveOn = !!(row && row._src === 'live' && typeof row.price === 'number' && isFinite(row.price));
     state.livePrice = state.liveOn ? row.price : null;
+    /* Tile price, live or not: the modal's "Last close" uses this when the
+       row isn't Live, so it always agrees with the tile (see
+       refreshLiveStatus). row.price is the prices.json quote either way. */
+    state.tilePrice = (row && typeof row.price === 'number' && isFinite(row.price)) ? row.price : null;
     if (state.liveOn) state.livePrev = wasPrice;
     var modal = el('ind-modal');
     var open = !!(modal && modal.classList.contains('open'));
@@ -637,13 +649,34 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (sw) sw.style.display = ENH.boll ? 'inline-flex' : 'none';
     document.querySelectorAll('[data-bollmode]').forEach(function (b) {
       var on = b.getAttribute('data-bollmode') === bollMode;
+      var isDaily = b.getAttribute('data-bollmode') === 'daily';
+      // No daily file for this symbol (QQQ, USDCAD, DXY): the Daily
+      // button is disabled, so it can never draw weekly bands under a
+      // "daily Bollinger" title. loadDailyBoll keeps a fallback for
+      // the same case as a safety net.
+      var noDaily = isDaily && (!state.cfg || !state.cfg.dailyUrl);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
       b.classList.toggle('active', on);
+      b.disabled = noDaily;
+      b.title = noDaily ? 'No daily history for this symbol' : '';
     });
   }
   function loadDailyBoll() {
     var cfg = state.cfg;
-    if (!cfg || !cfg.dailyUrl || !state.weeks.length) return;
+    if (!cfg || !state.weeks.length) return;
+    // No daily file for this symbol (QQQ, USDCAD, DXY): route through
+    // the same fallback as a failed fetch — show weekly bands with an
+    // honest note, and reset the mode — instead of silently drawing
+    // weekly bands under a "daily Bollinger" title.
+    if (!cfg.dailyUrl) {
+      state.dailyDays = null; state.dailyBoll = null;
+      state.dailyError = 'No daily history for this symbol — showing weekly bands.';
+      bollMode = 'weekly';
+      syncBollModeUI();
+      syncTitle();
+      draw();
+      return;
+    }
     if (state.dailyLoading) return;
     if (state.dailyDays && state.loadedDailySymbol === cfg.symbol) {
       state.dailyBoll = enhBollDaily(state.weeks, state.dailyDays);
@@ -672,7 +705,11 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
         var lastSun = lastWeek ? (lastWeek.sunday instanceof Date ? lastWeek.sunday.toISOString().slice(0, 10) : String(lastWeek.sunday).slice(0, 10)) : null;
         if (lastSun) {
           var gap = (new Date(lastSun + 'T00:00:00Z') - new Date(lastDaily + 'T00:00:00Z')) / 86400000;
-          if (!(gap >= 0 && gap <= 10)) throw new Error('stale daily file');
+          // Only reject a daily file that is too OLD (gap > 10). A
+          // negative gap means the daily file is NEWER than the weekly
+          // file's last Sunday — harmless, because enhBollDaily only
+          // uses closes on or before each week's Sunday.
+          if (gap > 10) throw new Error('stale daily file');
         }
         state.dailyDays = days;
         state.loadedDailySymbol = cfg.symbol;
@@ -833,6 +870,26 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (canvas) canvas.setAttribute('aria-label', cfg.stock ? (cfg.symbol + ' weekly candle chart') : 'Indicator weekly candle chart, year to date');
     m.classList.add('open');
     m.setAttribute('aria-hidden', 'false');
+    // Scroll lock (25 Nov 2026, Sunil): the modal used to leave the
+    // page scrollable behind it, so swipes chained through to the page
+    // and it drifted down invisibly while the chart was open; on tab
+    // return Safari restored the drifted spot (chart / heat map).
+    // Lock with the iOS-safe pattern — plain overflow:hidden does not
+    // stop background scrolling on iOS Safari, which is exactly how
+    // this happened. Save the position first, and stash it in
+    // sessionStorage too, so a tab evicted while the modal is open
+    // still restores the pre-modal spot instead of the drifted one.
+    // Guarded on scrollLocked so reopening for another symbol while
+    // already open never re-saves (the saved spot stays pre-modal).
+    if (!state.scrollLocked) {
+      state.savedScrollY = window.scrollY || window.pageYOffset || 0;
+      state.scrollLocked = true;
+      try { sessionStorage.setItem('ps-desk-scroll-y', String(state.savedScrollY)); } catch (e) {}
+      document.body.style.position = 'fixed';
+      document.body.style.top = (-state.savedScrollY) + 'px';
+      document.body.style.left = '0';
+      document.body.style.width = '100%';
+    }
     // A different symbol always starts blank: clear the old pill,
     // popup, source "+" and canvas, and invalidate any load still
     // in flight for the old symbol (its response is ignored below).
@@ -876,6 +933,17 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     stopDeskLiveTimer();
     m.classList.remove('open');
     m.setAttribute('aria-hidden', 'true');
+    // Unlock and restore the exact pre-modal position (see openModal).
+    // Only when this module locked it: a close with no lock (e.g. an
+    // Escape keypress with the modal already closed) must not scroll.
+    if (state.scrollLocked) {
+      state.scrollLocked = false;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.width = '';
+      window.scrollTo(0, state.savedScrollY);
+    }
   }
 
   // Shipped file ONLY — no browser fetch fallback (see header).
@@ -1361,8 +1429,20 @@ window.psC=window.psC||function(d,l){return document.documentElement.getAttribut
     if (e.key !== 'Enter' && e.key !== ' ') return;
     var t = e.target;
     if (!t || !t.getAttribute || t.getAttribute('data-symbol') == null) return;
-    if (!t.classList || !t.classList.contains('card')) return;
-    var kcfg = STOCKS[t.getAttribute('data-symbol')];
+    if (!t.classList) return;
+    var ksym = t.getAttribute('data-symbol');
+    // Tiles are tabindex="0" too (screener.js) — Enter/Space opens
+    // their modal, mirroring a click. (Cards are handled just below.)
+    if (t.classList.contains('tile')) {
+      var tcfg = CONFIGS[ksym];
+      if (!tcfg) return;
+      e.preventDefault();
+      if (state.cfg && state.cfg.symbol === tcfg.symbol && state.weeks.length) { state.cfg = tcfg; openModal(tcfg); }
+      else { state.weeks = []; openModal(tcfg); }
+      return;
+    }
+    if (!t.classList.contains('card')) return;
+    var kcfg = STOCKS[ksym];
     if (!kcfg) return;
     e.preventDefault();
     if (state.cfg && state.cfg.symbol === kcfg.symbol && state.weeks.length) openModal(kcfg);

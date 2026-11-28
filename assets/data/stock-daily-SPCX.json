@@ -1,11 +1,11 @@
 {
   "source": "Yahoo SPCX unadjusted daily closes",
-  "asOf": "2026-11-20",
-  "asOfLabel": "20 Nov 2026",
+  "asOf": "2026-11-27",
+  "asOfLabel": "27 Nov 2026",
   "unit": "usd",
   "basis": "listing",
   "firstSession": "2026-06-12",
-  "note": "Daily closes since listing. YTD names start at the first session (12 Jun 2026); nothing before listing is included. Latest completed session 20 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
+  "note": "Daily closes since listing. YTD names start at the first session (12 Jun 2026); nothing before listing is included. Latest completed session 27 Nov 2026. Dated snapshot shipped with the screener \u2014 not a live quote.",
   "days": [
     {
       "date": "2026-06-12",
@@ -458,6 +458,22 @@
     {
       "date": "2026-11-20",
       "close": 127.79
+    },
+    {
+      "date": "2026-11-23",
+      "close": 133.35
+    },
+    {
+      "date": "2026-11-24",
+      "close": 125.81
+    },
+    {
+      "date": "2026-11-25",
+      "close": 127.44
+    },
+    {
+      "date": "2026-11-27",
+      "close": 133.59
     }
   ]
 }

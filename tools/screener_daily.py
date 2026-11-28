@@ -62,6 +62,21 @@ a failed run never exits 0 while leaving stale data looking fresh. A
 daily file with fewer than 20 closes is still written (it grows
 daily); the JS draws no bands until 20 daily closes are available.
 
+History fallback (never invents a number). When Yahoo's close for a
+trading day is null, the parser first looks the value up in the
+site's own history (--history history.json, the ledger engine's
+daily closes, keyed by date then symbol) and then in the already
+shipped daily file for that symbol (the value the site already
+published for that date). A value found in either source is used and
+logged as a FALLBACK line; a value in neither source still fails
+loud for that symbol. Every fallback value goes through the same
+validation as a Yahoo close (finite, positive, rounded to the
+symbol's decimals). History covers TSLA, PLTR, MSTR and BRK.B of
+the stocks; the five indicators and the other twelve stocks have no
+history entry, so for them only the shipped file can fill a null
+bar — and only for a date already shipped. A null bar on a new
+session with no site-held value still fails loud, as before.
+
 Refresh route: the recap job in .github/workflows/prices.yml runs this
 tool on final closes (continue-on-error, never blocks recap or prices)
 and commits any changed stock-daily-*.json / ind-daily-*.json files.
@@ -71,13 +86,25 @@ original wiring note; the file list here now includes the nine new
 Desk stocks.
 
 usage:
-  python3 tools/screener_daily.py [--out-dir assets/data] [--weekly-dir assets/data]
+  python3 tools/screener_daily.py [--out-dir assets/data] [--weekly-dir assets/data] [--history history.json]
   python3 tools/screener_daily.py --symbol TSLA [--out-dir DIR]
   python3 tools/screener_daily.py --fixture bars.json [--out-dir DIR] [--now ISO]
   python3 tools/screener_daily.py --check-only [--out-dir assets/data] [--weekly-dir assets/data]
+  python3 tools/screener_daily.py --stale-check [--out-dir assets/data]
+    (--stale-check compares asOf across the five ind-daily files and
+    exits 1 if any lags the newest; the recap job runs it after copying
+    so one stale file can't lag the rest silently.)
+  --history history.json: the site's history.json (ledger daily closes).
+    When Yahoo's close for a trading day is null, the parser falls back
+    to history.json for that symbol and date, then to the already
+    shipped daily file; every fallback is logged as a FALLBACK line.
+    A value in neither source still fails loud for that symbol.
 """
 import json, math, os, sys, time, datetime as dt, urllib.request
 from zoneinfo import ZoneInfo
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import stock_weekly as sw
 
 NY = ZoneInfo('America/New_York')
 UTC = dt.timezone.utc
@@ -93,10 +120,16 @@ HOLIDAYS = {
     '2028-07-04', '2028-09-04', '2028-11-23', '2028-12-25',
 }
 # Null-OHLC days Yahoo inserts for indicator holidays/weekends (UTC dates).
-IND_HOLIDAYS = {
-    '2025-12-25', '2026-01-01', '2026-01-19', '2026-02-16', '2026-04-03',
-    '2026-05-25', '2026-06-19', '2026-07-03', '2026-09-07', '2026-11-26', '2026-12-25',
-}
+# This is the shared NYSE holiday set from tools/stock_weekly.py
+# (2026-2028): a local copy here would go stale in 2027, and a null
+# close on a 2027 indicator holiday would fail the daily build instead
+# of being skipped. The set starts 2026-01-01, but the Yahoo fetch
+# begins 2025-12-20, so a null bar before the series starts (e.g.
+# ^VIX on 2025-12-25) still reaches the parser — closes_from_payload
+# skips null indicator bars dated before firstSession for that reason.
+# Do NOT "fix" this by re-adding 2025-12-25 to the set: the
+# firstSession skip covers that bar and any other pre-series null bar.
+IND_HOLIDAYS = sw.HOLIDAYS
 FINAL_HM = (16, 15)
 IND_FINAL_HM = (18, 0)   # indicators: today's bar (ET) is final at/after 18:00 ET
 
@@ -217,8 +250,83 @@ def fetch_yahoo(ysym):
     return res[0]
 
 
-def closes_from_payload(key, payload, is_stock):
-    """Pure parser. Returns {date: close}. Dates are ET (stocks) or UTC (indicators)."""
+def load_history(path):
+    """Load the site's history.json (the ledger engine's daily closes).
+    Returns {date_str: {symbol: close}} or None if the file cannot be
+    read. Values are validated on use (finite, positive); a bad value
+    is treated as no value, never used. History covers TSLA, PLTR,
+    MSTR and BRK.B of the screener stocks; the indicators and the
+    other stocks have no entry."""
+    try:
+        with open(path) as f:
+            doc = json.load(f)
+    except Exception as e:
+        print(f'WARNING history unreadable ({path}): {type(e).__name__}: {e}; continuing without history fallback', file=sys.stderr)
+        return None
+    closes = doc.get('closes')
+    if not isinstance(closes, dict):
+        print(f'WARNING history has no closes dict ({path}); continuing without history fallback', file=sys.stderr)
+        return None
+    return closes
+
+
+def load_shipped_daily(daily_dir, key):
+    """Load the already shipped daily file for a symbol (the value the
+    site already published for each date). Returns {date: close} or an
+    empty dict if the file is missing or unreadable. Used as the second
+    fallback source for a null Yahoo bar, after history."""
+    path = os.path.join(daily_dir, ALL[key][5])
+    try:
+        with open(path) as f:
+            doc = json.load(f)
+    except Exception:
+        return {}
+    out = {}
+    for row in doc.get('days') or []:
+        try:
+            d = dt.date.fromisoformat(row['date'])
+            c = row['close']
+        except Exception:
+            continue
+        if isinstance(c, bool) or not isinstance(c, (int, float)) or not math.isfinite(c) or c <= 0:
+            continue
+        out[d] = c
+    return out
+
+
+def _fallback_value(key, day, history, shipped, nd):
+    """Look up a null Yahoo close in the site's own records. History
+    first (the ledger), then the shipped daily file. Returns the
+    rounded close and a source label, or (None, None) if neither
+    source holds a valid value for that symbol and date. Never
+    invents a number: a missing or invalid value is no value."""
+    if history is not None:
+        try:
+            v = (history.get(day.isoformat()) or {}).get(key)
+        except Exception:
+            v = None
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
+            v = None
+        if v is not None:
+            return rnd(v, nd), 'site history'
+    if shipped is not None:
+        v = shipped.get(day)
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
+            v = None
+        if v is not None:
+            return rnd(v, nd), 'shipped daily file'
+    return None, None
+
+
+def closes_from_payload(key, payload, is_stock, history=None, shipped=None, fallbacks=None):
+    """Pure parser. Returns {date: close}. Dates are ET (stocks) or UTC (indicators).
+    `history` is the history.json closes dict ({date: {symbol: close}});
+    `shipped` is the already shipped daily file's {date: close} for this
+    symbol. When Yahoo's close for a trading day is null, the parser
+    falls back to those sources (history first, shipped second) and
+    records each use in `fallbacks` (a list of (key, date, close,
+    source)); with neither source holding the value it raises, as
+    before. `fallbacks` may be None, in which case uses are discarded."""
     ysym, nd, unit, basis, first, _ = ALL[key]
     try:
         q = payload['indicators']['quote'][0]
@@ -226,6 +334,9 @@ def closes_from_payload(key, payload, is_stock):
     except (KeyError, IndexError, TypeError) as e:
         raise RuntimeError(f'{key}: Yahoo payload missing closes ({type(e).__name__})')
     tz = NY if is_stock else UTC
+    # First shipped session. A null indicator bar before it can never
+    # reach the file (build_doc only ships days in [first, asOf]).
+    first_day = None if is_stock else dt.date.fromisoformat(first)
     out = {}
     for t, c in zip(ts, q['close']):
         if t is None:
@@ -234,12 +345,36 @@ def closes_from_payload(key, payload, is_stock):
         if c is None:
             # Indicators: Yahoo inserts null-OHLC rows for market holidays
             # and weekends. Those are not trading days and are skipped; a
-            # null close on any other day is a hard failure.
+            # null close on any other day is a hard failure — unless the
+            # site already holds that symbol and date (history first,
+            # shipped daily file second). A fallback value is logged by
+            # the caller; a value in neither source still fails loud.
             if is_stock:
-                raise RuntimeError(f'{key}: null close on {day} — refusing to skip or fill')
+                v, src = _fallback_value(key, day, history, shipped, nd)
+                if v is None:
+                    raise RuntimeError(f'{key}: null close on {day} — refusing to skip or fill')
+                if fallbacks is not None:
+                    fallbacks.append((key, day, v, src))
+                out[day] = v
+                continue
+            if first_day is not None and day < first_day:
+                # Before the series starts. The Yahoo fetch begins
+                # 2025-12-20, so ^VIX's null bar on 2025-12-25 reaches
+                # the parser even though 2025-12-25 is not in
+                # IND_HOLIDAYS (PR #15 dropped it). Skipping here is
+                # safe: the bar is outside [first, asOf] and can never
+                # be written. This also covers any other pre-series
+                # null bar without maintaining a pre-2026 holiday list.
+                continue
             if day.weekday() >= 5 or day.isoformat() in IND_HOLIDAYS:
                 continue
-            raise RuntimeError(f'{key}: null close on {day} — refusing to skip or fill')
+            v, src = _fallback_value(key, day, history, shipped, nd)
+            if v is None:
+                raise RuntimeError(f'{key}: null close on {day} — refusing to skip or fill')
+            if fallbacks is not None:
+                fallbacks.append((key, day, v, src))
+            out[day] = v
+            continue
         if day in out:
             raise RuntimeError(f'{key}: duplicate bar {day}')
         if isinstance(c, bool) or not isinstance(c, (int, float)) or not math.isfinite(c) or c <= 0:
@@ -390,8 +525,34 @@ def write_doc(path, doc):
     os.replace(tmp, path)
 
 
+def check_ind_stale(out_dir):
+    """Compare asOf across the five ind-daily files. Returns the sorted
+    list of indicator keys whose asOf lags the newest file. A missing or
+    unreadable file counts as lagging (it is worse than stale). An empty
+    list means all five agree. This is the check that would have caught
+    ind-daily-vix.json sitting at Nov 20 while the other four moved to
+    Nov 23: the VIX write failed, the recap job committed the rest, and
+    nothing compared the files afterwards."""
+    asofs = {}
+    lagging = []
+    for k in INDICATORS:
+        path = os.path.join(out_dir, ALL[k][5])
+        try:
+            with open(path) as f:
+                doc = json.load(f)
+            asofs[k] = dt.date.fromisoformat(doc['asOf'])
+        except Exception:
+            lagging.append(k)
+    if asofs:
+        newest = max(asofs.values())
+        lagging += [k for k, a in asofs.items() if a < newest]
+    return sorted(set(lagging))
+
+
 def main(argv):
     out_dir, weekly_dir, fixture, now, check_only, only = 'assets/data', 'assets/data', None, None, False, None
+    stale_check = False
+    history_path = None
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -401,12 +562,16 @@ def main(argv):
             weekly_dir = argv[i + 1]; i += 2
         elif a == '--fixture':
             fixture = argv[i + 1]; i += 2
+        elif a == '--history':
+            history_path = argv[i + 1]; i += 2
         elif a == '--now':
             now = argv[i + 1]; i += 2
         elif a == '--symbol':
             only = argv[i + 1]; i += 2
         elif a == '--check-only':
             check_only = True; i += 1
+        elif a == '--stale-check':
+            stale_check = True; i += 1
         else:
             print(f'unknown arg {a}', file=sys.stderr); return 2
     if only and only not in ALL:
@@ -464,8 +629,17 @@ def main(argv):
             print('BAD', b)
         print('screener-daily', 'OK' if not bad else 'INVALID', len(keys), 'files')
         return 1 if bad else 0
+    if stale_check:
+        lagging = check_ind_stale(out_dir)
+        if lagging:
+            print('ind-daily stale: ' + ', '.join(lagging))
+            return 1
+        print('ind-daily OK: all five files share the newest asOf')
+        return 0
     docs = {}
     failed = []
+    fallbacks = []
+    history = load_history(history_path) if history_path else None
     for k in keys:
         try:
             weeks, wasof = load_weekly(weekly_dir, k)
@@ -475,19 +649,24 @@ def main(argv):
                 closes = closes_from_fixture_rows(k, fx['symbols'][k])
             else:
                 payload = fetch_yahoo(ALL[k][0])
-                closes = closes_from_payload(k, payload, k in STOCKS)
+                shipped = load_shipped_daily(weekly_dir, k)
+                closes = closes_from_payload(k, payload, k in STOCKS, history, shipped, fallbacks)
             docs[k], mism = build_doc(k, closes, now, weeks, wasof)
             if mism:
                 print(f'NOTE {k}: weekly-consistency notes (reported, not fatal): ' + '; '.join(mism))
         except Exception as e:
             print(f'FAILED {k}: {e}', file=sys.stderr)
             failed.append(k)
+    for k, day, v, src in fallbacks:
+        print(f'FALLBACK {k}: {day} close {v} from {src} (Yahoo null)')
     os.makedirs(out_dir, exist_ok=True)
     for k, doc in docs.items():
         path = os.path.join(out_dir, ALL[k][5])
         write_doc(path, doc)
         print(f'{k} days={len(doc["days"])} asOf={doc["asOf"]} first={doc["days"][0]["date"]} last={doc["days"][-1]["close"]}')
     print('screener-daily wrote', len(docs), 'file(s) ->', out_dir)
+    if fallbacks:
+        print(f'screener-daily: {len(fallbacks)} fallback(s) used (see FALLBACK lines above)')
     if failed:
         print('screener-daily: skipped ' + ', '.join(failed) + f' ({len(failed)} failed, {len(docs)} written)', file=sys.stderr)
         return 1

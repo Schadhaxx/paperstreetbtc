@@ -1,32 +1,32 @@
 {
  "v": 1,
  "source": "2010-08-18..2014-09-16 blockchain.info market-price (daily avg); 2014-09-17 onward Yahoo Finance BTC-USD daily close (UTC day)",
- "asOf": "2026-11-19",
- "dataThrough": "2026-11-19",
- "maNow": 68169.58,
- "maPrev": 67973.67,
- "lastClose": 61901.82,
- "prevClose": 65305.06,
+ "asOf": "2026-11-26",
+ "dataThrough": "2026-11-26",
+ "maNow": 68349.48,
+ "maPrev": 68165.88,
+ "lastClose": 60495.57,
+ "prevClose": 61161.91,
  "lastWeek": {
-  "monday": "2026-11-16",
-  "close": 61901.82,
-  "ma": 68169.58,
+  "monday": "2026-11-23",
+  "close": 60495.57,
+  "ma": 68349.48,
   "days": 4,
   "inProgress": true
  },
  "prevWeek": {
-  "monday": "2026-11-09",
-  "close": 65305.06,
-  "ma": 67973.67,
+  "monday": "2026-11-16",
+  "close": 61161.91,
+  "ma": 68165.88,
   "days": 7,
   "inProgress": false
  },
- "priceVsMaNowPct": -9.19,
- "priceVsMaPrevPct": -3.93,
- "maYearAgo": 55569.11,
- "maSlopePerWeek": 238.55,
- "weeksBelow": 57,
- "weeksTotal": 650,
+ "priceVsMaNowPct": -11.49,
+ "priceVsMaPrevPct": -10.27,
+ "maYearAgo": 55831.49,
+ "maSlopePerWeek": 237.2,
+ "weeksBelow": 58,
+ "weeksTotal": 651,
  "longestBelowWeeks": 30,
  "longestBelow": {
   "start": "2022-08-15",
@@ -4001,9 +4001,15 @@
   ],
   [
    "2026-11-16",
-   61901.82,
-   61901.82,
-   68169.58
+   61161.91,
+   58798.98,
+   68165.88
+  ],
+  [
+   "2026-11-23",
+   60495.57,
+   59747.77,
+   68349.48
   ]
  ]
 }

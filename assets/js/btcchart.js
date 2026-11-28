@@ -112,7 +112,7 @@ function loadPanel(){
   if(P.panelP)return P.panelP;
   P.panelP=new Promise(function(ok,no){
     var s=document.createElement('script');
-    s.src=U('btcchart-panel.js?v=et32');
+    s.src=U('btcchart-panel.js?v=wr20');
     s.onload=function(){ok();};
     s.onerror=function(){P.panelP=null;no(new Error('btc panel'));};
     document.head.appendChild(s);
